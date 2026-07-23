@@ -196,6 +196,82 @@ fn db_project(
     Ok(())
 }
 
+// ---- Fase 2: lecturas servidas por SQLite (consultas sobre las proyecciones) ----
+
+#[derive(serde::Serialize)]
+struct TopJug {
+    nombre: String,
+    sexo: String,
+    media: i64,
+    estilo: String,
+    pareja: String,
+}
+
+/// Top jugadores por media (ambos sexos), consultado sobre proj_jugadores.
+#[tauri::command]
+fn db_top_jugadores(db: tauri::State<Db>, modo: String, limite: i64) -> Result<Vec<TopJug>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT nombre, sexo, media, estilo, pareja FROM proj_jugadores
+             WHERE modo = ?1 ORDER BY media DESC, nombre ASC LIMIT ?2",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(params![modo, limite], |r| {
+            Ok(TopJug {
+                nombre: r.get(0)?,
+                sexo: r.get(1)?,
+                media: r.get(2)?,
+                estilo: r.get(3)?,
+                pareja: r.get(4)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    for r in rows {
+        out.push(r.map_err(|e| e.to_string())?);
+    }
+    Ok(out)
+}
+
+#[derive(serde::Serialize)]
+struct RankOut {
+    pos: i64,
+    pareja: String,
+    nivel: i64,
+    pts: i64,
+    pro: bool,
+}
+
+/// Ranking de un sexo, consultado sobre proj_ranking.
+#[tauri::command]
+fn db_ranking(db: tauri::State<Db>, modo: String, sexo: String, limite: i64) -> Result<Vec<RankOut>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT pos, pareja, nivel, pts, pro FROM proj_ranking
+             WHERE modo = ?1 AND sexo = ?2 ORDER BY pos ASC LIMIT ?3",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(params![modo, sexo, limite], |r| {
+            Ok(RankOut {
+                pos: r.get(0)?,
+                pareja: r.get(1)?,
+                nivel: r.get(2)?,
+                pts: r.get(3)?,
+                pro: r.get::<_, i64>(4)? != 0,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    for r in rows {
+        out.push(r.map_err(|e| e.to_string())?);
+    }
+    Ok(out)
+}
+
 fn main() {
     tauri::Builder::default()
         .setup(|app| {
@@ -203,7 +279,14 @@ fn main() {
             app.manage(Db(Mutex::new(conn)));
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![db_save, db_load, db_history, db_project])
+        .invoke_handler(tauri::generate_handler![
+            db_save,
+            db_load,
+            db_history,
+            db_project,
+            db_top_jugadores,
+            db_ranking
+        ])
         .run(tauri::generate_context!())
         .expect("error while running Rising Pádel Manager");
 }

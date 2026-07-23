@@ -68,6 +68,34 @@ function dbProyectar(modo){
     const p=inv("db_project",{modo,ranking,jugadores}); if(p&&p.catch) p.catch(()=>{});
   }catch(e){}
 }
+// ---------- Fase 2: lecturas servidas por SQLite ----------
+function dbTopJugadores(modo,limite){
+  const inv=_invoke(); if(!inv) return Promise.resolve(null);
+  try{ return Promise.resolve(inv("db_top_jugadores",{modo,limite:limite||10})).catch(()=>null); }catch(e){ return Promise.resolve(null); }
+}
+function dbRanking(modo,sexo,limite){
+  const inv=_invoke(); if(!inv) return Promise.resolve(null);
+  try{ return Promise.resolve(inv("db_ranking",{modo,sexo:sexo||"M",limite:limite||20})).catch(()=>null); }catch(e){ return Promise.resolve(null); }
+}
+// Overlay de analítica: bajo Tauri consulta SQLite; sin Tauri, aviso claro.
+function abrirAnalitica(){
+  const ov=document.getElementById("analitica"), cuerpo=document.getElementById("analiticaCuerpo");
+  if(!ov||!cuerpo) return;
+  ov.classList.remove("oculto");
+  if(!dbDisponible()){
+    cuerpo.innerHTML=`<div class="foot" style="text-align:left;line-height:1.6">La analítica se sirve desde la base de datos <b>SQLite</b>, disponible solo en la <b>app de escritorio</b>. En el navegador no hay base de datos que consultar.</div>`;
+    return;
+  }
+  cuerpo.innerHTML=`<div class="foot">Consultando la base de datos…</div>`;
+  const modo=(G&&G.modo)||"carrera";
+  dbTopJugadores(modo,10).then(top=>{
+    if(!top||!top.length){ cuerpo.innerHTML=`<div class="foot" style="text-align:left;line-height:1.6">Aún no hay datos proyectados. Guarda o juega una partida y vuelve a abrir la analítica.</div>`; return; }
+    const filas=top.map((j,i)=>`<tr><td class="pos">${i+1}</td><td>${j.nombre}</td><td class="pts" style="color:var(--lima)">${j.media}</td><td style="color:var(--gris)">${j.estilo||""}</td><td class="niv">${j.sexo}</td></tr>`).join("");
+    cuerpo.innerHTML=`<div class="foot" style="text-align:left;margin-bottom:7px">Top 10 jugadores por media — <b>consulta SQL</b> sobre <code>proj_jugadores</code>:</div><table class="rk">${filas}</table>`;
+  }).catch(()=>{ cuerpo.innerHTML=`<div class="foot">No se pudo consultar la base de datos.</div>`; });
+}
+document.getElementById("btnAnalitica").onclick=abrirAnalitica;
+document.getElementById("analiticaCerrar").onclick=()=>document.getElementById("analitica").classList.add("oculto");
 // migración del guardado único antiguo a su ranura por modo
 (function(){
   const viejo=lsGet("rpm_save_v1");
