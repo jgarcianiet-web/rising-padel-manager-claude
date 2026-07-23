@@ -77,6 +77,49 @@ function dbRanking(modo,sexo,limite){
   const inv=_invoke(); if(!inv) return Promise.resolve(null);
   try{ return Promise.resolve(inv("db_ranking",{modo,sexo:sexo||"M",limite:limite||20})).catch(()=>null); }catch(e){ return Promise.resolve(null); }
 }
+// ---------- Fase 3: modelo relacional normalizado ----------
+// normalizar() y denormalizar() son PURAS (no tocan SQLite ni el DOM): es la
+// lógica de migración, y su ida y vuelta se puede probar sin Tauri.
+function normalizar(){
+  const out={parejas:[],jugadores:[],atributos:[]};
+  if(!G||!G.world||!Array.isArray(G.world.parejas)) return out;
+  const ent=n=>Number.isFinite(n)?Math.round(n):0;
+  G.world.parejas.forEach(p=>{
+    out.parejas.push({pid:p.id,nombre:p.nombre||"",sexo:p.sexo||"M",pts:ent(p.pts||0),pro:!!p.pro,edad:ent(p.edad||0),club:(p.club==null?-1:p.club)});
+    (p.jug||[]).forEach((j,idx)=>{
+      const jid=p.id+"-"+idx;
+      out.jugadores.push({jid,pareja_pid:p.id,nombre:j.n||"",sexo:j.sexo||p.sexo||"M",lado:(j.lado===1?1:0),estilo:j.estilo||"",perso:j.perso||"",conf:ent(j.conf||0),pais:j.pais||""});
+      const a=j.attrs||{};
+      ATTR_KEYS.forEach(k=>{ if(a[k]!=null) out.atributos.push({jid,clave:k,valor:ent(a[k])}); });
+    });
+  });
+  return out;
+}
+function denormalizar(snap){
+  const attrsByJid={};
+  (snap.atributos||[]).forEach(a=>{ (attrsByJid[a.jid]=attrsByJid[a.jid]||{})[a.clave]=a.valor; });
+  const jugByPid={};
+  (snap.jugadores||[]).forEach(j=>{ (jugByPid[j.pareja_pid]=jugByPid[j.pareja_pid]||[]).push(j); });
+  Object.keys(jugByPid).forEach(pid=>jugByPid[pid].sort((a,b)=>a.jid<b.jid?-1:a.jid>b.jid?1:0));
+  return (snap.parejas||[]).map(p=>({
+    id:p.pid,nombre:p.nombre,sexo:p.sexo,pts:p.pts,pro:!!p.pro,edad:p.edad,club:p.club,
+    jug:(jugByPid[p.pid]||[]).map(j=>({n:j.nombre,sexo:j.sexo,lado:j.lado,estilo:j.estilo,perso:j.perso,conf:j.conf,pais:j.pais,attrs:attrsByJid[j.jid]||{}}))
+  }));
+}
+let _ultSnap=0;
+function dbSnapshot(modo){
+  const inv=_invoke(); if(!inv) return;
+  const now=Date.now(); if(now-_ultSnap<3000) return; _ultSnap=now;
+  try{
+    const s=normalizar();
+    if(!s.parejas.length) return;
+    const p=inv("db_snapshot",{modo,parejas:s.parejas,jugadores:s.jugadores,atributos:s.atributos}); if(p&&p.catch) p.catch(()=>{});
+  }catch(e){}
+}
+function dbNormStats(modo){
+  const inv=_invoke(); if(!inv) return Promise.resolve(null);
+  try{ return Promise.resolve(inv("db_norm_stats",{modo})).catch(()=>null); }catch(e){ return Promise.resolve(null); }
+}
 // Overlay de analítica: bajo Tauri consulta SQLite; sin Tauri, aviso claro.
 function abrirAnalitica(){
   const ov=document.getElementById("analitica"), cuerpo=document.getElementById("analiticaCuerpo");
@@ -91,7 +134,13 @@ function abrirAnalitica(){
   dbTopJugadores(modo,10).then(top=>{
     if(!top||!top.length){ cuerpo.innerHTML=`<div class="foot" style="text-align:left;line-height:1.6">Aún no hay datos proyectados. Guarda o juega una partida y vuelve a abrir la analítica.</div>`; return; }
     const filas=top.map((j,i)=>`<tr><td class="pos">${i+1}</td><td>${j.nombre}</td><td class="pts" style="color:var(--lima)">${j.media}</td><td style="color:var(--gris)">${j.estilo||""}</td><td class="niv">${j.sexo}</td></tr>`).join("");
-    cuerpo.innerHTML=`<div class="foot" style="text-align:left;margin-bottom:7px">Top 10 jugadores por media — <b>consulta SQL</b> sobre <code>proj_jugadores</code>:</div><table class="rk">${filas}</table>`;
+    cuerpo.innerHTML=`<div class="foot" style="text-align:left;margin-bottom:7px">Top 10 jugadores por media — <b>consulta SQL</b> sobre <code>proj_jugadores</code>:</div><table class="rk">${filas}</table><div class="foot" id="analiticaNorm" style="text-align:left;margin-top:9px">Modelo normalizado: consultando…</div>`;
+    dbNormStats(modo).then(ns=>{
+      const el=document.getElementById("analiticaNorm"); if(!el) return;
+      el.innerHTML= ns
+        ? `Modelo normalizado (Fase 3): <b>${ns.parejas}</b> parejas · <b>${ns.jugadores}</b> jugadores · <b>${ns.atributos}</b> atributos, con relaciones pareja→jugador→atributo.`
+        : `Modelo normalizado: aún sin datos.`;
+    }).catch(()=>{});
   }).catch(()=>{ cuerpo.innerHTML=`<div class="foot">No se pudo consultar la base de datos.</div>`; });
 }
 document.getElementById("btnAnalitica").onclick=abrirAnalitica;
@@ -110,6 +159,7 @@ function guardar(){
   const ok=lsSet(SLOTS[G.modo],json);
   dbGuardar(G.modo,json);   // espejo en SQLite (no bloquea; no-op fuera de Tauri)
   dbProyectar(G.modo);      // proyecciones relacionales de solo lectura (Fase 1)
+  dbSnapshot(G.modo);       // snapshot del modelo normalizado (Fase 3)
   const st=G.modo==="carrera"?G.carrera.semana:G.clubG.semana;
   document.getElementById("footSave").textContent=ok
     ? `RISING GAMES · v3.0 — ${G.modo} guardada ✓ (semana ${st})`
