@@ -82,6 +82,8 @@ if(typeof document.addEventListener==="function"){
 function buildPoint(server){
   const ev=[]; const A=teams[0],B=teams[1];
   A.atNet=false;B.atNet=false;A._scr=false;B._scr=false;
+  // entre punto y punto los cuatro recuperan un poco de fatiga
+  if(stats){[0,1].forEach(tt=>{ if(stats[tt]&&stats[tt].fatiga) stats[tt].fatiga=stats[tt].fatiga.map(f=>clamp(f-.8,0,100)); });}
   let t=server,rally=0;
   let contact=contactPoint(t,true,t===0?7.6:2.4);
   let ctx={atNet:false,high:false,afterGlass:false,pressure:0};
@@ -94,6 +96,14 @@ function buildPoint(server){
     if(shotKey!=="saque") shotKey=chooseShot(pl,{...ctx,atNet:team.atNet},opp);
     const jug=pl.n;
     const s=SHOTS[shotKey];
+    // tiros y fatiga: cada golpe cuenta y desgasta a quien lo ejecuta
+    let _fat=0;
+    if(stats&&stats[t]){
+      stats[t].tiros++;
+      _fat=stats[t].fatiga[hIdx];
+      const coste=(shotKey==="saque"?.3:.7)+(AGRESIVOS.includes(shotKey)?.4:0)+rally*.04;
+      stats[t].fatiga[hIdx]=clamp(_fat+coste,0,100);
+    }
     let com=`${jug} — ${s.label}`;
     if(ctx.afterGlass&&!ctx.high) com=`${jug} — salida de pared → ${s.label}`;
     if(shotKey==="bajada") com=`¡${jug} baja la pared con todo!`;
@@ -105,7 +115,7 @@ function buildPoint(server){
 
     if(opp._defQ===undefined) opp._defQ=Math.round((mediaAttrs(opp.jug[0].attrs)+mediaAttrs(opp.jug[1].attrs))/2);
     if(team._quimLado===undefined) team._quimLado=quimicaLado(team);
-    const outcome=shotKey==="saque"?"sigue":resolveShot(pl,shotKey,{...ctx,team:t,oppDef:opp._defQ,oppScrambling:opp._scr,_quimLado:team._quimLado},rally);
+    const outcome=shotKey==="saque"?"sigue":resolveShot(pl,shotKey,{...ctx,team:t,oppDef:opp._defQ,oppScrambling:opp._scr,_quimLado:team._quimLado,fatiga:_fat},rally);
 
     if(outcome==="error"){
       stats[t].jug[hIdx].e++;
