@@ -10,6 +10,32 @@ const SLOTS={carrera:"rpm_carrera_v1",club:"rpm_club_v1"};
 function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
 function lsSet(k,v){try{localStorage.setItem(k,v);return true;}catch(e){return false;}}
 function lsDel(k){try{localStorage.removeItem(k);}catch(e){}}
+
+// ---------- persistencia en SQLite (solo dentro de la app de escritorio) ----------
+// localStorage sigue siendo la fuente de verdad síncrona durante la partida;
+// SQLite es un espejo duradero en disco (con historial) que solo actúa cuando
+// el juego corre bajo Tauri. Sin Tauri (navegador o pruebas) todo es no-op.
+function _invoke(){ return (typeof window!=="undefined"&&window.__TAURI__&&window.__TAURI__.core&&window.__TAURI__.core.invoke)||null; }
+function dbDisponible(){ return !!_invoke(); }
+function dbGuardar(modo,json){
+  const inv=_invoke(); if(!inv) return;
+  try{ const p=inv("db_save",{modo,json}); if(p&&p.catch) p.catch(()=>{}); }catch(e){}
+}
+function dbCargar(modo){
+  const inv=_invoke(); if(!inv) return Promise.resolve(null);
+  try{ return Promise.resolve(inv("db_load",{modo})).catch(()=>null); }catch(e){ return Promise.resolve(null); }
+}
+// Al arrancar en la app: si en localStorage falta una partida pero SQLite la
+// tiene (p.ej. tras limpiar la caché del WebView), la restauramos.
+function hidratarDesdeDB(){
+  if(!dbDisponible()) return Promise.resolve(false);
+  const modos=Object.keys(SLOTS);
+  let restaurada=false;
+  return modos.reduce((cad,modo)=>cad.then(()=>{
+    if(lsGet(SLOTS[modo])) return;
+    return dbCargar(modo).then(json=>{ if(json){ lsSet(SLOTS[modo],json); restaurada=true; } });
+  }),Promise.resolve()).then(()=>restaurada).catch(()=>restaurada);
+}
 // migración del guardado único antiguo a su ranura por modo
 (function(){
   const viejo=lsGet("rpm_save_v1");
@@ -20,7 +46,9 @@ function lsDel(k){try{localStorage.removeItem(k);}catch(e){}}
 })();
 function guardar(){
   if(!G) return;
-  const ok=lsSet(SLOTS[G.modo],JSON.stringify(G));
+  const json=JSON.stringify(G);
+  const ok=lsSet(SLOTS[G.modo],json);
+  dbGuardar(G.modo,json);   // espejo en SQLite (no bloquea; no-op fuera de Tauri)
   const st=G.modo==="carrera"?G.carrera.semana:G.clubG.semana;
   document.getElementById("footSave").textContent=ok
     ? `RISING GAMES · v3.0 — ${G.modo} guardada ✓ (semana ${st})`
