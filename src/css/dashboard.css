@@ -1,0 +1,27 @@
+/* ================= DISPOSICIÓN DE ORDENADOR ================= */
+#hud{display:none}
+#hud .hudCaja{background:var(--pane);border:1px solid var(--borde);border-radius:2px;padding:9px 10px}
+#hud .hudTit{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--gris2);margin-bottom:5px}
+#hud .hudFila{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px;padding:2px 0}
+#hud .hudFila b{font-family:'Chakra Petch',sans-serif;font-size:14px}
+#hud .hudNom{font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:15px;line-height:1.15}
+
+@media(min-width:1120px){
+  .cont{max-width:1240px}
+  body.con-hud .wrap{padding-left:288px}
+  body.con-hud .kpis{display:none}          /* sus datos pasan al panel lateral */
+  #hud{display:flex;flex-direction:column;gap:9px;position:fixed;left:0;top:0;bottom:0;width:288px;
+       padding:52px 11px 14px;overflow-y:auto;background:#0C1017;border-right:1px solid var(--borde);z-index:30}
+  /* los paneles reparten sus tarjetas en columnas en vez de una tira estrecha */
+  #tab-semana,#tab-entreno,#tab-staff,#tab-ranking,#tab-diario,
+  #cm-semana,#cm-ranking,#cm-diario{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));
+       gap:10px;align-items:start}
+  #tab-semana>.card,#tab-entreno>.card,#tab-staff>.card,#tab-ranking>.card,#tab-diario>.card,
+  #cm-semana>.card,#cm-ranking>.card,#cm-diario>.card{margin-bottom:0}
+  .tabs button{padding:9px 15px;font-size:12.5px}
+}
+@media(hover:hover){                          /* respuesta al ratón, cosa de escritorio */
+  .tabs button:hover{color:var(--texto);background:#182234}
+  .opcion:hover{border-color:var(--gris2)}
+  table.rk tr[style*="cursor"]:hover{background:#182234}
+}

@@ -40,16 +40,22 @@ function almacenFalso() {
   };
 }
 
-/** Devuelve el código JavaScript del juego, extraído de src/index.html. */
+/** Devuelve el código JavaScript del juego.
+ *
+ *  El juego ya no vive en un único <script> dentro de index.html: está
+ *  repartido en varios ficheros clásicos (src/js/**). Aquí leemos index.html,
+ *  extraemos los <script src="js/..."> en el mismo orden en que el navegador
+ *  los carga y concatenamos su contenido. Así el arnés queda siempre
+ *  sincronizado con lo que realmente ejecuta la app: basta con añadir o
+ *  reordenar un <script src> en index.html para que las pruebas lo recojan. */
 function codigoDelJuego() {
-  const htmlPath = path.join(__dirname, "..", "src", "index.html");
-  const html = fs.readFileSync(htmlPath, "utf8");
-  const ini = html.indexOf("<script>");
-  const fin = html.lastIndexOf("</script>");
-  if (ini < 0 || fin < 0 || fin <= ini) {
-    throw new Error("No se encontró el bloque <script> dentro de src/index.html");
+  const dir = path.join(__dirname, "..", "src");
+  const html = fs.readFileSync(path.join(dir, "index.html"), "utf8");
+  const orden = [...html.matchAll(/<script\s+src="([^"]+)"\s*><\/script>/g)].map((m) => m[1]);
+  if (!orden.length) {
+    throw new Error("No se encontró ningún <script src=\"js/...\"> en src/index.html");
   }
-  return html.slice(ini + "<script>".length, fin);
+  return orden.map((rel) => fs.readFileSync(path.join(dir, rel), "utf8")).join("\n;\n");
 }
 
 /** Crea el navegador simulado. */
