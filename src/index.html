@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rising Pádel Manager</title>
+<link rel="stylesheet" href="css/main.css">
+<link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="logo">RISING <span>PÁDEL</span> MANAGER</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="mini" id="miniBtns" style="display:none">
+        <button id="btnSnd" title="Sonido"></button>
+        <button id="btnAyuda" title="Tutorial">?</button>
+        <button id="btnExport" title="Exportar partida">⤓ Exportar</button>
+        <button id="btnMenu">Menú</button>
+      </div>
+      <div class="ctx" id="topCtx"><b>Rising Games</b></div>
+    </div>
+  </div>
+
+  <aside id="hud"></aside>
+
+  <!-- ============ MENÚ ============ -->
+  <div id="splash" style="position:fixed;inset:0;z-index:200;background:#07090D;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer">
+    <div id="splEstudio" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#121316;opacity:0;transition:opacity .55s ease">
+      <img id="splImgEstudio" alt="Rising Games" style="width:min(80vw,430px);max-height:64vh;object-fit:contain;-webkit-mask-image:radial-gradient(ellipse at center,#000 60%,rgba(0,0,0,0) 90%);mask-image:radial-gradient(ellipse at center,#000 60%,rgba(0,0,0,0) 90%)">
+    </div>
+    <div id="splJuego" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;background:radial-gradient(ellipse at 50% 42%,#0F2438,#05080D 78%);opacity:0;transition:opacity .55s ease">
+      <img id="splImgJuego" alt="Pádel Manager" style="width:min(88vw,470px);max-height:58vh;object-fit:contain;-webkit-mask-image:radial-gradient(ellipse at center,#000 60%,rgba(0,0,0,0) 90%);mask-image:radial-gradient(ellipse at center,#000 60%,rgba(0,0,0,0) 90%)">
+      <div style="width:190px;height:4px;background:#16202E;border-radius:2px;overflow:hidden"><div id="splBar" style="height:100%;width:0;background:linear-gradient(90deg,#E8A030,#C6F53C);transition:width .18s"></div></div>
+    </div>
+  </div>
+  <div id="scr-menu">
+    <div class="menu">
+      <img id="menuImgJuego" alt="Pádel Manager" style="width:100%;max-width:340px;display:block;margin:2px auto 6px;-webkit-mask-image:radial-gradient(ellipse at center,#000 60%,rgba(0,0,0,0) 90%);mask-image:radial-gradient(ellipse at center,#000 60%,rgba(0,0,0,0) 90%)">
+      
+      <div class="sub">Rising Games · v3.1</div>
+      <button class="pri" id="btnCarrera">🎾 Carrera de jugador</button>
+      <button class="pri" id="btnClub">🏟 Modo club</button>
+      <button id="btnImport">Importar partida</button>
+      <input type="file" id="fileImport" accept=".json" style="display:none">
+      <div class="foot" id="menuInfo" style="margin-top:14px"></div>
+    </div>
+  </div>
+
+  <!-- ============ CREAR JUGADOR ============ -->
+  <div id="scr-crear" class="cont oculto">
+    <div class="card">
+      <h3>Carrera de jugador · <em>16 años</em></h3>
+      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)">Nombre</label>
+      <input id="inNombre" value="Jesús" style="margin:5px 0 12px">
+      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)">Tu avatar</label>
+      <div style="display:flex;align-items:center;gap:12px;margin:6px 0 12px">
+        <div id="avaPreview" style="background:#1a2130;border-radius:10px;padding:6px;flex:none"></div>
+        <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:5px" id="avaCtrls"></div>
+      </div>
+      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)">Sexo <span style="text-transform:none;letter-spacing:0">(define tu circuito: jugarás con y contra tu categoría)</span></label>
+      <div class="fila" style="margin:5px 0 12px">
+        <button class="selbtn" id="sexoM">Masculino</button>
+        <button class="selbtn" id="sexoF">Femenino</button>
+      </div>
+      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)">Lado de pista</label>
+      <div class="fila" style="margin:5px 0 12px">
+        <button class="selbtn" id="ladoRev">Revés</button>
+        <button class="selbtn" id="ladoDer">Derecha</button>
+      </div>
+      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)">Carácter competitivo</label>
+      <div class="fila" style="margin:5px 0 12px" id="persos"></div>
+      <div class="foot" id="persoDesc" style="text-align:left;min-height:14px"></div>
+      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)">Color</label>
+      <div class="fila" id="colores" style="margin:5px 0"></div>
+    </div>
+    <div class="card">
+      <h3>Estilo de juego</h3>
+      <div id="estilos"></div>
+    </div>
+  </div>
+
+  <!-- ============ CREAR CLUB ============ -->
+  <div id="scr-crearclub" class="cont oculto">
+    <div class="card">
+      <h3>Modo club · <em>funda tu club</em></h3>
+      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)">Nombre del club</label>
+      <input id="inClubNombre" value="Rising Pádel Club" style="margin:5px 0 12px">
+      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)">Circuito del club</label>
+      <div class="fila" style="margin:5px 0 12px">
+        <button class="selbtn" id="clubSexoM">Masculino</button>
+        <button class="selbtn" id="clubSexoF">Femenino</button>
+      </div>
+      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)">Color del club</label>
+      <div class="fila" id="coloresClub" style="margin:5px 0 12px"></div>
+      <div style="font-size:12px;color:var(--gris);line-height:1.6">Presupuesto inicial: <b style="color:var(--texto)">1.200 €</b>. Ficha al menos <b style="color:var(--texto)">2 jugadores</b> del mercado para poder competir. Cada semana pagarás sus salarios; los premios y los socios sostienen la caja.</div>
+    </div>
+    <div class="card">
+      <h3>Mercado de fichajes · <em id="mercTitulo"></em></h3>
+      <div id="mercadoInicial"></div>
+      <button class="pri" id="btnEmpezarClub" style="width:100%;margin-top:6px" disabled>Necesitas 2 jugadores</button>
+    </div>
+  </div>
+
+  <!-- ============ HUB CARRERA ============ -->
+  <div id="scr-club" class="oculto">
+    <div class="tabs">
+      <button id="tabSemana" class="on">Semana</button>
+      <button id="tabEntreno">Entreno</button>
+      <button id="tabStaff">Staff</button>
+      <button id="tabJugador">Jugador</button>
+      <button id="tabRanking">Ranking</button>
+      <button id="tabDiario">Diario</button>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><span class="num" id="kSem">S1</span><span class="lbl">Semana</span></div>
+      <div class="kpi"><span class="num" id="kRank">—</span><span class="lbl">Puesto</span></div>
+      <div class="kpi"><span class="num" id="kPts">0</span><span class="lbl">Puntos</span></div>
+      <div class="kpi"><span class="num" id="kDin">150€</span><span class="lbl">Caja</span></div>
+      <div class="kpi"><span class="num" id="kEne">100</span><span class="lbl">Energía</span></div>
+    </div>
+    <div class="cont">
+      <div id="proBanner" class="oculto"><div class="banner-pro">CONTRATO PROFESIONAL · Bienvenido al circuito</div></div>
+      <div id="tab-semana">
+        <div class="card">
+          <h3 id="semTitulo">Plan de la semana</h3>
+          <div id="torneosDisp"></div>
+          <div id="accionesDia"></div>
+        </div>
+        <div class="card"><h3>Calendario del circuito</h3><div class="log" id="calendario"></div></div>
+      </div>
+      <div id="tab-staff" class="oculto">
+        <div class="card"><h3>Tu equipo de trabajo</h3><div id="equipoStaff"></div>
+          <div class="foot" style="text-align:left;margin-top:6px" id="staffCoste"></div></div>
+        <div class="card"><h3>Mercado de personal</h3><div id="mercadoStaff"></div></div>
+      </div>
+      <div id="tab-entreno" class="oculto">
+        <div class="card">
+          <h3>Plan de entrenamiento · <em>se aplica cada día que entrenas</em></h3>
+          <div class="entreno" id="btnsEntreno"></div>
+          <div id="compiPlanRow" style="margin-top:8px"></div>
+        </div>
+      </div>
+      <div id="tab-jugador" class="oculto">
+        <div class="card"><h3>Hitos de carrera</h3><div id="hitos"></div></div>
+        <div class="card"><h3>Rivalidades</h3><div id="rivalidades"></div></div>
+        <div class="card">
+          <div class="perfil">
+            <div class="ava" id="hAva">J</div>
+            <div><div class="nom" id="hNom"></div><div class="sub" id="hSub"></div></div>
+            <div class="media"><div class="v" id="hMedia"></div><div class="l">Media</div></div>
+          </div>
+          <div class="meta" id="hMeta"></div>
+        </div>
+        <div class="card"><h3>Atributos</h3><div class="attrs" id="attrs"></div></div>
+        <div class="card">
+          <h3>Pareja · <em id="compName"></em></h3>
+          <div class="meta" id="compMeta" style="margin-top:0"></div>
+          <div id="mercado" style="margin-top:10px"></div>
+        </div>
+        <div class="card"><h3>Cuerpo técnico y patrocinios</h3><div id="staff"></div></div>
+      </div>
+      <div id="tab-ranking" class="oculto">
+        <div class="card">
+          <h3>Circuito Rising · <em>ranking mundial</em></h3>
+          <table class="rk" id="tablaRk"></table>
+          <div class="foot" style="text-align:left;margin-top:8px">Al cerrar cada temporada, el ranking arrastra el 55% de los puntos.</div>
+        </div>
+        <div class="card"><h3>Clubes del circuito</h3><table class="rk" id="tablaClubes"></table></div>
+        <div class="card"><h3>Nº1 de cada temporada</h3><table class="rk" id="n1hist"></table></div>
+        <div class="card"><h3>Libro de récords</h3><table class="rk" id="records"></table></div>
+      </div>
+      <div id="tab-diario" class="oculto">
+        <div id="feedNoti"></div>
+        <div class="card"><h3>Agencia RPD · <em>última hora</em></h3><div class="log" id="diario"></div></div>
+        <div class="card"><h3>La grada · <em>RisingSocial</em></h3><div id="social"></div></div>
+        <div class="card"><h3>Trayectoria</h3><table class="rk" id="trayec"></table></div>
+        <div class="card"><h3>Palmarés</h3><div class="log" id="palmares"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ HUB CLUB ============ -->
+  <div id="scr-clubm" class="oculto">
+    <div class="tabs">
+      <button id="cmTabSemana" class="on">Semana</button>
+      <button id="cmTabPlantilla">Plantilla</button>
+      <button id="cmTabClub">Club</button>
+      <button id="cmTabRanking">Ranking</button>
+      <button id="cmTabDiario">Diario</button>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><span class="num" id="cmSem">S1</span><span class="lbl">Semana</span></div>
+      <div class="kpi"><span class="num" id="cmRank">—</span><span class="lbl">Puesto</span></div>
+      <div class="kpi"><span class="num" id="cmPts">0</span><span class="lbl">Puntos</span></div>
+      <div class="kpi"><span class="num" id="cmDin">0€</span><span class="lbl">Caja</span></div>
+      <div class="kpi"><span class="num" id="cmSal">0€</span><span class="lbl">Salarios</span></div>
+    </div>
+    <div class="cont">
+      <div id="cm-semana">
+        <div class="card">
+          <h3 id="cmSemTitulo">Plan de la semana</h3>
+          <div id="cmTorneo"></div>
+          <div id="cmEntreno"></div>
+          <button class="azul" id="cmBtnDescanso" style="width:100%;margin-top:8px">Descanso del equipo (+energía)</button>
+        </div>
+        <div class="card"><h3>Calendario del circuito</h3><div class="log" id="cmCalendario"></div></div>
+      </div>
+      <div id="cm-plantilla" class="oculto"></div>
+      <div id="cm-clubpan" class="oculto"></div>
+      <div id="cm-ranking" class="oculto">
+        <div class="card">
+          <h3>Circuito Rising · <em>ranking mundial</em></h3>
+          <table class="rk" id="cmTablaRk"></table>
+          <div class="foot" style="text-align:left;margin-top:8px">Al cerrar cada temporada, el ranking arrastra el 55% de los puntos.</div>
+        </div>
+        <div class="card"><h3>Clubes del circuito</h3><table class="rk" id="cmTablaClubes"></table></div>
+        <div class="card"><h3>Nº1 de cada temporada</h3><table class="rk" id="cmN1hist"></table></div>
+        <div class="card"><h3>Libro de récords</h3><table class="rk" id="cmRecords"></table></div>
+      </div>
+      <div id="cm-diario" class="oculto">
+        <div id="cmFeedNoti"></div>
+        <div class="card"><h3>Agencia RPD · <em>última hora</em></h3><div class="log" id="cmDiario"></div></div>
+        <div class="card"><h3>La grada · <em>RisingSocial</em></h3><div id="cmSocial"></div></div>
+        <div class="card"><h3>Trayectoria</h3><table class="rk" id="cmTrayec"></table></div>
+        <div class="card"><h3>Palmarés</h3><div class="log" id="cmPalmares"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ TORNEO ============ -->
+  <div id="scr-torneo" class="oculto">
+    <div class="cont">
+      <div class="card">
+        <h3 id="tNombre"></h3>
+        <div id="tInfo" style="font-size:12.5px;margin-bottom:10px;line-height:1.6"></div>
+        <div class="fila">
+          <div id="planPartido" style="margin:8px 0"></div>
+          <button class="pri" id="btnVer">Ver partido</button>
+          <button id="btnSimular">Simular con tu plan</button>
+          <button class="azul" id="btnSimCoach">🧠 Simular: decide el míster</button>
+        </div>
+      </div>
+      <div class="card"><h3>Camino al título</h3><div class="log" id="tCuadro"></div></div>
+    </div>
+  </div>
+
+  <!-- ============ PARTIDO ============ -->
+  <div id="scr-partido" class="oculto">
+    <div class="cont">
+      <div class="card">
+        <div class="score">
+          <div id="avaA" style="display:flex;gap:2px;margin-bottom:3px"></div>
+          <div class="eq" id="pEqA"></div>
+          <div class="pts" id="pMarcador">0 · 0</div>
+          <div id="avaB" style="display:flex;gap:2px;margin-bottom:3px;justify-content:flex-end"></div>
+          <div class="eq" id="pEqB" style="text-align:right"></div>
+        </div>
+        <canvas id="pista"></canvas>
+        <div class="foot"><span id="pJuegos">Sets 0 — 0</span></div>
+        <div id="liveStats" class="foot" style="text-align:left;margin-top:5px"></div>
+        <div id="tactRow" style="margin-top:8px"></div>
+        <div id="challengeRow" style="margin-top:8px"></div>
+        <div class="fila" style="margin-top:8px">
+          <button id="btnVel">x1.6</button>
+          <button id="btnSimResto">Simular resto</button>
+        </div>
+      </div>
+      <div class="card"><h3>Retransmisión</h3><div class="coms" id="coms"></div></div>
+    </div>
+  </div>
+
+  <div id="fichaP" class="oculto" style="position:fixed;inset:0;background:rgba(10,13,19,.9);z-index:56;display:flex;align-items:center;justify-content:center;padding:16px">
+    <div class="card" style="max-width:420px;width:100%">
+      <h3>Ficha del partido</h3>
+      <div id="fichaCuerpo"></div>
+      <button class="pri" id="fichaOk" style="width:100%;margin-top:9px">Continuar</button>
+    </div>
+  </div>
+  <div id="rueda" class="oculto" style="position:fixed;inset:0;background:rgba(10,13,19,.88);z-index:54;display:flex;align-items:center;justify-content:center;padding:16px">
+    <div class="card" style="max-width:400px;width:100%">
+      <h3>Rueda de prensa</h3>
+      <div class="foot" id="ruedaQ" style="text-align:left;margin-bottom:9px"></div>
+      <button id="ruedaHumilde" style="width:100%;margin-bottom:5px"></button>
+      <button id="ruedaAmbi" style="width:100%;margin-bottom:5px"></button>
+      <button id="ruedaPicante" style="width:100%"></button>
+    </div>
+  </div>
+  <div id="tmuerto" class="oculto" style="position:fixed;inset:0;background:rgba(10,13,19,.88);z-index:55;display:flex;align-items:center;justify-content:center;padding:16px">
+    <div class="card" style="max-width:380px;width:100%">
+      <h3>Tiempo muerto · <em>fin de set</em></h3>
+      <div class="foot" id="tmSit" style="text-align:left;margin-bottom:9px"></div>
+      <button id="tmCalma" style="width:100%;margin-bottom:5px">🧊 «Tranquilos, punto a punto»</button>
+      <button id="tmArenga" style="width:100%;margin-bottom:5px">🔥 «¡Ahora o nunca, a por ellos!»</button>
+      <button id="tmBronca" style="width:100%">⚡ «¡Así no! Espabilad ya»</button>
+    </div>
+  </div>
+  <div id="hawk" class="oculto">
+    <div class="box card">
+      <h3>Ojo de Halcón</h3>
+      <div id="hawkSvg"></div>
+      <div class="verd" id="hawkVerd"></div>
+      <div class="foot" id="hawkTxt" style="text-align:center"></div>
+    </div>
+  </div>
+  <div id="tuto" class="oculto">
+    <div class="card">
+      <h3 id="tutoTit">Tutorial</h3>
+      <div class="paso" id="tutoPaso"></div>
+      <div class="cuerpo" id="tutoTxt"></div>
+      <div class="fila">
+        <button id="tutoSaltar">Saltar</button>
+        <button class="pri" id="tutoSig">Siguiente ›</button>
+      </div>
+    </div>
+  </div>
+  <div class="foot" id="footSave">RISING GAMES · v3.1 «escritorio»</div>
+</div>
+
+<script src="js/engine/match.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/court.js"></script>
+<script src="js/engine/world.js"></script>
+<script src="js/state.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/career.js"></script>
+<script src="js/club.js"></script>
+<script src="js/tournament.js"></script>
+<script src="js/extras.js"></script>
+<script src="js/boot.js"></script>
+</body>
+</html>
