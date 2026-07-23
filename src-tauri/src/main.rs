@@ -29,6 +29,29 @@ CREATE TABLE IF NOT EXISTS save_history(
   saved_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_hist_modo ON save_history(modo, saved_at);
+
+-- Proyecciones relacionales de solo lectura (Fase 1): reflejo consultable del
+-- estado del juego. El juego NO lee de aquí; se regeneran en cada guardado.
+CREATE TABLE IF NOT EXISTS proj_ranking(
+  modo TEXT NOT NULL,
+  pos INTEGER NOT NULL,
+  pareja TEXT NOT NULL,
+  sexo TEXT NOT NULL,
+  nivel INTEGER NOT NULL,
+  pts INTEGER NOT NULL,
+  pro INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS proj_jugadores(
+  modo TEXT NOT NULL,
+  nombre TEXT NOT NULL,
+  sexo TEXT NOT NULL,
+  lado TEXT NOT NULL,
+  estilo TEXT NOT NULL,
+  media INTEGER NOT NULL,
+  pareja TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_proj_rank ON proj_ranking(modo, sexo, pos);
+CREATE INDEX IF NOT EXISTS idx_proj_jug ON proj_jugadores(modo, sexo, media);
 ";
 
 // Número de copias del historial que se conservan por modo.
@@ -118,6 +141,61 @@ fn db_history(db: tauri::State<Db>, modo: String) -> Result<Vec<i64>, String> {
     Ok(out)
 }
 
+// Filas que el frontend calcula a partir del estado y envía para proyectar.
+#[derive(serde::Deserialize)]
+struct RankRow {
+    pareja: String,
+    sexo: String,
+    pos: i64,
+    nivel: i64,
+    pts: i64,
+    pro: bool,
+}
+#[derive(serde::Deserialize)]
+struct JugRow {
+    nombre: String,
+    sexo: String,
+    lado: String,
+    estilo: String,
+    media: i64,
+    pareja: String,
+}
+
+/// Regenera las proyecciones relacionales de solo lectura (ranking y jugadores)
+/// para un modo, en una transacción (borra e inserta). El juego no lee de ellas.
+#[tauri::command]
+fn db_project(
+    db: tauri::State<Db>,
+    modo: String,
+    ranking: Vec<RankRow>,
+    jugadores: Vec<JugRow>,
+) -> Result<(), String> {
+    let mut conn = db.0.lock().map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    tx.execute("DELETE FROM proj_ranking WHERE modo = ?1", params![modo])
+        .map_err(|e| e.to_string())?;
+    tx.execute("DELETE FROM proj_jugadores WHERE modo = ?1", params![modo])
+        .map_err(|e| e.to_string())?;
+    for r in &ranking {
+        tx.execute(
+            "INSERT INTO proj_ranking(modo, pos, pareja, sexo, nivel, pts, pro)
+             VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![modo, r.pos, r.pareja, r.sexo, r.nivel, r.pts, r.pro],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    for j in &jugadores {
+        tx.execute(
+            "INSERT INTO proj_jugadores(modo, nombre, sexo, lado, estilo, media, pareja)
+             VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![modo, j.nombre, j.sexo, j.lado, j.estilo, j.media, j.pareja],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 fn main() {
     tauri::Builder::default()
         .setup(|app| {
@@ -125,7 +203,7 @@ fn main() {
             app.manage(Db(Mutex::new(conn)));
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![db_save, db_load, db_history])
+        .invoke_handler(tauri::generate_handler![db_save, db_load, db_history, db_project])
         .run(tauri::generate_context!())
         .expect("error while running Rising Pádel Manager");
 }

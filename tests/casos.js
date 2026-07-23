@@ -133,6 +133,25 @@ comprueba("Partido: fatiga, tiros y break points se registran", () => {
   return `${tiros} tiros, fatiga máx ${Math.round(fatMax)}, roturas ${stats[0].bp.ganados}/${stats[0].bp.jugados}-${stats[1].bp.ganados}/${stats[1].bp.jugados}`;
 });
 
+comprueba("SQLite: la proyección relacional produce filas coherentes", () => {
+  nuevaCarrera("agresivo");
+  const p = filasProyeccion();
+  exige(Array.isArray(p.ranking) && p.ranking.length > 0, "no se proyectó el ranking");
+  exige(Array.isArray(p.jugadores) && p.jugadores.length > 0, "no se proyectaron jugadores");
+  // cada sexo empieza en la posición 1 y no repite posiciones
+  const porSexo = {};
+  p.ranking.forEach(r => { (porSexo[r.sexo] = porSexo[r.sexo] || []).push(r.pos); });
+  Object.keys(porSexo).forEach(s => {
+    const pos = porSexo[s].slice().sort((a, b) => a - b);
+    exige(pos[0] === 1, "el ranking " + s + " no empieza en la posición 1");
+    exige(new Set(pos).size === pos.length, "hay posiciones repetidas en el ranking " + s);
+  });
+  // jugadores: media en rango y lado válido
+  const mal = p.jugadores.filter(j => !(j.media >= 0 && j.media <= 100) || (j.lado !== "drive" && j.lado !== "revés"));
+  exige(mal.length === 0, mal.length + " jugadores con media o lado inválidos");
+  return p.ranking.length + " parejas y " + p.jugadores.length + " jugadores proyectados";
+});
+
 comprueba("Club: fundar y competir", () => {
   const cl = fundarClub();
   exige(cl.plantilla.length === 2, "la plantilla no se creó");
