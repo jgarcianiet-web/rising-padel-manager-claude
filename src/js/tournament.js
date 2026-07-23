@@ -187,6 +187,12 @@ function empezarPartido(ver,coach){
 }
 function resolverPunto(g){
   const m=match,r={};
+  // break points (ocasiones de rotura): el equipo al resto, a un punto de romper el saque
+  const _rec=1-m.server;
+  if(stats&&stats[_rec]&&stats[_rec].bp&&m.p[_rec]===3){
+    stats[_rec].bp.jugados++;
+    if(g===_rec) stats[_rec].bp.ganados++;
+  }
   if(m.p[g]===3){
     m.p=[0,0];m.j[g]++;m.server=1-m.server;r.juego=g;
     const o=1-g;
@@ -318,7 +324,14 @@ function pintaLiveStats(){
   if(!el||!match||!match.ver||!stats) return;
   const w=[0,1].map(t=>stats[t].jug.reduce((a,j)=>a+(j.w||0),0));
   const e=[0,1].map(t=>stats[t].jug.reduce((a,j)=>a+(j.e||0),0));
-  el.innerHTML=`Winners <b style="color:var(--lima)">${w[0]}</b>-${w[1]} · Errores <b style="color:#E05656">${e[0]}</b>-${e[1]} · Táctica: ${TACT.agres}${TACT.diana==="debil"?" · al flojo":""}`;
+  const tiros=[0,1].map(t=>stats[t].tiros||0);
+  const pos0=Math.round(tiros[0]/(tiros[0]+tiros[1]||1)*100);
+  const bp=[0,1].map(t=>stats[t].bp||{jugados:0,ganados:0});
+  const fat=[0,1].map(t=>Math.round(((stats[t].fatiga||[0,0]).reduce((a,f)=>a+f,0))/2));
+  const barra=`<div style="display:flex;height:6px;border-radius:3px;overflow:hidden;margin:3px 0;background:#22303f">`
+    +`<div style="width:${pos0}%;background:var(--lima)"></div><div style="width:${100-pos0}%;background:#3b4a5c"></div></div>`
+    +`<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--gris2)"><span>Posesión ${pos0}%</span><span>${100-pos0}%</span></div>`;
+  el.innerHTML=barra+`Winners <b style="color:var(--lima)">${w[0]}</b>-${w[1]} · Errores <b style="color:#E05656">${e[0]}</b>-${e[1]} · Rotura <b>${bp[0].ganados}/${bp[0].jugados}</b>-${bp[1].ganados}/${bp[1].jugados} · Fatiga <b>${fat[0]}</b>-${fat[1]} · Táctica: ${TACT.agres}${TACT.diana==="debil"?" · al flojo":""}`;
 }
 function pintaMarcadorP(){
   pintaLiveStats();
@@ -428,6 +441,9 @@ function resumenPartido(){
   else if(w[0]>w[1]*1.6) L.push(`Vendaval ofensivo: ${w[0]} winners vuestros por ${w[1]} suyos.`);
   else if(e[0]>e[1]*1.5) L.push(`Ojo al dato: ${e[0]} errores propios. ${gane?"Ganar así es caro.":"Ahí se fue el partido."}`);
   if(match.autoCoach) L.push(`El míster cerró el partido en modo ${TACT.agres}${TACT.diana==="debil"?", cargando sobre el flojo":""}.`);
+  if(stats[0].bp&&(stats[0].bp.jugados||stats[1].bp.jugados)){
+    L.push(`Roturas de saque: ${stats[0].bp.ganados}/${stats[0].bp.jugados} vuestras por ${stats[1].bp.ganados}/${stats[1].bp.jugados} suyas (convertidas / ocasiones).`);
+  }
   return L;
 }
 function mostrarFicha(cb){
@@ -439,6 +455,7 @@ function mostrarFicha(cb){
     <div style="text-align:center;font-family:'Chakra Petch',sans-serif;font-size:22px;font-weight:700;margin-bottom:8px">${match.s[0]}-${match.s[1]} <span style="font-size:12px;color:var(--gris)">(${match.hist.join(", ")})</span></div>
     <table class="rk">${filas.map(f=>{const jj=[...teams[0].jug,...teams[1].jug].find(x=>x.n===f.n);return `<tr${f.n===mvp.n?' style="color:var(--oro)"':""}><td style="font-size:11px"><span style="display:inline-block;vertical-align:middle;margin-right:4px">${avatarSVG(jj,20)}</span>${f.n===mvp.n?"★ ":""}${f.n}</td><td class="pts" style="color:var(--lima)">${f.w}W</td><td class="pts" style="color:#E05656">${f.e}E</td><td class="pts">${f.bal>0?"+":""}${f.bal}</td></tr>`;}).join("")}</table>
     <div class="foot" style="text-align:left;margin-top:7px">★ MVP del partido: <b style="color:var(--oro)">${mvp.n}</b> (${mvp.w} winners, balance ${mvp.bal>0?"+":""}${mvp.bal}).</div>
+    <div class="foot" style="text-align:left;margin-top:2px">Tiros ${stats[0].tiros||0}-${stats[1].tiros||0} · Roturas ${stats[0].bp?stats[0].bp.ganados:0}/${stats[0].bp?stats[0].bp.jugados:0}-${stats[1].bp?stats[1].bp.ganados:0}/${stats[1].bp?stats[1].bp.jugados:0} · Fatiga final ${Math.round(((stats[0].fatiga||[0,0]).reduce((a,f)=>a+f,0))/2)}-${Math.round(((stats[1].fatiga||[0,0]).reduce((a,f)=>a+f,0))/2)}</div>
     ${match.ver?"":`<div style="border-top:1px solid var(--borde);margin-top:8px;padding-top:7px">${resumenPartido().map(l=>`<div style="font-size:11.5px;line-height:1.5;color:var(--gris);padding:1px 0">📋 ${l}</div>`).join("")}</div>`}`;
   const ov=document.getElementById("fichaP");
   ov.classList.remove("oculto");

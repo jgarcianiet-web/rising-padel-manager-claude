@@ -111,6 +111,9 @@ function resolveShot(pl,shotKey,ctx,rallyLen){
   if(mia2&&TACT.diana==="debil") win*=1.09;   // buscas al flojo: más bola ganadora
   if(ctx.oppScrambling) win*=1.7;
   if(rallyLen>18){err*=1.38;win*=1.25;}
+  // fatiga: un jugador cansado falla más y cierra menos puntos
+  const fat=ctx.fatiga||0;
+  if(fat>0){ err*=1+fat/240; win*=1-Math.min(.4,fat/300); }
   const r=Math.random();
   if(r<err) return "error";
   if(r<err+win) return "winner";
@@ -139,5 +142,5 @@ const F_ERR=["Se le va por poco...","¡A la red! Error no forzado.","La bola mue
 const F_PERSO={valiente:" — no le tiembla el pulso",conservador:" — a lo seguro",frio:" — hielo en las venas",emocionalAlto:" — está en racha y se nota",emocionalBajo:" — se le nota la tensión"};
 
 let teams=[],stats;
-function mkStats(){return {jug:[{w:0,e:0},{w:0,e:0}]};}
+function mkStats(){return {jug:[{w:0,e:0},{w:0,e:0}], tiros:0, bp:{jugados:0,ganados:0}, fatiga:[0,0]};}
 

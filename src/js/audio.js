@@ -37,31 +37,50 @@ function ruido(d,vol,when){
 }
 const SFX_GOLPE={remate:170,remate3:160,remate4:150,bajada:190,vibora:230,bandeja:290,volea:340,fondo:300,globo:430,globoRapido:400,chiquita:390,dejada:440,saque:320};
 function sfxGolpe(k){ tone(SFX_GOLPE[k]||300,.055,"triangle",.09); ruido(.035,.045); }
-function sfxWinner(){ tone(520,.1,"square",.07); tone(784,.14,"square",.06,.08); ruido(.55,.05,.12); }
-function sfxError(){ tone(150,.22,"sawtooth",.06,0,110); }
-function sfxSet(){ tone(660,.1,"sine",.09); tone(880,.2,"sine",.09,.11); }
+function sfxWinner(){ tone(520,.1,"square",.07); tone(784,.14,"square",.06,.08); ruido(.55,.05,.12); sfxGrada(.6); }
+function sfxError(){ tone(150,.22,"sawtooth",.06,0,110); sfxGrada(.28); }
+function sfxSet(){ tone(660,.1,"sine",.09); tone(880,.2,"sine",.09,.11); sfxGrada(1); }
 function sfxTitulo(){ [523,659,784,1047].forEach((f,i)=>tone(f,.17,"square",.08,i*.13)); ruido(1.3,.06,.25); }
 function sfxClick(){ tone(720,.03,"square",.04); }
+// Reacción de la grada: un vítor de público que crece rápido y cae despacio.
+// int 0..1 marca la intensidad (punto normal → set/partido).
+function sfxGrada(int){
+  const a=ac(); if(!a||!SND) return;
+  try{
+    int=Math.max(.2,Math.min(1,int||.5));
+    const t0=a.currentTime, d=.5+int*1.1;
+    const buf=a.createBuffer(1,Math.floor(a.sampleRate*d),a.sampleRate), ch=buf.getChannelData(0);
+    for(let i=0;i<ch.length;i++) ch[i]=Math.random()*2-1;
+    const src=a.createBufferSource(); src.buffer=buf;
+    const bp=a.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=650+int*550; bp.Q.value=.8;
+    const g=a.createGain();
+    g.gain.setValueAtTime(.0001,t0);
+    g.gain.exponentialRampToValueAtTime(.05+int*.11,t0+.12);   // el rugido sube
+    g.gain.exponentialRampToValueAtTime(.0001,t0+d);           // y se apaga
+    src.connect(bp); bp.connect(g); g.connect(a.destination);
+    src.start(t0);
+  }catch(e){}
+}
+// Ambiente de grada: un murmullo de estadio (ruido filtrado, SIN tonos) que
+// respira despacio. Sustituye al antiguo pad sintético que molestaba de fondo.
 let MUS=null;
 function musicaOn(){
   const a=ac(); if(!a||!SND||MUS) return;
   try{
-    MUS={osc:[],g:a.createGain(),lfo:null};
-    MUS.g.gain.value=0; MUS.g.connect(a.destination);
-    MUS.g.gain.linearRampToValueAtTime(.028,a.currentTime+2);   // fade in suave
-    // acorde de pad (La menor add9): respiración de estadio
-    [165,220,277,330].forEach((f,i)=>{
-      const o=a.createOscillator(); o.type=i%2?"sine":"triangle";
-      o.frequency.value=f;
-      const og=a.createGain(); og.gain.value=i===0?.5:.3;
-      o.connect(og); og.connect(MUS.g); o.start();
-      MUS.osc.push(o);
-    });
-    // LFO lento que mece el volumen (respiración)
+    const dur=2.5, buf=a.createBuffer(1,Math.floor(a.sampleRate*dur),a.sampleRate), ch=buf.getChannelData(0);
+    let last=0;
+    for(let i=0;i<ch.length;i++){ const w=Math.random()*2-1; last=(last+.02*w)/1.02; ch[i]=last*3.2; }
+    const src=a.createBufferSource(); src.buffer=buf; src.loop=true;
+    const bp=a.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=500; bp.Q.value=.6;
+    const g=a.createGain(); g.gain.value=0; g.connect(a.destination);
+    src.connect(bp); bp.connect(g);
+    g.gain.linearRampToValueAtTime(.045,a.currentTime+2.5);   // murmullo suave
+    // vaivén lento: la grada respira
     const lfo=a.createOscillator(), lg=a.createGain();
-    lfo.frequency.value=.08; lg.gain.value=.012;
-    lfo.connect(lg); lg.connect(MUS.g.gain); lfo.start();
-    MUS.lfo=lfo;
+    lfo.type="sine"; lfo.frequency.value=.11; lg.gain.value=.018;
+    lfo.connect(lg); lg.connect(g.gain); lfo.start();
+    src.start();
+    MUS={src,g,lfo};
   }catch(e){ MUS=null; }
 }
 function musicaOff(){
@@ -70,7 +89,7 @@ function musicaOff(){
   try{
     MUS.g.gain.linearRampToValueAtTime(.0001,a.currentTime+1.2);
     const m=MUS; MUS=null;
-    setTimeout(()=>{ try{ m.osc.forEach(o=>o.stop()); m.lfo&&m.lfo.stop(); }catch(e){} },1400);
+    setTimeout(()=>{ try{ m.src.stop(); m.lfo&&m.lfo.stop(); }catch(e){} },1400);
   }catch(e){ MUS=null; }
 }
 if(typeof document.addEventListener==="function"){
@@ -82,6 +101,8 @@ if(typeof document.addEventListener==="function"){
 function buildPoint(server){
   const ev=[]; const A=teams[0],B=teams[1];
   A.atNet=false;B.atNet=false;A._scr=false;B._scr=false;
+  // entre punto y punto los cuatro recuperan un poco de fatiga
+  if(stats){[0,1].forEach(tt=>{ if(stats[tt]&&stats[tt].fatiga) stats[tt].fatiga=stats[tt].fatiga.map(f=>clamp(f-.8,0,100)); });}
   let t=server,rally=0;
   let contact=contactPoint(t,true,t===0?7.6:2.4);
   let ctx={atNet:false,high:false,afterGlass:false,pressure:0};
@@ -94,6 +115,14 @@ function buildPoint(server){
     if(shotKey!=="saque") shotKey=chooseShot(pl,{...ctx,atNet:team.atNet},opp);
     const jug=pl.n;
     const s=SHOTS[shotKey];
+    // tiros y fatiga: cada golpe cuenta y desgasta a quien lo ejecuta
+    let _fat=0;
+    if(stats&&stats[t]){
+      stats[t].tiros++;
+      _fat=stats[t].fatiga[hIdx];
+      const coste=(shotKey==="saque"?.3:.7)+(AGRESIVOS.includes(shotKey)?.4:0)+rally*.04;
+      stats[t].fatiga[hIdx]=clamp(_fat+coste,0,100);
+    }
     let com=`${jug} — ${s.label}`;
     if(ctx.afterGlass&&!ctx.high) com=`${jug} — salida de pared → ${s.label}`;
     if(shotKey==="bajada") com=`¡${jug} baja la pared con todo!`;
@@ -105,7 +134,7 @@ function buildPoint(server){
 
     if(opp._defQ===undefined) opp._defQ=Math.round((mediaAttrs(opp.jug[0].attrs)+mediaAttrs(opp.jug[1].attrs))/2);
     if(team._quimLado===undefined) team._quimLado=quimicaLado(team);
-    const outcome=shotKey==="saque"?"sigue":resolveShot(pl,shotKey,{...ctx,team:t,oppDef:opp._defQ,oppScrambling:opp._scr,_quimLado:team._quimLado},rally);
+    const outcome=shotKey==="saque"?"sigue":resolveShot(pl,shotKey,{...ctx,team:t,oppDef:opp._defQ,oppScrambling:opp._scr,_quimLado:team._quimLado,fatiga:_fat},rally);
 
     if(outcome==="error"){
       stats[t].jug[hIdx].e++;

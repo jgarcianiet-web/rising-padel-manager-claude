@@ -83,10 +83,11 @@ const AVA_PIEL=["#F2C9A0","#E8B183","#D89B6A","#C6824E","#A9683B","#8A5230","#6E
 const AVA_PELO=["#1A1512","#3A2A1A","#5A3820","#8A5A2A","#B07830","#D9C9A8","#9A9A9A","#E8E8E8","#6A3020"];
 const AVA_ROPA=["#4FA3D8","#E05656","#3FBF8F","#E0A030","#9B59D0","#5CC8E6","#E06AA0","#C6F53C","#D8D8D8","#2A2A32","#E85040","#40C0A0"];
 /* Avatar SVG minimalista geométrico. tam=lado px. Determinista por nombre. */
+let _avId=0;
 function avatarSVG(jug,tam){
   tam=tam||44;
   const nom=(jug&&jug.n)||"?";
-  const h=hashStr(nom);
+  const h=Math.abs(hashStr(nom));   // no-negativo: evita índices negativos → undefined
   const av=(jug&&jug.ava)||{};
   const piel=av.piel!==undefined?AVA_PIEL[av.piel%AVA_PIEL.length]:AVA_PIEL[h%AVA_PIEL.length];
   const pelo=av.pelo!==undefined?AVA_PELO[av.pelo%AVA_PELO.length]:AVA_PELO[(h>>3)%AVA_PELO.length];
@@ -97,16 +98,24 @@ function avatarSVG(jug,tam){
   const gafas=av.gafas!==undefined?!!av.gafas:((h>>14)%5===0);
   const compl=(h>>16)%3;                       // complexión: 0 normal, 1 ancho, 2 fino
   const pielSombra=sombraPiel(piel);
+  const id="a"+(_avId=(_avId||0)+1);
+  const ropaAlta=aclara(ropa,1.28), pielAlta=aclara(piel,1.12);
+  const defs=`<defs>`
+    +`<linearGradient id="pk${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${pielAlta}"/><stop offset=".62" stop-color="${piel}"/><stop offset="1" stop-color="${pielSombra}"/></linearGradient>`
+    +`<linearGradient id="sh${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${ropaAlta}"/><stop offset="1" stop-color="${ropa}"/></linearGradient>`
+    +`</defs>`;
   const hombroW=compl===1?23:compl===2?18:20.5;
   // ── cuerpo/hombros (atlético, con cuello) ──
-  let el=`<path d="M${32-3.2} 52 h6.4 v5 h-6.4 z" fill="${piel}"/>`;   // cuello
+  let el=defs+`<path d="M${32-3.2} 52 h6.4 v5 h-6.4 z" fill="${piel}"/>`;   // cuello
   el+=`<path d="M${32-3.5} 55 q-1 1.5 -2 2 L${32-hombroW} 68 h${hombroW*2} L${32+3.5+1.5} 57 q-1 -.5 -2 -2 z" fill="${pielSombra}" opacity=".25"/>`;
-  el+=`<path d="M32 55 C${32-9} 55 ${32-hombroW} 60 ${32-hombroW} 68 h${hombroW*2} C${32+hombroW} 60 ${32+9} 55 32 55 z" fill="${ropa}"/>`;
+  el+=`<path d="M32 55 C${32-9} 55 ${32-hombroW} 60 ${32-hombroW} 68 h${hombroW*2} C${32+hombroW} 60 ${32+9} 55 32 55 z" fill="url(#sh${id})"/>`;
   // detalle camiseta (cuello en V y sombra lateral)
   el+=`<path d="M32 55 l-4 6 l4 3 l4 -3 z" fill="#fff" opacity=".12"/>`;
   el+=`<path d="M${32-hombroW} 68 l3 -6 q${hombroW-3} -4 ${hombroW*2-6} 0 l3 6 z" fill="#000" opacity=".08"/>`;
   // ── cabeza (óvalo adulto, mandíbula) ──
-  el+=`<path d="M32 12 C${32+11} 12 ${32+12.5} 22 ${32+12} 30 C${32+11.5} 40 ${32+7} 50 32 50 C${32-7} 50 ${32-11.5} 40 ${32-12} 30 C${32-12.5} 22 ${32-11} 12 32 12 z" fill="${piel}"/>`;
+  el+=`<path d="M32 12 C${32+11} 12 ${32+12.5} 22 ${32+12} 30 C${32+11.5} 40 ${32+7} 50 32 50 C${32-7} 50 ${32-11.5} 40 ${32-12} 30 C${32-12.5} 22 ${32-11} 12 32 12 z" fill="url(#pk${id})"/>`;
+  // brillo suave (luz de estudio)
+  el+=`<ellipse cx="27" cy="24" rx="6" ry="7.5" fill="#fff" opacity=".07"/>`;
   // orejas
   el+=`<circle cx="20" cy="31" r="2.6" fill="${piel}"/><circle cx="44" cy="31" r="2.6" fill="${piel}"/>`;
   // sombra de mandíbula (definición adulta)
@@ -146,9 +155,16 @@ function avatarSVG(jug,tam){
 }
 function sombraPiel(hex){
   // oscurece un tono de piel para sombras
+  if(!hex||hex[0]!=="#") return "#6A5A4A";
   const n=parseInt(hex.slice(1),16);
   let r=(n>>16)&255,g=(n>>8)&255,b=n&255;
   r=Math.round(r*.7);g=Math.round(g*.7);b=Math.round(b*.7);
+  return "#"+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
+function aclara(hex,f){
+  if(!hex||hex[0]!=="#") return "#8A94A7";
+  const n=parseInt(hex.slice(1),16);
+  const r=Math.min(255,Math.round(((n>>16)&255)*f)),g=Math.min(255,Math.round(((n>>8)&255)*f)),b=Math.min(255,Math.round((n&255)*f));
   return "#"+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
 }
 function parejaAvatares(pareja,tam){

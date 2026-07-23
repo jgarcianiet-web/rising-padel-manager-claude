@@ -108,6 +108,31 @@ comprueba("Carrera: se puede avanzar una temporada entera", () => {
   return "temporada cerrada, anuario con " + c.historia.length + " año(s)";
 });
 
+comprueba("Partido: fatiga, tiros y break points se registran", () => {
+  // Mini-partido controlado con el motor compartido (sin depender del calendario).
+  const jugadorTest = (n, l) => ({
+    n, estilo: "constructor", perso: "frio", conf: 55, lado: l,
+    attrs: { fondo: 75, globo: 75, chiquita: 75, volea: 75, dejada: 75, bandeja: 75, vibora: 75, remate: 75, pared: 75 },
+  });
+  teams = [
+    { nombre: "Test A", jug: [jugadorTest("A1", 0), jugadorTest("A2", 1)] },
+    { nombre: "Test B", jug: [jugadorTest("B1", 0), jugadorTest("B2", 1)] },
+  ];
+  stats = [mkStats(), mkStats()];
+  match = { p: [0, 0], j: [0, 0], s: [0, 0], hist: [], server: 0, fin: false, cpu: true };
+  PRESION = 0; TACT = { agres: "normal", diana: "repartir" };
+  let guarda = 0;
+  while (!match.fin && guarda++ < 5000) { PRESION = calcPresion(); resolverPunto(buildPoint(match.server).ganador); }
+  exige(match.fin, "el partido de prueba no llegó a terminar");
+  const tiros = (stats[0].tiros || 0) + (stats[1].tiros || 0);
+  exige(tiros > 0, "un partido entero no registró ni un tiro");
+  const fatMax = Math.max(...stats[0].fatiga, ...stats[1].fatiga);
+  exige(fatMax >= 0 && fatMax <= 100, "la fatiga se sale del rango 0..100");
+  exige(fatMax > 0, "nadie acumuló fatiga en un partido entero");
+  [0, 1].forEach(t => exige(stats[t].bp.ganados <= stats[t].bp.jugados, "hay más roturas convertidas que ocasiones de rotura"));
+  return `${tiros} tiros, fatiga máx ${Math.round(fatMax)}, roturas ${stats[0].bp.ganados}/${stats[0].bp.jugados}-${stats[1].bp.ganados}/${stats[1].bp.jugados}`;
+});
+
 comprueba("Club: fundar y competir", () => {
   const cl = fundarClub();
   exige(cl.plantilla.length === 2, "la plantilla no se creó");
