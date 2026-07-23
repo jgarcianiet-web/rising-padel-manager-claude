@@ -52,6 +52,42 @@ CREATE TABLE IF NOT EXISTS proj_jugadores(
 );
 CREATE INDEX IF NOT EXISTS idx_proj_rank ON proj_ranking(modo, sexo, pos);
 CREATE INDEX IF NOT EXISTS idx_proj_jug ON proj_jugadores(modo, sexo, media);
+
+-- Modelo relacional normalizado (Fase 3): entidades con relaciones.
+-- pareja 1—N jugador 1—N atributo. El blob JSON sigue siendo la fuente de
+-- verdad; esto es un reflejo normalizado y consultable (base para la Fase 4).
+CREATE TABLE IF NOT EXISTS norm_pareja(
+  modo TEXT NOT NULL,
+  pid INTEGER NOT NULL,
+  nombre TEXT NOT NULL,
+  sexo TEXT NOT NULL,
+  pts INTEGER NOT NULL,
+  pro INTEGER NOT NULL,
+  edad INTEGER NOT NULL,
+  club INTEGER NOT NULL,
+  PRIMARY KEY(modo, pid)
+);
+CREATE TABLE IF NOT EXISTS norm_jugador(
+  modo TEXT NOT NULL,
+  jid TEXT NOT NULL,
+  pareja_pid INTEGER NOT NULL,
+  nombre TEXT NOT NULL,
+  sexo TEXT NOT NULL,
+  lado INTEGER NOT NULL,
+  estilo TEXT NOT NULL,
+  perso TEXT NOT NULL,
+  conf INTEGER NOT NULL,
+  pais TEXT NOT NULL,
+  PRIMARY KEY(modo, jid)
+);
+CREATE TABLE IF NOT EXISTS norm_atributo(
+  modo TEXT NOT NULL,
+  jid TEXT NOT NULL,
+  clave TEXT NOT NULL,
+  valor INTEGER NOT NULL,
+  PRIMARY KEY(modo, jid, clave)
+);
+CREATE INDEX IF NOT EXISTS idx_norm_jug_par ON norm_jugador(modo, pareja_pid);
 ";
 
 // Número de copias del historial que se conservan por modo.
@@ -272,6 +308,105 @@ fn db_ranking(db: tauri::State<Db>, modo: String, sexo: String, limite: i64) -> 
     Ok(out)
 }
 
+// ---- Fase 3: modelo relacional normalizado (escritura del snapshot) ----
+
+#[derive(serde::Deserialize)]
+struct ParejaNorm {
+    pid: i64,
+    nombre: String,
+    sexo: String,
+    pts: i64,
+    pro: bool,
+    edad: i64,
+    club: i64,
+}
+#[derive(serde::Deserialize)]
+struct JugNorm {
+    jid: String,
+    pareja_pid: i64,
+    nombre: String,
+    sexo: String,
+    lado: i64,
+    estilo: String,
+    perso: String,
+    conf: i64,
+    pais: String,
+}
+#[derive(serde::Deserialize)]
+struct AttrNorm {
+    jid: String,
+    clave: String,
+    valor: i64,
+}
+
+/// Vuelca el estado a las tablas normalizadas (pareja/jugador/atributo) en una
+/// transacción, reemplazando el snapshot anterior del modo.
+#[tauri::command]
+fn db_snapshot(
+    db: tauri::State<Db>,
+    modo: String,
+    parejas: Vec<ParejaNorm>,
+    jugadores: Vec<JugNorm>,
+    atributos: Vec<AttrNorm>,
+) -> Result<(), String> {
+    let mut conn = db.0.lock().map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    tx.execute("DELETE FROM norm_atributo WHERE modo = ?1", params![modo])
+        .map_err(|e| e.to_string())?;
+    tx.execute("DELETE FROM norm_jugador WHERE modo = ?1", params![modo])
+        .map_err(|e| e.to_string())?;
+    tx.execute("DELETE FROM norm_pareja WHERE modo = ?1", params![modo])
+        .map_err(|e| e.to_string())?;
+    for p in &parejas {
+        tx.execute(
+            "INSERT INTO norm_pareja(modo, pid, nombre, sexo, pts, pro, edad, club)
+             VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![modo, p.pid, p.nombre, p.sexo, p.pts, p.pro, p.edad, p.club],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    for j in &jugadores {
+        tx.execute(
+            "INSERT INTO norm_jugador(modo, jid, pareja_pid, nombre, sexo, lado, estilo, perso, conf, pais)
+             VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+            params![modo, j.jid, j.pareja_pid, j.nombre, j.sexo, j.lado, j.estilo, j.perso, j.conf, j.pais],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    for a in &atributos {
+        tx.execute(
+            "INSERT INTO norm_atributo(modo, jid, clave, valor) VALUES(?1, ?2, ?3, ?4)",
+            params![modo, a.jid, a.clave, a.valor],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[derive(serde::Serialize)]
+struct NormStats {
+    parejas: i64,
+    jugadores: i64,
+    atributos: i64,
+}
+
+/// Recuento de filas del modelo normalizado (para mostrar que está poblado).
+#[tauri::command]
+fn db_norm_stats(db: tauri::State<Db>, modo: String) -> Result<NormStats, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let parejas: i64 = conn
+        .query_row("SELECT COUNT(*) FROM norm_pareja WHERE modo = ?1", params![modo], |r| r.get(0))
+        .map_err(|e| e.to_string())?;
+    let jugadores: i64 = conn
+        .query_row("SELECT COUNT(*) FROM norm_jugador WHERE modo = ?1", params![modo], |r| r.get(0))
+        .map_err(|e| e.to_string())?;
+    let atributos: i64 = conn
+        .query_row("SELECT COUNT(*) FROM norm_atributo WHERE modo = ?1", params![modo], |r| r.get(0))
+        .map_err(|e| e.to_string())?;
+    Ok(NormStats { parejas, jugadores, atributos })
+}
+
 fn main() {
     tauri::Builder::default()
         .setup(|app| {
@@ -285,7 +420,9 @@ fn main() {
             db_history,
             db_project,
             db_top_jugadores,
-            db_ranking
+            db_ranking,
+            db_snapshot,
+            db_norm_stats
         ])
         .run(tauri::generate_context!())
         .expect("error while running Rising Pádel Manager");

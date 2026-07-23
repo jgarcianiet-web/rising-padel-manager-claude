@@ -152,6 +152,32 @@ comprueba("SQLite: la proyección relacional produce filas coherentes", () => {
   return p.ranking.length + " parejas y " + p.jugadores.length + " jugadores proyectados";
 });
 
+comprueba("SQLite Fase 3: el modelo normalizado hace ida y vuelta sin pérdida", () => {
+  nuevaCarrera("agresivo");
+  const orig = G.world.parejas;
+  const snap = normalizar();
+  exige(snap.parejas.length === orig.length, "el nº de parejas normalizadas no coincide");
+  const totJug = orig.reduce((n, p) => n + (p.jug ? p.jug.length : 0), 0);
+  exige(snap.jugadores.length === totJug, "el nº de jugadores normalizados no coincide");
+  exige(snap.atributos.length > 0, "no se normalizó ningún atributo");
+  const recon = denormalizar(snap);
+  exige(recon.length === orig.length, "la reconstrucción cambia el nº de parejas");
+  const byId = {}; recon.forEach(p => byId[p.id] = p);
+  let fallos = 0;
+  orig.forEach(o => {
+    const r = byId[o.id];
+    if (!r) { fallos++; return; }
+    if (r.nombre !== o.nombre || Math.round(o.pts) !== r.pts || (o.sexo || "M") !== r.sexo) fallos++;
+    (o.jug || []).forEach((oj, i) => {
+      const rj = r.jug[i];
+      if (!rj || rj.n !== oj.n || rj.estilo !== oj.estilo || (oj.lado === 1 ? 1 : 0) !== rj.lado) { fallos++; return; }
+      ATTR_KEYS.forEach(k => { if (oj.attrs && oj.attrs[k] != null && Math.round(oj.attrs[k]) !== rj.attrs[k]) fallos++; });
+    });
+  });
+  exige(fallos === 0, fallos + " discrepancias en la ida y vuelta del modelo");
+  return orig.length + " parejas, " + snap.jugadores.length + " jugadores y " + snap.atributos.length + " atributos: round-trip exacto";
+});
+
 comprueba("Analítica: sin la app de escritorio muestra un aviso claro", () => {
   abrirAnalitica();
   const cuerpo = document.getElementById("analiticaCuerpo");
