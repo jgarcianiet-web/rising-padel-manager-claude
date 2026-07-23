@@ -1,0 +1,15 @@
+# dependencias
+node_modules/
+
+# compilación de Tauri / Rust
+src-tauri/target/
+dist/
+
+# sistema
+.DS_Store
+Thumbs.db
+*.log
+
+# copias temporales
+*.bak
+*.tmp
