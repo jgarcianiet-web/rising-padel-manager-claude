@@ -36,6 +36,38 @@ function hidratarDesdeDB(){
     return dbCargar(modo).then(json=>{ if(json){ lsSet(SLOTS[modo],json); restaurada=true; } });
   }),Promise.resolve()).then(()=>restaurada).catch(()=>restaurada);
 }
+// ---------- Fase 1: proyecciones relacionales de solo lectura ----------
+// Construye, a partir del estado en memoria, filas planas (ranking y jugadores)
+// para reflejarlas en tablas SQLite consultables. Es una función pura (no toca
+// SQLite ni el DOM), por eso se puede probar sin Tauri.
+function filasProyeccion(){
+  const out={ranking:[],jugadores:[]};
+  if(!G||!G.world||!Array.isArray(G.world.parejas)) return out;
+  const parejas=G.world.parejas;
+  const seguro=n=>Number.isFinite(n)?Math.round(n):0;
+  const porSexo={};
+  parejas.forEach(p=>{ const s=p.sexo||"M"; (porSexo[s]=porSexo[s]||[]).push(p); });
+  Object.keys(porSexo).forEach(s=>{
+    porSexo[s].slice().sort((a,b)=>(b.pts||0)-(a.pts||0)).forEach((p,i)=>{
+      const nivel=(p.jug&&p.jug.length>=2&&p.jug[0].attrs&&p.jug[1].attrs)?nivelPareja(p):0;
+      out.ranking.push({pareja:p.nombre||"?",sexo:s,pos:i+1,nivel:seguro(nivel),pts:seguro(p.pts||0),pro:!!p.pro});
+    });
+  });
+  parejas.forEach(p=>(p.jug||[]).forEach(j=>{
+    out.jugadores.push({nombre:j.n||"?",sexo:p.sexo||"M",lado:(j.lado===1?"revés":"drive"),estilo:j.estilo||"",media:seguro(j.attrs?mediaAttrs(j.attrs):0),pareja:p.nombre||""});
+  }));
+  return out;
+}
+let _ultProy=0;
+function dbProyectar(modo){
+  const inv=_invoke(); if(!inv) return;
+  const now=Date.now(); if(now-_ultProy<3000) return; _ultProy=now;   // no saturar en guardados seguidos
+  try{
+    const {ranking,jugadores}=filasProyeccion();
+    if(!ranking.length&&!jugadores.length) return;
+    const p=inv("db_project",{modo,ranking,jugadores}); if(p&&p.catch) p.catch(()=>{});
+  }catch(e){}
+}
 // migración del guardado único antiguo a su ranura por modo
 (function(){
   const viejo=lsGet("rpm_save_v1");
@@ -49,6 +81,7 @@ function guardar(){
   const json=JSON.stringify(G);
   const ok=lsSet(SLOTS[G.modo],json);
   dbGuardar(G.modo,json);   // espejo en SQLite (no bloquea; no-op fuera de Tauri)
+  dbProyectar(G.modo);      // proyecciones relacionales de solo lectura (Fase 1)
   const st=G.modo==="carrera"?G.carrera.semana:G.clubG.semana;
   document.getElementById("footSave").textContent=ok
     ? `RISING GAMES · v3.0 — ${G.modo} guardada ✓ (semana ${st})`
