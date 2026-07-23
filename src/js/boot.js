@@ -2,6 +2,11 @@
 irA("menu");
 pintarMenu();
 pintarLogos();
+// En la app de escritorio: restaura desde SQLite lo que falte en localStorage
+// y repinta el menú (para que aparezca «Continuar» si había partida en disco).
+if(typeof hidratarDesdeDB==="function"){
+  hidratarDesdeDB().then(r=>{ if(r&&!G) pintarMenu(); }).catch(()=>{});
+}
 (function(){
   const spl=document.getElementById("splash");
   const est=document.getElementById("splEstudio"), jue=document.getElementById("splJuego"), bar=document.getElementById("splBar");
