@@ -152,6 +152,13 @@ comprueba("SQLite: la proyección relacional produce filas coherentes", () => {
   return p.ranking.length + " parejas y " + p.jugadores.length + " jugadores proyectados";
 });
 
+comprueba("Analítica: sin la app de escritorio muestra un aviso claro", () => {
+  abrirAnalitica();
+  const cuerpo = document.getElementById("analiticaCuerpo");
+  exige(cuerpo.innerHTML.indexOf("escritorio") >= 0, "no se avisa de que la analítica vive en la app de escritorio");
+  return "aviso de reserva correcto fuera de Tauri";
+});
+
 comprueba("Club: fundar y competir", () => {
   const cl = fundarClub();
   exige(cl.plantilla.length === 2, "la plantilla no se creó");
