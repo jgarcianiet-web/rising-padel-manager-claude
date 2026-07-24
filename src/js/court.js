@@ -9,8 +9,10 @@ function resize(){
   // quepa a lo alto y se centra, dejando aire a la retransmisión. En móvil se
   // usa todo el ancho de la columna, como siempre.
   if((window.innerWidth||0)>=760){
-    const capAlto=Math.round(((window.innerHeight||760)-220)/1.5);
-    w=Math.max(300,Math.min(w,capAlto,430));
+    // reservar sitio para la barra superior, el marcador y los controles de
+    // debajo, para que la pista entera quepa sin cortarse
+    const capAlto=Math.round(((window.innerHeight||760)-330)/1.5);
+    w=Math.max(280,Math.min(w,capAlto,460));
   }
   PW=w;PH=Math.round(w*1.5);
   cv.width=PW*devicePixelRatio;cv.height=PH*devicePixelRatio;
@@ -53,31 +55,47 @@ function stepPlayers(dt){
 }
 function draw(){
   cx.clearRect(0,0,PW,PH);
-  const bg=cx.createRadialGradient(PW/2,PH*.35,40,PW/2,PH/2,PH*.75);
-  bg.addColorStop(0,"#182A3E");bg.addColorStop(1,"#0C1017");
+  // fondo (grada en penumbra)
+  const bg=cx.createRadialGradient(PW/2,PH*.32,40,PW/2,PH/2,PH*.82);
+  bg.addColorStop(0,"#1A2C40");bg.addColorStop(1,"#080B11");
   cx.fillStyle=bg;cx.fillRect(0,0,PW,PH);
   const p0=px(0,L),p1=px(W,0);
+  const cw=p1.x-p0.x, chh=p1.y-p0.y;
+  // muro de cristal (marco exterior con brillo azulado)
+  cx.save();
+  cx.shadowColor="rgba(95,175,235,.45)";cx.shadowBlur=18;
+  cx.strokeStyle="rgba(150,205,240,.28)";cx.lineWidth=7;
+  cx.strokeRect(p0.x-7,p0.y-7,cw+14,chh+14);
+  cx.restore();
+  // superficie de la pista (moqueta)
   const court=cx.createLinearGradient(0,p0.y,0,p1.y);
-  court.addColorStop(0,"#1D537F");court.addColorStop(.5,"#174468");court.addColorStop(1,"#1D537F");
-  cx.fillStyle=court;cx.fillRect(p0.x,p0.y,(p1.x-p0.x),(p1.y-p0.y));
-  cx.strokeStyle="rgba(150,205,240,.35)";cx.lineWidth=4;
-  cx.strokeRect(p0.x-5,p0.y-5,(p1.x-p0.x)+10,(p1.y-p0.y)+10);
-  cx.strokeStyle="#E9F3FB";cx.lineWidth=1.6;
-  cx.strokeRect(p0.x,p0.y,(p1.x-p0.x),(p1.y-p0.y));
-  [[0,3],[0,L-3]].forEach(([_,y])=>{const a=px(0,y),b=px(W,y);cx.beginPath();cx.moveTo(a.x,a.y);cx.lineTo(b.x,b.y);cx.stroke();});
-  let a=px(W/2,0),b=px(W/2,3);cx.beginPath();cx.moveTo(a.x,a.y);cx.lineTo(b.x,b.y);cx.stroke();
-  a=px(W/2,L-3);b=px(W/2,L);cx.beginPath();cx.moveTo(a.x,a.y);cx.lineTo(b.x,b.y);cx.stroke();
+  court.addColorStop(0,"#20597F");court.addColorStop(.5,"#173F60");court.addColorStop(1,"#20597F");
+  cx.fillStyle=court;cx.fillRect(p0.x,p0.y,cw,chh);
+  // áreas de saque, sombreadas suavemente para que se lea la estructura
+  const box=(x0,y0,x1,y1,al)=>{const A=px(x0,y1);cx.fillStyle=`rgba(255,255,255,${al})`;cx.fillRect(A.x,A.y,(x1-x0)*SC,(y1-y0)*SC);};
+  box(0,3,W/2,NET,.055); box(W/2,3,W,NET,.03); box(0,NET,W/2,L-3,.03); box(W/2,NET,W,L-3,.055);
+  // líneas de pista
+  cx.strokeStyle="#EAF3FB";cx.lineWidth=1.6;
+  cx.strokeRect(p0.x,p0.y,cw,chh);
+  [3,L-3].forEach(y=>{const a=px(0,y),b=px(W,y);cx.beginPath();cx.moveTo(a.x,a.y);cx.lineTo(b.x,b.y);cx.stroke();});
+  // línea central de saque (de una línea de servicio a la otra, cruzando la red)
+  let a=px(W/2,3),b=px(W/2,L-3);cx.beginPath();cx.moveTo(a.x,a.y);cx.lineTo(b.x,b.y);cx.stroke();
+  // red (con sus postes)
   a=px(0,NET);b=px(W,NET);
-  cx.strokeStyle="#0A0E14";cx.lineWidth=5;cx.beginPath();cx.moveTo(a.x-6,a.y);cx.lineTo(b.x+6,b.y);cx.stroke();
-  cx.strokeStyle="rgba(233,243,251,.55)";cx.lineWidth=1;cx.beginPath();cx.moveTo(a.x-6,a.y-2);cx.lineTo(b.x+6,b.y-2);cx.stroke();
+  cx.strokeStyle="#070A0F";cx.lineWidth=5;cx.beginPath();cx.moveTo(a.x-7,a.y);cx.lineTo(b.x+7,b.y);cx.stroke();
+  cx.strokeStyle="rgba(233,243,251,.5)";cx.lineWidth=1;cx.beginPath();cx.moveTo(a.x-7,a.y-2);cx.lineTo(b.x+7,b.y-2);cx.stroke();
+  cx.fillStyle="#070A0F";[a.x-7,b.x+7].forEach(xx=>cx.fillRect(xx-1.5,a.y-5,3,10));
   players.forEach(p=>{
     const q=px(p.x,p.y);
-    cx.fillStyle="rgba(0,0,0,.45)";cx.beginPath();cx.ellipse(q.x,q.y+3,8,4,0,0,7);cx.fill();
-    cx.fillStyle=p.t===0?(p.me?ME_COLOR:TEAM0_COLOR):TEAM1_COLOR;
-    cx.strokeStyle=p.me?"#FFFFFF":"rgba(255,255,255,.75)";cx.lineWidth=p.me?2.2:1.4;
-    cx.beginPath();cx.arc(q.x,q.y,7.5,0,7);cx.fill();cx.stroke();
-    cx.fillStyle="#DCE3EE";cx.font="600 8px 'IBM Plex Mono'";cx.textAlign="center";
-    cx.fillText((p.me?"★":"")+p.nombre,q.x,q.y-11);
+    cx.fillStyle="rgba(0,0,0,.42)";cx.beginPath();cx.ellipse(q.x,q.y+4,9,4,0,0,7);cx.fill();
+    const base=p.t===0?(p.me?ME_COLOR:TEAM0_COLOR):TEAM1_COLOR;
+    const g=cx.createRadialGradient(q.x-2.6,q.y-3,1,q.x,q.y,9);
+    g.addColorStop(0,"#FFFFFF");g.addColorStop(.3,base);g.addColorStop(1,base);
+    cx.fillStyle=g;
+    cx.beginPath();cx.arc(q.x,q.y,8,0,7);cx.fill();
+    cx.strokeStyle=p.me?"#FFFFFF":"rgba(255,255,255,.7)";cx.lineWidth=p.me?2.4:1.3;cx.stroke();
+    cx.fillStyle="#EAF0F8";cx.font="600 8px 'IBM Plex Mono',monospace";cx.textAlign="center";
+    cx.fillText((p.me?"★":"")+p.nombre,q.x,q.y-12);
   });
   ball.trail.forEach((tr,i)=>{
     const q=px(tr.x,tr.y);const al=(i/ball.trail.length)*.45;
