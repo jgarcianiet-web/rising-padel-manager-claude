@@ -324,6 +324,7 @@ function empezarCarrera(estiloKey){
     palmares:[],diario:[],h2h:{},_rivalesSemana:[]
   }};
   G.carrera.mercadoP=mkMercadoParejas();
+  G.carrera.objetivos=mkObjetivosTemporada(G.carrera,miPuesto());
   avisa(`Debut de ${nombre} (16 años, ${ESTILOS[estiloKey].nombre.toLowerCase()}, ${PERSONALIDADES[persoSel].n.toLowerCase()}). Semanas de lunes a domingo, calendario oficial de 52 semanas y el puesto 41 del ranking como punto de partida. Administra tus 2.500€.`);
   noticia("debut",`${nombre}, 16 años: nace una carrera`,`Debuta el #41 del ranking con 2.500€ en el bolsillo y toda la vida por delante`);
   entrarPartida();
@@ -368,6 +369,23 @@ function mostrarRuptura(c){
     else { c._crisisPareja=null; avisa("🤝 "+res.txt); }
     guardar(); pintarCarrera();
   });
+}
+// Panel de objetivos de la temporada con su progreso (barra + estado).
+function pintarObjetivos(){
+  const box=document.getElementById("objTemp"); if(!box) return;
+  const c=G.carrera; if(!c) return;
+  if(!c.objetivos) c.objetivos=mkObjetivosTemporada(c,miPuesto());
+  box.innerHTML=c.objetivos.map(o=>{
+    const pr=progresoObjetivo(c,o,miPuesto());
+    const rec=o.rec?[o.rec.dinero?`+${o.rec.dinero}€`:"",o.rec.fans?`+${o.rec.fans} seg.`:"",o.rec.moral?`+${o.rec.moral} moral`:""].filter(Boolean).join(" · "):"";
+    return `<div class="opcion" style="margin-bottom:6px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <b style="font-size:12px">${o.hecho?"✅":"○"} ${o.txt}</b>
+        <span class="pill" style="color:${o.hecho?"var(--verde)":"var(--gris)"}">${pr.txt}</span>
+      </div>
+      ${rec?`<div class="foot" style="text-align:left;margin-top:2px">Recompensa: ${rec}</div>`:""}
+    </div>`;
+  }).join("");
 }
 function pintarCarrera(){
   const c=G.carrera;
@@ -451,6 +469,7 @@ function pintarSemana(){
   const c=G.carrera;
   const dia=c.dia||1, esT=esSemanaTorneo();
   document.getElementById("semTitulo").innerHTML=c.lesion?`Baja médica · <em>${c.lesion.n} (${c.lesion.sem} sem.)</em>`:`Semana ${semanaTemp()} · <em>${DIAS[dia-1].toUpperCase()}</em>`+(c.merma?` · <span style="color:#E0A030">mermado -${c.merma.pct}% (${c.merma.sem} sem.)</span>`:"");
+  pintarObjetivos();
   const td=document.getElementById("torneosDisp");td.innerHTML="";
   // tira lunes-domingo
   const ds=document.createElement("div");ds.className="diastrip";
@@ -1176,14 +1195,24 @@ function avanzarSemanaCarrera(){
     c._avisoMoral=true;
     avisa(`⚠ ${c.compi.n} está harto de perder. O cambiáis la dinámica o te deja a final de temporada.`);
   }
+  // objetivos de temporada: premia los que se van cumpliendo
+  if(!c.objetivos) c.objetivos=mkObjetivosTemporada(c,miPuesto());
+  evaluaObjetivos(c,miPuesto()).forEach(o=>{
+    if(o.rec){ if(o.rec.dinero) c.dinero+=o.rec.dinero; if(o.rec.fans) fansAdd(o.rec.fans,"objetivo cumplido"); if(o.rec.moral) c.compiMoral=clamp((c.compiMoral??65)+o.rec.moral,5,95); }
+    noticia("hito","Objetivo cumplido",o.txt);
+    avisa(`🎯 Objetivo cumplido: ${o.txt}${o.rec&&o.rec.dinero?` (+${o.rec.dinero}€)`:""}.`);
+  });
   if((c.semana-1)%SEMANAS_TEMP===0){
     const posFin=miPuesto(), ptsFin=c.pts;
     const titsT=c.palmares.filter(x=>x.includes(`(T${temporada()-1})`)).length;
     c.hist=(c.hist||[]); c.hist.push({t:temporada()-1,pos:posFin,pts:ptsFin,tit:titsT});
     c.calRes={}; c.wildcards=2;
+    const cumplidos=(c.objetivos||[]).filter(o=>o.hecho).length, totalObj=(c.objetivos||[]).length;
     c.edad++;evolucionaMundo();
     c.pts=Math.round(c.pts*.55);
-    avisa(`— Cierre de temporada ${temporada()-1}: #${posFin} con ${ptsFin} pts y ${titsT} título(s). Cumples ${c.edad} años.`);
+    avisa(`— Cierre de temporada ${temporada()-1}: #${posFin} con ${ptsFin} pts y ${titsT} título(s). Objetivos ${cumplidos}/${totalObj}. Cumples ${c.edad} años.`);
+    if(totalObj&&cumplidos<totalObj) c.compiMoral=clamp((c.compiMoral??65)-(totalObj-cumplidos)*3,5,95);
+    c.objetivos=mkObjetivosTemporada(c,miPuesto());   // metas para la nueva temporada
     cierreTemporadaCarrera();
   }
   ofertaStaffSemanal();

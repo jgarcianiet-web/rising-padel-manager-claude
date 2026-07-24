@@ -282,6 +282,34 @@ function evaluaRenovacionClub(j,salarioOfrecido){
   return {acepta:salarioOfrecido>=espera, espera};
 }
 
+/* ================================================================
+   OBJETIVOS DE TEMPORADA: metas de medio plazo (personales, de pareja y de
+   patrocinador) para que las 52 semanas tengan arcos, no solo el nº1 a lo lejos.
+================================================================ */
+function mkObjetivosTemporada(c,puesto){
+  const p=puesto||40, objs=[];
+  const metaRank = p<=5?Math.max(1,p-1) : p<=20?Math.max(4,p-4) : Math.max(15,p-6);
+  objs.push({clave:"rank",txt:`Meterte en el top ${metaRank}`,meta:metaRank,rec:{dinero:600,fans:400,moral:8}});
+  const metaTit = p<=10?2:1;
+  objs.push({clave:"titulos",txt:`Ganar ${metaTit} torneo${metaTit>1?"s":""} esta temporada`,meta:metaTit,base:(c.palmares||[]).length,rec:{dinero:900,fans:600,moral:6}});
+  if(tieneRasgo(c.compi,"ambicioso")) objs.push({clave:"parejaPts",txt:`Sumar 2.500 puntos para contentar a ${(c.compi&&c.compi.n)||"tu pareja"}`,meta:2500,base:c.pts||0,rec:{dinero:0,fans:200,moral:16}});
+  else objs.push({clave:"racha",txt:"Encadenar una racha de 5 victorias",meta:5,rec:{dinero:400,fans:500,moral:6}});
+  return objs;
+}
+function progresoObjetivo(c,obj,puesto){
+  if(obj.clave==="rank"){ const p=puesto||40; return {actual:p,hecho:p<=obj.meta,txt:`#${p} · meta top ${obj.meta}`}; }
+  if(obj.clave==="titulos"){ const n=(c.palmares||[]).length-(obj.base||0); return {actual:n,hecho:n>=obj.meta,txt:`${n}/${obj.meta}`}; }
+  if(obj.clave==="parejaPts"){ const n=(c.pts||0)-(obj.base||0); return {actual:Math.max(0,n),hecho:n>=obj.meta,txt:`${Math.max(0,n)}/${obj.meta} pts`}; }
+  if(obj.clave==="racha"){ const n=c.rachaAct||0; return {actual:n,hecho:n>=obj.meta,txt:`${n}/${obj.meta}`}; }
+  return {actual:0,hecho:false,txt:""};
+}
+// Marca los objetivos recién cumplidos (una sola vez) y los devuelve para premiar/avisar.
+function evaluaObjetivos(c,puesto){
+  const logr=[];
+  (c.objetivos||[]).forEach(o=>{ if(o.hecho) return; if(progresoObjetivo(c,o,puesto).hecho){ o.hecho=true; logr.push(o); } });
+  return logr;
+}
+
 // Aplica la opción elegida (muta c.compiMoral). Devuelve {rompio, txt}.
 function aplicarOpcionRuptura(c,id,motivo){
   if(id==="dejar") return {rompio:true,txt:"Rotura confirmada: cada uno busca su camino."};

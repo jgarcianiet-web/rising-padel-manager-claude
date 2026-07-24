@@ -458,6 +458,28 @@ comprueba("Club: contratos, moral por minutos y renovación", () => {
   return `contrato ${ct.temporadas} temp, salario ${ct.salario}; ambicioso espera ${evaluaRenovacionClub(amb, 0).espera}`;
 });
 
+comprueba("Objetivos: metas de temporada con progreso y recompensa", () => {
+  const c = { palmares: [], pts: 1000, rachaAct: 0, compi: { n: "P", rasgos: ["ambicioso"] } };
+  c.objetivos = mkObjetivosTemporada(c, 30);
+  exige(c.objetivos.length >= 3, "no se generan suficientes objetivos");
+  exige(c.objetivos.some(o => o.clave === "rank") && c.objetivos.some(o => o.clave === "titulos"), "faltan objetivos base");
+  exige(c.objetivos.some(o => o.clave === "parejaPts"), "el compañero ambicioso no añade su objetivo");
+  // el de títulos progresa al ganar torneos esta temporada
+  const objTit = c.objetivos.find(o => o.clave === "titulos");
+  exige(progresoObjetivo(c, objTit, 30).hecho === false, "el objetivo de títulos no debería estar cumplido de inicio");
+  c.palmares.push("FIP (T1)"); c.palmares.push("Major (T1)");
+  exige(progresoObjetivo(c, objTit, 30).actual === 2, "no cuenta los títulos de la temporada");
+  // rank: cumplido al alcanzar la meta, no por encima
+  const objRank = c.objetivos.find(o => o.clave === "rank");
+  exige(progresoObjetivo(c, objRank, objRank.meta).hecho === true, "el ranking no se cumple al alcanzar la meta");
+  exige(progresoObjetivo(c, objRank, objRank.meta + 5).hecho === false, "el ranking no debería cumplirse por encima de la meta");
+  // evaluaObjetivos marca y reporta los recién cumplidos, una sola vez
+  const logr = evaluaObjetivos(c, objRank.meta);
+  exige(logr.some(o => o.clave === "rank") && objRank.hecho === true, "no marca/reporta el ranking cumplido");
+  exige(evaluaObjetivos(c, objRank.meta).some(o => o.clave === "rank") === false, "reporta dos veces el mismo objetivo");
+  return `${c.objetivos.length} objetivos; títulos ${progresoObjetivo(c, objTit, 30).actual}/${objTit.meta}, meta rank ${objRank.meta}`;
+});
+
 comprueba("Analítica: sin la base lista muestra un aviso claro", () => {
   abrirAnalitica();
   const cuerpo = document.getElementById("analiticaCuerpo");
