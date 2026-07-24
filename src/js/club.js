@@ -295,7 +295,8 @@ function pintarCmSemana(){
     const les=j.lesion?` <span class="pill rojo">${j.lesion.n} (${j.lesion.sem}s)</span>`:"";
     const mer=(!j.lesion&&j.merma)?` <span class="pill" style="color:#E0A030">mermado -${j.merma.pct}% (${j.merma.sem}s)</span>`:"";
     const plan=j.plan||"auto";
-    d.innerHTML=`<b>${j.n}</b> <span class="pill">nivel ${mediaAttrs(j.attrs)}</span> <span class="pill">EN ${j.energia}</span> <span class="pill">CF ${j.conf}</span> <span class="pill lima">plan: ${plan}</span>${les}${mer}`;
+    const rasg=chipRasgos(j);
+    d.innerHTML=`<b>${j.n}</b> <span class="pill">nivel ${mediaAttrs(j.attrs)}</span> <span class="pill">EN ${j.energia}</span> <span class="pill">CF ${j.conf}</span> <span class="pill lima">plan: ${plan}</span>${les}${mer}${rasg?`<div style="margin-top:3px">${rasg}</div>`:""}`;
     if(!j.lesion){
       const g=document.createElement("div");g.className="entreno";g.style.marginTop="8px";
       const bAuto=document.createElement("button");
@@ -563,6 +564,7 @@ function entrenaUnoClub(j,factor){
   if(v>=72&&g>0&&Math.random()<.5) g--;
   if(factor<1&&g>0&&Math.random()>factor) g=Math.max(0,g-1);
   if(factor<1&&Math.random()>factor+.25) g=0;
+  if(g>0){ const rf=rasgosEntreno(j); if(rf>1&&Math.random()<rf-1) g++; else if(rf<1&&Math.random()<1-rf) g=Math.max(0,g-1); }   // talento / entrena mal
   j.attrs[k]=clamp(v+g,20,Math.min(96,(j.pot||96)+4));
   if(factor===1) j.energia=clamp(j.energia-(it==="suave"?10:it==="intensa"?26:17),0,100);
   if(factor===1&&it==="intensa"&&Math.random()<.05&&!j.lesion){

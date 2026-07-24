@@ -41,6 +41,15 @@ document.getElementById("tutoSig").onclick=()=>{
 };
 document.getElementById("tutoSaltar").onclick=cierraTuto;
 
+// Chips de rasgos de un jugador (verde=bueno, rojo=lastre, oro=neutro).
+function chipRasgos(j){
+  const rg=(typeof rasgosDe==="function")?rasgosDe(j):[];
+  if(!rg||!rg.length) return "";
+  return rg.map(id=>{ const r=(typeof RASGOS!=="undefined"&&RASGOS[id])||{n:id,bueno:0,desc:""};
+    const col=r.bueno>0?"var(--verde)":r.bueno<0?"var(--rojo)":"var(--oro)";
+    return `<span class="rasgo" title="${r.desc||""}" style="border-color:${col};color:${col}">${r.n}</span>`; }).join("");
+}
+
 
 /* ================= PANEL DE MANDO (escritorio) ================= */
 function hudCaja(titulo,filas){ return `<div class="hudCaja"><div class="hudTit">${titulo}</div>${filas}</div>`; }

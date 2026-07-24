@@ -346,6 +346,41 @@ comprueba("Táctica: las palancas de red y puntos calientes cambian el partido",
   return `red subir/aguantar w ${subir.w.toFixed(3)}/${aguantar.w.toFixed(3)}, clutch arr/cons w ${arr.w.toFixed(3)}/${cons.w.toFixed(3)}, plan red=${inf.rec.red}`;
 });
 
+comprueba("Rasgos: identidad de jugador con efectos concretos", () => {
+  // deterministas por nombre
+  exige(JSON.stringify(rasgosDe({ n: "Fulano de Tal" })) === JSON.stringify(rasgosDe({ n: "Fulano de Tal" })), "los rasgos no son deterministas por nombre");
+  // nunca pares incompatibles, y no todos van vacíos
+  let choca = 0, conAlgo = 0;
+  for (let i = 0; i < 300; i++) {
+    const r = rasgosDe({ n: "J" + i + " Test" });
+    if (r.length) conAlgo++;
+    if ((r.includes("clutch") && r.includes("fragil")) || (r.includes("propenso") && r.includes("hierro")) || (r.includes("talento") && r.includes("vago"))) choca++;
+  }
+  exige(choca === 0, "aparecen rasgos incompatibles juntos");
+  exige(conAlgo > 0, "nadie tiene ningún rasgo en 300 jugadores");
+  // efecto en partido: especialista mejora bajo presión; cristal frágil empeora
+  const esp = rasgosMatch({ n: "E", rasgos: ["clutch"] }, "volea", { presion: .7 });
+  const fra = rasgosMatch({ n: "F", rasgos: ["fragil"] }, "volea", { presion: .7 });
+  exige(esp.win > 1 && esp.err < 1, "el especialista no mejora bajo presión");
+  exige(fra.win < 1 && fra.err > 1, "el cristal frágil no empeora bajo presión");
+  // sin presión, el especialista no altera el punto
+  const calma = rasgosMatch({ n: "E", rasgos: ["clutch"] }, "volea", { presion: 0 });
+  exige(calma.win === 1 && calma.err === 1, "el especialista no debería alterar un punto tranquilo");
+  // lesiones y entrenamiento
+  exige(rasgosLesionAjuste({ n: "P", rasgos: ["propenso"] }) > 0, "propenso no aumenta el riesgo");
+  exige(rasgosLesionAjuste({ n: "H", rasgos: ["hierro"] }) < 0, "hierro no reduce el riesgo");
+  exige(rasgosEntreno({ n: "T", rasgos: ["talento"] }) > 1, "talento no entrena mejor");
+  exige(rasgosEntreno({ n: "V", rasgos: ["vago"] }) < 1, "quien entrena mal no entrena peor");
+  // el ojeador revela los rasgos del rival
+  const at = { fondo: 72, globo: 72, chiquita: 72, volea: 72, dejada: 72, bandeja: 72, vibora: 72, remate: 72, pared: 72 };
+  const rival = { nombre: "R", jug: [{ n: "R1", estilo: "constructor", perso: "frio", lado: 0, attrs: at, rasgos: ["fragil"] }, { n: "R2", estilo: "constructor", perso: "frio", lado: 1, attrs: at, rasgos: ["clutch"] }] };
+  const inf = informeRival(rival, 72);
+  const all = inf.deb.concat(inf.fue).join(" | ");
+  exige(/cristal frágil/i.test(all), "el ojeador no revela el cristal frágil del rival");
+  exige(/especialista/i.test(all), "el ojeador no revela al especialista del rival");
+  return `${conAlgo}/300 con rasgo; esp win ${esp.win.toFixed(2)}, frágil err ${fra.err.toFixed(2)}`;
+});
+
 comprueba("Analítica: sin la base lista muestra un aviso claro", () => {
   abrirAnalitica();
   const cuerpo = document.getElementById("analiticaCuerpo");

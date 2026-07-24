@@ -579,7 +579,7 @@ function pintarJugador(){
   hav.innerHTML=avatarSVG({n:c.nombre,sexo:c.sexo,ava:c.ava,_ropa:c._ropa||c.color},52);
   document.getElementById("hNom").textContent=c.nombre;
   const _hsub=document.getElementById("hSub");
-  _hsub.innerHTML=`${c.edad} años · ${ladoTxt(c.lado)} · ${ESTILOS[c.estilo].nombre} · ${PERSONALIDADES[c.perso].n}`;
+  _hsub.innerHTML=`${c.edad} años · ${ladoTxt(c.lado)} · ${ESTILOS[c.estilo].nombre} · ${PERSONALIDADES[c.perso].n}`+(()=>{const r=chipRasgos(c);return r?`<div style="margin-top:4px">${r}</div>`:"";})();
   document.getElementById("hMedia").textContent=mediaAttrs(c.attrs);
   document.getElementById("hMeta").innerHTML=`
     <div class="chip">Confianza <b style="color:${colAttr(c.conf)}">${c.conf}</b></div>
@@ -595,7 +595,8 @@ function pintarJugador(){
     <div class="chip">Media <b>${mediaAttrs(c.compi.attrs)}</b></div>
     <div class="chip">${ESTILOS[c.compi.estilo].nombre}</div>
     <div class="chip">${PERSONALIDADES[c.compi.perso].n}</div>
-    <div class="chip">Moral <b style="color:${colAttr(moral)}">${moral}</b></div>`;
+    <div class="chip">Moral <b style="color:${colAttr(moral)}">${moral}</b></div>
+    ${(()=>{const r=chipRasgos(c.compi);return r?`<div style="width:100%;margin-top:3px">${r}</div>`:"";})()}`;
   const mk=document.getElementById("mercado");mk.innerHTML="";
   const morAviso=document.createElement("div");
   morAviso.className="foot";morAviso.style.textAlign="left";morAviso.style.marginBottom="7px";
@@ -1286,6 +1287,7 @@ function entrenoSemanalCarrera(factor){
     if(v>=72&&g>0&&Math.random()<.5) g--;               // ...y la élite cuesta sudor doble
     if(factor<1&&g>0&&Math.random()>factor) g=Math.max(0,g-1);
     if(factor<1&&Math.random()>factor+.25) g=0;         // semana de torneo: poco tiempo de pista de entreno
+    if(g>0){ const rf=rasgosEntreno(atleta); if(rf>1&&Math.random()<rf-1) g++; else if(rf<1&&Math.random()<1-rf) g=Math.max(0,g-1); }   // talento / entrena mal
     atleta.attrs[k]=clamp(v+g,20,95);
     return `${k} ${g>0?"+"+g:"·"}`;
   };
