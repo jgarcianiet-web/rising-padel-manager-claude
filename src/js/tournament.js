@@ -32,7 +32,7 @@ function abrirTorneo(ci,wildcard){
   torneo={cat:ci,nombre:cat.n+(_ciudad?` · ${_ciudad}`:""),premierT:cat.premier,pts:cat.pts,premio:cat.premio,base:cat.base,fase:startFase,startFase,rivales,wildcard:!!wildcard};
   if(cat.premier&&startFase===2&&G.modo==="carrera"&&!G.carrera.pro){
     G.carrera.pro=true;
-    noticia("hito","¡Profesionales de pleno derecho!","Cabezas de serie en un torneo Premier");
+    noticia("hito",t("not_prof_t"),t("not_prof_s"));
     avisa(t("aviso_cabezas_serie"));
   }
   if(cat.premier){
@@ -625,14 +625,14 @@ function finPartido(){
   if(f>=4) h2r.alta=(h2r.alta||0)+1;
   const clAhora=clasificaRiv(h2r);
   if(clAhora&&clAhora.tag==="RIVALIDAD"&&(!clAntes||clAntes.tag!=="RIVALIDAD")){
-    noticia("hito",`Nace una rivalidad`,`${nombreEntidad().replace("★ ","")} y ${rival.nombre}: ${h2r.v+h2r.d} cruces y máxima igualdad. El circuito ya la espera.`);
+    noticia("hito",t("not_rivalidad_t"),t("not_rivalidad_s",{yo:nombreEntidad().replace("★ ",""),rival:rival.nombre,n:h2r.v+h2r.d}));
     avisa(t("aviso_rivalidad",{rival:rival.nombre,v:h2r.v,d:h2r.d,n:h2r.v+h2r.d}));
     post("rivalidad",{rival:rival.nombre});
   }
   if(gane&&clAntes&&clAntes.tag==="BESTIA NEGRA"){
     e.conf!==undefined&&(e.conf=clamp(e.conf+6,15,95));
     if(G.modo==="carrera") G.carrera.conf=clamp(G.carrera.conf+6,15,95);
-    noticia("hito",`Maldición rota`,`Por fin cae ${rival.nombre} (${h2r.v}-${h2r.d}). El muro mental, derribado.`);
+    noticia("hito",t("not_maldicion_t"),t("not_maldicion_s",{rival:rival.nombre,v:h2r.v,d:h2r.d}));
     avisa(t("aviso_maldicion",{rival:rival.nombre,v:h2r.v,d:h2r.d}));
     post("maldicion",{rival:rival.nombre});
   }
@@ -659,7 +659,7 @@ function finPartido(){
       seLesiona=true;lesionTxt=c.lesion.n;
       c.conf=clamp(c.conf-4,15,95);                              // lesionarse mina la cabeza
       c.compiMoral=clamp((c.compiMoral??65)-5,5,95);             // y preocupa al compañero
-      if(c.lesion.grav>=3) noticia("lesion",`Lesión de gravedad`,`${c.lesion.n}: parte médico serio, ${c.lesion.sem} semanas de baja`,miParejaProt());
+      if(c.lesion.grav>=3) noticia("lesion",t("not_lesion_grave_t"),t("not_lesion_grave_s",{lesion:c.lesion.n,sem:c.lesion.sem}),miParejaProt());
     }
     if((gane||misW>=4)&&Math.random()<.45){
       const favor={defensivo:["globo","pared","chiquita","fondo"],agresivo:["remate","vibora","volea","bandeja"],bandejero:["bandeja","vibora","volea"],rematador:["remate","bandeja","volea"],constructor:["chiquita","dejada","fondo","globo"]}[c.estilo];
@@ -687,7 +687,7 @@ function finPartido(){
           j.lesion=les;
           j.conf=clamp(j.conf-4,15,95);
           seLesiona=true;lesionTxt=`${j.n}: ${j.lesion.n}`;
-          if(j.lesion.grav>=3) noticia("lesion",`Lesión de gravedad en el ${cl.nombre}`,`${j.n}: ${j.lesion.n}, ${j.lesion.sem} semanas de baja`);
+          if(j.lesion.grav>=3) noticia("lesion",t("not_lesion_club_t",{club:cl.nombre}),t("not_lesion_club_s",{jug:j.n,lesion:j.lesion.n,sem:j.lesion.sem}));
         }
       }
     });
@@ -716,7 +716,7 @@ function finPartido(){
     fansAdd([60,120,250,500,1500,3000,8000,5000][torneo.cat]||60,`título del ${torneo.nombre}`);
     post("titulo",{torneo:torneo.nombre});
     if(torneo.premierT&&torneo.favNos===false){
-      noticia("titulo","¡CAMPANADA!",`Nadie los tenía en la quiniela y se llevan el ${torneo.nombre}. Épica pura.`,miParejaProt());
+      noticia("titulo",t("not_campanada_t"),t("not_campanada_s",{torneo:torneo.nombre}),miParejaProt());
       fansAdd(Math.round(R(300,700)),"la campanada del año");
       post("campanada");
     }
@@ -727,14 +727,14 @@ function finPartido(){
     }
     ent()._ultCamp=true;
     sfxTitulo();
-    noticia("titulo",`¡Campeones del ${torneo.nombre}!`,`${G.modo==="carrera"?G.carrera.nombre+"/"+G.carrera.compi.n:G.clubG.nombre} · +${torneo.pts[0]} pts y ${torneo.premio[0]}€`,miParejaProt());
+    noticia("titulo",t("not_campeones_t",{torneo:torneo.nombre}),t("not_campeones_s",{entidad:G.modo==="carrera"?G.carrera.nombre+"/"+G.carrera.compi.n:G.clubG.nombre,pts:torneo.pts[0],premio:torneo.premio[0]}),miParejaProt());
     avisa(t("aviso_campeones",{torneo:torneo.nombre,pts:torneo.pts[0],din:neto(torneo.premio[0])})+extra+(seLesiona?` ⚠ ${lesionTxt}.`:""));
     cerrarTorneo();return;
   }
   if(seLesiona){
     const idx=loserIdx(f+1);
     e.pts+=torneo.pts[idx]||0;e.dinero+=neto(torneo.premio[idx]||0);
-    noticia("lesion",`Retirada por lesión`,`${lesionTxt} — adiós al ${torneo.nombre} cuando iban lanzados`,miParejaProt());
+    noticia("lesion",t("not_retirada_t"),t("not_retirada_s",{lesion:lesionTxt,torneo:torneo.nombre}),miParejaProt());
     post("lesion");
     avisa(t("aviso_retirada",{lesion:lesionTxt,pts:torneo.pts[idx]||0}));
     cerrarTorneo();return;
@@ -742,7 +742,7 @@ function finPartido(){
   torneo.fase++;
   if(torneo.premierT&&torneo.fase===2&&G.modo==="carrera"&&!G.carrera.pro){
     G.carrera.pro=true;
-    noticia("hito","¡Debut profesional!","Superada la previa: primer cuadro final de un Premier");
+    noticia("hito",t("not_debut_prof_t"),t("not_debut_prof_s"));
     avisa(t("aviso_previa_superada"));
   }
   if(G.modo==="carrera"){
@@ -779,7 +779,7 @@ function ruedaDePrensa(gano,fase){
     else c.conf=clamp(c.conf-3,15,95);
     if(c.compi.perso==="conservador"||c.compi.perso==="frio") c.compiMoral=clamp((c.compiMoral??65)-5,5,95);
     else c.compiMoral=clamp((c.compiMoral??65)+3,5,95);
-    noticia("hito","Declaraciones que arden",`${c.nombre} incendia la zona mixta. El circuito toma nota.`);
+    noticia("hito",t("not_declaraciones_t"),t("not_declaraciones_s",{nombre:c.nombre}));
     fansAdd(Math.round(R(120,300)),"el ruido vende");
     post("picante");
   });

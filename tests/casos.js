@@ -1112,3 +1112,13 @@ comprueba("Idiomas: noticias de carrera traducen e interpolan", () => {
   } finally { localStorage.removeItem("rpm_idioma"); }
   return "noticias de carrera en inglés";
 });
+
+comprueba("Idiomas: noticias de torneo traducen e interpolan", () => {
+  try {
+    localStorage.setItem("rpm_idioma", "en");
+    exige(t("not_campanada_t") === "SHOCK RESULT!", "campanada: " + t("not_campanada_t"));
+    exige(t("not_campeones_s", { entidad: "A/B", pts: 1000, premio: 5000 }) === "A/B · +1000 pts and 5000€", "campeones: " + t("not_campeones_s", { entidad: "A/B", pts: 1000, premio: 5000 }));
+    exige(t("not_maldicion_s", { rival: "X", v: 1, d: 5 }).indexOf("X finally falls (1-5)") >= 0, "maldición mal interpolada");
+  } finally { localStorage.removeItem("rpm_idioma"); }
+  return "noticias de torneo en inglés";
+});
