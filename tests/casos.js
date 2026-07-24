@@ -314,6 +314,38 @@ comprueba("Informe del ojeador: lee debilidades, eslabón débil y táctica", ()
   return `${inf.deb.length} debilidades, objetivo=${inf.objetivo}, plan ${inf.rec.agres}/${inf.rec.diana}`;
 });
 
+comprueba("Táctica: las palancas de red y puntos calientes cambian el partido", () => {
+  const pl = { n: "P", estilo: "constructor", perso: "frio", conf: 55, lado: 0, attrs: { fondo: 72, globo: 72, chiquita: 72, volea: 72, dejada: 72, bandeja: 72, vibora: 72, remate: 72, pared: 72 } };
+  const N = 20000;
+  // Monte Carlo directo sobre resolveShot: aísla el efecto de cada palanca
+  const mc = (tac, pres, shot, ctx) => {
+    TACT = Object.assign({ agres: "normal", diana: "repartir", red: "normal", clutch: "normal" }, tac);
+    PRESION = pres; match = { cpu: false };
+    let w = 0, e = 0;
+    for (let i = 0; i < N; i++) { const o = resolveShot(pl, shot, Object.assign({ team: 0, oppDef: 70 }, ctx), 3); if (o === "winner") w++; else if (o === "error") e++; }
+    return { w: w / N, e: e / N };
+  };
+  // estrategia de red: subir cierra más arriba que aguantar
+  const subir = mc({ red: "subir" }, 0, "volea", { atNet: true });
+  const aguantar = mc({ red: "aguantar" }, 0, "volea", { atNet: true });
+  exige(subir.w > aguantar.w + 0.01, `subir debería cerrar más en la red que aguantar (${subir.w.toFixed(3)} vs ${aguantar.w.toFixed(3)})`);
+  // puntos calientes: arriesgar sube winners Y errores; conservar baja ambos
+  const arr = mc({ clutch: "arriesgar" }, 0.7, "volea", { atNet: true });
+  const cons = mc({ clutch: "conservar" }, 0.7, "volea", { atNet: true });
+  exige(arr.w > cons.w + 0.01, "arriesgar en punto caliente debería dar más winners que conservar");
+  exige(arr.e > cons.e + 0.01, "arriesgar en punto caliente debería dar más errores que conservar");
+  // el riesgo de subir: un rival que globea bien te pasa por arriba
+  const rivalPl = { attrs: { globo: 90 } };
+  const punir = (tac) => { TACT = Object.assign({ agres: "normal", diana: "repartir", red: "normal", clutch: "normal" }, tac); PRESION = 0; match = { cpu: false }; let w = 0; for (let i = 0; i < N; i++) if (resolveShot(rivalPl, "globo", { team: 1, oppDef: 70 }, 3) === "winner") w++; return w / N; };
+  exige(punir({ red: "subir" }) > punir({ red: "normal" }) + 0.005, "subir a la red debería exponerte al globo de un buen globeador");
+  // el informe recomienda red/clutch, no solo agresividad/diana
+  const rival = { nombre: "R", jug: [{ n: "R1", estilo: "constructor", perso: "frio", lado: 0, attrs: Object.assign({}, pl.attrs, { globo: 55 }) }, { n: "R2", estilo: "constructor", perso: "frio", lado: 1, attrs: Object.assign({}, pl.attrs, { globo: 55 }) }] };
+  const inf = informeRival(rival, 74);
+  exige(inf.rec.red === "subir", "con globo rival flojo, el plan debería recomendar subir a la red");
+  exige(["conservar", "normal", "arriesgar"].includes(inf.rec.clutch), "el plan no propone estrategia de puntos calientes");
+  return `red subir/aguantar w ${subir.w.toFixed(3)}/${aguantar.w.toFixed(3)}, clutch arr/cons w ${arr.w.toFixed(3)}/${cons.w.toFixed(3)}, plan red=${inf.rec.red}`;
+});
+
 comprueba("Analítica: sin la base lista muestra un aviso claro", () => {
   abrirAnalitica();
   const cuerpo = document.getElementById("analiticaCuerpo");

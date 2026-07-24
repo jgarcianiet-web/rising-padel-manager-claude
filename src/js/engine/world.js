@@ -101,9 +101,17 @@ function informeRival(par, miNivel){
   if(!deb.length) deb.push("Sin grietas evidentes: tendrás que ganarlo con paciencia y oficio.");
   if(!fue.length) fue.push("Pareja discreta arriba: puedes disputarles la red.");
   // táctica recomendada
-  const rec={agres:"normal", diana:objetivo!=null?"debil":"repartir"};
-  if(miNivel!=null){ const d=miNivel-niv; rec.agres = d>=4?"agresiva" : d<=-4?"conservadora" : "normal"; }
-  const recTxt=`${objetivo!=null?`Carga sobre ${j[objetivo].n}`:"Reparte el juego"} y juega ${rec.agres==="agresiva"?"a degüello":rec.agres==="conservadora"?"a lo seguro":"normal"}.`;
+  const rec={agres:"normal", diana:objetivo!=null?"debil":"repartir", red:"normal", clutch:"normal"};
+  const d=miNivel!=null?miNivel-niv:0;
+  if(miNivel!=null) rec.agres = d>=4?"agresiva" : d<=-4?"conservadora" : "normal";
+  // red: si defienden mal el globo o son flojos arriba, súbete; si son temibles
+  // en la red, aguanta y no te expongas
+  if(pa("globo")<=niv-5 || redAtq<=niv-4) rec.red="subir";
+  else if(redAtq>=niv+5) rec.red="aguantar";
+  // puntos calientes: de favorito, administra; de menos, arriesga para robar
+  rec.clutch = d>=5?"conservar" : d<=-3?"arriesgar" : "normal";
+  const redTxt=rec.red==="subir"?", súbete a la red":rec.red==="aguantar"?", aguanta atrás y globéales":"";
+  const recTxt=`${objetivo!=null?`Carga sobre ${j[objetivo].n}`:"Reparte el juego"} y juega ${rec.agres==="agresiva"?"a degüello":rec.agres==="conservadora"?"a lo seguro":"normal"}${redTxt}.`;
   return {niv, med, deb:deb.slice(0,4), fue:fue.slice(0,2), objetivo, rec, recTxt};
 }
 // Lesiones con gravedad (grav 1 leve … 3 grave). Las graves tiran más semanas
