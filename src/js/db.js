@@ -120,6 +120,30 @@ function dbSqlCargarMundo(){
   try{ const snap=dbSqlLeerSnapshot(SQLDB); return snap.parejas.length?denormalizar(snap):null; }catch(e){ return null; }
 }
 
+/* ---------- guardia de consistencia (Fase 4c) ----------
+   Comprueba, por round-trip, que el snapshot que quedó en las tablas coincide
+   con el estado vivo ya normalizado: mismos recuentos y las mismas claves
+   primarias (pid/jid). Es la salvaguarda que debe pasar antes de fiarse de las
+   tablas como autoridad; si el modelo (normalizar/denormalizar) perdiera algo,
+   aquí se nota. Pura (recibe el handle de BD) para probarla con sql.js real. */
+function dbSqlSnapshotCoincide(db, snap){
+  db=db||SQLDB; if(!db) return {ok:false,msg:"sin base"};
+  try{
+    const back=dbSqlLeerSnapshot(db), s=snap||{};
+    const nb={p:back.parejas.length,j:back.jugadores.length,a:back.atributos.length};
+    const ns={p:(s.parejas||[]).length,j:(s.jugadores||[]).length,a:(s.atributos||[]).length};
+    if(nb.p!==ns.p||nb.j!==ns.j||nb.a!==ns.a)
+      return {ok:false,msg:`recuentos: tablas ${nb.p}/${nb.j}/${nb.a} vs vivo ${ns.p}/${ns.j}/${ns.a}`};
+    const set=(arr,k)=>{ const m=new Set(); (arr||[]).forEach(x=>m.add(String(x[k]))); return m; };
+    const mismos=(A,B)=>A.size===B.size&&[...A].every(x=>B.has(x));
+    if(!mismos(set(back.parejas,"pid"),set(s.parejas,"pid"))) return {ok:false,msg:"claves de pareja difieren"};
+    if(!mismos(set(back.jugadores,"jid"),set(s.jugadores,"jid"))) return {ok:false,msg:"claves de jugador difieren"};
+    return {ok:true,n:nb.p};
+  }catch(e){ return {ok:false,msg:"error al verificar"}; }
+}
+// Guardia sobre la base viva: ¿las tablas coinciden con el estado `snap`? No lanza.
+function dbSqlVerificarVivo(snap){ return dbSqlSnapshotCoincide(SQLDB, snap); }
+
 /* ---------- consultas de ANALÍTICA (SQL real sobre el modelo normalizado) ----------
    Todas aceptan un handle de BD opcional que cae a la base viva (SQLDB): así la
    interfaz las llama sin argumentos y las pruebas les pasan una BD sql.js real.
@@ -177,5 +201,6 @@ function dbSqlDistribucionNivel(db){
 // En Node (pruebas) exportamos las funciones puras; en el navegador quedan como globales.
 if(typeof module!=="undefined"&&module.exports){
   module.exports={DB_SCHEMA_SQL,dbSqlSchema,dbSqlGuardarSnapshot,dbSqlLeerSnapshot,
-    dbSqlPorEstilo,dbSqlMejoresParejas,dbSqlTopPaises,dbSqlDistribucionNivel};
+    dbSqlPorEstilo,dbSqlMejoresParejas,dbSqlTopPaises,dbSqlDistribucionNivel,
+    dbSqlSnapshotCoincide};
 }

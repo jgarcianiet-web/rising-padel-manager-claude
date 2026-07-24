@@ -51,7 +51,7 @@ function pintarSelectorDif(){
 
 /* Selector de idioma del menú. Preferencia global (localStorage "rpm_idioma")
    que se aplica al instante: al cambiarlo se repinta todo el menú traducido. */
-function setIdioma(id){ if(!idiomaValido(id)) return; try{ localStorage.setItem("rpm_idioma",id); }catch(e){} pintarMenu(); }
+function setIdioma(id){ if(!idiomaValido(id)) return; try{ localStorage.setItem("rpm_idioma",id); }catch(e){} pintarMenu(); if(typeof aplicarI18n==="function") aplicarI18n(); }
 function pintarSelectorIdioma(){
   const cont=document.getElementById("selIdioma"); if(!cont) return;
   const sel=idiomaActual();
@@ -217,6 +217,7 @@ function entrarPartida(){
     if(cl.wildcards===undefined) cl.wildcards=2;
     irA("clubm"); pintarClubM();
   }
+  if(typeof aplicarI18n==="function") aplicarI18n();   // traduce el texto estático de la interfaz
   guardar();
 }
 

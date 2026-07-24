@@ -1022,3 +1022,26 @@ comprueba("Jerarquía: colAttr escala con el valor y diferencia el rango bajo", 
   exige(colAttr(90) === colAttr(85), "valores de la misma banda comparten color");
   return "6 escalones distintos; rango bajo diferenciado";
 });
+
+/* ===================== PERSISTENCIA (Fase 4c) ===================== */
+
+comprueba("Persistencia (4c): sin sql.js, guardar es seguro y no marca migración", () => {
+  const c = nuevaCarrera("agresivo");
+  guardar();
+  exige(c === G.carrera, "la partida debería seguir activa tras guardar");
+  exige(!G._vSql, "no debería marcar _vSql cuando la base SQLite no está disponible");
+  return "guardado seguro sin la base; sin marca de migración";
+});
+
+comprueba("Idiomas: aplicarI18n traduce el texto marcado con data-i18n", () => {
+  try {
+    localStorage.setItem("rpm_idioma", "en");
+    const el = { at: { "data-i18n": "nav_semana" }, getAttribute(k) { return this.at[k]; }, setAttribute() {}, textContent: "Semana" };
+    const elT = { at: { "data-i18n-title": "bar_export_title" }, getAttribute(k) { return this.at[k]; }, _title: "", setAttribute(k, v) { if (k === "title") this._title = v; }, textContent: "" };
+    const root = { querySelectorAll(sel) { return sel.indexOf("title") >= 0 ? [elT] : [el]; } };
+    aplicarI18n(root);
+    exige(el.textContent === "Week", "no tradujo data-i18n: " + el.textContent);
+    exige(elT._title === "Export game", "no tradujo data-i18n-title: " + elT._title);
+  } finally { localStorage.removeItem("rpm_idioma"); }
+  return "data-i18n → contenido; data-i18n-title → tooltip";
+});

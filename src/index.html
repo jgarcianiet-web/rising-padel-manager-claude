@@ -14,10 +14,10 @@
     <div style="display:flex;align-items:center;gap:8px">
       <div class="mini" id="miniBtns" style="display:none">
         <button id="btnSnd" title="Sonido"></button>
-        <button id="btnAyuda" title="Tutorial">?</button>
+        <button id="btnAyuda" title="Tutorial" data-i18n-title="bar_tutorial_title">?</button>
         <button id="btnAnalitica" title="Analítica (base de datos)">🔬</button>
-        <button id="btnExport" title="Exportar partida">⤓ Exportar</button>
-        <button id="btnMenu">Menú</button>
+        <button id="btnExport" title="Exportar partida" data-i18n="bar_exportar" data-i18n-title="bar_export_title">⤓ Exportar</button>
+        <button id="btnMenu" data-i18n="bar_menu">Menú</button>
       </div>
       <div class="ctx" id="topCtx"><b>Rising Games</b></div>
     </div>
@@ -107,19 +107,19 @@
   <!-- ============ HUB CARRERA ============ -->
   <div id="scr-club" class="oculto">
     <div class="tabs">
-      <button id="tabSemana" class="on">Semana</button>
-      <button id="tabEntreno">Entreno</button>
-      <button id="tabStaff">Staff</button>
-      <button id="tabJugador">Jugador</button>
-      <button id="tabRanking">Ranking</button>
-      <button id="tabDiario">Diario</button>
+      <button id="tabSemana" class="on" data-i18n="nav_semana">Semana</button>
+      <button id="tabEntreno" data-i18n="nav_entreno">Entreno</button>
+      <button id="tabStaff" data-i18n="nav_staff">Staff</button>
+      <button id="tabJugador" data-i18n="nav_jugador">Jugador</button>
+      <button id="tabRanking" data-i18n="nav_ranking">Ranking</button>
+      <button id="tabDiario" data-i18n="nav_diario">Diario</button>
     </div>
     <div class="kpis">
-      <div class="kpi"><span class="num" id="kSem">S1</span><span class="lbl">Semana</span></div>
-      <div class="kpi"><span class="num" id="kRank">—</span><span class="lbl">Puesto</span></div>
-      <div class="kpi"><span class="num" id="kPts">0</span><span class="lbl">Puntos</span></div>
-      <div class="kpi"><span class="num" id="kDin">150€</span><span class="lbl">Caja</span></div>
-      <div class="kpi"><span class="num" id="kEne">100</span><span class="lbl">Energía</span></div>
+      <div class="kpi"><span class="num" id="kSem">S1</span><span class="lbl" data-i18n="kpi_semana">Semana</span></div>
+      <div class="kpi"><span class="num" id="kRank">—</span><span class="lbl" data-i18n="kpi_puesto">Puesto</span></div>
+      <div class="kpi"><span class="num" id="kPts">0</span><span class="lbl" data-i18n="kpi_puntos">Puntos</span></div>
+      <div class="kpi"><span class="num" id="kDin">150€</span><span class="lbl" data-i18n="kpi_caja">Caja</span></div>
+      <div class="kpi"><span class="num" id="kEne">100</span><span class="lbl" data-i18n="kpi_energia">Energía</span></div>
     </div>
     <div class="cont">
       <div id="proBanner" class="oculto"><div class="banner-pro">CONTRATO PROFESIONAL · Bienvenido al circuito</div></div>
@@ -186,18 +186,18 @@
   <!-- ============ HUB CLUB ============ -->
   <div id="scr-clubm" class="oculto">
     <div class="tabs">
-      <button id="cmTabSemana" class="on">Semana</button>
-      <button id="cmTabPlantilla">Plantilla</button>
-      <button id="cmTabClub">Club</button>
-      <button id="cmTabRanking">Ranking</button>
-      <button id="cmTabDiario">Diario</button>
+      <button id="cmTabSemana" class="on" data-i18n="nav_semana">Semana</button>
+      <button id="cmTabPlantilla" data-i18n="nav_plantilla">Plantilla</button>
+      <button id="cmTabClub" data-i18n="nav_club">Club</button>
+      <button id="cmTabRanking" data-i18n="nav_ranking">Ranking</button>
+      <button id="cmTabDiario" data-i18n="nav_diario">Diario</button>
     </div>
     <div class="kpis">
-      <div class="kpi"><span class="num" id="cmSem">S1</span><span class="lbl">Semana</span></div>
-      <div class="kpi"><span class="num" id="cmRank">—</span><span class="lbl">Puesto</span></div>
-      <div class="kpi"><span class="num" id="cmPts">0</span><span class="lbl">Puntos</span></div>
-      <div class="kpi"><span class="num" id="cmDin">0€</span><span class="lbl">Caja</span></div>
-      <div class="kpi"><span class="num" id="cmSal">0€</span><span class="lbl">Salarios</span></div>
+      <div class="kpi"><span class="num" id="cmSem">S1</span><span class="lbl" data-i18n="kpi_semana">Semana</span></div>
+      <div class="kpi"><span class="num" id="cmRank">—</span><span class="lbl" data-i18n="kpi_puesto">Puesto</span></div>
+      <div class="kpi"><span class="num" id="cmPts">0</span><span class="lbl" data-i18n="kpi_puntos">Puntos</span></div>
+      <div class="kpi"><span class="num" id="cmDin">0€</span><span class="lbl" data-i18n="kpi_caja">Caja</span></div>
+      <div class="kpi"><span class="num" id="cmSal">0€</span><span class="lbl" data-i18n="kpi_salarios">Salarios</span></div>
     </div>
     <div class="cont">
       <div id="cm-semana">

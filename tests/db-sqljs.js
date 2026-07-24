@@ -97,5 +97,21 @@ module.exports = async function ejecutarPruebasSql() {
   chk(db.dbSqlPorEstilo(vacia).length === 0 && db.dbSqlMejoresParejas(vacia).length === 0,
     "analítica · sin datos las consultas devuelven vacío, no error");
 
+  // ---------- guardia de consistencia (Fase 4c) ----------
+  // `d` tiene el snapshot `snap` (2 parejas, 2 jugadores, 2 atributos)
+  chk(db.dbSqlSnapshotCoincide(d, snap).ok === true,
+    "4c · guardia: las tablas coinciden con el estado vivo");
+  // divergencia por recuento: en lo esperado sobra una pareja
+  const snapMas = { parejas: snap.parejas.concat([{ pid: 9, nombre: "X / Y", sexo: "M", pts: 0, pro: false, edad: 20, club: -1, extras: "{}" }]), jugadores: snap.jugadores, atributos: snap.atributos };
+  chk(db.dbSqlSnapshotCoincide(d, snapMas).ok === false,
+    "4c · guardia: detecta divergencia de recuento", db.dbSqlSnapshotCoincide(d, snapMas).msg);
+  // divergencia por clave: mismo recuento pero un pid cambiado
+  const snapPid = { parejas: [Object.assign({}, snap.parejas[0], { pid: 99 }), snap.parejas[1]], jugadores: snap.jugadores, atributos: snap.atributos };
+  chk(db.dbSqlSnapshotCoincide(d, snapPid).ok === false,
+    "4c · guardia: detecta una clave de pareja cambiada");
+  // sin base: no lanza, informa ok:false
+  chk(db.dbSqlSnapshotCoincide(null, snap).ok === false,
+    "4c · guardia: sin base devuelve ok:false, no error");
+
   return res;
 };
