@@ -391,8 +391,12 @@ function pintarCmPlantilla(){
   alCard.appendChild(q);
   el.appendChild(alCard);
   // fichas de jugadores
+  asegurarPlantillaClub(cl);
   cl.plantilla.forEach((j,idx)=>{
     const d=document.createElement("div");d.className="card";
+    const rolJ=cl.alin.includes(idx)?"A":(cl.alinB&&cl.alinB.includes(idx))?"B":null;
+    const est=estadoJugadorClub(j), moralC=j.moralC==null?70:j.moralC;
+    const ct=j.contrato||{};
     d.innerHTML=`<h3>${j.pais||""} ${j.n} · <em>${mediaAttrs(j.attrs)}</em></h3>
       <div class="meta" style="margin-top:0">
         <div class="chip">${j.edad} años</div>
@@ -401,7 +405,13 @@ function pintarCmPlantilla(){
         <div class="chip">Salario <b>${salarioDe(j)}€</b></div>
         <div class="chip">Energía <b style="color:${colAttr(j.energia)}">${j.energia}</b></div>
         <div class="chip">Confianza <b style="color:${colAttr(j.conf)}">${j.conf}</b></div>
+        <div class="chip">Moral <b style="color:${colAttr(moralC)}">${moralC}</b></div>
+        <div class="chip">Contrato <b>${ct.temporadas||1} temp.</b></div>
+        <div class="chip">Cláusula <b>${(valorClausula(j)).toLocaleString("es")}€</b></div>
+        ${rolJ?`<div class="chip lima">titular ${rolJ}</div>`:""}
       </div>
+      <div class="foot" style="text-align:left;margin-top:6px;color:${est.col<0?"var(--rojo)":est.col>0?"var(--verde)":"var(--gris)"}">${est.clave==="salir"?"🚪":est.clave==="exige"?"😠":est.clave==="dudas"?"🤔":"🙂"} ${est.txt}</div>
+      ${chipRasgos(j)?`<div style="margin-top:4px">${chipRasgos(j)}</div>`:""}
       <div class="attrs" style="margin-top:10px">${attrHtml(j.attrs)}</div>`;
     if(cl.plantilla.length>2&&!cl.alin.includes(idx)&&!(cl.alinB&&cl.alinB.includes(idx))){
       const b=document.createElement("button");b.style.width="100%";b.style.marginTop="10px";
@@ -587,8 +597,16 @@ document.getElementById("cmBtnDescanso").onclick=()=>{
   avisa("Semana de descanso y viajes del equipo.");
   avanzarSemanaClub();
 };
+// Asegura que cada jugador tiene contrato y moral de plantilla (guardados viejos incluidos).
+function asegurarPlantillaClub(cl){
+  (cl.plantilla||[]).forEach(j=>{
+    if(!j.contrato) j.contrato=mkContratoClub(mediaAttrs(j.attrs));
+    if(j.moralC==null) j.moralC=70;
+  });
+}
 function avanzarSemanaClub(){
   const cl=G.clubG;
+  asegurarPlantillaClub(cl);
   const accion=cl._accion||"descanso"; cl._accion=null;
   const factor=accion==="entreno"?1:accion==="torneo"?0.5:0;
   if(factor>0){
@@ -600,12 +618,18 @@ function avanzarSemanaClub(){
   prensaSemanal();
   cl.semana++;
   const regen=10+(cl.reformas.gym?4:0)+(cl.staff.fisico?4:0);
-  cl.plantilla.forEach(j=>{
+  cl.plantilla.forEach((j,idx)=>{
     j.energia=clamp(j.energia+regen,0,100);
     if(cl.reformas.residencia) j.conf=clamp(j.conf+1,15,95);
     if(cl.staff.psico&&j.conf<50) j.conf=clamp(j.conf+2,15,95);
     if(cl.staff.fisio&&j.lesion&&Math.random()<.3){j.lesion.sem--;if(j.lesion.sem<=0){const s=curarLesion(j);avisa(`El fisio adelanta el alta de ${j.n}.`+(s?` (mermado -${s.pct}%, ${s.sem} sem)`:""));}}
     decaeMerma(j);
+    // moral por minutos: el rol (titular A / B / banquillo) sube o quema la moral
+    const rol=cl.alin.includes(idx)?"A":(cl.alinB&&cl.alinB.includes(idx))?"B":"banquillo";
+    const antes=estadoJugadorClub(j).clave;
+    j.moralC=clamp((j.moralC==null?70:j.moralC)+moralMinutosDelta(j,rol),5,95);
+    const est=estadoJugadorClub(j);
+    if(est.clave!==antes&&(est.clave==="exige"||est.clave==="salir")) avisa(`${est.clave==="salir"?"🚪":"😠"} ${j.n}: ${est.txt}`);
   });
   const posC_=miPuesto();
   fansAdd(Math.round((cl.fans||0)*.002)+(posC_<=10?25:posC_<=20?8:1));
@@ -628,6 +652,26 @@ function avanzarSemanaClub(){
     const titsT=cl.palmares.filter(x=>x.includes(`(T${temporada()-1})`)).length;
     cl.hist=(cl.hist||[]); cl.hist.push({t:temporada()-1,pos:posFin,pts:ptsFin,tit:titsT});
     cl.calRes={}; cl.wildcards=2;
+    // contratos: descuenta una temporada y gestiona los que vencen (renovar o irse libre)
+    for(let i=cl.plantilla.length-1;i>=0;i--){
+      const j=cl.plantilla[i]; if(!j.contrato) continue;
+      j.contrato.temporadas--;
+      if(j.contrato.temporadas>0) continue;
+      const oferta=Math.round(mediaAttrs(j.attrs)*8*1.05), r=evaluaRenovacionClub(j,oferta);
+      const esImprescindible=cl.plantilla.length<=2;
+      if(r.acepta||esImprescindible){
+        j.contrato=mkContratoClub(mediaAttrs(j.attrs)); j.contrato.salario=oferta; j.moralC=clamp((j.moralC==null?70:j.moralC)+8,5,95);
+        avisa(`✍ ${j.n} renueva con el ${cl.nombre} (${j.contrato.temporadas} temp.).`);
+      } else {
+        avisa(`🚪 ${j.n} acaba contrato y no renueva (pedía ${r.espera}€/sem): se marcha libre.`);
+        noticia("venta",`${j.n} se marcha libre`,`Fin de contrato en el ${cl.nombre}: no hubo acuerdo de renovación`);
+        if(cl.alin.includes(i)){ cl.alin=[0,1]; }
+        if(cl.alinB){ cl.alinB=cl.alinB.filter(x=>x!==i).map(a=>a>i?a-1:a); if(cl.alinB.length<2)cl.alinB=null; }
+        cl.alin=cl.alin.map(a=>a>i?a-1:a);
+        cl.plantilla.splice(i,1);
+      }
+    }
+    repararAlin();
     // la junta pasa revista
     const J=cl.junta||{objetivo:34,paciencia:2};
     if(posFin<=J.objetivo){
@@ -670,11 +714,14 @@ function avanzarSemanaClub(){
     }
     // ...y vienen a por los tuyos (nunca por tu pareja A)
     if(!cl.ofertaRival&&cl.plantilla.length>2&&Math.random()<.55){
+      // van antes a por los descontentos (los que piden salir), y ofrecen en torno a la cláusula
       const cands=cl.plantilla.map((j,i)=>i).filter(i=>!cl.alin.includes(i));
       if(cands.length){
-        const ji=pick(cands), cr=Math.floor(Math.random()*9);
-        cl.ofertaRival={clubIdx:cr,jugIdx:ji,monto:Math.round(costeFichaje(cl.plantilla[ji])*1.15)};
-        avisa(`📋 El ${CLUBES_NPC[cr].n} ofrece ${cl.ofertaRival.monto}€ por ${cl.plantilla[ji].n}. Decide en Plantilla.`);
+        const descon=cands.filter(i=>estadoJugadorClub(cl.plantilla[i]).clave==="salir");
+        const ji=pick(descon.length?descon:cands), cr=Math.floor(Math.random()*9), jj=cl.plantilla[ji];
+        const quiereIrse=estadoJugadorClub(jj).clave==="salir";
+        cl.ofertaRival={clubIdx:cr,jugIdx:ji,monto:Math.round(valorClausula(jj)*R(quiereIrse?.75:.85,1.1))};
+        avisa(`📋 El ${CLUBES_NPC[cr].n} ofrece ${cl.ofertaRival.monto}€ por ${jj.n} (cláusula ${valorClausula(jj).toLocaleString("es")}€).${quiereIrse?` ${jj.n} quiere salir: presiona por marcharse.`:""} Decide en Plantilla.`);
       }
     }
     avisa(`— Cierre de temporada ${temporada()-1}. El ranking arrastra el 55% y llegan nuevos agentes libres${cl.staff.ojeador?" (el ojeador trae joyas extra)":""}.`);
