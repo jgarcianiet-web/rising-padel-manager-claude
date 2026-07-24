@@ -1056,3 +1056,14 @@ comprueba("Idiomas: aplicarI18n traduce encabezados con formato via data-i18n-ht
   } finally { localStorage.removeItem("rpm_idioma"); }
   return "data-i18n-html → innerHTML con <em>";
 });
+
+comprueba("Idiomas: t() interpola parámetros {campo} y diaNombre traduce", () => {
+  exige(t("Semana {n}", { n: 5 }) === "Semana 5", "no interpola: " + t("Semana {n}", { n: 5 }));
+  exige(diaNombre(0) === t("dia_lunes"), "diaNombre(0) debería ser el lunes");
+  try {
+    localStorage.setItem("rpm_idioma", "en");
+    exige(diaNombre(0) === "Monday" && diaNombre(6) === "Sunday", "días no traducidos: " + diaNombre(0) + "/" + diaNombre(6));
+    exige(t("Week {n}", { n: 3 }) === "Week 3", "interpolación en inglés");
+  } finally { localStorage.removeItem("rpm_idioma"); }
+  return "interpolación {campo} y días de la semana";
+});
