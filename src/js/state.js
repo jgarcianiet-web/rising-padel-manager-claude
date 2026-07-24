@@ -249,6 +249,36 @@ function mkJovenNPC(sx){
   const est=pick(Object.keys(ESTILOS));
   return {n:nombrePorSexo(sx)[0]+". "+pick(APELL),estilo:est,perso:pick(Object.keys(PERSONALIDADES)),attrs:null,conf:55,pais:pickPais(),sexo:sx,_est:est};
 }
+// ---------- IA de clubes: personalidad de mercado ----------
+// Cada club tiene una forma de moverse en el mercado, derivada de su filosofía:
+//   rico → ficha estrellas · cantera → forma jóvenes · vendedor → traspasa · conservador → estable
+const _MERCADO_POR_FIL={cantera:"cantera",ataque:"rico",humilde:"vendedor"};
+function mercadoDeClub(ci){ const cl=CLUBES_NPC[ci]; return (cl&&(cl.mercado||_MERCADO_POR_FIL[cl.fil]))||"conservador"; }
+// Cada club hace un movimiento por temporada según su personalidad.
+function accionesDeClub(w,noticias){
+  const dueños=ci=>w.parejas.filter(p=>p.club===ci&&!p.retiraT);
+  for(let ci=0;ci<CLUBES_NPC.length;ci++){
+    const cl=CLUBES_NPC[ci]; if(!cl) continue;
+    const mercado=mercadoDeClub(ci);
+    if(mercado==="conservador") continue;
+    if(Math.random()<.45) continue;                 // no todos mueven cada temporada
+    const mios=dueños(ci);
+    if(mercado==="rico"){
+      // ficha una estrella emergente (no consagrada) de otro club
+      const obj=w.parejas.filter(p=>p.club!==ci&&!p.retiraT&&!p.pro&&nivelPareja(p)>=66).sort((a,b)=>nivelPareja(b)-nivelPareja(a))[0];
+      if(obj){ obj.club=ci; obj.pts=Math.round((obj.pts||0)*1.15+200); noticias.push(`💰 ${cl.n} da un golpe de efecto y ficha a ${obj.nombre}.`); }
+    } else if(mercado==="cantera"){
+      // hace crecer a su joven promesa
+      const joven=mios.filter(p=>p.edad<=23).sort((a,b)=>b.pts-a.pts)[0]||mios.slice().sort((a,b)=>a.edad-b.edad)[0];
+      if(joven){ joven.jug.forEach(j=>{ if(j.attrs){ const k=pick(ATTR_KEYS); j.attrs[k]=clamp(j.attrs[k]+3,25,96); } }); joven.pts=Math.round((joven.pts||0)*1.1+120); noticias.push(`🌱 La cantera del ${cl.n} da un salto: crece ${joven.nombre}.`); }
+    } else if(mercado==="vendedor"){
+      // no puede retener a su mejor pareja: la traspasa a un club rico
+      const estrella=mios.slice().sort((a,b)=>nivelPareja(b)-nivelPareja(a))[0];
+      const ricos=[]; for(let d=0;d<CLUBES_NPC.length;d++){ if(d!==ci&&mercadoDeClub(d)==="rico") ricos.push(d); }
+      if(estrella&&ricos.length){ const dest=pick(ricos); estrella.club=dest; noticias.push(`📉 ${cl.n} no puede retener a ${estrella.nombre}: se marcha a ${CLUBES_NPC[dest].n}.`); }
+    }
+  }
+}
 function evolucionaMundo(){
   const w=G.world;
   if(!w.nextId){ w.nextId=100; w.parejas.forEach(p=>{ if(p.id>=w.nextId) w.nextId=p.id+1; }); }
@@ -326,7 +356,9 @@ function evolucionaMundo(){
     noticias.push(perla?`🚀 Debuta ${p.nombre}, la pareja joven de la que todos hablan (${nivel}).`:`🚀 Debut en el circuito: ${p.nombre}.`);
     if(perla) noticia("debut",`Debuta ${p.nombre}`,`La pareja joven de la que todos hablan (nivel ${nivel})`);
   }
-  noticias.slice(0,7).reverse().forEach(n=>avisa(n));
+  // 6) movimientos de club según su personalidad (fichan, forman cantera, venden)
+  accionesDeClub(w,noticias);
+  noticias.slice(0,8).reverse().forEach(n=>avisa(n));
 }
 function nombreEntidad(){
   const e=ent();
