@@ -192,6 +192,32 @@ comprueba("SQLite Fase 4a: la comparación mundo↔BD detecta identidad y discre
   return "identidad y discrepancias detectadas (" + igual.n + " parejas)";
 });
 
+comprueba("Marcador: star point (ventajas y punto de oro tras dos ventajas)", () => {
+  stats = [mkStats(), mkStats()];
+  match = { p: [3, 3], j: [0, 0], s: [0, 0], hist: [], server: 0, fin: false, ventaja: null, ventajasFallidas: 0, golden: false };
+  // 40-40: gana 0 → ventaja de 0 (no juego)
+  let r = resolverPunto(0);
+  exige(r.juego === undefined && match.ventaja === 0, "40-40 debería dar ventaja, no juego");
+  // gana 1 → vuelve a deuce, 1 ventaja sin concretar
+  resolverPunto(1);
+  exige(match.ventaja === null && match.ventajasFallidas === 1 && !match.golden, "romper la ventaja debe volver a deuce (fallida 1)");
+  // deuce: gana 1 → ventaja de 1
+  resolverPunto(1);
+  exige(match.ventaja === 1, "debería dar ventaja al equipo 1");
+  // gana 0 → deuce, 2 ventajas sin concretar → star point
+  resolverPunto(0);
+  exige(match.golden === true, "tras dos ventajas sin concretar debe activarse el star point");
+  // star point: gana 0 → juego para 0
+  r = resolverPunto(0);
+  exige(r.juego === 0 && match.j[0] === 1, "el star point debe decidir el juego");
+  exige(!match.golden && match.ventaja === null && match.ventajasFallidas === 0, "ganar el juego debe resetear el estado de ventajas");
+  // caso normal: 40 con el rival por debajo cierra el juego sin ventajas
+  match.p = [3, 1]; match.golden = false; match.ventaja = null; match.ventajasFallidas = 0;
+  r = resolverPunto(0);
+  exige(r.juego === 0, "40-30 ganado debe cerrar el juego directamente");
+  return "ventajas + star point correctos";
+});
+
 comprueba("Analítica: sin la app de escritorio muestra un aviso claro", () => {
   abrirAnalitica();
   const cuerpo = document.getElementById("analiticaCuerpo");

@@ -72,15 +72,18 @@ function draw(){
   const court=cx.createLinearGradient(0,p0.y,0,p1.y);
   court.addColorStop(0,"#20597F");court.addColorStop(.5,"#173F60");court.addColorStop(1,"#20597F");
   cx.fillStyle=court;cx.fillRect(p0.x,p0.y,cw,chh);
-  // focos del estadio: cuatro charcos de luz proyectados sobre la pista
+  // iluminación de estadio: 4 mástiles a cada lado (8 focos), como una pista real
+  const yMast=[.15,.38,.62,.85];
+  // charcos de luz proyectados sobre la pista desde ambos lados largos
   cx.save();
   cx.beginPath();cx.rect(p0.x,p0.y,cw,chh);cx.clip();
   cx.globalCompositeOperation="lighter";
-  [[W*.27,L*.74],[W*.73,L*.74],[W*.27,L*.26],[W*.73,L*.26]].forEach(([lx,ly])=>{
-    const c=px(lx,ly),r=SC*4.6;
-    const lg=cx.createRadialGradient(c.x,c.y,2,c.x,c.y,r);
-    lg.addColorStop(0,"rgba(222,236,255,.17)");lg.addColorStop(.6,"rgba(210,228,255,.06)");lg.addColorStop(1,"rgba(210,228,255,0)");
-    cx.fillStyle=lg;cx.beginPath();cx.arc(c.x,c.y,r,0,7);cx.fill();
+  yMast.forEach(fy=>{
+    [px(2,L*fy),px(W-2,L*fy)].forEach(c=>{
+      const r=SC*3.8, lg=cx.createRadialGradient(c.x,c.y,2,c.x,c.y,r);
+      lg.addColorStop(0,"rgba(222,236,255,.15)");lg.addColorStop(.6,"rgba(210,228,255,.05)");lg.addColorStop(1,"rgba(210,228,255,0)");
+      cx.fillStyle=lg;cx.beginPath();cx.arc(c.x,c.y,r,0,7);cx.fill();
+    });
   });
   cx.restore();
   // áreas de saque, sombreadas suavemente para que se lea la estructura
@@ -97,12 +100,17 @@ function draw(){
   cx.strokeStyle="#070A0F";cx.lineWidth=5;cx.beginPath();cx.moveTo(a.x-7,a.y);cx.lineTo(b.x+7,b.y);cx.stroke();
   cx.strokeStyle="rgba(233,243,251,.5)";cx.lineWidth=1;cx.beginPath();cx.moveTo(a.x-7,a.y-2);cx.lineTo(b.x+7,b.y-2);cx.stroke();
   cx.fillStyle="#070A0F";[a.x-7,b.x+7].forEach(xx=>cx.fillRect(xx-1.5,a.y-5,3,10));
-  // proyectores en lo alto (dos focos que iluminan la pista)
-  cx.save();
-  cx.shadowColor="rgba(232,242,255,.9)";cx.shadowBlur=13;
-  cx.fillStyle="#EAF2FF";
-  [p0.x+cw*.28,p0.x+cw*.72].forEach(fx=>cx.fillRect(fx-10,p0.y-15,20,4));
-  cx.restore();
+  // mástiles con sus focos a ambos lados largos, fuera del cristal (4 por lado)
+  yMast.forEach(fy=>{
+    const yy=px(0,L*fy).y;
+    [p0.x-9,p1.x+9].forEach(x=>{
+      cx.save();
+      cx.shadowColor="rgba(232,242,255,.95)";cx.shadowBlur=11;
+      cx.fillStyle="#EAF2FF";
+      cx.beginPath();cx.ellipse(x,yy,3,4.6,0,0,7);cx.fill();
+      cx.restore();
+    });
+  });
   players.forEach(p=>{
     const q=px(p.x,p.y);
     cx.fillStyle="rgba(0,0,0,.42)";cx.beginPath();cx.ellipse(q.x,q.y+4,9,4,0,0,7);cx.fill();
