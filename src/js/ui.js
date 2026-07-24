@@ -25,13 +25,14 @@ function infoSlot(modo){
 function pintarMenu(){
   const sc=infoSlot("carrera"), scl=infoSlot("club");
   const bC=document.getElementById("btnCarrera"), bCl=document.getElementById("btnClub");
-  bC.textContent = sc?`🎾 Carrera de jugador ·  continuar o nueva` : "🎾 Carrera de jugador";
-  bCl.textContent = scl?`🏟 Modo club ·  continuar o nueva` : "🏟 Modo club";
-  document.getElementById("menuInfo").textContent = (sc||scl)
-    ? "Tienes partida guardada: al entrar podrás continuarla o empezar una nueva."
-    : "El guardado es automático. Puedes exportar/importar tu partida como copia de seguridad.";
+  const btnSl=document.getElementById("btnSuperliga");
+  bC.textContent  = t("btn_carrera")+(sc?t("menu_continuar"):"");
+  bCl.textContent = t("btn_club")+(scl?t("menu_continuar"):"");
+  if(btnSl) btnSl.textContent = t("btn_superliga");
+  document.getElementById("menuInfo").textContent = (sc||scl) ? t("menu_info_partida") : t("menu_info_guardado");
   document.getElementById("topCtx").innerHTML="<b>Rising Games</b>";
   pintarSelectorDif();
+  pintarSelectorIdioma();
 }
 
 /* Selector de dificultad del menú. La elección se guarda como preferencia
@@ -43,9 +44,22 @@ function pintarSelectorDif(){
   const sel=difMenu();
   const chips=Object.keys(PERFILES_DIF).map(id=>{
     const p=PERFILES_DIF[id], on=id===sel;
-    return `<button type="button" class="difchip${on?" on":""}" onclick="setDif('${id}')" aria-pressed="${on}">${p.emoji} ${p.n}</button>`;
+    return `<button type="button" class="difchip${on?" on":""}" onclick="setDif('${id}')" aria-pressed="${on}">${p.emoji} ${difNombre(id)}</button>`;
   }).join("");
-  cont.innerHTML=`<div class="diflabel">Dificultad</div><div class="difrow">${chips}</div><div class="difdesc">${perfilDif(sel).desc}</div>`;
+  cont.innerHTML=`<div class="diflabel">${t("dif_label")}</div><div class="difrow">${chips}</div><div class="difdesc">${difDesc(sel)}</div>`;
+}
+
+/* Selector de idioma del menú. Preferencia global (localStorage "rpm_idioma")
+   que se aplica al instante: al cambiarlo se repinta todo el menú traducido. */
+function setIdioma(id){ if(!idiomaValido(id)) return; try{ localStorage.setItem("rpm_idioma",id); }catch(e){} pintarMenu(); }
+function pintarSelectorIdioma(){
+  const cont=document.getElementById("selIdioma"); if(!cont) return;
+  const sel=idiomaActual();
+  const chips=IDIOMAS.map(l=>{
+    const on=l.id===sel;
+    return `<button type="button" class="difchip${on?" on":""}" onclick="setIdioma('${l.id}')" aria-pressed="${on}" title="${l.n}">${l.bandera} ${l.n}</button>`;
+  }).join("");
+  cont.innerHTML=`<div class="diflabel">${t("idioma_label")}</div><div class="difrow difrow-wrap">${chips}</div>`;
 }
 // modal de elección: continuar guardada o empezar nueva
 function quitarEl(el){

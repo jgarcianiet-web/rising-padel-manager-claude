@@ -25,11 +25,12 @@ const SEMANAS_TEMP=52;
 
    Estas funciones son PURAS o deterministas dado el estado, y se prueban sin
    navegador. La dificultad elegida vive en G.dif (se guarda con la partida) y,
-   como preferencia por defecto del menú, en localStorage "rpm_dif". */
+   como preferencia por defecto del menú, en localStorage "rpm_dif". Los nombres
+   y descripciones visibles viven en i18n (difNombre/difDesc), no aquí. */
 const PERFILES_DIF={
-  accesible:{id:"accesible",n:"Accesible",emoji:"🌤",desc:"Economía holgada, menos lesiones y una junta paciente. Para disfrutar del recorrido.",lesion:0.6,economia:1.35,junta:2},
-  manager:  {id:"manager",  n:"Mánager",  emoji:"🎯",desc:"El equilibrio previsto: cada decisión pesa lo justo.",lesion:1.0,economia:1.0,junta:0},
-  experto:  {id:"experto",  n:"Experto",  emoji:"🔥",desc:"Menos margen económico, más riesgo de lesión y una junta exigente. Sin red.",lesion:1.45,economia:0.72,junta:-2},
+  accesible:{id:"accesible",emoji:"🌤",lesion:0.6, economia:1.35,junta:2},
+  manager:  {id:"manager",  emoji:"🎯",lesion:1.0, economia:1.0, junta:0},
+  experto:  {id:"experto",  emoji:"🔥",lesion:1.45,economia:0.72,junta:-2},
 };
 const DIF_DEF="manager";
 // Mapea un id a su perfil (pura). Ante un id desconocido, devuelve el perfil por defecto.

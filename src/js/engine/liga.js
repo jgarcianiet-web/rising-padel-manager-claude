@@ -243,7 +243,7 @@ function _pintarEquipoSL(sl){
   const ladoT=l=>(typeof ladoTxt==="function")?ladoTxt(l):(l===1?"revés":"drive");
   const cls=clasificacionLiga(sl), tuIdx=sl.equipos.findIndex(e=>e.tuyo), pos=cls.findIndex(f=>f.i===tuIdx)+1;
   const objOk=pos>0&&pos<=(sl.objetivo||8);
-  let html=`<div class="meta" style="margin:0 0 8px"><div class="chip">Fuerza <b style="color:var(--lima)">${tu.fuerza}</b></div><div class="chip">Caja <b style="color:${(sl.caja||0)<0?"var(--rojo)":"var(--lima)"}">${(sl.caja||0).toLocaleString("es")}€</b></div><div class="chip">Junta: <b style="color:${objOk?"var(--verde)":"var(--rojo)"}">top ${sl.objetivo||8}</b> ${pos>0?`(vas ${pos}º)`:""}</div><div class="chip" title="${dif().desc}">${dif().emoji} <b>${dif().n}</b></div></div>
+  let html=`<div class="meta" style="margin:0 0 8px"><div class="chip">Fuerza <b style="color:var(--lima)">${tu.fuerza}</b></div><div class="chip">Caja <b style="color:${(sl.caja||0)<0?"var(--rojo)":"var(--lima)"}">${(sl.caja||0).toLocaleString("es")}€</b></div><div class="chip">Junta: <b style="color:${objOk?"var(--verde)":"var(--rojo)"}">top ${sl.objetivo||8}</b> ${pos>0?`(vas ${pos}º)`:""}</div><div class="chip" title="${difDesc(difId())}">${dif().emoji} <b>${difNombre(difId())}</b></div></div>
   <div class="foot" style="text-align:left;margin-bottom:6px">Alinea tus 3 parejas: la química de lados (drive+revés) suma.</div>`;
   sl.alin.forEach((par,pi)=>{
     html+=`<div class="opcion" style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:11px">Pareja ${pi+1}</b><span class="pill lima">fuerza ${fuerzaParejaSL(sl.plantilla,par)}</span></div>`;

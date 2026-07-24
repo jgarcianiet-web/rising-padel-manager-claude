@@ -375,7 +375,7 @@ function pintarObjetivos(){
   const box=document.getElementById("objTemp"); if(!box) return;
   const c=G.carrera; if(!c) return;
   if(!c.objetivos) c.objetivos=mkObjetivosTemporada(c,miPuesto());
-  box.innerHTML=`<div class="foot" style="text-align:left;margin:-2px 0 8px" title="${dif().desc}">Dificultad: <b style="color:var(--lima)">${dif().emoji} ${dif().n}</b></div>`+c.objetivos.map(o=>{
+  box.innerHTML=`<div class="foot" style="text-align:left;margin:-2px 0 8px" title="${difDesc(difId())}">${t("dif_label")}: <b style="color:var(--lima)">${dif().emoji} ${difNombre(difId())}</b></div>`+c.objetivos.map(o=>{
     const pr=progresoObjetivo(c,o,miPuesto());
     const rec=o.rec?[o.rec.dinero?`+${o.rec.dinero}€`:"",o.rec.fans?`+${o.rec.fans} seg.`:"",o.rec.moral?`+${o.rec.moral} moral`:""].filter(Boolean).join(" · "):"";
     return `<div class="opcion" style="margin-bottom:6px">

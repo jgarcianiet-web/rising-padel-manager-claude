@@ -159,19 +159,6 @@ document.getElementById("btnExport").onclick=()=>{
   a.download=`rpm-${G.modo}.json`;
   a.click();
 };
-document.getElementById("btnImport").onclick=()=>document.getElementById("fileImport").click();
-document.getElementById("fileImport").onchange=(e)=>{
-  const f=e.target.files[0]; if(!f) return;
-  const rd=new FileReader();
-  rd.onload=()=>{
-    try{
-      const data=JSON.parse(rd.result);
-      if(!data||!data.modo) throw new Error("formato");
-      G=data; guardar(); entrarPartida();
-    }catch(err){ alert("No se pudo leer la partida."); }
-  };
-  rd.readAsText(f);
-};
 document.getElementById("btnMenu").onclick=()=>{ guardar(); G=null; irA("menu"); pintarMenu(); };
 function pintaSnd(){ document.getElementById("btnSnd").textContent=SND?"🔊":"🔇"; }
 document.getElementById("btnSnd").onclick=()=>{ SND=!SND; try{localStorage.setItem("rpm_snd",SND?"1":"0");}catch(e){} if(!SND) musicaOff(); else if(match&&match.ver) musicaOn(); pintaSnd(); };

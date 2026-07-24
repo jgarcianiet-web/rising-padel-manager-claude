@@ -725,7 +725,8 @@ comprueba("Dificultad: tres perfiles bien formados y fallback seguro", () => {
     const p = PERFILES_DIF[id];
     exige(p && p.id === id, "falta el perfil " + id);
     exige(typeof p.lesion === "number" && typeof p.economia === "number" && typeof p.junta === "number", "perfil " + id + " sin multiplicadores");
-    exige(p.n && p.emoji && p.desc, "perfil " + id + " sin textos de UI");
+    exige(p.emoji, "perfil " + id + " sin emoji");
+    exige(difNombre(id) && difDesc(id), "perfil " + id + " sin textos i18n");
   });
   exige(perfilDif("no-existe") === PERFILES_DIF[DIF_DEF], "un id desconocido no cae al perfil por defecto");
   return DIF_DEF + " por defecto; 3 perfiles";
@@ -815,4 +816,58 @@ comprueba("Dificultad: el selector del menú marca y persiste la elección", () 
     exige(localStorage.getItem("rpm_dif") === "experto", "un id inválido no debería cambiar la preferencia");
   } finally { localStorage.removeItem("rpm_dif"); }
   return "chip activo y persistencia correctos";
+});
+
+/* ===================== IDIOMAS (i18n) ===================== */
+
+comprueba("Idiomas: los cinco están disponibles con nombre y bandera", () => {
+  const ids = IDIOMAS.map(l => l.id).sort().join(",");
+  exige(ids === "de,en,es,fr,it", "faltan idiomas: " + ids);
+  IDIOMAS.forEach(l => exige(l.n && l.bandera, "idioma " + l.id + " sin nombre o bandera"));
+  return "fr/en/es/de/it";
+});
+
+comprueba("Idiomas: cada idioma traduce todas las claves de la portada", () => {
+  const claves = Object.keys(I18N[IDIOMA_DEF]);
+  IDIOMAS.forEach(l => {
+    claves.forEach(k => exige(I18N[l.id] && I18N[l.id][k] != null && I18N[l.id][k] !== "", `${l.id} sin traducir "${k}"`));
+  });
+  return claves.length + " claves × 5 idiomas";
+});
+
+comprueba("Idiomas: t() traduce y cae con red de seguridad", () => {
+  try {
+    localStorage.setItem("rpm_idioma", "en");
+    exige(idiomaActual() === "en", "no toma el idioma guardado");
+    exige(t("dif_label") === "Difficulty", "no traduce al inglés");
+    exige(t("clave-que-no-existe") === "clave-que-no-existe", "una clave desconocida debería devolverse tal cual");
+    localStorage.setItem("rpm_idioma", "zz-inventado");
+    exige(idiomaActual() === IDIOMA_DEF, "un idioma inválido debería caer al por defecto");
+    exige(t("dif_label") === "Dificultad", "sin idioma válido debería usar español");
+  } finally { localStorage.removeItem("rpm_idioma"); }
+  return "traduce, fallback de idioma y de clave";
+});
+
+comprueba("Idiomas: los nombres de dificultad cambian con el idioma", () => {
+  try {
+    localStorage.setItem("rpm_idioma", "it");
+    const it = difNombre("experto");
+    localStorage.setItem("rpm_idioma", "es");
+    const es = difNombre("experto");
+    exige(it === "Esperto" && es === "Experto", `traducción de dificultad incorrecta: ${it} / ${es}`);
+  } finally { localStorage.removeItem("rpm_idioma"); }
+  return "Esperto (it) · Experto (es)";
+});
+
+comprueba("Idiomas: el selector aplica el idioma y repinta el menú traducido", () => {
+  try {
+    setIdioma("fr");
+    exige(localStorage.getItem("rpm_idioma") === "fr", "setIdioma no persiste");
+    const cont = document.getElementById("selIdioma");
+    exige(cont.innerHTML.indexOf('aria-pressed="true"') >= 0, "ningún idioma queda marcado");
+    exige(document.getElementById("btnSuperliga").textContent.indexOf("Superligue") >= 0, "el menú no se repinta en francés");
+    setIdioma("bla");
+    exige(localStorage.getItem("rpm_idioma") === "fr", "un idioma inválido no debería cambiar la preferencia");
+  } finally { localStorage.removeItem("rpm_idioma"); }
+  return "menú en francés y selector marcado";
 });
