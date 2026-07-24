@@ -7,6 +7,8 @@ pintarLogos();
 if(typeof hidratarDesdeDB==="function"){
   hidratarDesdeDB().then(r=>{ if(r&&!G) pintarMenu(); }).catch(()=>{});
 }
+// Inicializa el motor SQLite del frontend (sql.js, Ruta B), si está disponible.
+if(typeof dbSqlInit==="function"){ dbSqlInit().catch(()=>{}); }
 (function(){
   const spl=document.getElementById("splash");
   const est=document.getElementById("splEstudio"), jue=document.getElementById("splJuego"), bar=document.getElementById("splBar");

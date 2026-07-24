@@ -192,7 +192,8 @@ function guardar(){
   const ok=lsSet(SLOTS[G.modo],json);
   dbGuardar(G.modo,json);   // espejo en SQLite (no bloquea; no-op fuera de Tauri)
   dbProyectar(G.modo);      // proyecciones relacionales de solo lectura (Fase 1)
-  dbSnapshot(G.modo);       // snapshot del modelo normalizado (Fase 3)
+  dbSnapshot(G.modo);       // snapshot del modelo normalizado (Fase 3, rusqlite)
+  if(typeof dbSqlSnapshotVivo==="function") dbSqlSnapshotVivo();  // write-through a sql.js (Ruta B)
   const st=G.modo==="carrera"?G.carrera.semana:G.clubG.semana;
   document.getElementById("footSave").textContent=ok
     ? `RISING GAMES · v3.0 — ${G.modo} guardada ✓ (semana ${st})`
