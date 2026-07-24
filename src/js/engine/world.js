@@ -310,6 +310,84 @@ function evaluaObjetivos(c,puesto){
   return logr;
 }
 
+/* ================================================================
+   DILEMAS ENCADENADOS: decisiones cuyas consecuencias no son inmediatas, sino
+   que llegan semanas después. Una elección de hoy reaparece más tarde: rodar el
+   anuncio da dinero ahora pero te deja cansado para el Major de la semana que viene.
+================================================================ */
+const DILEMAS=[
+  { id:"dubai",
+    cond:c=>!!c.sponsor && (c.energia==null?100:c.energia)>40,
+    titulo:c=>`${c.sponsor.marca} te quiere en un rodaje`,
+    texto:c=>`${c.sponsor.marca} te ofrece rodar un anuncio en Dubái esta semana. Dinero y foco mediático… pero un viaje relámpago que te deja tocado justo cuando aprieta el calendario.`,
+    ops:[
+      {txt:"Rodar el anuncio",desc:"Cobras y ganas seguidores; llegarás cansado.",
+       inm:{dinero:c=>Math.max(300,(c.sponsor?c.sponsor.sem*2:300)),fans:400},
+       dif:{en:1,txt:"La resaca del viaje relámpago a Dubái pasa factura: llegas con la energía por los suelos.",ef:{energia:-24}}},
+      {txt:"Rechazar y entrenar",desc:"Proteges tu preparación; el patrocinador se enfría.",
+       inm:{fans:-60},
+       dif:{en:2,txt:c=>`${c.sponsor?c.sponsor.marca:"El patrocinador"} no olvidó el plantón y recorta su implicación.`,ef:{dinero:c=>-(c.sponsor?Math.round(c.sponsor.sem*0.6):0)}}}]},
+  { id:"molestia",
+    cond:c=>(c.energia==null?100:c.energia)<55 && !c.lesion,
+    titulo:c=>"Molestia en el gemelo",
+    texto:c=>"Notas un pinchazo en el gemelo. El médico duda: puedes forzar y competir, o parar una semana y asegurarte.",
+    ops:[
+      {txt:"Forzar y competir",desc:"No pierdes la semana, pero arriesgas una lesión mayor.",
+       inm:{},
+       dif:{en:1,txt:"Forzaste con la molestia: el gemelo termina pasando factura.",ef:{fragil:2,energia:-8}}},
+      {txt:"Parar y tratarte",desc:"Descansas esta semana; te aseguras.",
+       inm:{energia:18,moral:-4},dif:null}]},
+  { id:"exhibicion",
+    cond:c=>!!c.pro,
+    titulo:c=>"Invitación a una exhibición",
+    texto:c=>"Te invitan a una exhibición de estrellas en una gala. Buen escaparate… pero otra semana de desgaste.",
+    ops:[
+      {txt:"Aceptar la exhibición",desc:"Seguidores y caché; algo de desgaste.",
+       inm:{fans:300,dinero:200},
+       dif:{en:1,txt:"La exhibición y sus viajes dejan mella.",ef:{energia:-12}}},
+      {txt:"Declinar",desc:"Sigues con tu plan, sin distracciones.",inm:{},dif:null}]},
+];
+function _efVal(v,c){ return typeof v==="function"?v(c):v; }
+function _aplicaEf(c,e){
+  if(!e) return;
+  if(e.dinero!=null) c.dinero=(c.dinero||0)+_efVal(e.dinero,c);
+  if(e.fans!=null) c.fans=Math.max(0,(c.fans||0)+_efVal(e.fans,c));
+  if(e.energia!=null) c.energia=clamp((c.energia==null?100:c.energia)+_efVal(e.energia,c),0,100);
+  if(e.moral!=null) c.compiMoral=clamp((c.compiMoral==null?65:c.compiMoral)+_efVal(e.moral,c),5,95);
+  if(e.fragil!=null) c.fragil=Math.max(0,(c.fragil||0)+_efVal(e.fragil,c));
+}
+function dilemasDisponibles(c){ return DILEMAS.filter(d=>{ try{ return d.cond(c); }catch(e){ return false; } }); }
+function _dilemaPorId(id){ return DILEMAS.find(d=>d.id===id); }
+// Elige un dilema disponible y lo activa (sin resolver). Devuelve el dilema o null.
+function eligeDilema(c,semana,rnd){
+  if(c.dilemaActivo) return null;
+  const disp=dilemasDisponibles(c); if(!disp.length) return null;
+  const d=disp[Math.floor((rnd||Math.random)()*disp.length)];
+  c.dilemaActivo={id:d.id,sem:semana};
+  return d;
+}
+// Aplica la opción elegida: efecto inmediato ahora y encola la consecuencia diferida.
+function aplicarOpcionDilema(c,opIdx,semana){
+  const d=_dilemaPorId(c.dilemaActivo&&c.dilemaActivo.id); c.dilemaActivo=null;
+  if(!d) return null;
+  const op=d.ops[opIdx]; if(!op) return null;
+  _aplicaEf(c,op.inm);
+  let pend=null;
+  if(op.dif){
+    pend={sem:semana+(op.dif.en||1),txt:_efVal(op.dif.txt,c),ef:{}};
+    const e=op.dif.ef||{}; ["dinero","fans","energia","moral","fragil"].forEach(k=>{ if(e[k]!=null) pend.ef[k]=_efVal(e[k],c); });
+    (c.pendientes=c.pendientes||[]).push(pend);
+  }
+  return {op,pend};
+}
+// Resuelve (aplica y retira) las consecuencias cuya semana ya ha llegado. Devuelve las resueltas.
+function resolverPendientes(c,semana){
+  const out=[],keep=[];
+  (c.pendientes||[]).forEach(p=>{ if(p.sem<=semana){ _aplicaEf(c,p.ef); out.push(p); } else keep.push(p); });
+  c.pendientes=keep;
+  return out;
+}
+
 // Aplica la opción elegida (muta c.compiMoral). Devuelve {rompio, txt}.
 function aplicarOpcionRuptura(c,id,motivo){
   if(id==="dejar") return {rompio:true,txt:"Rotura confirmada: cada uno busca su camino."};
