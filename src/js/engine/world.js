@@ -84,9 +84,12 @@ const RASGOS={
   hierro:{n:"Físico de hierro",desc:"No se rompe ni a tiros.",bueno:1},
   talento:{n:"Talento precoz",desc:"Aprende a una velocidad rara.",bueno:1},
   vago:{n:"Entrena mal, compite bien",desc:"Un desastre entrenando; un jugador el domingo.",bueno:0},
+  leal:{n:"Leal",desc:"Aguanta contigo en las malas.",bueno:1},
+  ambicioso:{n:"Ambicioso",desc:"Quiere ganar ya, y lo exige.",bueno:0},
+  conflictivo:{n:"Conflictivo",desc:"El vestuario le queda pequeño.",bueno:-1},
 };
 const _RASGO_IDS=Object.keys(RASGOS);
-const _RASGO_INC={clutch:"fragil",fragil:"clutch",propenso:"hierro",hierro:"propenso",talento:"vago",vago:"talento"};
+const _RASGO_INC={clutch:"fragil",fragil:"clutch",propenso:"hierro",hierro:"propenso",talento:"vago",vago:"talento",leal:"conflictivo",conflictivo:"leal"};
 function _rngStr(s){ let h=Math.abs(hashStr(s||"?"))||1; return ()=>{ h=(h*1103515245+12345)&0x7fffffff; return h/0x7fffffff; }; }
 function _generaRasgos(nom,j){
   const rnd=_rngStr("rasgo:"+nom);
@@ -94,9 +97,10 @@ function _generaRasgos(nom,j){
   const est=j&&j.estilo, per=j&&j.perso, bias={};
   if(est==="rematador"||est==="agresivo"){ bias.pegador=3; bias.escenario=1.5; }
   if(est==="defensivo"||est==="constructor") bias.muro=3;
-  if(per==="valiente") bias.clutch=2.5;
-  if(per==="emocional") bias.fragil=2.5;
-  if(per==="frio") bias.clutch=1.6;
+  if(per==="valiente"){ bias.clutch=2.5; bias.ambicioso=1.8; }
+  if(per==="emocional"){ bias.fragil=2.5; bias.conflictivo=1.6; }
+  if(per==="frio"){ bias.clutch=1.6; bias.leal=1.6; }
+  if(per==="conservador") bias.leal=1.8;
   const out=[], pool=_RASGO_IDS.slice();
   let guard=0;
   while(out.length<n && guard++<20){
@@ -134,6 +138,72 @@ function rasgosMatch(j,shotKey,ctx){
 function rasgosLesionAjuste(j){ const rg=rasgosDe(j); return (rg.indexOf("propenso")>=0?2:0)-(rg.indexOf("hierro")>=0?2:0); }
 // Multiplicador de ganancia de entrenamiento por rasgos.
 function rasgosEntreno(j){ const rg=rasgosDe(j); return rg.indexOf("talento")>=0?1.4:(rg.indexOf("vago")>=0?0.6:1); }
+
+/* ================================================================
+   RELACIONES: la pareja no es solo química, es un vínculo con causas. La
+   afinidad (compatibilidad de juego + carácter) marca cuánto aguanta la moral,
+   y cuando se resquebraja hay un motivo concreto y alternativas para salvarla.
+================================================================ */
+function _perfilEstilo(est){ return (est==="agresivo"||est==="rematador")?"ataque":(est==="defensivo"||est==="constructor")?"defensa":"mixto"; }
+// Afinidad 5..95 entre dos jugadores: estilos que se complementan, lados
+// (drive+revés ideal) y carácter (leal suma, conflictivo resta, dos ambiciosos chocan).
+function afinidadPareja(a,b){
+  if(!a||!b) return 55;
+  let af=58;
+  const pa=_perfilEstilo(a.estilo), pb=_perfilEstilo(b.estilo);
+  if((pa==="ataque"&&pb==="defensa")||(pa==="defensa"&&pb==="ataque")) af+=12;   // se complementan
+  else if(pa==="ataque"&&pb==="ataque") af-=8;                                    // dos gallos en el corral
+  else if(pa==="defensa"&&pb==="defensa") af-=3;
+  if(a.lado!==undefined&&b.lado!==undefined) af += (a.lado!==b.lado)?8:-10;        // drive+revés vs pisarse
+  const ra=rasgosDe(a), rb=rasgosDe(b);
+  if(ra.indexOf("conflictivo")>=0) af-=12; if(rb.indexOf("conflictivo")>=0) af-=12;
+  if(ra.indexOf("leal")>=0) af+=8; if(rb.indexOf("leal")>=0) af+=8;
+  if(ra.indexOf("ambicioso")>=0&&rb.indexOf("ambicioso")>=0) af-=6;
+  return clamp(Math.round(af),5,95);
+}
+// Un jugador de carrera (c) visto como objeto de afinidad.
+function _comoJugador(c){ return {estilo:c.estilo,perso:c.perso,lado:c.lado,rasgos:c.rasgos,n:c.nombre}; }
+// Motivo concreto del descontento del compañero (carrera). puesto = ranking actual.
+function motivoDescontento(c,puesto){
+  const compi=c.compi||{}, rc=rasgosDe(compi), racha=c.racha||[];
+  const derr=racha.slice(-5).filter(x=>x==="D").length, jugados=Math.min(5,racha.length);
+  if(derr>=3) return {clave:"resultados",txt:`No traga tantas derrotas: ${derr} de los últimos ${jugados} partidos.`,grave:derr>=4};
+  if(rc.indexOf("ambicioso")>=0 && (puesto||99)>25) return {clave:"ambicion",txt:`Es ambicioso y os ve estancados (nº ${puesto}): quiere pelear por cosas más grandes.`,grave:(puesto||99)>40};
+  const af=afinidadPareja(_comoJugador(c),compi);
+  if(rc.indexOf("conflictivo")>=0||af<45) return {clave:"encaje",txt:`Vuestro juego y vuestro carácter no terminan de encajar (afinidad ${af}).`,grave:af<35};
+  return {clave:"desgaste",txt:"Ha perdido la ilusión; necesita un cambio de aires.",grave:false};
+}
+// Probabilidad (0..1) de que una opción de reconducción funcione, según el compañero.
+function probReconduccion(c,id,motivo){
+  const rc=rasgosDe(c.compi||{}), leal=rc.indexOf("leal")>=0, amb=rc.indexOf("ambicioso")>=0, conf=rc.indexOf("conflictivo")>=0;
+  let p = leal?.85 : conf?.35 : .6;
+  if(id==="promesa"&&amb) p+=.2;                       // al ambicioso le va la promesa de gloria
+  if(id==="lado"&&motivo&&motivo.clave==="encaje") p+=.12;
+  if(id==="foco"&&motivo&&motivo.clave==="resultados") p+=.12;
+  if(motivo&&motivo.grave) p-=.15;
+  return Math.max(.08,Math.min(.95,p));
+}
+// Evalúa si hay crisis de pareja (moral baja) y, si la hay, el motivo y las
+// alternativas para reconducirla. Puro: la UI lo usa para pintar el evento.
+function evaluarRuptura(c,puesto){
+  if((c.compiMoral??65)>=35) return {crisis:false};
+  const motivo=motivoDescontento(c,puesto);
+  const ops=[{id:"hablar",txt:"Charla sincera",desc:"Le escuchas y limpiáis el ambiente."}];
+  if(motivo.clave==="ambicion") ops.push({id:"promesa",txt:"Prometer un gran torneo",desc:"Te comprometes a ir a por un Premier."});
+  if(motivo.clave==="encaje") ops.push({id:"lado",txt:"Reajustar la pista",desc:"Le cedes el lado y las posiciones que pide."});
+  if(motivo.clave==="resultados") ops.push({id:"foco",txt:"Plan para la racha",desc:"Prometes cambios y curro para revertirla."});
+  ops.push({id:"dejar",txt:"Aceptar la ruptura",desc:"Cada uno por su lado."});
+  return {crisis:true,motivo,ops};
+}
+// Aplica la opción elegida (muta c.compiMoral). Devuelve {rompio, txt}.
+function aplicarOpcionRuptura(c,id,motivo){
+  if(id==="dejar") return {rompio:true,txt:"Rotura confirmada: cada uno busca su camino."};
+  const leal=tieneRasgo(c.compi||{},"leal");
+  const ok=Math.random()<probReconduccion(c,id,motivo);
+  if(ok){ c.compiMoral=clamp((c.compiMoral??65)+(leal?32:24),5,95); return {rompio:false,txt:"Funciona: la moral remonta y sigue a tu lado."}; }
+  c.compiMoral=clamp((c.compiMoral??65)+6,5,95);
+  return {rompio:(c.compiMoral??65)<35,txt:"No termina de calar: tendrás que demostrarlo en la pista."};
+}
 
 // Informe de ojeo del rival: lee sus atributos, estilo y personalidad y produce
 // lecturas CONCRETAS (debilidades y fortalezas) más una táctica recomendada, para

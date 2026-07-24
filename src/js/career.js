@@ -341,8 +341,37 @@ function empezarCarrera(estiloKey){
   };
 });
 
+// Se rompe la pareja: el compañero se va y Chino/China vuelve al rescate.
+function rompeConCompi(c){
+  const ex=c.compi.n;
+  const protRup={jug:[{n:c.nombre,sexo:c.sexo,_ropa:"#C6F53C"},{n:ex,sexo:c.sexo}]};
+  c.compi={...compiInicial(c.sexo||"M"),attrs:mkAttrsNivel(CHINO.nivel,CHINO.estilo)};
+  c.quimica=CHINO.quim;c.compiMoral=70;c.compiPlan="auto";c._crisisPareja=null;
+  noticia("ruptura",`${ex} rompe la pareja`,`"Necesito un cambio de aires". ${c.sexo==="F"?"China":"Chino"} vuelve al rescate`,protRup);
+  avisa(`💥 ${ex} rompe la pareja. ${c.sexo==="F"?"China":"Chino"} vuelve a echarte el cable de siempre.`);
+}
+// Evento de ruptura VISIBLE: el compañero expone su motivo y tú eliges cómo
+// reconducirlo (o dejarlo ir). Sustituye a la vieja ruptura por umbral en seco.
+function mostrarRuptura(c){
+  const ev=c._crisisPareja; if(!ev||!ev.crisis){ c._crisisPareja=null; return; }
+  const ov=document.getElementById("ruptModal")||(()=>{const d=document.createElement("div");d.id="ruptModal";d.style.cssText="position:fixed;inset:0;background:rgba(10,13,19,.93);z-index:82;display:flex;align-items:center;justify-content:center;padding:16px";document.body.appendChild(d);return d;})();
+  const botones=ev.ops.map(o=>`<button class="${o.id==="dejar"?"":"pri"}" style="width:100%;text-align:left;margin-top:7px;line-height:1.35" data-op="${o.id}"><b>${o.txt}</b><div style="font-size:11px;color:${o.id==="dejar"?"var(--gris)":"rgba(0,0,0,.7)"};font-weight:400;margin-top:2px">${o.desc}</div></button>`).join("");
+  ov.innerHTML=`<div class="card" style="max-width:440px;width:100%">
+    <h3 style="margin-top:0">💔 ${c.compi.n} quiere hablar</h3>
+    <div style="font-size:12.5px;color:var(--gris);line-height:1.5;margin-bottom:4px">${ev.motivo.txt}</div>
+    <div class="foot" style="text-align:left;margin-bottom:6px">Moral de la pareja: ${c.compiMoral}. ¿Cómo lo gestionas?</div>
+    ${botones}</div>`;
+  ov.querySelectorAll("button[data-op]").forEach(b=>b.onclick=()=>{
+    const res=aplicarOpcionRuptura(c,b.getAttribute("data-op"),ev.motivo);
+    quitarEl(ov);
+    if(res.rompio){ rompeConCompi(c); }
+    else { c._crisisPareja=null; avisa("🤝 "+res.txt); }
+    guardar(); pintarCarrera();
+  });
+}
 function pintarCarrera(){
   const c=G.carrera;
+  if(c._crisisPareja&&typeof document!=="undefined"&&document.body&&!document.getElementById("ruptModal")) setTimeout(()=>mostrarRuptura(c),350);
   document.getElementById("topCtx").innerHTML=`<b>Temporada ${temporada()}</b> · S${semanaTemp()}/${SEMANAS_TEMP} · ${c.sexo==="F"?"circuito fem.":"circuito masc."}<br>${c.nombre}, ${c.edad} años · 🎟×${c.wildcards||0} · forma ${rachaHtml(c.racha)}`;
   const nOf=(c.ofertasPatro||[]).length;
   document.getElementById("tabJugador").innerHTML=`Jugador${nOf?` <span style="color:var(--lima)">●</span>`:""}`;
@@ -591,11 +620,13 @@ function pintarJugador(){
   document.getElementById("attrs").innerHTML=attrHtml(c.attrs);
   document.getElementById("compName").textContent=`${c.compi.pais||""} ${c.compi.n}`;
   const moral=c.compiMoral??65;
+  const afin=afinidadPareja(_comoJugador(c),c.compi);
   document.getElementById("compMeta").innerHTML=`
     <div class="chip">Media <b>${mediaAttrs(c.compi.attrs)}</b></div>
     <div class="chip">${ESTILOS[c.compi.estilo].nombre}</div>
     <div class="chip">${PERSONALIDADES[c.compi.perso].n}</div>
     <div class="chip">Moral <b style="color:${colAttr(moral)}">${moral}</b></div>
+    <div class="chip">Afinidad <b style="color:${colAttr(afin)}">${afin}</b></div>
     ${(()=>{const r=chipRasgos(c.compi);return r?`<div style="width:100%;margin-top:3px">${r}</div>`:"";})()}`;
   const mk=document.getElementById("mercado");mk.innerHTML="";
   const morAviso=document.createElement("div");
@@ -1090,7 +1121,15 @@ function avanzarSemanaCarrera(){
   const vida=40+(c.pro?180:0)+(miPuesto()<=15?180:0);
   c.dinero-=Math.min(vida,Math.max(0,c.dinero));  // no puedes gastar lo que no tienes: vives al día
   c.dinero-=Object.keys(c.staff||{}).reduce((s2,k)=>s2+((c.staff[k]&&c.staff[k].sal)||0),0);
-  if(!(c.staff&&c.staff.psico)) c.compiMoral=clamp((c.compiMoral??65)-1,5,95);
+  if(!(c.staff&&c.staff.psico)){
+    // la moral se desgasta sola según la afinidad de la pareja: si os entendéis,
+    // aguanta; si no, se erosiona. El leal aguanta más; el ambicioso mal clasificado, menos.
+    const af=afinidadPareja(_comoJugador(c),c.compi);
+    let d=af>=65?0:af>=50?1:2;
+    if(tieneRasgo(c.compi,"leal")) d=Math.max(0,d-1);
+    if(tieneRasgo(c.compi,"ambicioso")&&miPuesto()>20) d+=1;
+    if(d) c.compiMoral=clamp((c.compiMoral??65)-d,5,95);
+  }
   if(c.staff&&c.staff.psico&&c.conf<35+staffNiv("psico")*2) c.conf=35+staffNiv("psico")*2;
   if(c.compiMoral===29&&!c._avisoMoral){
     c._avisoMoral=true;
@@ -1155,20 +1194,19 @@ function cierreTemporadaCarrera(){
   if(c.ofertasPatro.length) avisa(`📋 ${c.ofertasPatro.length} oferta(s) de patrocinio sobre la mesa. Elige en la pestaña Jugador.`);
   // la marca a veces te quiere delante de una cámara
 
-  // moral del compañero: ¿sigue contigo?
+  // moral del compañero: ¿sigue contigo? Si la relación está rota, no salta un
+  // umbral en seco: se abre una CRISIS con un motivo concreto y alternativas para
+  // reconducirla (se resuelve con un evento al volver al panel de carrera).
   const moral=c.compiMoral??65;
-  if(moral<35&&Math.random()<.65){
-    const ex=c.compi.n;
-    const protRup={jug:[{n:c.nombre,sexo:c.sexo,_ropa:"#C6F53C"},{n:ex,sexo:c.sexo}]};
-    c.compi={...compiInicial(c.sexo||"M"),attrs:mkAttrsNivel(CHINO.nivel,CHINO.estilo)};
-    c.quimica=CHINO.quim;c.compiMoral=70;c.compiPlan="auto";
-    noticia("ruptura",`${ex} te deja`,`"Necesito un cambio de aires". Chino vuelve al rescate`,protRup);
-    avisa(`💥 ${ex} te deja: "necesito un cambio de aires". Chino vuelve a echarte el cable de siempre.`);
+  const evPar=evaluarRuptura(c,miPuesto());
+  if(evPar.crisis&&Math.random()<.85){
+    c._crisisPareja=evPar;
+    avisa(`💔 Tensión con ${c.compi.n} al cierre de temporada: quiere hablar. (Resuélvelo en el panel de carrera.)`);
   } else if(moral<50){
     avisa(`📰 ${c.compi.n} renueva contigo, pero con dudas. Los resultados mandan.`);
     c.compiMoral=clamp(moral+10,5,95);
   } else {
-    c.compiMoral=clamp(moral+5,5,95);
+    c.compiMoral=clamp(moral+(tieneRasgo(c.compi,"leal")?7:5),5,95);
   }
   c._avisoMoral=false;
   c.mercadoP=mkMercadoParejas();
