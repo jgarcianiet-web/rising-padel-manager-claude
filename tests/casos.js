@@ -233,6 +233,28 @@ comprueba("Analítica: sin la base lista muestra un aviso claro", () => {
   return "aviso de reserva correcto sin sql.js";
 });
 
+comprueba("IA de clubes: personalidad de mercado y movimientos de temporada", () => {
+  nuevaCarrera("agresivo");
+  // el mercado de cada club se deriva de su filosofía
+  exige(mercadoDeClub(3) === "cantera", "no se detecta un club de cantera");
+  exige(mercadoDeClub(1) === "rico", "no se detecta un club rico");
+  exige(mercadoDeClub(5) === "vendedor", "no se detecta un club vendedor");
+  exige(mercadoDeClub(0) === "conservador", "no se detecta un club conservador");
+  // a lo largo de varias temporadas, los clubes mueven el mercado
+  const w = G.world;
+  const noticias = [];
+  for (let t = 0; t < 40; t++) accionesDeClub(w, noticias);
+  exige(noticias.length > 0, "los clubes no hacen ningún movimiento en 40 intentos");
+  // invariantes: los clubes siguen siendo válidos y los atributos, en rango
+  let mal = 0;
+  w.parejas.forEach(p => {
+    if (p.club < 0 || p.club >= CLUBES_NPC.length) mal++;
+    (p.jug || []).forEach(j => ATTR_KEYS.forEach(k => { if (j.attrs && (j.attrs[k] < 25 || j.attrs[k] > 96)) mal++; }));
+  });
+  exige(mal === 0, mal + " incoherencias tras los movimientos de club");
+  return noticias.length + " movimientos de club en 40 temporadas simuladas";
+});
+
 comprueba("Club: fundar y competir", () => {
   const cl = fundarClub();
   exige(cl.plantilla.length === 2, "la plantilla no se creó");
