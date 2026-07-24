@@ -51,7 +51,9 @@ function almacenFalso() {
 function codigoDelJuego() {
   const dir = path.join(__dirname, "..", "src");
   const html = fs.readFileSync(path.join(dir, "index.html"), "utf8");
-  const orden = [...html.matchAll(/<script\s+src="([^"]+)"\s*><\/script>/g)].map((m) => m[1]);
+  const orden = [...html.matchAll(/<script\s+src="([^"]+)"\s*><\/script>/g)]
+    .map((m) => m[1])
+    .filter((rel) => !/(^|\/)vendor\//.test(rel));   // sql.js y otras libs no son código del juego
   if (!orden.length) {
     throw new Error("No se encontró ningún <script src=\"js/...\"> en src/index.html");
   }
