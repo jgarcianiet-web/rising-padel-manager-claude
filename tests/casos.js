@@ -567,11 +567,15 @@ comprueba("Superliga: economía, objetivo, desarrollo y fichajes", () => {
   const cajaAntes = sl.caja, res = cierreTempSuperliga(sl);
   exige(res.caja === cajaAntes + res.premio - res.sal, "la caja no cuadra con premios y salarios");
   exige(typeof res.objetivoCumplido === "boolean" && res.pos >= 1 && res.pos <= 16, "no calcula posición/objetivo");
-  // desarrollo: un joven con techo alto mejora al pasar de temporada
+  // desarrollo: un joven con techo alto mejora al pasar de temporada. Se compara
+  // la SUMA de atributos (no la media redondeada): evolucionaPlantillaSL sube un
+  // atributo en +1/+2, y mirar la media redondeada hacía el test no determinista
+  // (si las subidas caían todas en +1, la media redondeada no cambiaba).
+  const suma = (a) => ATTR_KEYS.reduce((s, k) => s + a[k], 0);
   const joven = { n: "Joven", edad: 20, pot: 90, attrs: at(60), estilo: "constructor", lado: 0 };
-  const nivAntes = mediaAttrs(joven.attrs);
-  let subio = false; for (let i = 0; i < 10 && !subio; i++) { evolucionaPlantillaSL([joven]); if (mediaAttrs(joven.attrs) > nivAntes) subio = true; }
-  exige(subio, "un joven con techo alto debería mejorar con el tiempo");
+  const sumaAntes = suma(joven.attrs);
+  evolucionaPlantillaSL([joven]);   // edad 20→21 (≤24) y muy por debajo del techo: mejora seguro
+  exige(suma(joven.attrs) > sumaAntes, "un joven con techo alto debería mejorar con el tiempo");
   // fichaje: paga con caja y entra en la plantilla; sin caja, no
   sl.caja = 100000; const antesN = sl.plantilla.length;
   const cand = { n: "Fichaje", edad: 24, pot: 80, attrs: at(66), estilo: "agresivo", lado: 1 };
@@ -1005,4 +1009,16 @@ comprueba("Navegación: esClicable detecta la UI interactiva y excluye lo demás
   exige(esClicable({ tagName: "INPUT", parentElement: null }) === false, "un input de texto no debería sonar");
   exige(esClicable({ tagName: "P", parentElement: null }) === false, "un párrafo suelto no debería sonar");
   return "button/a/select/onclick/role/ancestro detectados; texto e input excluidos";
+});
+
+/* ===================== JERARQUÍA VISUAL ===================== */
+
+comprueba("Jerarquía: colAttr escala con el valor y diferencia el rango bajo", () => {
+  const cols = [90, 70, 60, 48, 36, 20].map(colAttr);
+  cols.forEach(c => exige(/^#[0-9A-Fa-f]{6}$/.test(c), "colAttr debería devolver un color hex: " + c));
+  exige(new Set(cols).size === cols.length, "cada escalón debería dar un color distinto: " + cols.join(","));
+  // antes todo lo <55 caía en un único gris; ahora 48 y 36 se distinguen
+  exige(colAttr(48) !== colAttr(36), "48 y 36 deberían distinguirse");
+  exige(colAttr(90) === colAttr(85), "valores de la misma banda comparten color");
+  return "6 escalones distintos; rango bajo diferenciado";
 });

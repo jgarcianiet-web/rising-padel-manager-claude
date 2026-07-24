@@ -138,8 +138,8 @@ canvas{width:100%;display:block}
 .rk tr.yo td{background:rgba(198,245,60,.10);color:var(--lima);font-weight:600}
 .rk tr.sep td{text-align:center;color:var(--gris2);border:none;padding:2px}
 .tagpro{font-size:8.5px;color:var(--oro);letter-spacing:.5px}
-.abar{height:3px;background:#10151E;margin:1px 0 2px}
-.abar i{display:block;height:100%}
+.abar{height:5px;background:#1B222E;border-radius:3px;margin:2px 0 3px;overflow:hidden}
+.abar i{display:block;height:100%;border-radius:3px;transition:width .3s ease}
 .acell{padding-bottom:2px}
 .selbtn{border-color:var(--borde2)}
 .selbtn.on{background:var(--lima);border-color:var(--lima);color:var(--tinta)}

@@ -407,7 +407,18 @@ function avisa(m,tipo){
   if(e){ e.diario.unshift(m); e.diario=e.diario.slice(0,10); }
   mostrarAviso(m,tipo||tipoAviso(m));
 }
-function colAttr(v){return v>=80?"#7CE08A":v>=70?"#B9DB7F":v>=55?"#E6E9F0":"#8B94A7";}
+// Color por valor (0..99) para dar jerarquía de un vistazo. Antes todo lo <55
+// caía en un único gris, así que un jugador joven (todo 30-52) no mostraba
+// ninguna diferencia entre sus atributos; ahora el rango bajo-medio tiene sus
+// propios escalones, de gris apagado (flojo) a verde (élite).
+function colAttr(v){
+  return v>=80?"#7CE08A"   // élite
+       : v>=68?"#B9DB7F"   // bueno
+       : v>=56?"#E6E9F0"   // correcto
+       : v>=44?"#B9C0CE"   // discreto
+       : v>=32?"#8B94A7"   // flojo
+       :       "#6C7488";  // muy flojo
+}
 function loserIdx(f){return f>=2?(6-f):5;}
 function calHtml(){
   const st=semanaTemp(), res=ent().calRes||{};
