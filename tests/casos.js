@@ -871,3 +871,97 @@ comprueba("Idiomas: el selector aplica el idioma y repinta el menú traducido", 
   } finally { localStorage.removeItem("rpm_idioma"); }
   return "menú en francés y selector marcado";
 });
+
+/* ===================== BALANCE (semillas reproducibles) =====================
+   Estas pruebas simulan temporadas enteras de Superliga con un RNG sembrado
+   (sustituyendo Math.random) para que el resultado sea 100% reproducible. Sirven
+   de red contra desequilibrios: que la economía no se descontrole, que las
+   palancas de dificultad ordenen como se espera y que el objetivo de la junta no
+   sea ni trivial ni imposible en la dificultad estándar. */
+
+// mulberry32: misma semilla → misma secuencia.
+function rngSemilla(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Simula `temporadas` de Superliga con una dificultad y semilla dadas. Devuelve
+// métricas de balance. Determinista: no depende de Math.random del entorno.
+function simulaSuperliga(dificultad, seed, temporadas) {
+  const gPrev = G, randPrev = Math.random;
+  try {
+    G = { dif: dificultad };
+    Math.random = rngSemilla(seed);
+    const tuyo = { n: "Test SC", color: "#C6F53C", fuerza: 62 };
+    let sl = mkSuperliga(tuyo.n, tuyo.fuerza, tuyo.color);
+    sl.plantilla = mkPlantillaSuperliga();
+    sl.alin = [[0, 1], [2, 3], [4, 5]];
+    sincronizaClubSL(sl);
+    let cumplidos = 0, titulos = 0, res = { caja: sl.caja };
+    for (let temp = 0; temp < temporadas; temp++) {
+      let g = 0;
+      while (sl.fase === "liga" && g++ < 200) jugarJornadaLiga(sl);
+      g = 0;
+      while (sl.fase === "playoff" && g++ < 40) jugarPlayoff(sl);
+      res = cierreTempSuperliga(sl);
+      if (res.objetivoCumplido) cumplidos++;
+      if (res.campeon) titulos++;
+      // encadena la temporada siguiente igual que nuevaTempSuperliga, sin DOM
+      const nueva = mkSuperliga(tuyo.n, tuyo.fuerza, tuyo.color);
+      nueva.temporada = (sl.temporada || 1) + 1;
+      nueva.plantilla = sl.plantilla; nueva.alin = sl.alin;
+      nueva.caja = sl.caja; nueva.objetivo = sl.objetivo;
+      sincronizaClubSL(nueva);
+      sl = nueva;
+    }
+    return { caja: res.caja, cumplidos, titulos, objetivo: sl.objetivo, temporadas };
+  } finally { Math.random = randPrev; G = gPrev; }
+}
+
+comprueba("Balance: la simulación es reproducible con la misma semilla", () => {
+  const a = simulaSuperliga("manager", 12345, 5);
+  const b = simulaSuperliga("manager", 12345, 5);
+  exige(a.caja === b.caja && a.cumplidos === b.cumplidos && a.titulos === b.titulos, "la misma semilla da resultados distintos");
+  const c = simulaSuperliga("manager", 67890, 5);
+  exige(c.caja !== a.caja || c.cumplidos !== a.cumplidos, "dos semillas distintas dan lo mismo (RNG sospechoso)");
+  return `semilla 12345 → caja ${a.caja}€, ${a.cumplidos}/5 objetivos`;
+});
+
+comprueba("Balance: la economía ordena accesible > mánager > experto (misma semilla)", () => {
+  const seeds = [1, 7, 42, 100, 2024];
+  seeds.forEach(s => {
+    const a = simulaSuperliga("accesible", s, 4).caja;
+    const m = simulaSuperliga("manager", s, 4).caja;
+    const x = simulaSuperliga("experto", s, 4).caja;
+    exige(a > m && m > x, `semilla ${s}: la caja no ordena por dificultad (${a}/${m}/${x})`);
+  });
+  return seeds.length + " semillas: accesible > mánager > experto";
+});
+
+comprueba("Balance: el objetivo de la junta ordena y no es degenerado", () => {
+  const seeds = [1, 7, 42, 100, 2024, 555, 808, 9001];
+  const temps = 4, total = seeds.length * temps;
+  let A = 0, M = 0, X = 0;
+  seeds.forEach(s => {
+    A += simulaSuperliga("accesible", s, temps).cumplidos;
+    M += simulaSuperliga("manager", s, temps).cumplidos;
+    X += simulaSuperliga("experto", s, temps).cumplidos;
+  });
+  exige(A >= M && M >= X, `los objetivos no ordenan por dificultad: ${A}/${M}/${X}`);
+  exige(M > 0 && M < total, `en mánager el objetivo es degenerado (trivial o imposible): ${M}/${total}`);
+  return `objetivos cumplidos de ${total}: A${A} ≥ M${M} ≥ X${X}`;
+});
+
+comprueba("Balance: la caja no se descontrola en dificultad estándar", () => {
+  const seeds = [1, 7, 42, 100, 2024, 555, 808, 9001];
+  seeds.forEach(s => {
+    const r = simulaSuperliga("manager", s, 6);
+    exige(r.caja > -500000 && r.caja < 3000000, `semilla ${s}: caja fuera de un rango sano tras 6 temporadas (${r.caja}€)`);
+  });
+  return "6 temporadas × " + seeds.length + " semillas dentro de rango";
+});
