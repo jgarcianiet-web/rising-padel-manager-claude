@@ -58,6 +58,53 @@ function reasignaPareja(alin,jug,destino){
   alin[destino][0]=jug; alin[oi][op]=otro;
   return alin;
 }
+// --- economía, desarrollo y mercado (recorrido largo) ---
+// Premio por posición final de liga (16º→4k, 1º→34k).
+function premioSuperliga(pos){ return Math.round(4000+(16-clamp(pos||16,1,16))*2000); }
+// Bonus de playoff para tu club según hasta dónde llegó.
+function bonusPlayoffSL(sl,tuIdx){
+  const p=sl.playoff; if(!p) return 0;
+  if(p.campeon===tuIdx) return 30000;
+  if(p.final&&p.final.indexOf(tuIdx)>=0) return 12000;
+  if(p.semis&&p.semis.some(s=>s.indexOf(tuIdx)>=0)) return 6000;
+  return 0;
+}
+// Salarios de la plantilla por temporada.
+function salariosSuperliga(plantilla){ return (plantilla||[]).reduce((s,j)=>s+Math.round(mediaAttrs(j.attrs)*100),0); }
+// Desarrollo de la plantilla entre temporadas: los jóvenes crecen hacia su techo,
+// los veteranos declinan; todos cumplen un año. Devuelve un resumen de cambios.
+function evolucionaPlantillaSL(plantilla,rnd){
+  const r=rnd||Math.random, cambios=[];
+  (plantilla||[]).forEach(j=>{
+    j.edad=(j.edad||24)+1;
+    const niv=mediaAttrs(j.attrs), pot=j.pot||niv;
+    if(j.edad<=24 && niv<pot){ const k=pick(ATTR_KEYS); j.attrs[k]=clamp(j.attrs[k]+(r()<.5?2:1),20,96); cambios.push(j.n+" ↑"); }
+    else if(j.edad>=32){ const k=pick(ATTR_KEYS); j.attrs[k]=clamp(j.attrs[k]-1,20,96); cambios.push(j.n+" ↓"); }
+  });
+  return cambios;
+}
+// Cierre de temporada de tu club: posición final, premios, salarios, objetivo de
+// la junta y desarrollo de la plantilla. Muta sl.caja y sl.plantilla; devuelve el resumen.
+function cierreTempSuperliga(sl){
+  const tu=sl.equipos.findIndex(e=>e.tuyo);
+  const cls=clasificacionLiga(sl), pos=cls.findIndex(f=>f.i===tu)+1;
+  const premio=premioSuperliga(pos)+bonusPlayoffSL(sl,tu), sal=salariosSuperliga(sl.plantilla);
+  sl.caja=(sl.caja||0)+premio-sal;
+  const evo=evolucionaPlantillaSL(sl.plantilla);
+  return {pos,premio,sal,caja:sl.caja,objetivoCumplido:pos<=(sl.objetivo||8),campeon:!!(sl.playoff&&sl.playoff.campeon===tu),evo};
+}
+// Mercado de fichajes: agentes libres para reforzar tu plantilla.
+function mkMercadoSL(){ const a=[]; for(let i=0;i<4;i++) a.push(mkAgente(54,74,"M")); return a; }
+function costeFichajeSL(j){ return Math.round(mediaAttrs(j.attrs)*mediaAttrs(j.attrs)*4); }
+// Ficha un candidato (paga con caja). reemplazoIdx opcional para sustituir a un jugador.
+function ficharSL(sl,cand,reemplazoIdx){
+  const coste=costeFichajeSL(cand);
+  if((sl.caja||0)<coste) return {ok:false,txt:"Caja insuficiente."};
+  if(sl.plantilla.length>=8 && (reemplazoIdx==null||reemplazoIdx<0)) return {ok:false,txt:"Plantilla llena (máx 8)."};
+  sl.caja-=coste;
+  if(reemplazoIdx!=null&&reemplazoIdx>=0) sl.plantilla[reemplazoIdx]=cand; else sl.plantilla.push(cand);
+  return {ok:true,txt:`Fichado ${cand.n} por ${coste.toLocaleString("es")}€.`};
+}
 // Calendario round-robin a doble vuelta para n equipos (n par). Array de jornadas; cada jornada, pares [local,visitante].
 function mkCalendarioLiga(n){
   const m=n, mitad=m/2, jornadas=[]; let arr=[...Array(m).keys()];
@@ -73,7 +120,8 @@ function mkSuperliga(tuNombre,tuFuerza,tuColor){
   const npc=CLUBES_NPC.slice(0,15).map(c=>({n:c.n,color:c.color,fuerza:fuerzaClubNPC(c.n),tuyo:false}));
   const equipos=[{n:tuNombre||"Rising SC",color:tuColor||"#C6F53C",fuerza:tuFuerza||62,tuyo:true}].concat(npc);
   return {equipos,calendario:mkCalendarioLiga(equipos.length),jornada:0,
-    tabla:equipos.map(()=>({pts:0,pj:0,pg:0,pp:0,gf:0,gc:0})),fase:"liga",playoff:null,ultima:null,temporada:1};
+    tabla:equipos.map(()=>({pts:0,pj:0,pg:0,pp:0,gf:0,gc:0})),fase:"liga",playoff:null,ultima:null,temporada:1,
+    caja:40000,objetivo:8,mercado:null};
 }
 // Juega la jornada actual (todos los cruces), actualiza la tabla y avanza. Devuelve los resultados.
 function jugarJornadaLiga(sl,rnd){
@@ -134,6 +182,7 @@ function crearSuperliga(){
   const sl=mkSuperliga(nom,62,"#C6F53C");
   sl.plantilla=mkPlantillaSuperliga();
   sl.alin=[[0,1],[2,3],[4,5]];
+  sl.mercado=mkMercadoSL();
   sincronizaClubSL(sl);
   G={modo:"superliga",superliga:sl};
   entrarSuperliga();
@@ -156,6 +205,7 @@ function _slFilaTabla(sl,fila,pos){
 function pintarSuperliga(){
   const sl=G&&G.superliga; if(!sl) return;
   if(!sl.plantilla){ sl.plantilla=mkPlantillaSuperliga(); sl.alin=[[0,1],[2,3],[4,5]]; sincronizaClubSL(sl); }   // guardados anteriores
+  if(sl.caja==null) sl.caja=40000; if(!sl.objetivo) sl.objetivo=8; if(!sl.mercado) sl.mercado=mkMercadoSL();
   document.getElementById("topCtx").innerHTML=`<b>Superliga</b> · Temporada ${sl.temporada} · ${sl.equipos.length} clubes`;
   _pintarEquipoSL(sl);
   const cls=clasificacionLiga(sl);
@@ -191,7 +241,10 @@ function _pintarEquipoSL(sl){
   const slEq=document.getElementById("slEquipo"); if(!slEq||!sl.plantilla||!sl.alin) return;
   const tu=sl.equipos.find(e=>e.tuyo)||{fuerza:0};
   const ladoT=l=>(typeof ladoTxt==="function")?ladoTxt(l):(l===1?"revés":"drive");
-  let html=`<div class="foot" style="text-align:left;margin-bottom:6px">Fuerza del club: <b style="color:var(--lima)">${tu.fuerza}</b> · alinea tus 3 parejas: deciden tus cruces.</div>`;
+  const cls=clasificacionLiga(sl), tuIdx=sl.equipos.findIndex(e=>e.tuyo), pos=cls.findIndex(f=>f.i===tuIdx)+1;
+  const objOk=pos>0&&pos<=(sl.objetivo||8);
+  let html=`<div class="meta" style="margin:0 0 8px"><div class="chip">Fuerza <b style="color:var(--lima)">${tu.fuerza}</b></div><div class="chip">Caja <b style="color:${(sl.caja||0)<0?"var(--rojo)":"var(--lima)"}">${(sl.caja||0).toLocaleString("es")}€</b></div><div class="chip">Junta: <b style="color:${objOk?"var(--verde)":"var(--rojo)"}">top ${sl.objetivo||8}</b> ${pos>0?`(vas ${pos}º)`:""}</div></div>
+  <div class="foot" style="text-align:left;margin-bottom:6px">Alinea tus 3 parejas: la química de lados (drive+revés) suma.</div>`;
   sl.alin.forEach((par,pi)=>{
     html+=`<div class="opcion" style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:11px">Pareja ${pi+1}</b><span class="pill lima">fuerza ${fuerzaParejaSL(sl.plantilla,par)}</span></div>`;
     par.forEach(ji=>{ const j=sl.plantilla[ji];
@@ -201,7 +254,32 @@ function _pintarEquipoSL(sl){
     });
     html+=`</div>`;
   });
+  // mercado de fichajes
+  if(sl.mercado&&sl.mercado.length){
+    html+=`<div class="bclabel" style="margin-top:6px">Mercado de fichajes${sl.plantilla.length>=8?" · plantilla llena (sustituye)":""}</div>`;
+    sl.mercado.forEach((cand,ci)=>{
+      const coste=costeFichajeSL(cand), puede=(sl.caja||0)>=coste;
+      html+=`<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:2px 0">
+        <span>${cand.n} <span style="color:var(--gris)">· ${mediaAttrs(cand.attrs)} · ${ladoT(cand.lado)}</span></span>
+        <button class="selbtn" style="font-size:9px;padding:2px 7px" ${puede?"":"disabled"} onclick="ficharSLui(${ci})">${puede?`Fichar ${coste.toLocaleString("es")}€`:"Caja insuficiente"}</button></div>`;
+    });
+  }
   slEq.innerHTML=html;
+}
+// Ficha un candidato del mercado desde la UI (sustituye al jugador más flojo si la plantilla está llena).
+function ficharSLui(ci){
+  const sl=G&&G.superliga; if(!sl||!sl.mercado) return;
+  const cand=sl.mercado[ci]; if(!cand) return;
+  let reemplazo=null;
+  if(sl.plantilla.length>=8){
+    const enAlin=new Set(sl.alin.flat());
+    let peor=-1,peorNiv=999; sl.plantilla.forEach((j,i)=>{ if(!enAlin.has(i)&&mediaAttrs(j.attrs)<peorNiv){ peorNiv=mediaAttrs(j.attrs); peor=i; } });
+    if(peor<0){ avisa("✗ Plantilla llena y todos alineados: no hay a quién sustituir."); return; }
+    reemplazo=peor;
+  }
+  const r=ficharSL(sl,cand,reemplazo);
+  if(r.ok){ sl.mercado.splice(ci,1); sincronizaClubSL(sl); avisa("✍ "+r.txt); } else avisa("✗ "+r.txt);
+  guardar(); pintarSuperliga();
 }
 function accionSuperliga(){
   const sl=G&&G.superliga; if(!sl) return;
@@ -212,10 +290,13 @@ function accionSuperliga(){
 function nuevaTempSuperliga(){
   const sl=G&&G.superliga; if(!sl) return;
   const tuyo=sl.equipos.find(e=>e.tuyo)||{n:"Rising SC",color:"#C6F53C",fuerza:62};
+  const res=cierreTempSuperliga(sl);   // premios, salarios, objetivo y desarrollo de la temporada que acaba
   const nueva=mkSuperliga(tuyo.n,tuyo.fuerza,tuyo.color); nueva.temporada=(sl.temporada||1)+1;
   nueva.plantilla=sl.plantilla||mkPlantillaSuperliga(); nueva.alin=sl.alin||[[0,1],[2,3],[4,5]];
+  nueva.caja=sl.caja; nueva.objetivo=sl.objetivo; nueva.mercado=mkMercadoSL();
   sincronizaClubSL(nueva);
   G.superliga=nueva; guardar(); pintarSuperliga();
+  avisa(`🏁 Cierre de temporada: ${res.pos}º · premios +${res.premio.toLocaleString("es")}€, salarios -${res.sal.toLocaleString("es")}€. ${res.objetivoCumplido?"✔ Objetivo de la junta cumplido.":"✗ Objetivo incumplido: la junta aprieta."}`);
 }
 
 if(typeof module!=="undefined"&&module.exports){ module.exports={}; }

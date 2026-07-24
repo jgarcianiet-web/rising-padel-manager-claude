@@ -553,6 +553,35 @@ comprueba("Superliga: plantilla y alineación de tus 3 parejas", () => {
   return `fuerza club ${sl.equipos.find(e => e.tuyo).fuerza}; equipo fuerte gana ${gf}/200`;
 });
 
+comprueba("Superliga: economía, objetivo, desarrollo y fichajes", () => {
+  const at = (n) => { const o = {}; ATTR_KEYS.forEach(k => o[k] = n); return o; };
+  // premios: mejor posición paga más; campeón/finalista suman bonus
+  exige(premioSuperliga(1) > premioSuperliga(16), "el 1º debería cobrar más que el 16º");
+  const sl = mkSuperliga("Test SC", 62, "#fff");
+  sl.plantilla = mkPlantillaSuperliga(); sl.alin = [[0, 1], [2, 3], [4, 5]]; sincronizaClubSL(sl);
+  // salarios positivos y coherentes con el nivel
+  exige(salariosSuperliga(sl.plantilla) > 0, "los salarios deberían ser positivos");
+  // cierre de temporada: la caja cambia por premios menos salarios y evalúa el objetivo
+  let g = 0; while (sl.fase === "liga" && g++ < 60) jugarJornadaLiga(sl);
+  while (sl.fase === "playoff") jugarPlayoff(sl);
+  const cajaAntes = sl.caja, res = cierreTempSuperliga(sl);
+  exige(res.caja === cajaAntes + res.premio - res.sal, "la caja no cuadra con premios y salarios");
+  exige(typeof res.objetivoCumplido === "boolean" && res.pos >= 1 && res.pos <= 16, "no calcula posición/objetivo");
+  // desarrollo: un joven con techo alto mejora al pasar de temporada
+  const joven = { n: "Joven", edad: 20, pot: 90, attrs: at(60), estilo: "constructor", lado: 0 };
+  const nivAntes = mediaAttrs(joven.attrs);
+  let subio = false; for (let i = 0; i < 10 && !subio; i++) { evolucionaPlantillaSL([joven]); if (mediaAttrs(joven.attrs) > nivAntes) subio = true; }
+  exige(subio, "un joven con techo alto debería mejorar con el tiempo");
+  // fichaje: paga con caja y entra en la plantilla; sin caja, no
+  sl.caja = 100000; const antesN = sl.plantilla.length;
+  const cand = { n: "Fichaje", edad: 24, pot: 80, attrs: at(66), estilo: "agresivo", lado: 1 };
+  const f1 = ficharSL(sl, cand);
+  exige(f1.ok === true && sl.plantilla.length === antesN + 1 && sl.caja < 100000, "el fichaje no entra o no descuenta caja");
+  sl.caja = 0;
+  exige(ficharSL(sl, { n: "Caro", attrs: at(80) }).ok === false, "no debería poder fichar sin caja");
+  return `premio 1º ${premioSuperliga(1)}€; cierre ${res.pos}º, caja ${res.caja}€`;
+});
+
 comprueba("Analítica: sin la base lista muestra un aviso claro", () => {
   abrirAnalitica();
   const cuerpo = document.getElementById("analiticaCuerpo");
