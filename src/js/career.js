@@ -320,7 +320,7 @@ function empezarCarrera(estiloKey){
     compi:{...compiInicial(sexoSel),attrs:mkAttrsNivel(CHINO.nivel,CHINO.estilo)},quimica:CHINO.quim,
     compiMoral:70,racha:[],mercadoP:null,sponsor:null,ofertasPatro:[],staff:{entrenador:null,rep:null,fisio:null,psico:null,fisico:null},mercadoStaff:null,_staffV2:1,
     wildcards:2,
-    entrenador:0,lesion:null,pro:false,
+    entrenador:0,lesion:null,merma:null,fragil:0,pro:false,
     palmares:[],diario:[],h2h:{},_rivalesSemana:[]
   }};
   G.carrera.mercadoP=mkMercadoParejas();
@@ -421,7 +421,7 @@ function pintarEventosSemana(td, disponible, motivoNo){
 function pintarSemana(){
   const c=G.carrera;
   const dia=c.dia||1, esT=esSemanaTorneo();
-  document.getElementById("semTitulo").innerHTML=c.lesion?`Baja médica · <em>${c.lesion.n} (${c.lesion.sem} sem.)</em>`:`Semana ${semanaTemp()} · <em>${DIAS[dia-1].toUpperCase()}</em>`;
+  document.getElementById("semTitulo").innerHTML=c.lesion?`Baja médica · <em>${c.lesion.n} (${c.lesion.sem} sem.)</em>`:`Semana ${semanaTemp()} · <em>${DIAS[dia-1].toUpperCase()}</em>`+(c.merma?` · <span style="color:#E0A030">mermado -${c.merma.pct}% (${c.merma.sem} sem.)</span>`:"");
   const td=document.getElementById("torneosDisp");td.innerHTML="";
   // tira lunes-domingo
   const ds=document.createElement("div");ds.className="diastrip";
@@ -1066,9 +1066,13 @@ function avanzarSemanaCarrera(){
   c.semana++;
   if(c.lesion){
     c.lesion.sem--;
-    if(c.lesion.sem<=0){avisa(`Alta médica de la ${c.lesion.n}.`);c.lesion=null;}
+    if(c.lesion.sem<=0){
+      const nom=c.lesion.n, sec=curarLesion(c);
+      avisa(`Alta médica de la ${nom}.`+(sec?` Volverás algo mermado: -${sec.pct}% de rendimiento durante ${sec.sem} sem.`:""));
+    }
     else avisa(`Recuperándote: ${c.lesion.n} (${c.lesion.sem} sem. restantes).`);
   }
+  decaeMerma(c);   // la secuela de la última lesión se va disipando
   let regen=12+(staffNiv("fisico")?2+staffNiv("fisico"):0);
   c.energia=clamp(c.energia+regen,0,100);
   const pos_=miPuesto();

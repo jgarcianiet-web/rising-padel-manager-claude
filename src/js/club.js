@@ -198,8 +198,9 @@ function simTorneoParejaB(ci){
     // lesión por fatiga a mitad de torneo
     const cansado=parB.find(j=>j.energia<20&&!j.lesion);
     if(cansado&&Math.random()<(cl.staff.fisio?.15:.3)){
-      cansado.lesion={...pick(LESIONES)};
+      cansado.lesion=pickLesion(clamp(1-cansado.energia/40,0,1));
       if(cl.staff.fisio) cansado.lesion.sem=Math.max(1,cansado.lesion.sem-1);
+      cansado.fragil=(cansado.fragil||0)+1;
       idxPts=loserIdx(fase);
       resumen.push(`retirada (W.O.): ${cansado.n}, ${cansado.lesion.n}`);
       break;
@@ -292,8 +293,9 @@ function pintarCmSemana(){
   cl.plantilla.forEach((j,idx)=>{
     const d=document.createElement("div");d.className="opcion";
     const les=j.lesion?` <span class="pill rojo">${j.lesion.n} (${j.lesion.sem}s)</span>`:"";
+    const mer=(!j.lesion&&j.merma)?` <span class="pill" style="color:#E0A030">mermado -${j.merma.pct}% (${j.merma.sem}s)</span>`:"";
     const plan=j.plan||"auto";
-    d.innerHTML=`<b>${j.n}</b> <span class="pill">nivel ${mediaAttrs(j.attrs)}</span> <span class="pill">EN ${j.energia}</span> <span class="pill">CF ${j.conf}</span> <span class="pill lima">plan: ${plan}</span>${les}`;
+    d.innerHTML=`<b>${j.n}</b> <span class="pill">nivel ${mediaAttrs(j.attrs)}</span> <span class="pill">EN ${j.energia}</span> <span class="pill">CF ${j.conf}</span> <span class="pill lima">plan: ${plan}</span>${les}${mer}`;
     if(!j.lesion){
       const g=document.createElement("div");g.className="entreno";g.style.marginTop="8px";
       const bAuto=document.createElement("button");
@@ -577,7 +579,8 @@ document.getElementById("cmBtnDescanso").onclick=()=>{
   G.clubG._accion="descanso";
   G.clubG.plantilla.forEach(j=>{
     j.energia=clamp(j.energia+23,0,100);
-    if(j.lesion){j.lesion.sem--;if(j.lesion.sem<=0){avisa(`Alta médica de ${j.n}.`);j.lesion=null;}}
+    if(j.lesion){j.lesion.sem--;if(j.lesion.sem<=0){const s=curarLesion(j);avisa(`Alta médica de ${j.n}.`+(s?` Vuelve mermado (-${s.pct}%, ${s.sem} sem).`:""));}}
+    decaeMerma(j);
   });
   avisa("Semana de descanso y viajes del equipo.");
   avanzarSemanaClub();
@@ -599,7 +602,8 @@ function avanzarSemanaClub(){
     j.energia=clamp(j.energia+regen,0,100);
     if(cl.reformas.residencia) j.conf=clamp(j.conf+1,15,95);
     if(cl.staff.psico&&j.conf<50) j.conf=clamp(j.conf+2,15,95);
-    if(cl.staff.fisio&&j.lesion&&Math.random()<.3){j.lesion.sem--;if(j.lesion.sem<=0){avisa(`El fisio adelanta el alta de ${j.n}.`);j.lesion=null;}}
+    if(cl.staff.fisio&&j.lesion&&Math.random()<.3){j.lesion.sem--;if(j.lesion.sem<=0){const s=curarLesion(j);avisa(`El fisio adelanta el alta de ${j.n}.`+(s?` (mermado -${s.pct}%, ${s.sem} sem)`:""));}}
+    decaeMerma(j);
   });
   const posC_=miPuesto();
   fansAdd(Math.round((cl.fans||0)*.002)+(posC_<=10?25:posC_<=20?8:1));

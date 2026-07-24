@@ -247,6 +247,37 @@ comprueba("Partido: el momentum (parciales) se registra y contagia confianza", (
   return `mejor parcial ${match.momento.best[0]}-${match.momento.best[1]}`;
 });
 
+comprueba("Lesiones y moral: gravedad, secuela, fragilidad y moral en pista", () => {
+  // pickLesion siempre da una lesión válida; el riesgo alto favorece las graves
+  const N = 500;
+  let graves = 0, gravesBajo = 0;
+  for (let i = 0; i < N; i++) { const l = pickLesion(0.95); exige(l && l.sem > 0, "pickLesion no devuelve una lesión válida"); if (l.grav === 3) graves++; }
+  for (let i = 0; i < N; i++) { if (pickLesion(0.05).grav === 3) gravesBajo++; }
+  exige(graves > gravesBajo, `el riesgo alto no aumenta las graves (${graves} vs ${gravesBajo})`);
+  // secuela: las leves no dejan merma; las graves sí
+  exige(secuelaDe({ grav: 1 }) === null, "una lesión leve no debería dejar secuela");
+  const sg = secuelaDe({ grav: 3 }); exige(sg && sg.pct > 0 && sg.sem > 0, "una lesión grave debe dejar secuela");
+  // la merma reduce el rendimiento (factor de forma)
+  exige(factorForma(100, 80, null) > factorForma(100, 80, { sem: 2, pct: 8 }), "la merma no reduce el factor de forma");
+  // alta médica: transfiere la secuela y limpia la baja; la merma se disipa con el tiempo
+  const port = { lesion: { grav: 3, sem: 0 }, fragil: 0, merma: null };
+  const sec = curarLesion(port);
+  exige(port.lesion === null && port.merma && sec, "curarLesion no limpia la baja / no aplica la secuela");
+  decaeMerma(port); decaeMerma(port); decaeMerma(port);
+  exige(!port.merma, "la merma no desaparece tras varias semanas");
+  // fragilidad: con energía muy baja se lesiona y sube el historial
+  const fr = { energia: 5, fragil: 0, lesion: null };
+  let veces = 0;
+  for (let i = 0; i < 200; i++) { fr.energia = 5; fr.lesion = null; if (intentaLesion(fr, false)) veces++; }
+  exige(veces > 0, "con energía a 5 no se lesiona nunca");
+  exige(fr.fragil > 0, "lesionarse no aumenta la fragilidad");
+  // con energía llena y sin fragilidad, el riesgo es nulo
+  exige(riesgoLesionPost(100, 0, false) === 0, "no debería haber riesgo de lesión con energía llena");
+  // la moral pesa en la pista: alta suma confianza, baja resta
+  exige(moralAjusteConf(90) > 0 && moralAjusteConf(20) < 0, "la moral no ajusta la confianza en pista");
+  return `graves ${graves}/${N} (riesgo alto) vs ${gravesBajo}/${N} (bajo); ${veces}/200 lesiones con energía a 5`;
+});
+
 comprueba("Analítica: sin la base lista muestra un aviso claro", () => {
   abrirAnalitica();
   const cuerpo = document.getElementById("analiticaCuerpo");
