@@ -120,7 +120,10 @@ function pintarHUD(){
   irA=function(sc){
     const r=_ir.apply(null,arguments);
     try{
-      const dentro=(sc==="club"||sc==="clubm");
+      // el panel lateral (y el hueco que le reserva .wrap) se mantiene también en
+      // la pantalla de torneo; solo desaparece dentro del partido (pista a pantalla
+      // completa). Sin esto, el HUD fijo tapaba la tarjeta del rival en escritorio.
+      const dentro=(sc==="club"||sc==="clubm"||sc==="torneo");
       document.body.classList.toggle("con-hud",dentro);
       if(dentro) pintarHUD();
     }catch(e){}
