@@ -1010,3 +1010,15 @@ comprueba("Navegación: esClicable detecta la UI interactiva y excluye lo demás
   exige(esClicable({ tagName: "P", parentElement: null }) === false, "un párrafo suelto no debería sonar");
   return "button/a/select/onclick/role/ancestro detectados; texto e input excluidos";
 });
+
+/* ===================== JERARQUÍA VISUAL ===================== */
+
+comprueba("Jerarquía: colAttr escala con el valor y diferencia el rango bajo", () => {
+  const cols = [90, 70, 60, 48, 36, 20].map(colAttr);
+  cols.forEach(c => exige(/^#[0-9A-Fa-f]{6}$/.test(c), "colAttr debería devolver un color hex: " + c));
+  exige(new Set(cols).size === cols.length, "cada escalón debería dar un color distinto: " + cols.join(","));
+  // antes todo lo <55 caía en un único gris; ahora 48 y 36 se distinguen
+  exige(colAttr(48) !== colAttr(36), "48 y 36 deberían distinguirse");
+  exige(colAttr(90) === colAttr(85), "valores de la misma banda comparten color");
+  return "6 escalones distintos; rango bajo diferenciado";
+});
