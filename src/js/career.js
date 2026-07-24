@@ -326,7 +326,7 @@ function empezarCarrera(estiloKey){
   G.carrera.mercadoP=mkMercadoParejas();
   G.carrera.objetivos=mkObjetivosTemporada(G.carrera,miPuesto());
   avisa(`Debut de ${nombre} (16 años, ${estiloNombre(estiloKey).toLowerCase()}, ${persoNombre(persoSel).toLowerCase()}). Semanas de lunes a domingo, calendario oficial de 52 semanas y el puesto 41 del ranking como punto de partida. Administra tus 2.500€.`);
-  noticia("debut",`${nombre}, 16 años: nace una carrera`,`Debuta el #41 del ranking con 2.500€ en el bolsillo y toda la vida por delante`);
+  noticia("debut",t("not_debut_t",{nombre}),t("not_debut_s"));
   entrarPartida();
   verTuto("carrera");
 }
@@ -348,7 +348,7 @@ function rompeConCompi(c){
   const protRup={jug:[{n:c.nombre,sexo:c.sexo,_ropa:"#C6F53C"},{n:ex,sexo:c.sexo}]};
   c.compi={...compiInicial(c.sexo||"M"),attrs:mkAttrsNivel(CHINO.nivel,CHINO.estilo)};
   c.quimica=CHINO.quim;c.compiMoral=70;c.compiPlan="auto";c._crisisPareja=null;
-  noticia("ruptura",`${ex} rompe la pareja`,`"Necesito un cambio de aires". ${c.sexo==="F"?"China":"Chino"} vuelve al rescate`,protRup);
+  noticia("ruptura",t("not_ruptura_t",{ex}),t("not_ruptura_s",{compi:c.sexo==="F"?"China":"Chino"}),protRup);
   avisa(`💥 ${ex} rompe la pareja. ${c.sexo==="F"?"China":"Chino"} vuelve a echarte el cable de siempre.`);
 }
 // Evento de ruptura VISIBLE: el compañero expone su motivo y tú eliges cómo
@@ -776,7 +776,7 @@ function ficharPareja(ci,acuerdo){
   if(ac.tuLado===0||ac.tuLado===1) c.lado=ac.tuLado;   // si cediste el lado, te recolocas
   c.quimica=35; c.compiMoral=70; c.compiPlan="auto";
   c.mercadoP.splice(ci,1);
-  noticia("fichaje",`Nueva pareja: ${cand.n}`,cand.origen==="circuito"?`Llega desde ${cand.parejaNombre}`:"Agente libre — a rodar la química");
+  noticia("fichaje",t("not_fichaje_t",{n:cand.n}),cand.origen==="circuito"?t("not_fichaje_s_circuito",{pareja:cand.parejaNombre}):t("not_fichaje_s_libre"));
   avisa(`Nueva pareja: ${cand.n}. Habrá que rodarla (química 35).`);
   guardar();pintarCarrera();
 }
@@ -964,7 +964,7 @@ function chequeaHitos(){
       e.dinero+=h.din;
       fansAdd(h.fans);
       avisa(`🎯 HITO conseguido: ${h.txt}. ${h.din?`+${h.din}€ de premios federativos, `:""}+${h.fans} seguidores.`);
-      if(h.fans>=800) noticia("hito",h.txt,"Un objetivo de carrera menos. El siguiente ya está marcado en rojo.");
+      if(h.fans>=800) noticia("hito",h.txt,t("not_hito_s"));
       // ¿el contrato de patrocinio tenía prima por este objetivo?
       const sp=G.modo==="carrera"?G.carrera.sponsor:null;
       if(sp&&sp.primas){
@@ -1221,7 +1221,7 @@ function avanzarSemanaCarrera(){
   if(!c.objetivos) c.objetivos=mkObjetivosTemporada(c,miPuesto());
   evaluaObjetivos(c,miPuesto()).forEach(o=>{
     if(o.rec){ if(o.rec.dinero) c.dinero+=o.rec.dinero; if(o.rec.fans) fansAdd(o.rec.fans,"objetivo cumplido"); if(o.rec.moral) c.compiMoral=clamp((c.compiMoral??65)+o.rec.moral,5,95); }
-    noticia("hito","Objetivo cumplido",o.txt);
+    noticia("hito",t("not_objetivo_t"),o.txt);
     avisa(`🎯 Objetivo cumplido: ${o.txt}${o.rec&&o.rec.dinero?` (+${o.rec.dinero}€)`:""}.`);
   });
   if((c.semana-1)%SEMANAS_TEMP===0){
@@ -1249,7 +1249,7 @@ function cierreTemporadaCarrera(){
   if(c.sponsor){
     const s=c.sponsor;
     if(pos>s.objetivo){
-      noticia("contrato",`${s.marca} rescinde`,`Exigían top ${s.objetivo}; habéis cerrado #${pos}`);
+      noticia("contrato",t("not_rescinde_t",{marca:s.marca}),t("not_rescinde_s",{obj:s.objetivo,pos}));
       avisa(`✗ ${s.marca} rescinde el contrato: exigían top ${s.objetivo} y habéis cerrado #${pos}.`);
       c.sponsor=null;
     } else {
