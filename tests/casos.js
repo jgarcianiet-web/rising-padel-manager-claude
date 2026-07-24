@@ -278,6 +278,35 @@ comprueba("Lesiones y moral: gravedad, secuela, fragilidad y moral en pista", ()
   return `graves ${graves}/${N} (riesgo alto) vs ${gravesBajo}/${N} (bajo); ${veces}/200 lesiones con energía a 5`;
 });
 
+comprueba("Informe del ojeador: lee debilidades, eslabón débil y táctica", () => {
+  const mk = (n, over) => ({
+    n, estilo: over.estilo || "constructor", perso: over.perso || "frio", lado: over.lado ?? 0,
+    attrs: Object.assign({ fondo: 70, globo: 70, chiquita: 70, volea: 70, dejada: 70, bandeja: 70, vibora: 70, remate: 70, pared: 70 }, over.attrs || {}),
+  });
+  // rival con globo y bandeja flojos, y un jugador claramente más débil
+  const par = {
+    nombre: "X / Y",
+    jug: [mk("Fuerte", { attrs: { fondo: 82, globo: 82, bandeja: 82, remate: 82, volea: 82, pared: 82, vibora: 82, chiquita: 82, dejada: 82 } }),
+          mk("Débil", { perso: "emocional", attrs: { globo: 55, bandeja: 55 } })],
+  };
+  const inf = informeRival(par, 84);   // claramente por encima del nivel del rival
+  exige(inf && Array.isArray(inf.deb) && inf.deb.length > 0, "el informe no devuelve debilidades");
+  const txt = inf.deb.join(" | ");
+  exige(/globo/i.test(txt), "no detecta la debilidad de globo");
+  exige(/bandeja/i.test(txt), "no detecta la bandeja endeble");
+  exige(inf.objetivo === 1, "no identifica al jugador débil como eslabón (índice 1)");
+  exige(/Débil/.test(txt), "no señala por nombre al eslabón débil");
+  exige(/emocional/i.test(txt), "no lee la fragilidad mental del emocional");
+  // táctica recomendada: cargar sobre el flojo y, con más nivel, ir arriba
+  exige(inf.rec.diana === "debil", "no recomienda cargar sobre el flojo");
+  exige(inf.rec.agres === "agresiva", "con nivel superior debería recomendar agresividad");
+  // una pareja pareja y sólida no deja eslabón débil
+  const par2 = { nombre: "P / Q", jug: [mk("A", {}), mk("B", {})] };
+  const inf2 = informeRival(par2, 70);
+  exige(inf2.objetivo === null, "no debería haber eslabón débil en una pareja equilibrada");
+  return `${inf.deb.length} debilidades, objetivo=${inf.objetivo}, plan ${inf.rec.agres}/${inf.rec.diana}`;
+});
+
 comprueba("Analítica: sin la base lista muestra un aviso claro", () => {
   abrirAnalitica();
   const cuerpo = document.getElementById("analiticaCuerpo");

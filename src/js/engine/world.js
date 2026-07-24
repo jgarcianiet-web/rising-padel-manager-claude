@@ -68,6 +68,44 @@ function entradaEn(ci){
   }
   return pos<=cat.cupoD?2:0;          // FIP: abierto a todos
 }
+// Informe de ojeo del rival: lee sus atributos, estilo y personalidad y produce
+// lecturas CONCRETAS (debilidades y fortalezas) más una táctica recomendada, para
+// que el jugador pueda leer el partido antes de jugarlo. Función pura y testable:
+// mismos atributos → mismo informe. miNivel = nivel de tu pareja (para el consejo).
+function informeRival(par, miNivel){
+  const j=(par&&par.jug)||[];
+  if(j.length<2) return null;
+  const niv=nivelPareja(par);
+  const med=[mediaAttrs(j[0].attrs),mediaAttrs(j[1].attrs)];
+  const pa=k=>Math.round(((j[0].attrs[k]||60)+(j[1].attrs[k]||60))/2);   // media de la pareja en un golpe
+  const esRematador=j[0].estilo==="rematador"||j[1].estilo==="rematador";
+  const deb=[], fue=[];
+  // fortalezas
+  const redAtq=Math.round((pa("volea")+pa("remate")+pa("bandeja")+pa("vibora"))/4);
+  if(redAtq>=niv+4) fue.push("🥅 Temibles cuando toman la red: no se la regales, hazles jugar de fondo.");
+  if(esRematador) fue.push("💥 Pegan fuerte de arriba: cuidado con dejarles una bola alta cómoda.");
+  if(pa("dejada")>=niv+5) fue.push("🩹 Manejan bien la dejada: no te quedes clavado en el fondo.");
+  // debilidades
+  if(pa("globo")<=niv-5) deb.push("🎈 Defienden mal el globo: súbete y globéales para robarles la red.");
+  if(pa("pared")<=niv-5) deb.push("🧱 Flojos en la salida de pared: bolas profundas al cristal les complican.");
+  if(pa("bandeja")<=niv-5) deb.push("🎾 Bandeja endeble: fuérzales bandejas con globos al centro.");
+  if(esRematador && pa("fondo")<=niv-3) deb.push("🏃 Se apagan en los intercambios largos: alarga los puntos, sin prisa.");
+  else if(pa("fondo")<=niv-6) deb.push("↔ Incómodos de fondo: pelotea profundo y espera su error.");
+  // eslabón débil de la pareja
+  let objetivo=null;
+  if(Math.abs(med[0]-med[1])>=6){ objetivo=med[0]<med[1]?0:1; deb.push(`🎯 ${j[objetivo].n} es el eslabón débil (media ${med[objetivo]} vs ${med[1-objetivo]}): cárgale el juego.`); }
+  // lectura mental
+  const emo=j.find(p=>p.perso==="emocional");
+  if(emo) deb.push(`🧠 ${emo.n} es emocional: rómpele pronto y se vendrá abajo.`);
+  else { const val=j.find(p=>p.perso==="valiente"); if(val) fue.push(`🔥 ${val.n} crece en los puntos calientes.`); }
+  if(!deb.length) deb.push("Sin grietas evidentes: tendrás que ganarlo con paciencia y oficio.");
+  if(!fue.length) fue.push("Pareja discreta arriba: puedes disputarles la red.");
+  // táctica recomendada
+  const rec={agres:"normal", diana:objetivo!=null?"debil":"repartir"};
+  if(miNivel!=null){ const d=miNivel-niv; rec.agres = d>=4?"agresiva" : d<=-4?"conservadora" : "normal"; }
+  const recTxt=`${objetivo!=null?`Carga sobre ${j[objetivo].n}`:"Reparte el juego"} y juega ${rec.agres==="agresiva"?"a degüello":rec.agres==="conservadora"?"a lo seguro":"normal"}.`;
+  return {niv, med, deb:deb.slice(0,4), fue:fue.slice(0,2), objetivo, rec, recTxt};
+}
 // Lesiones con gravedad (grav 1 leve … 3 grave). Las graves tiran más semanas
 // y, sobre todo, dejan secuela al volver.
 const LESIONES=[

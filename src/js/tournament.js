@@ -78,6 +78,12 @@ function pintarPlanPartido(){
   document.getElementById("btnSimCoach").textContent=G.modo==="carrera"&&ent_.id>0?`🧠 Simular: decide ${ent_.n}`:"🧠 Simular: decide el banquillo";
 }
 function setTactPrev(g,v){ ent().tactica[g]=v; guardar(); pintarPlanPartido(); }
+// Aplica la táctica que recomienda el informe del ojeador (un clic → plan listo).
+function aplicarTacticaRec(agres,diana){
+  const t=ent().tactica||(ent().tactica={agres:"normal",diana:"repartir"});
+  t.agres=agres; t.diana=diana; guardar(); pintarPlanPartido();
+  avisa("🔍 Plan del ojeador aplicado: "+(diana==="debil"?"cargar sobre el flojo":"repartir")+" · "+agres+".");
+}
 function coachTactica(){
   // el míster lee el partido: nivel relativo y marcador
   const r=torneo.rivales[torneo.fase];
@@ -100,11 +106,25 @@ function pintarTorneo(){
   const persos=r.jug.map(j=>`${j.pais||""} ${j.n} (${PERSONALIDADES[j.perso].n.toLowerCase()})`).join(" · ");
   const entrada=torneo.startFase===2?"Cabezas de serie: directos al cuadro final.":"Entrada por la previa clasificatoria.";
   const clubR=(r.club!==undefined)?` <span class="pill" style="color:${CLUBES_NPC[r.club].color}">● ${CLUBES_NPC[r.club].n}</span>`:"";
+  const miNiv=G.modo==="carrera"?Math.round((mediaAttrs(G.carrera.attrs)+mediaAttrs(G.carrera.compi.attrs))/2):(alineacion()?Math.round(alineacion().reduce((a,j)=>a+mediaAttrs(j.attrs),0)/2):50);
+  const inf=informeRival(r,miNiv);
+  let infoHTML="";
+  if(inf){
+    const li=(arr,col)=>arr.map(t=>`<div style="font-size:11px;color:${col};padding:1px 0;line-height:1.4">${t}</div>`).join("");
+    infoHTML=`<div class="scout">
+      <div class="scoutHd">🔍 INFORME DEL OJEADOR</div>
+      ${li(inf.deb,"var(--verde)")}
+      ${li(inf.fue,"var(--rojo)")}
+      <div class="scoutRec"><b>Plan sugerido:</b> ${inf.recTxt}
+        <button class="selbtn" style="font-size:10px;padding:3px 8px;margin-left:4px" onclick="aplicarTacticaRec('${inf.rec.agres}','${inf.rec.diana}')">Aplicar</button></div>
+    </div>`;
+  }
   document.getElementById("tInfo").innerHTML=`<span style="display:flex;gap:2px;margin-bottom:5px">${(r.jug||[]).map(j=>avatarSVG(j,38)).join("")}</span>Rival: <b>${r.nombre}</b>${clubR} <span class="pill">nivel ${nivelPareja(r)}</span> <span class="pill oro">#${rankingFilas().find(f=>f.id===r.id).pos}</span>${r.pro?' <span class="tagpro">PRO</span>':""}<br>
   <span style="font-size:11px;color:var(--gris)">${persos}</span><br>
   <span style="font-size:11px;color:var(--gris)">${h2txt}</span><br>
   <span style="font-size:11px;color:var(--gris)">${entrada}</span><br>
-  <span style="font-size:11px;color:var(--gris)">${infoPropia()}</span>`;
+  <span style="font-size:11px;color:var(--gris)">${infoPropia()}</span>
+  ${infoHTML}`;
   document.getElementById("tCuadro").innerHTML=FASES.map((fs,i)=>{
     if(i<torneo.startFase) return `<div style="opacity:.35">${fs}: exentos (ranking)</div>`;
     const rv=torneo.rivales[i];
