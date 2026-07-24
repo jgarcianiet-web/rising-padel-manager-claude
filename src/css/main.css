@@ -64,6 +64,29 @@ input,select{background:#10151E;border:1px solid var(--borde2);color:var(--texto
 .log,.coms{font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.75;color:#A7B0C0}
 .coms{min-height:58px}
 .log div:first-child,.coms div:first-child{color:var(--texto)}
+.coms div{padding:1px 0;border-bottom:1px solid rgba(255,255,255,.03)}
+/* ---- panel de retransmisión (broadcast) ---- */
+.onair{color:var(--rojo);font-size:9px;letter-spacing:.5px;margin-right:5px;animation:onair 1.6s ease-in-out infinite}
+@keyframes onair{50%{opacity:.35}}
+.bcscore{background:linear-gradient(#121822,#0D1119);border:1px solid var(--borde2);border-radius:6px;padding:9px 11px;margin-bottom:9px}
+.bcscore .teams{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.bcscore .tn{font-size:11px;font-weight:600;color:var(--texto);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bcscore .tn.r{text-align:right}
+.bcscore .big{font-family:'Chakra Petch','IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:var(--lima);letter-spacing:2px;white-space:nowrap;padding:0 4px}
+.bcscore .big.gold{color:var(--oro)}
+.bcscore .sub{display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--gris)}
+.bcscore .srv{color:var(--lima)}
+.bcstats{margin-bottom:10px}
+.bcstat{margin:0 0 8px}
+.bcstat .h{display:flex;justify-content:space-between;font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--gris);margin-bottom:3px}
+.bcstat .h b{color:var(--texto);font-family:'IBM Plex Mono',monospace}
+.bcbar{display:flex;height:7px;border-radius:4px;overflow:hidden;background:#22303f}
+.bcbar>i{display:block;height:100%}
+.bcchips{display:flex;flex-wrap:wrap;gap:4px}
+.bcchip{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--gris);background:#141b25;border:1px solid var(--borde);border-radius:4px;padding:2px 7px}
+.bcchip b{color:var(--texto)}
+.bcchip.hot{border-color:var(--lima);color:var(--texto)}
+.bclabel{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--gris2);border-top:1px solid var(--borde);padding-top:7px;margin-bottom:3px}
 .entreno{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
 .entreno button{font-size:10.5px;padding:7px 2px;line-height:1.4;font-weight:500;color:var(--gris)}
 .entreno button b{font-size:13px;font-family:'IBM Plex Mono',monospace}
@@ -170,8 +193,10 @@ button:active{transform:translateY(1px)}
 @media(min-width:760px){
   #tab-jugador,#cm-plantilla,#cm-clubpan{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start}
   #tab-jugador .card,#cm-plantilla .card,#cm-clubpan .card{margin-bottom:0}
-  #scr-partido .cont{display:grid;grid-template-columns:1fr .9fr;gap:8px;align-items:start}
+  #scr-partido .cont{display:grid;grid-template-columns:1fr .9fr;gap:8px;align-items:stretch}
   #scr-partido .cont>.card{margin-bottom:0;min-width:0}
+  #scr-partido .broadcast{display:flex;flex-direction:column}
+  #scr-partido .broadcast .coms{flex:1;overflow:auto}
   #scr-torneo .cont{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start}
   #scr-torneo .card{margin-bottom:0}
   #scr-crear,#scr-crearclub{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start;max-width:960px;margin:0 auto;padding:8px}
