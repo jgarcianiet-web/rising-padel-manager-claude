@@ -1133,3 +1133,13 @@ comprueba("Idiomas: noticias de club/estado y tiers de patrocinio traducen", () 
   } finally { localStorage.removeItem("rpm_idioma"); }
   return "club/estado/tiers en inglés";
 });
+
+comprueba("Idiomas: noticias de carrera con variantes aleatorias (pick) traducen", () => {
+  try {
+    localStorage.setItem("rpm_idioma", "en");
+    ["not_mercado_v1", "not_mercado_v2", "not_mercado_v3", "not_mercado_v4"].forEach(k => exige(t(k) !== k && /[A-Za-z]/.test(t(k)), "variante sin traducir: " + k));
+    exige(t("not_mercado_t", { nombre: "A/B", verbo: t("not_mercado_verbo_up"), pos: 3 }) === "A/B shoot up to #3", "mercado: " + t("not_mercado_t", { nombre: "A/B", verbo: t("not_mercado_verbo_up"), pos: 3 }));
+    exige(t("not_anuncio_t", { marca: "Wilson", tipo: t("not_anuncio_default") }) === "Wilson launches an ad", "anuncio: " + t("not_anuncio_t", { marca: "Wilson", tipo: t("not_anuncio_default") }));
+  } finally { localStorage.removeItem("rpm_idioma"); }
+  return "variantes y contrato/mercado en inglés";
+});

@@ -107,7 +107,7 @@ function ficharStaff(idx){
   // 2) ¿llega la caja para la cláusula?
   if(prima&&e.dinero<prima){ avisa(`✗ La cláusula de ${st.n} (técnico del ${st.equipoDe}, puesto ${puestoDePareja(st.equipoDe)}) son ${prima.toLocaleString("es")}€. Tu caja no llega.`); return; }
   if(e.staff[st.rol]) avisa(`↔ ${e.staff[st.rol].n} deja el equipo: llega ${st.n}.`);
-  if(prima){ e.dinero-=prima; noticia("fichaje",`${st.n} deja a ${st.equipoDe}`,`Rescisión de ${prima.toLocaleString("es")}€ para sumarlo a tu proyecto. Un movimiento que sacude el circuito.`,);
+  if(prima){ e.dinero-=prima; noticia("fichaje",t("not_staff_deja_t",{jug:st.n,equipo:st.equipoDe}),t("not_staff_deja_s",{prima:prima.toLocaleString("es")}),);
     if(G.world){ const par=G.world.parejas.find(p2=>p2.nombre===st.equipoDe); if(par) par._entrenador=null; }
     delete st.equipoDe; }
   e.staff[st.rol]=st;
@@ -552,7 +552,7 @@ function pintarSemana(){
       c.dinero+=sp.pago;
       if(c.sponsor) c.sponsor.spots=(c.sponsor.spots||0)+1;
       fansAdd(sp.fans||Math.round(R(80,220)),`salir en ${sp.tipo||"el anuncio"}`);
-      noticia("contrato",`${sp.marca} estrena ${sp.tipo||"anuncio"}`,`${nombreEntidad().replace("★ ","")}, nueva cara de la marca`);
+      noticia("contrato",t("not_anuncio_t",{marca:sp.marca,tipo:sp.tipo||t("not_anuncio_default")}),t("not_anuncio_s",{entidad:nombreEntidad().replace("★ ","")}));
       avisa(`🎬 ${sp.tipo||"Rodaje"} para ${sp.marca}: +${sp.pago}€ y nuevos seguidores.`);
       post("picante");
       avanzarDia();
@@ -974,7 +974,7 @@ function chequeaHitos(){
           sp.primasCobradas[h.id]=true;
           e.dinero+=pr[2];
           avisa(`💶 ${sp.marca} paga la prima por objetivo «${pr[1]}»: +${pr[2]}€.`);
-          noticia("contrato",`${sp.marca} abre la cartera`,`Prima de ${pr[2]}€ por ${pr[1].toLowerCase()}. Los contratos por objetivos existen.`);
+          noticia("contrato",t("not_prima_t",{marca:sp.marca}),t("not_prima_s",{prima:pr[2],motivo:pr[1].toLowerCase()}));
         }
       }
     }
@@ -1395,12 +1395,12 @@ function prensaSemanal(){
       if(pr!==undefined&&pr-f.pos>salto){salto=pr-f.pos;mejor=f;}
     });
     if(mejor&&salto>=2){
-      noticia("mercado",`${mejor.nombre} ${salto>=5?"se disparan":"escalan"} al #${mejor.pos}`,`${salto} puestos en una semana. ${pick(["El vestuario del circuito toma nota","Los rivales ya preguntan por ellos","Nadie los quiere en su cuadro","Su racha es el tema en cada club"])}`);
+      noticia("mercado",t("not_mercado_t",{nombre:mejor.nombre,verbo:salto>=5?t("not_mercado_verbo_up"):t("not_mercado_verbo"),pos:mejor.pos}),t("not_mercado_s",{salto,frase:t(pick(["not_mercado_v1","not_mercado_v2","not_mercado_v3","not_mercado_v4"]))}));
     }
   } else if(Math.random()<.3){
     // 3) pieza de color con una estrella parodiada
     const star=filas.filter(f=>!f.yo&&f.pos<=6)[Math.floor(Math.random()*Math.min(6,filas.length-1))];
-    if(star) noticia("circuito",`${pick(["«El nivel del circuito nunca fue tan alto»","«Aquí no hay partido fácil»","«El título se gana en la bandeja»","«Jugamos donde otros entrenan»"])}`,`${star.nombre}, en la previa de la semana`);
+    if(star) noticia("circuito",t(pick(["not_circuito_v1","not_circuito_v2","not_circuito_v3","not_circuito_v4"])),t("not_circuito_star_s",{star:star.nombre}));
   }
 }
 function entrenoSemanalCarrera(factor){
