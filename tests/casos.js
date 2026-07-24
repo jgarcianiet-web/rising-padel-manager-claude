@@ -130,7 +130,11 @@ comprueba("Partido: fatiga, tiros y break points se registran", () => {
   exige(fatMax >= 0 && fatMax <= 100, "la fatiga se sale del rango 0..100");
   exige(fatMax > 0, "nadie acumuló fatiga en un partido entero");
   [0, 1].forEach(t => exige(stats[t].bp.ganados <= stats[t].bp.jugados, "hay más roturas convertidas que ocasiones de rotura"));
-  return `${tiros} tiros, fatiga máx ${Math.round(fatMax)}, roturas ${stats[0].bp.ganados}/${stats[0].bp.jugados}-${stats[1].bp.ganados}/${stats[1].bp.jugados}`;
+  // dominio de red: puntos cerrados desde arriba, nunca más que los puntos ganados
+  [0, 1].forEach(t => exige((stats[t].red || 0) >= 0 && (stats[t].red || 0) <= (stats[t].pganados || 0), "los puntos de red exceden a los puntos ganados"));
+  const red = (stats[0].red || 0) + (stats[1].red || 0);
+  exige(red > 0, "en un partido entero no se cerró ni un punto en la red");
+  return `${tiros} tiros, fatiga máx ${Math.round(fatMax)}, red ${stats[0].red}-${stats[1].red}, roturas ${stats[0].bp.ganados}/${stats[0].bp.jugados}-${stats[1].bp.ganados}/${stats[1].bp.jugados}`;
 });
 
 comprueba("SQLite: la proyección relacional produce filas coherentes", () => {
@@ -224,6 +228,23 @@ comprueba("Marcador: star point (ventajas y punto de oro tras dos ventajas)", ()
   r = resolverPunto(0);
   exige(r.juego === 0, "40-30 ganado debe cerrar el juego directamente");
   return "ventajas + star point correctos";
+});
+
+comprueba("Partido: el momentum (parciales) se registra y contagia confianza", () => {
+  const jt = (n) => ({ n, estilo: "constructor", perso: "frio", conf: 55, lado: 0, attrs: { fondo: 70, globo: 70, chiquita: 70, volea: 70, dejada: 70, bandeja: 70, vibora: 70, remate: 70, pared: 70 } });
+  teams = [{ nombre: "Momento A", jug: [jt("A1"), jt("A2")] }, { nombre: "Momento B", jug: [jt("B1"), jt("B2")] }];
+  stats = [mkStats(), mkStats()];
+  match = { p: [0, 0], j: [0, 0], s: [0, 0], hist: [], server: 0, fin: false, cpu: true, momento: { team: -1, run: 0, best: [0, 0], aviso: null } };
+  // cinco puntos seguidos del equipo 0: un parcial que prende
+  for (let i = 0; i < 5; i++) resolverPunto(0);
+  exige(match.momento.team === 0 && match.momento.run === 5, "no se registró el parcial de 5 puntos");
+  exige(match.momento.best[0] >= 5, "no se guardó el mejor parcial del equipo caliente");
+  exige(teams[0].jug[0].conf > 55, "un parcial largo no dio confianza al equipo caliente");
+  exige(teams[1].jug[0].conf < 55, "un parcial en contra no restó confianza al equipo frío");
+  // el rival corta la racha: el parcial se reinicia
+  resolverPunto(1);
+  exige(match.momento.team === 1 && match.momento.run === 1, "al cambiar de manos el parcial no se reinició");
+  return `mejor parcial ${match.momento.best[0]}-${match.momento.best[1]}`;
 });
 
 comprueba("Analítica: sin la base lista muestra un aviso claro", () => {
