@@ -187,6 +187,7 @@ function empezarPartido(ver,coach){
 }
 function resolverPunto(g){
   const m=match,r={};
+  if(stats&&stats[g]) stats[g].pganados=(stats[g].pganados||0)+1;   // puntos ganados (para la barra en vivo)
   // break points (ocasiones de rotura): el equipo al resto, a un punto de romper el saque
   const _rec=1-m.server;
   if(stats&&stats[_rec]&&stats[_rec].bp&&m.p[_rec]===3){
@@ -324,13 +325,13 @@ function pintaLiveStats(){
   if(!el||!match||!match.ver||!stats) return;
   const w=[0,1].map(t=>stats[t].jug.reduce((a,j)=>a+(j.w||0),0));
   const e=[0,1].map(t=>stats[t].jug.reduce((a,j)=>a+(j.e||0),0));
-  const tiros=[0,1].map(t=>stats[t].tiros||0);
-  const pos0=Math.round(tiros[0]/(tiros[0]+tiros[1]||1)*100);
+  const pg=[0,1].map(t=>stats[t].pganados||0);
+  const dom0=Math.round(pg[0]/(pg[0]+pg[1]||1)*100);
   const bp=[0,1].map(t=>stats[t].bp||{jugados:0,ganados:0});
   const fat=[0,1].map(t=>Math.round(((stats[t].fatiga||[0,0]).reduce((a,f)=>a+f,0))/2));
   const barra=`<div style="display:flex;height:6px;border-radius:3px;overflow:hidden;margin:3px 0;background:#22303f">`
-    +`<div style="width:${pos0}%;background:var(--lima)"></div><div style="width:${100-pos0}%;background:#3b4a5c"></div></div>`
-    +`<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--gris2)"><span>Posesión ${pos0}%</span><span>${100-pos0}%</span></div>`;
+    +`<div style="width:${dom0}%;background:var(--lima)"></div><div style="width:${100-dom0}%;background:#3b4a5c"></div></div>`
+    +`<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--gris2)"><span>Puntos ganados ${pg[0]}</span><span>${pg[1]}</span></div>`;
   el.innerHTML=barra+`Winners <b style="color:var(--lima)">${w[0]}</b>-${w[1]} · Errores <b style="color:#E05656">${e[0]}</b>-${e[1]} · Rotura <b>${bp[0].ganados}/${bp[0].jugados}</b>-${bp[1].ganados}/${bp[1].jugados} · Fatiga <b>${fat[0]}</b>-${fat[1]} · Táctica: ${TACT.agres}${TACT.diana==="debil"?" · al flojo":""}`;
 }
 function pintaMarcadorP(){

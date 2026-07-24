@@ -10,9 +10,10 @@ function resize(){
   // usa todo el ancho de la columna, como siempre.
   if((window.innerWidth||0)>=760){
     // reservar sitio para la barra superior, el marcador y los controles de
-    // debajo, para que la pista entera quepa sin cortarse
-    const capAlto=Math.round(((window.innerHeight||760)-330)/1.5);
-    w=Math.max(280,Math.min(w,capAlto,460));
+    // debajo, para que la pista entera quepa sin cortarse. A pantalla completa
+    // la pista aprovecha bastante más el alto disponible.
+    const capAlto=Math.round(((window.innerHeight||760)-300)/1.5);
+    w=Math.max(280,Math.min(w,capAlto,560));
   }
   PW=w;PH=Math.round(w*1.5);
   cv.width=PW*devicePixelRatio;cv.height=PH*devicePixelRatio;
@@ -71,6 +72,17 @@ function draw(){
   const court=cx.createLinearGradient(0,p0.y,0,p1.y);
   court.addColorStop(0,"#20597F");court.addColorStop(.5,"#173F60");court.addColorStop(1,"#20597F");
   cx.fillStyle=court;cx.fillRect(p0.x,p0.y,cw,chh);
+  // focos del estadio: cuatro charcos de luz proyectados sobre la pista
+  cx.save();
+  cx.beginPath();cx.rect(p0.x,p0.y,cw,chh);cx.clip();
+  cx.globalCompositeOperation="lighter";
+  [[W*.27,L*.74],[W*.73,L*.74],[W*.27,L*.26],[W*.73,L*.26]].forEach(([lx,ly])=>{
+    const c=px(lx,ly),r=SC*4.6;
+    const lg=cx.createRadialGradient(c.x,c.y,2,c.x,c.y,r);
+    lg.addColorStop(0,"rgba(222,236,255,.17)");lg.addColorStop(.6,"rgba(210,228,255,.06)");lg.addColorStop(1,"rgba(210,228,255,0)");
+    cx.fillStyle=lg;cx.beginPath();cx.arc(c.x,c.y,r,0,7);cx.fill();
+  });
+  cx.restore();
   // áreas de saque, sombreadas suavemente para que se lea la estructura
   const box=(x0,y0,x1,y1,al)=>{const A=px(x0,y1);cx.fillStyle=`rgba(255,255,255,${al})`;cx.fillRect(A.x,A.y,(x1-x0)*SC,(y1-y0)*SC);};
   box(0,3,W/2,NET,.055); box(W/2,3,W,NET,.03); box(0,NET,W/2,L-3,.03); box(W/2,NET,W,L-3,.055);
@@ -85,6 +97,12 @@ function draw(){
   cx.strokeStyle="#070A0F";cx.lineWidth=5;cx.beginPath();cx.moveTo(a.x-7,a.y);cx.lineTo(b.x+7,b.y);cx.stroke();
   cx.strokeStyle="rgba(233,243,251,.5)";cx.lineWidth=1;cx.beginPath();cx.moveTo(a.x-7,a.y-2);cx.lineTo(b.x+7,b.y-2);cx.stroke();
   cx.fillStyle="#070A0F";[a.x-7,b.x+7].forEach(xx=>cx.fillRect(xx-1.5,a.y-5,3,10));
+  // proyectores en lo alto (dos focos que iluminan la pista)
+  cx.save();
+  cx.shadowColor="rgba(232,242,255,.9)";cx.shadowBlur=13;
+  cx.fillStyle="#EAF2FF";
+  [p0.x+cw*.28,p0.x+cw*.72].forEach(fx=>cx.fillRect(fx-10,p0.y-15,20,4));
+  cx.restore();
   players.forEach(p=>{
     const q=px(p.x,p.y);
     cx.fillStyle="rgba(0,0,0,.42)";cx.beginPath();cx.ellipse(q.x,q.y+4,9,4,0,0,7);cx.fill();
