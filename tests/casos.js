@@ -1091,3 +1091,14 @@ comprueba("Idiomas: avisos de resultado de partido y fases traducen e interpolan
   } finally { localStorage.removeItem("rpm_idioma"); }
   return "avisos de partido y fases en inglés";
 });
+
+comprueba("Idiomas: avisos de inscripción y estado de semana traducen e interpolan", () => {
+  try {
+    localStorage.setItem("rpm_idioma", "en");
+    exige(t("aviso_numeros_rojos", { din: -500 }) === "⚠ In the red (-500€). You need prize money now: every round counts.", "num rojos: " + t("aviso_numeros_rojos", { din: -500 }));
+    const insc = t("aviso_inscritos", { torneo: "Madrid", wc: "", debut: t("insc_previa", { debut: "Monday" }), viaje: 60 });
+    exige(insc === "📋 Entered the Madrid. Qualifying starts on Monday. Trip: 60€.", "inscritos: " + insc);
+    exige(t("aviso_rivalidad", { rival: "X", v: 3, d: 1, n: 4 }).indexOf("RIVALRY with X: 3-1 in 4") >= 0, "rivalidad mal interpolada");
+  } finally { localStorage.removeItem("rpm_idioma"); }
+  return "avisos de torneo/semana en inglés";
+});

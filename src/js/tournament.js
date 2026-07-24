@@ -15,14 +15,14 @@ function rivalDeFase(base,fase,usados){
 }
 function abrirTorneo(ci,wildcard){
   const cat=CATS[ci];
-  if(G.modo==="club"){ repararAlin(); if(!alineacion()){ avisa("✗ Necesitas al menos 2 jugadores en plantilla para competir."); return; } }
+  if(G.modo==="club"){ repararAlin(); if(!alineacion()){ avisa(t("aviso_sin_plantilla")); return; } }
   let ent2=entradaEn(ci);
   if(ent2===-1){ if(wildcard&&!cat.tf) ent2=0; else return; }
   const viaje=costeViaje(ci);
   const LIM_DEUDA=-800;   // puedes tirar de crédito para llegar a un torneo (los premios sanean)
-  if(ent().dinero-viaje<LIM_DEUDA){ avisa(`✗ Ni a crédito llega para el viaje (${viaje}€). Juega el FIP local o da clases para hacer caja.`); return; }
+  if(ent().dinero-viaje<LIM_DEUDA){ avisa(t("aviso_sin_viaje",{viaje})); return; }
   ent().dinero-=viaje;
-  if(ent().dinero<0) avisa(`⚠ En números rojos (${ent().dinero}€). Necesitas premios ya: cada ronda cuenta.`);
+  if(ent().dinero<0) avisa(t("aviso_numeros_rojos",{din:ent().dinero}));
   const startFase=ent2;
   const usados=new Set();
   const rivales=[];
@@ -33,7 +33,7 @@ function abrirTorneo(ci,wildcard){
   if(cat.premier&&startFase===2&&G.modo==="carrera"&&!G.carrera.pro){
     G.carrera.pro=true;
     noticia("hito","¡Profesionales de pleno derecho!","Cabezas de serie en un torneo Premier");
-    avisa("🎉 Cabezas de serie en un torneo Premier: ¡sois profesionales de pleno derecho!");
+    avisa(t("aviso_cabezas_serie"));
   }
   if(cat.premier){
     const cuadro=rivales.filter(Boolean);
@@ -41,13 +41,11 @@ function abrirTorneo(ci,wildcard){
     const coco=cuadro.find(r=>nivelPareja(r)===cocoNiv);
     const miNiv=G.modo==="carrera"?Math.round((mediaAttrs(G.carrera.attrs)+mediaAttrs(G.carrera.compi.attrs))/2):(alineacion()?Math.round(alineacion().reduce((a,j)=>a+mediaAttrs(j.attrs),0)/2):50);
     torneo.favNos=miNiv>=cocoNiv-1;
-    avisa(torneo.favNos
-      ?`🎙 Pronóstico de la prensa: OS SEÑALAN FAVORITOS del ${torneo.nombre}. Ahora, a soportar el cartel.`
-      :`🎙 Pronóstico de la prensa: los favoritos son ${coco.nombre} (nivel ${cocoNiv}). De vosotros, ni una línea. Mejor.`);
+    avisa(torneo.favNos?t("aviso_fav_si",{torneo:torneo.nombre}):t("aviso_fav_no",{coco:coco.nombre,niv:cocoNiv}));
   }
   if(G.modo==="carrera"){
-    const debut=DIAS[diaDeFase(startFase)-1];
-    avisa(`📋 Inscritos en el ${torneo.nombre}${wildcard?" (wildcard)":""}. ${startFase===2?`Directos al cuadro: debut el ${debut} en octavos.`:startFase===3?`Cuadro de maestros: debut el ${debut} en cuartos.`:`La previa arranca el ${debut}.`} Viaje: ${viaje}€.`);
+    const debut=diaNombre(diaDeFase(startFase)-1);
+    avisa(t("aviso_inscritos",{torneo:torneo.nombre,wc:wildcard?t("insc_wildcard"):"",debut:startFase===2?t("insc_directos",{debut}):startFase===3?t("insc_maestros",{debut}):t("insc_previa",{debut}),viaje}));
     guardar();pintarCarrera();
   } else {
     pintarTorneo();
@@ -628,18 +626,18 @@ function finPartido(){
   const clAhora=clasificaRiv(h2r);
   if(clAhora&&clAhora.tag==="RIVALIDAD"&&(!clAntes||clAntes.tag!=="RIVALIDAD")){
     noticia("hito",`Nace una rivalidad`,`${nombreEntidad().replace("★ ","")} y ${rival.nombre}: ${h2r.v+h2r.d} cruces y máxima igualdad. El circuito ya la espera.`);
-    avisa(`🔥 La prensa habla de RIVALIDAD con ${rival.nombre}: ${h2r.v}-${h2r.d} en ${h2r.v+h2r.d} cruces.`);
+    avisa(t("aviso_rivalidad",{rival:rival.nombre,v:h2r.v,d:h2r.d,n:h2r.v+h2r.d}));
     post("rivalidad",{rival:rival.nombre});
   }
   if(gane&&clAntes&&clAntes.tag==="BESTIA NEGRA"){
     e.conf!==undefined&&(e.conf=clamp(e.conf+6,15,95));
     if(G.modo==="carrera") G.carrera.conf=clamp(G.carrera.conf+6,15,95);
     noticia("hito",`Maldición rota`,`Por fin cae ${rival.nombre} (${h2r.v}-${h2r.d}). El muro mental, derribado.`);
-    avisa(`⛓ ¡MALDICIÓN ROTA! Primera alegría de peso contra ${rival.nombre} (${h2r.v}-${h2r.d}).`);
+    avisa(t("aviso_maldicion",{rival:rival.nombre,v:h2r.v,d:h2r.d}));
     post("maldicion",{rival:rival.nombre});
   }
   e.vd=e.vd||{v:0,d:0}; e.vd[gane?"v":"d"]++;
-  if(gane){ e.rachaAct=(e.rachaAct||0)+1; if(e.rachaAct>(e.rachaMax||0)){e.rachaMax=e.rachaAct;if(e.rachaMax===15)avisa("🔥 15 victorias seguidas: la racha ya es noticia en el circuito.");} }
+  if(gane){ e.rachaAct=(e.rachaAct||0)+1; if(e.rachaAct>(e.rachaMax||0)){e.rachaMax=e.rachaAct;if(e.rachaMax===15)avisa(t("aviso_racha15"));} }
   else e.rachaAct=0;
   fansAdd(gane?(torneo&&torneo.premierT?Math.round(R(15,40)):Math.round(R(2,8))):-Math.round(R(1,4)));
   if(Math.random()<(torneo&&torneo.premierT?.5:.15)) post(gane?"victoria":"derrota",{rival:rival.nombre,torneo:torneo?torneo.nombre:""});
@@ -738,14 +736,14 @@ function finPartido(){
     e.pts+=torneo.pts[idx]||0;e.dinero+=neto(torneo.premio[idx]||0);
     noticia("lesion",`Retirada por lesión`,`${lesionTxt} — adiós al ${torneo.nombre} cuando iban lanzados`,miParejaProt());
     post("lesion");
-    avisa(`⚠ ${lesionTxt}: retirada del torneo (W.O.) tras ganar. +${torneo.pts[idx]||0} pts.`);
+    avisa(t("aviso_retirada",{lesion:lesionTxt,pts:torneo.pts[idx]||0}));
     cerrarTorneo();return;
   }
   torneo.fase++;
   if(torneo.premierT&&torneo.fase===2&&G.modo==="carrera"&&!G.carrera.pro){
     G.carrera.pro=true;
     noticia("hito","¡Debut profesional!","Superada la previa: primer cuadro final de un Premier");
-    avisa("🎉 ¡Superada la previa! Primer cuadro final de un torneo Premier: debut profesional.");
+    avisa(t("aviso_previa_superada"));
   }
   if(G.modo==="carrera"){
     avisa(t("aviso_ronda",{torneo:torneo.nombre,fase:faseNombre(torneo.fase).toLowerCase(),dia:diaNombre(diaDeFase(torneo.fase)-1)}));
