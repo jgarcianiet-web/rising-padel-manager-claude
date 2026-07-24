@@ -322,8 +322,8 @@ function evolucionaMundo(){
   if(n1.yo){ e2.palmares.push(`Pareja del Año (T${temporada()-1})`); fansAdd(2000,"Pareja del Año"); post("gala"); }
   if(e2.rachaMax>=12) galaPremios.push(`🔥 Mejor racha del año: ${nombreEntidad().replace("★ ","")} (${e2.rachaMax} victorias)`);
   avisa(`🎪 GALA DEL CIRCUITO — ${galaPremios.join(" · ")}.`);
-  if(n1.yo) noticia("titulo","Pareja del Año en la Gala","El circuito se rinde: premio a la mejor pareja de la temporada.",miParejaProt());
-  if(n1.yo){ noticias.push(`👑 Cerráis la temporada como Nº1 DEL MUNDO. Historia del pádel.`); noticia("n1","Nº1 DEL MUNDO","Cerráis la temporada en lo más alto. Historia del pádel."); }
+  if(n1.yo) noticia("titulo",t("not_pareja_anio_t"),t("not_pareja_anio_s"),miParejaProt());
+  if(n1.yo){ noticias.push(`👑 Cerráis la temporada como Nº1 DEL MUNDO. Historia del pádel.`); noticia("n1",t("not_n1_t"),t("not_n1_s")); }
   // 1) envejecimiento: los jóvenes crecen, los veteranos declinan (fuerte a partir de 33)
   w.parejas.forEach(p=>{
     p.edad++;
@@ -341,7 +341,7 @@ function evolucionaMundo(){
   const fuera=w.parejas.filter(p=>p.retiraT);
   fuera.forEach(p=>{
     noticias.push(`👋 ${p.nombre} cuelgan la pala. Fin de una era.`);
-    if(p.pro||p.pts>1200) noticia("retirada",`${p.nombre} dicen adiós`,`Se retiran del circuito tras una gran carrera`);
+    if(p.pro||p.pts>1200) noticia("retirada",t("not_retiran_t",{nombre:p.nombre}),t("not_retiran_s"));
   });
   w.parejas=w.parejas.filter(p=>!p.retiraT);
   // 3) nuevos anuncios de última temporada
@@ -364,7 +364,7 @@ function evolucionaMundo(){
     a.nombre=`${a.jug[0].n}/${a.jug[1].n}`;
     b.nombre=`${b.jug[0].n}/${b.jug[1].n}`;
     noticias.push(`💥 Bombazo del mercado: ${a.jug[0].n} rompe con ${sale} y jugará con ${entra}.`);
-    noticia("ruptura",`${a.jug[0].n} rompe con ${sale}`,`Jugará con ${entra} la próxima temporada`,{jug:[{n:a.jug[0].n,sexo:a.sexo},{n:sale,sexo:a.sexo}]});
+    noticia("ruptura",t("not_ruptura_npc_t",{jug:a.jug[0].n,sale}),t("not_ruptura_npc_s",{entra}),{jug:[{n:a.jug[0].n,sexo:a.sexo},{n:sale,sexo:a.sexo}]});
   }
   // 5) debuts: jóvenes que entran al circuito hasta reponer el plantel (a veces, una perla)
   while(w.parejas.length<WORLD_N){
@@ -377,7 +377,7 @@ function evolucionaMundo(){
       pts:Math.max(0,Math.round((nivel-40)*(nivel-40)*R(.8,1.4))),club:Math.floor(Math.random()*9),atNet:false};
     w.parejas.push(p);
     noticias.push(perla?`🚀 Debuta ${p.nombre}, la pareja joven de la que todos hablan (${nivel}).`:`🚀 Debut en el circuito: ${p.nombre}.`);
-    if(perla) noticia("debut",`Debuta ${p.nombre}`,`La pareja joven de la que todos hablan (nivel ${nivel})`);
+    if(perla) noticia("debut",t("not_perla_t",{nombre:p.nombre}),t("not_perla_s",{nivel}));
   }
   // 6) movimientos de club según su personalidad (fichan, forman cantera, venden)
   accionesDeClub(w,noticias);

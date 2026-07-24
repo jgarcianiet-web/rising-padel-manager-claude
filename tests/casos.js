@@ -1122,3 +1122,14 @@ comprueba("Idiomas: noticias de torneo traducen e interpolan", () => {
   } finally { localStorage.removeItem("rpm_idioma"); }
   return "noticias de torneo en inglés";
 });
+
+comprueba("Idiomas: noticias de club/estado y tiers de patrocinio traducen", () => {
+  exige(tierTxt(4) === "MULTINACIONAL", "tier base");
+  try {
+    localStorage.setItem("rpm_idioma", "en");
+    exige(tierTxt(3) === "SPORTS GIANT", "tier: " + tierTxt(3));
+    exige(t("not_destituido_s", { obj: 8 }).indexOf("top 8") >= 0, "destituido mal interpolado");
+    exige(t("not_n1_t") === "WORLD No. 1", "n1: " + t("not_n1_t"));
+  } finally { localStorage.removeItem("rpm_idioma"); }
+  return "club/estado/tiers en inglés";
+});
