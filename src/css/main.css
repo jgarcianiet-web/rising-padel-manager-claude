@@ -114,6 +114,17 @@ input,select{background:#10151E;border:1px solid var(--borde2);color:var(--texto
 .entreno button{font-size:10.5px;padding:7px 2px;line-height:1.4;font-weight:500;color:var(--gris)}
 .entreno button b{font-size:13px;font-family:'IBM Plex Mono',monospace}
 .oculto{display:none !important}
+/* Transición suave al cambiar de pestaña: cuando un panel pasa de oculto
+   (display:none) a visible, el navegador reinicia esta animación de entrada, así
+   que el cambio de pestaña entra con un leve fundido en vez de un corte seco.
+   Un re-pintado del contenido no cambia el display, por lo que no re-anima. */
+@keyframes panelIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+#tab-semana,#tab-entreno,#tab-staff,#tab-jugador,#tab-ranking,#tab-diario,
+#cm-semana,#cm-plantilla,#cm-clubpan,#cm-ranking,#cm-diario{animation:panelIn .22s ease}
+@media(prefers-reduced-motion:reduce){
+  #tab-semana,#tab-entreno,#tab-staff,#tab-jugador,#tab-ranking,#tab-diario,
+  #cm-semana,#cm-plantilla,#cm-clubpan,#cm-ranking,#cm-diario{animation:none}
+}
 /* pantalla de partido: fuera el panel lateral, solo pista + retransmisión */
 body.en-partido #hud{display:none}
 body.en-superliga #hud{display:none}
