@@ -228,6 +228,11 @@ function registraMomento(g){
 function resolverPunto(g){
   const m=match,r={};
   if(stats&&stats[g]) stats[g].pganados=(stats[g].pganados||0)+1;   // puntos ganados (para la barra en vivo)
+  // rendimiento bajo presión: puntos calientes (break, 40-40, tie-break, final...)
+  if(stats&&typeof PRESION!=="undefined"&&PRESION>=.45){
+    [0,1].forEach(t=>{ if(stats[t]&&stats[t].presion) stats[t].presion.jug++; });
+    if(stats[g]&&stats[g].presion) stats[g].presion.gan++;
+  }
   registraMomento(g);
   // break points (ocasiones de rotura): el equipo al resto, a un punto de romper el saque
   const _rec=1-m.server;
@@ -559,6 +564,28 @@ function resumenPartido(){
   }
   return L;
 }
+// Análisis táctico post-partido (desde vuestra perspectiva, equipo 0): el "por
+// qué" del resultado. Cierra el círculo con el informe del ojeador previo.
+function analisisPartido(){
+  if(!stats||!teams) return [];
+  const L=[];
+  const topKey=(obj)=>{ let bk=null,bv=0; for(const k in (obj||{})){ if(obj[k]>bv){bv=obj[k];bk=k;} } return bk?{k:bk,v:bv}:null; };
+  const lbl=(k)=>(typeof SHOTS!=="undefined"&&SHOTS[k])?SHOTS[k].label:k;
+  const arma=topKey(stats[0].wShot);
+  if(arma&&arma.v>=2) L.push(`🗡 Vuestra arma más letal: la ${lbl(arma.k)} (${arma.v} winners).`);
+  const fallo=topKey(stats[0].eShot);
+  if(fallo&&fallo.v>=2) L.push(`⚠ Vuestros errores llegaron sobre todo de la ${lbl(fallo.k)} (${fallo.v}).`);
+  const re=[stats[1].jug[0].e||0, stats[1].jug[1].e||0];
+  if(re[0]+re[1]>=3 && Math.abs(re[0]-re[1])>=2){
+    const q=re[0]>=re[1]?0:1;
+    L.push(`🎯 Cargasteis con acierto sobre ${teams[1].jug[q].n}: le forzasteis ${re[q]} errores.`);
+  }
+  const red=stats[0].red||0, pg=stats[0].pganados||0;
+  if(pg>=6){ const pct=Math.round(red/pg*100); L.push(pct>=45?`🥅 Dominasteis la red: el ${pct}% de vuestros puntos se cerraron arriba.`:`↔ Os faltó red: solo el ${pct}% de vuestros puntos se cerraron arriba.`); }
+  const pr=stats[0].presion||{jug:0,gan:0};
+  if(pr.jug>=4){ const pct=Math.round(pr.gan/pr.jug*100); L.push(`${pct>=55?"💪":"🥵"} Bajo presión ganasteis ${pr.gan} de ${pr.jug} puntos calientes (${pct}%).`); }
+  return L;
+}
 function mostrarFicha(cb){
   const nombres=[...teams[0].jug.map(j=>j.n),...teams[1].jug.map(j=>j.n)];
   const filas=[];
@@ -569,6 +596,7 @@ function mostrarFicha(cb){
     <table class="rk">${filas.map(f=>{const jj=[...teams[0].jug,...teams[1].jug].find(x=>x.n===f.n);return `<tr${f.n===mvp.n?' style="color:var(--oro)"':""}><td style="font-size:11px"><span style="display:inline-block;vertical-align:middle;margin-right:4px">${avatarSVG(jj,20)}</span>${f.n===mvp.n?"★ ":""}${f.n}</td><td class="pts" style="color:var(--lima)">${f.w}W</td><td class="pts" style="color:#E05656">${f.e}E</td><td class="pts">${f.bal>0?"+":""}${f.bal}</td></tr>`;}).join("")}</table>
     <div class="foot" style="text-align:left;margin-top:7px">★ MVP del partido: <b style="color:var(--oro)">${mvp.n}</b> (${mvp.w} winners, balance ${mvp.bal>0?"+":""}${mvp.bal}).</div>
     <div class="foot" style="text-align:left;margin-top:2px">Tiros ${stats[0].tiros||0}-${stats[1].tiros||0} · Red ${stats[0].red||0}-${stats[1].red||0} · Roturas ${stats[0].bp?stats[0].bp.ganados:0}/${stats[0].bp?stats[0].bp.jugados:0}-${stats[1].bp?stats[1].bp.ganados:0}/${stats[1].bp?stats[1].bp.jugados:0} · Fatiga final ${Math.round(((stats[0].fatiga||[0,0]).reduce((a,f)=>a+f,0))/2)}-${Math.round(((stats[1].fatiga||[0,0]).reduce((a,f)=>a+f,0))/2)}</div>
+    ${(()=>{const an=analisisPartido();return an.length?`<div style="border-top:1px solid var(--borde);margin-top:9px;padding-top:7px"><div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--oro);margin-bottom:4px">🔍 Análisis táctico</div>${an.map(l=>`<div style="font-size:11.5px;line-height:1.5;color:var(--texto);padding:1px 0">${l}</div>`).join("")}</div>`:"";})()}
     ${match.ver?"":`<div style="border-top:1px solid var(--borde);margin-top:8px;padding-top:7px">${resumenPartido().map(l=>`<div style="font-size:11.5px;line-height:1.5;color:var(--gris);padding:1px 0">📋 ${l}</div>`).join("")}</div>`}`;
   const ov=document.getElementById("fichaP");
   ov.classList.remove("oculto");

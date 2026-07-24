@@ -141,6 +141,7 @@ function buildPoint(server){
 
     if(outcome==="error"){
       stats[t].jug[hIdx].e++;
+      stats[t].eShot[shotKey]=(stats[t].eShot[shotKey]||0)+1;   // origen del error (por golpe)
       pl.conf=clamp((pl.conf??55)-4,10,95);
       const modo=pick(["net","out","glass"]);
       ev.push({team:t,jug,shotKey,com,from:contact,end:modo,endCom:`✗ ${jug}: ${pick(F_ERR)}`,net:[A.atNet,B.atNet]});
@@ -149,6 +150,7 @@ function buildPoint(server){
     }
     if(outcome==="winner"){
       stats[t].jug[hIdx].w++;
+      stats[t].wShot[shotKey]=(stats[t].wShot[shotKey]||0)+1;   // arma que cierra el punto (por golpe)
       pl.conf=clamp((pl.conf??55)+3,10,95);
       const lateral=["remate3","remate4"].includes(shotKey);
       ev.push({team:t,jug,shotKey,com,from:contact,end:lateral?"porTres":"winner",endCom:`★ WINNER de ${jug}. ${pick(F_WIN)}`,net:[A.atNet,B.atNet]});
@@ -176,6 +178,7 @@ function buildPoint(server){
     contact=inc.c;ctx=inc.ctx;t=1-t;hIdx=nIdx;
     if(rally>26){
       stats[t].jug[hIdx].w++;
+      stats[t].wShot["remate"]=(stats[t].wShot["remate"]||0)+1;
       ev.push({team:t,jug:teams[t].jug[hIdx].n,shotKey:"remate",com:"remate definitivo",from:contact,end:"winner",endCom:"★ Cae el punto tras un peloteo eterno.",net:[A.atNet,B.atNet]});
       netCredit(t);
       return {ev,ganador:t};

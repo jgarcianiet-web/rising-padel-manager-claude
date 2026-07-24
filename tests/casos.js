@@ -134,7 +134,14 @@ comprueba("Partido: fatiga, tiros y break points se registran", () => {
   [0, 1].forEach(t => exige((stats[t].red || 0) >= 0 && (stats[t].red || 0) <= (stats[t].pganados || 0), "los puntos de red exceden a los puntos ganados"));
   const red = (stats[0].red || 0) + (stats[1].red || 0);
   exige(red > 0, "en un partido entero no se cerró ni un punto en la red");
-  return `${tiros} tiros, fatiga máx ${Math.round(fatMax)}, red ${stats[0].red}-${stats[1].red}, roturas ${stats[0].bp.ganados}/${stats[0].bp.jugados}-${stats[1].bp.ganados}/${stats[1].bp.jugados}`;
+  // análisis post-partido: desglose por golpe, presión y narrativa del "por qué"
+  const wShotN = Object.values(stats[0].wShot).reduce((a, v) => a + v, 0);
+  const wTot = stats[0].jug[0].w + stats[0].jug[1].w;
+  exige(wShotN === wTot, "los winners por golpe no cuadran con los winners totales");
+  exige(stats[0].presion.gan <= stats[0].presion.jug, "puntos de presión ganados > jugados");
+  const an = analisisPartido();
+  exige(Array.isArray(an) && an.length > 0, "el análisis post-partido no produjo ninguna lectura");
+  return `${tiros} tiros, red ${stats[0].red}-${stats[1].red}, presión ${stats[0].presion.gan}/${stats[0].presion.jug}, análisis con ${an.length} lecturas`;
 });
 
 comprueba("SQLite: la proyección relacional produce filas coherentes", () => {
