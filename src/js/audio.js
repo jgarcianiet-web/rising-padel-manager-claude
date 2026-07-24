@@ -42,6 +42,15 @@ function sfxError(){ tone(150,.22,"sawtooth",.06,0,110); sfxGrada(.28); }
 function sfxSet(){ tone(660,.1,"sine",.09); tone(880,.2,"sine",.09,.11); sfxGrada(1); }
 function sfxTitulo(){ [523,659,784,1047].forEach((f,i)=>tone(f,.17,"square",.08,i*.13)); ruido(1.3,.06,.25); }
 function sfxClick(){ tone(720,.03,"square",.04); }
+// Blip de notificación para los avisos emergentes, con matiz según el tipo:
+// alegre y ascendente para lo bueno, grave y descendente para lo malo. Sutil
+// (volumen bajo) para no competir con los efectos del partido.
+function sfxAviso(tipo){
+  if(tipo==="ok"){ tone(660,.07,"sine",.05); tone(920,.12,"sine",.045,.07); }
+  else if(tipo==="bad"){ tone(240,.16,"sawtooth",.05,0,165); }
+  else if(tipo==="warn"){ tone(440,.09,"triangle",.05); tone(392,.12,"triangle",.045,.08); }
+  else { tone(560,.05,"sine",.04); }
+}
 // Reacción de la grada: un vítor de público que crece rápido y cae despacio.
 // int 0..1 marca la intensidad (punto normal → set/partido).
 function sfxGrada(int){

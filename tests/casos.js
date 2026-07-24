@@ -965,3 +965,32 @@ comprueba("Balance: la caja no se descontrola en dificultad estándar", () => {
   });
   return "6 temporadas × " + seeds.length + " semillas dentro de rango";
 });
+
+/* ===================== AVISOS EMERGENTES (feedback) ===================== */
+
+comprueba("Avisos: tipoAviso clasifica por contenido", () => {
+  exige(tipoAviso("🏆 ¡CAMPEONES del Major!") === "ok", "campeón debería ser ok");
+  exige(tipoAviso("✔ Objetivo de la junta cumplido") === "ok", "check debería ser ok");
+  exige(tipoAviso("✗ Eliminados en semifinales") === "bad", "eliminados debería ser bad");
+  exige(tipoAviso("⚠ lesión: 3 semanas de baja") === "warn", "lesión debería ser warn");
+  exige(tipoAviso("Semana 3 · lunes, a entrenar") === "info", "texto neutro debería ser info");
+  return "ok / bad / warn / info";
+});
+
+comprueba("Avisos: avisa() guarda en el diario y emite un toast con su tipo", () => {
+  const c = nuevaCarrera("agresivo");
+  avisa("🏆 ¡CAMPEONES del torneo!");
+  exige(c.diario[0].indexOf("CAMPEONES") >= 0, "el aviso no se guardó en el diario");
+  const cont = document.getElementById("toasts");
+  const ult = cont.children[cont.children.length - 1];
+  exige(ult && /\bt-ok\b/.test(ult.className), "el toast no refleja el tipo ok: " + (ult && ult.className));
+  return "diario + toast (t-ok)";
+});
+
+comprueba("Avisos: no se apilan más de 4 toasts a la vez", () => {
+  nuevaCarrera("agresivo");
+  const cont = document.getElementById("toasts");
+  for (let i = 0; i < 12; i++) avisa("Aviso de prueba número " + i);
+  exige(cont.children.length <= 4, "se apilaron " + cont.children.length + " toasts (máx 4)");
+  return "tope de 4 respetado tras 12 avisos";
+});
