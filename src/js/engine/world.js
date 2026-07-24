@@ -239,6 +239,49 @@ function evaluaOfertaCompi(yo,cand,oferta,prestigio){
   return {acepta:faltan.length===0,faltan,afinidad:afin,ex,colision,cede,suLado,tuLado};
 }
 
+/* ================================================================
+   CONTRATOS DE CLUB: los jugadores tienen contrato (duración, salario, cláusula)
+   y moral por minutos: un crack en el banquillo se quema, exige jugar y acaba
+   pidiendo salir. Al vencer el contrato, renuevan o se van libres.
+================================================================ */
+// Contrato inicial según nivel: duración, salario semanal, cláusula y prima.
+function mkContratoClub(nivel,rnd){
+  const r=rnd||Math.random;
+  return {
+    temporadas: nivel>=68?(r()<.5?3:2):(r()<.6?2:1),
+    salario:Math.round(nivel*8),
+    clausula:Math.round(nivel*nivel*1.3),
+    prima:Math.round(nivel*4),
+  };
+}
+// Delta semanal de moral de plantilla según el rol (A titular / B / banquillo) y carácter.
+function moralMinutosDelta(j,rol){
+  const rc=rasgosDe(j), amb=rc.indexOf("ambicioso")>=0, leal=rc.indexOf("leal")>=0, conf=rc.indexOf("conflictivo")>=0;
+  let d = rol==="A"?2 : rol==="B"?0 : -3;      // el banquillo desgasta
+  if(rol!=="A"&&amb) d-=2;                       // el ambicioso quiere ser titular
+  if(rol!=="A"&&conf) d-=1;
+  if(rol!=="A"&&leal) d+=1;                      // el leal aguanta la suplencia
+  if(rol==="A"&&amb) d+=1;
+  return d;
+}
+// Estado del jugador según su moral de club (0..100): a gusto, con dudas, exige jugar o pide salir.
+function estadoJugadorClub(j){
+  const m=(j.moralC==null?70:j.moralC);
+  if(m<25) return {clave:"salir",txt:"Pide salir: harto de no jugar.",col:-1};
+  if(m<42) return {clave:"exige",txt:"Exige ser pareja A: se siente relegado.",col:-1};
+  if(m<58) return {clave:"dudas",txt:"Con dudas: necesita sentirse importante.",col:0};
+  return {clave:"ok",txt:"A gusto en el club.",col:1};
+}
+// Cláusula de rescisión de un jugador (la del contrato o, en su defecto, por nivel).
+function valorClausula(j){ return (j.contrato&&j.contrato.clausula)||Math.round(mediaAttrs(j.attrs)*mediaAttrs(j.attrs)*1.3); }
+// ¿Acepta renovar por el salario ofrecido? Espera acorde a nivel (más si es ambicioso, menos si es leal).
+function evaluaRenovacionClub(j,salarioOfrecido){
+  const niv=mediaAttrs(j.attrs), rc=rasgosDe(j);
+  let espera=Math.round(niv*8*(rc.indexOf("ambicioso")>=0?1.25:1));
+  if(rc.indexOf("leal")>=0) espera=Math.round(espera*0.85);
+  return {acepta:salarioOfrecido>=espera, espera};
+}
+
 // Aplica la opción elegida (muta c.compiMoral). Devuelve {rompio, txt}.
 function aplicarOpcionRuptura(c,id,motivo){
   if(id==="dejar") return {rompio:true,txt:"Rotura confirmada: cada uno busca su camino."};

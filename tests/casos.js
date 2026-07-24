@@ -437,6 +437,27 @@ comprueba("Mercado: negociación de compañero con exigencias reales", () => {
   return `crack pide prestigio ${exigenciasCompi(crack).prestigioMin}; afinidad forzada ${rCol.afinidad} → cediendo ${rCede.afinidad}`;
 });
 
+comprueba("Club: contratos, moral por minutos y renovación", () => {
+  const at = (n) => { const o = {}; ATTR_KEYS.forEach(k => o[k] = n); return o; };
+  const ct = mkContratoClub(70);
+  exige(ct.salario === 70 * 8 && ct.clausula > 0 && ct.temporadas >= 1 && ct.temporadas <= 3, "contrato inicial incoherente");
+  // moral por minutos: titular sube, banquillo baja; el ambicioso en el banquillo sufre más
+  exige(moralMinutosDelta({ n: "T", rasgos: [] }, "A") > 0, "el titular no gana moral");
+  exige(moralMinutosDelta({ n: "B", rasgos: [] }, "banquillo") < 0, "el banquillo no pierde moral");
+  exige(moralMinutosDelta({ n: "Amb", rasgos: ["ambicioso"] }, "banquillo") < moralMinutosDelta({ n: "N", rasgos: [] }, "banquillo"), "el ambicioso no sufre más en el banquillo");
+  // estado según moral de plantilla
+  exige(estadoJugadorClub({ moralC: 20 }).clave === "salir", "moral 20 debería pedir salir");
+  exige(estadoJugadorClub({ moralC: 35 }).clave === "exige", "moral 35 debería exigir jugar");
+  exige(estadoJugadorClub({ moralC: 80 }).clave === "ok", "moral 80 debería estar a gusto");
+  // renovación: acepta si el salario cubre su expectativa; el ambicioso pide más
+  const j = { n: "R", attrs: at(60), rasgos: [] }, amb = { n: "A", attrs: at(60), rasgos: ["ambicioso"] };
+  exige(evaluaRenovacionClub(j, 60 * 8).acepta === true, "debería aceptar un salario acorde a su nivel");
+  exige(evaluaRenovacionClub(j, 60 * 4).acepta === false, "no debería aceptar un salario a la baja");
+  exige(evaluaRenovacionClub(amb, 60 * 8).espera > evaluaRenovacionClub(j, 60 * 8).espera, "el ambicioso no exige más salario");
+  exige(valorClausula({ contrato: { clausula: 12345 } }) === 12345, "no usa la cláusula del contrato");
+  return `contrato ${ct.temporadas} temp, salario ${ct.salario}; ambicioso espera ${evaluaRenovacionClub(amb, 0).espera}`;
+});
+
 comprueba("Analítica: sin la base lista muestra un aviso claro", () => {
   abrirAnalitica();
   const cuerpo = document.getElementById("analiticaCuerpo");
