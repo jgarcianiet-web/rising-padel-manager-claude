@@ -1067,3 +1067,14 @@ comprueba("Idiomas: t() interpola parámetros {campo} y diaNombre traduce", () =
   } finally { localStorage.removeItem("rpm_idioma"); }
   return "interpolación {campo} y días de la semana";
 });
+
+comprueba("Idiomas: catálogo de estilos y personalidades traducido", () => {
+  exige(estiloNombre("agresivo") === "Agresivo" && persoNombre("frio") === "Frío", "catálogo base en español");
+  try {
+    localStorage.setItem("rpm_idioma", "en");
+    exige(estiloNombre("rematador") === "Smasher", "estilo no traducido: " + estiloNombre("rematador"));
+    exige(persoNombre("valiente") === "Brave", "personalidad no traducida: " + persoNombre("valiente"));
+    exige(estiloDesc("defensivo").length > 0 && persoDesc("emocional").length > 0, "faltan descripciones");
+  } finally { localStorage.removeItem("rpm_idioma"); }
+  return "estilos y personalidades ES/EN";
+});

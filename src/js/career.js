@@ -277,8 +277,8 @@ function pintarCrear(){
   Object.entries(PERSONALIDADES).forEach(([k,p])=>{
     const b=document.createElement("button");
     b.className="selbtn"+(persoSel===k?" on":"");
-    b.style.fontSize="11px";b.textContent=p.n;
-    b.onclick=()=>{persoSel=k;document.getElementById("persoDesc").textContent=p.desc;pintarCrear();};
+    b.style.fontSize="11px";b.textContent=persoNombre(k);
+    b.onclick=()=>{persoSel=k;document.getElementById("persoDesc").textContent=persoDesc(k);pintarCrear();};
     pc.appendChild(b);
   });
   const est=document.getElementById("estilos");
@@ -286,9 +286,9 @@ function pintarCrear(){
   Object.entries(ESTILOS).forEach(([k,e])=>{
     const d=document.createElement("div");
     d.className="opcion";
-    d.innerHTML=`<b>${e.nombre}</b> <span class="pill">media ${mediaAttrs(e.attrs)}</span><div class="d">${e.desc}</div>`;
+    d.innerHTML=`<b>${estiloNombre(k)}</b> <span class="pill">media ${mediaAttrs(e.attrs)}</span><div class="d">${estiloDesc(k)}</div>`;
     const b=document.createElement("button");
-    b.className="pri";b.style.width="100%";b.textContent=`Debutar como ${e.nombre.toLowerCase()}`;
+    b.className="pri";b.style.width="100%";b.textContent=t("btn_debutar",{x:estiloNombre(k).toLowerCase()});
     b.onclick=()=>empezarCarrera(k);
     d.appendChild(b);
     est.appendChild(d);
@@ -325,7 +325,7 @@ function empezarCarrera(estiloKey){
   }};
   G.carrera.mercadoP=mkMercadoParejas();
   G.carrera.objetivos=mkObjetivosTemporada(G.carrera,miPuesto());
-  avisa(`Debut de ${nombre} (16 años, ${ESTILOS[estiloKey].nombre.toLowerCase()}, ${PERSONALIDADES[persoSel].n.toLowerCase()}). Semanas de lunes a domingo, calendario oficial de 52 semanas y el puesto 41 del ranking como punto de partida. Administra tus 2.500€.`);
+  avisa(`Debut de ${nombre} (16 años, ${estiloNombre(estiloKey).toLowerCase()}, ${persoNombre(persoSel).toLowerCase()}). Semanas de lunes a domingo, calendario oficial de 52 semanas y el puesto 41 del ranking como punto de partida. Administra tus 2.500€.`);
   noticia("debut",`${nombre}, 16 años: nace una carrera`,`Debuta el #41 del ranking con 2.500€ en el bolsillo y toda la vida por delante`);
   entrarPartida();
   verTuto("carrera");
@@ -645,7 +645,7 @@ function pintarJugador(){
   hav.innerHTML=avatarSVG({n:c.nombre,sexo:c.sexo,ava:c.ava,_ropa:c._ropa||c.color},52);
   document.getElementById("hNom").textContent=c.nombre;
   const _hsub=document.getElementById("hSub");
-  _hsub.innerHTML=`${c.edad} años · ${ladoTxt(c.lado)} · ${ESTILOS[c.estilo].nombre} · ${PERSONALIDADES[c.perso].n}`+(()=>{const r=chipRasgos(c);return r?`<div style="margin-top:4px">${r}</div>`:"";})();
+  _hsub.innerHTML=`${c.edad} años · ${ladoTxt(c.lado)} · ${estiloNombre(c.estilo)} · ${persoNombre(c.perso)}`+(()=>{const r=chipRasgos(c);return r?`<div style="margin-top:4px">${r}</div>`:"";})();
   document.getElementById("hMedia").textContent=mediaAttrs(c.attrs);
   document.getElementById("hMeta").innerHTML=`
     <div class="chip">Confianza <b style="color:${colAttr(c.conf)}">${c.conf}</b></div>
@@ -660,8 +660,8 @@ function pintarJugador(){
   const afin=afinidadPareja(_comoJugador(c),c.compi);
   document.getElementById("compMeta").innerHTML=`
     <div class="chip">Media <b>${mediaAttrs(c.compi.attrs)}</b></div>
-    <div class="chip">${ESTILOS[c.compi.estilo].nombre}</div>
-    <div class="chip">${PERSONALIDADES[c.compi.perso].n}</div>
+    <div class="chip">${estiloNombre(c.compi.estilo)}</div>
+    <div class="chip">${persoNombre(c.compi.perso)}</div>
     <div class="chip">Moral <b style="color:${colAttr(moral)}">${moral}</b></div>
     <div class="chip">Afinidad <b style="color:${colAttr(afin)}">${afin}</b></div>
     ${(()=>{const r=chipRasgos(c.compi);return r?`<div style="width:100%;margin-top:3px">${r}</div>`:"";})()}`;
@@ -683,7 +683,7 @@ function pintarJugador(){
       :"Agente libre";
     const exPrev=exigenciasCompi(cand), prest=prestigioJugador(miPuesto(),c.fans,c.pro);
     const prestOk=prest>=exPrev.prestigioMin;
-    d.innerHTML=`<b>${cand.pais||""} ${cand.n}</b> <span class="pill">nivel ${mediaAttrs(cand.attrs)}</span> <span class="pill">${ESTILOS[cand.estilo].nombre}</span> <span class="pill">${PERSONALIDADES[cand.perso].n}</span>${chipRasgos(cand)}<div class="d">${origen} · prima ${prima}€ · exige prestigio <b style="color:${prestOk?"var(--verde)":"var(--rojo)"}">${exPrev.prestigioMin}</b> (tienes ${prest})</div>`;
+    d.innerHTML=`<b>${cand.pais||""} ${cand.n}</b> <span class="pill">nivel ${mediaAttrs(cand.attrs)}</span> <span class="pill">${estiloNombre(cand.estilo)}</span> <span class="pill">${persoNombre(cand.perso)}</span>${chipRasgos(cand)}<div class="d">${origen} · prima ${prima}€ · exige prestigio <b style="color:${prestOk?"var(--verde)":"var(--rojo)"}">${exPrev.prestigioMin}</b> (tienes ${prest})</div>`;
     const b=document.createElement("button");b.style.width="100%";
     b.textContent=c.dinero<prima?"Caja insuficiente":`Negociar (${prima}€)`;
     b.disabled=c.dinero<prima;
@@ -734,7 +734,7 @@ function negociarPareja(ci){
     const puedePagar=c.dinero>=prima;
     ov.innerHTML=`<div class="card" style="max-width:460px;width:100%">
       <h3 style="margin-top:0">🤝 Negociación · ${cand.n}</h3>
-      <div class="foot" style="text-align:left;margin-bottom:6px">Nivel ${ex.niv} · ${ESTILOS[cand.estilo].nombre} · ${PERSONALIDADES[cand.perso].n} · prima ${prima}€</div>
+      <div class="foot" style="text-align:left;margin-bottom:6px">Nivel ${ex.niv} · ${estiloNombre(cand.estilo)} · ${persoNombre(cand.perso)} · prima ${prima}€</div>
       <div style="margin-bottom:8px">
         ${fila(prest>=ex.prestigioMin,`Prestigio: pide ${ex.prestigioMin}, tienes ${prest}.`)}
         ${fila(!ex.exigeEntrenador||oferta.tieneEntrenador,ex.exigeEntrenador?`Exige entrenador en tu equipo${oferta.tieneEntrenador?" — lo tienes":" — te falta"}.`:"No exige entrenador.")}

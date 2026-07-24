@@ -106,7 +106,7 @@ function pintarTorneo(){
   const r=torneo.rivales[torneo.fase];
   const h2=ent().h2h[r.id];
   const h2txt=h2?`Os conocéis: ${h2.v}-${h2.d} a ${h2.v>=h2.d?"vuestro":"su"} favor.`:"Nunca os habéis enfrentado.";
-  const persos=r.jug.map(j=>`${j.pais||""} ${j.n} (${PERSONALIDADES[j.perso].n.toLowerCase()})`).join(" · ");
+  const persos=r.jug.map(j=>`${j.pais||""} ${j.n} (${persoNombre(j.perso).toLowerCase()})`).join(" · ");
   const entrada=torneo.startFase===2?"Cabezas de serie: directos al cuadro final.":"Entrada por la previa clasificatoria.";
   const clubR=(r.club!==undefined)?` <span class="pill" style="color:${CLUBES_NPC[r.club].color}">● ${CLUBES_NPC[r.club].n}</span>`:"";
   const miNiv=G.modo==="carrera"?Math.round((mediaAttrs(G.carrera.attrs)+mediaAttrs(G.carrera.compi.attrs))/2):(alineacion()?Math.round(alineacion().reduce((a,j)=>a+mediaAttrs(j.attrs),0)/2):50);
