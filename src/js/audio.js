@@ -101,6 +101,9 @@ if(typeof document.addEventListener==="function"){
 function buildPoint(server){
   const ev=[]; const A=teams[0],B=teams[1];
   A.atNet=false;B.atNet=false;A._scr=false;B._scr=false;
+  // dominio de red: quien cierra el punto controlando la red se lleva el crédito
+  // (en pádel, la red es el sitio: casi todos los puntos se ganan desde arriba).
+  const netCredit=(g)=>{ if(stats&&stats[g]&&teams[g]&&teams[g].atNet) stats[g].red=(stats[g].red||0)+1; };
   // entre punto y punto los cuatro recuperan un poco de fatiga
   if(stats){[0,1].forEach(tt=>{ if(stats[tt]&&stats[tt].fatiga) stats[tt].fatiga=stats[tt].fatiga.map(f=>clamp(f-.8,0,100)); });}
   let t=server,rally=0;
@@ -141,6 +144,7 @@ function buildPoint(server){
       pl.conf=clamp((pl.conf??55)-4,10,95);
       const modo=pick(["net","out","glass"]);
       ev.push({team:t,jug,shotKey,com,from:contact,end:modo,endCom:`✗ ${jug}: ${pick(F_ERR)}`,net:[A.atNet,B.atNet]});
+      netCredit(1-t);
       return {ev,ganador:1-t};
     }
     if(outcome==="winner"){
@@ -148,6 +152,7 @@ function buildPoint(server){
       pl.conf=clamp((pl.conf??55)+3,10,95);
       const lateral=["remate3","remate4"].includes(shotKey);
       ev.push({team:t,jug,shotKey,com,from:contact,end:lateral?"porTres":"winner",endCom:`★ WINNER de ${jug}. ${pick(F_WIN)}`,net:[A.atNet,B.atNet]});
+      netCredit(t);
       return {ev,ganador:t};
     }
 
@@ -172,6 +177,7 @@ function buildPoint(server){
     if(rally>26){
       stats[t].jug[hIdx].w++;
       ev.push({team:t,jug:teams[t].jug[hIdx].n,shotKey:"remate",com:"remate definitivo",from:contact,end:"winner",endCom:"★ Cae el punto tras un peloteo eterno.",net:[A.atNet,B.atNet]});
+      netCredit(t);
       return {ev,ganador:t};
     }
     shotKey="_";
