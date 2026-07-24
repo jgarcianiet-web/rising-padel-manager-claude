@@ -91,6 +91,32 @@ function dbSqlSnapshotVivo(){
   try{ dbSqlGuardarSnapshot(SQLDB, normalizar()); dbSqlPersistir(); }catch(e){}
 }
 
+/* ---------- consultas para la analítica (síncronas, sobre sql.js) ---------- */
+// Top jugadores por media (media = promedio de sus atributos), vía subconsulta.
+function dbSqlTopJugadores(limite){
+  if(!SQLDB) return [];
+  try{
+    const r=SQLDB.exec(
+      "SELECT j.nombre, j.sexo, j.estilo, "+
+      "(SELECT AVG(a.valor) FROM norm_atributo a WHERE a.jid=j.jid) media "+
+      "FROM norm_jugador j ORDER BY media DESC, j.nombre ASC LIMIT "+((limite|0)||10));
+    if(!r||!r[0]) return [];
+    return r[0].values.map(v=>({nombre:v[0],sexo:v[1],estilo:v[2],media:Math.round(v[3]||0)}));
+  }catch(e){ return []; }
+}
+function dbSqlNormStats(){
+  if(!SQLDB) return null;
+  try{
+    const c=(t)=>{ const r=SQLDB.exec("SELECT COUNT(*) FROM "+t); return (r&&r[0])?r[0].values[0][0]:0; };
+    return {parejas:c("norm_pareja"),jugadores:c("norm_jugador"),atributos:c("norm_atributo")};
+  }catch(e){ return null; }
+}
+// Reconstruye el mundo (lista de parejas) desde sql.js. Base de la Fase 4b.
+function dbSqlCargarMundo(){
+  if(!SQLDB||typeof denormalizar!=="function") return null;
+  try{ const snap=dbSqlLeerSnapshot(SQLDB); return snap.parejas.length?denormalizar(snap):null; }catch(e){ return null; }
+}
+
 // En Node (pruebas) exportamos las funciones puras; en el navegador quedan como globales.
 if(typeof module!=="undefined"&&module.exports){
   module.exports={DB_SCHEMA_SQL,dbSqlSchema,dbSqlGuardarSnapshot,dbSqlLeerSnapshot};

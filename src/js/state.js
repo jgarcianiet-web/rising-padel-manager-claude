@@ -11,32 +11,13 @@ function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
 function lsSet(k,v){try{localStorage.setItem(k,v);return true;}catch(e){return false;}}
 function lsDel(k){try{localStorage.removeItem(k);}catch(e){}}
 
-// ---------- persistencia en SQLite (solo dentro de la app de escritorio) ----------
-// localStorage sigue siendo la fuente de verdad síncrona durante la partida;
-// SQLite es un espejo duradero en disco (con historial) que solo actúa cuando
-// el juego corre bajo Tauri. Sin Tauri (navegador o pruebas) todo es no-op.
-function _invoke(){ return (typeof window!=="undefined"&&window.__TAURI__&&window.__TAURI__.core&&window.__TAURI__.core.invoke)||null; }
-function dbDisponible(){ return !!_invoke(); }
-function dbGuardar(modo,json){
-  const inv=_invoke(); if(!inv) return;
-  try{ const p=inv("db_save",{modo,json}); if(p&&p.catch) p.catch(()=>{}); }catch(e){}
-}
-function dbCargar(modo){
-  const inv=_invoke(); if(!inv) return Promise.resolve(null);
-  try{ return Promise.resolve(inv("db_load",{modo})).catch(()=>null); }catch(e){ return Promise.resolve(null); }
-}
-// Al arrancar en la app: si en localStorage falta una partida pero SQLite la
-// tiene (p.ej. tras limpiar la caché del WebView), la restauramos.
-function hidratarDesdeDB(){
-  if(!dbDisponible()) return Promise.resolve(false);
-  const modos=Object.keys(SLOTS);
-  let restaurada=false;
-  return modos.reduce((cad,modo)=>cad.then(()=>{
-    if(lsGet(SLOTS[modo])) return;
-    return dbCargar(modo).then(json=>{ if(json){ lsSet(SLOTS[modo],json); restaurada=true; } });
-  }),Promise.resolve()).then(()=>restaurada).catch(()=>restaurada);
-}
-// ---------- Fase 1: proyecciones relacionales de solo lectura ----------
+// ---------- SQLite (Ruta B): la persistencia vive en db.js con sql.js ----------
+// localStorage sigue siendo la fuente de verdad síncrona del guardado; sql.js
+// mantiene el modelo relacional (poblado en cada guardar). Aquí quedan solo las
+// funciones PURAS de proyección/normalización/comparación, que db.js y las
+// pruebas reutilizan.
+
+// ---------- proyección de solo lectura (función pura, para pruebas) ----------
 // Construye, a partir del estado en memoria, filas planas (ranking y jugadores)
 // para reflejarlas en tablas SQLite consultables. Es una función pura (no toca
 // SQLite ni el DOM), por eso se puede probar sin Tauri.
@@ -58,26 +39,7 @@ function filasProyeccion(){
   }));
   return out;
 }
-let _ultProy=0;
-function dbProyectar(modo){
-  const inv=_invoke(); if(!inv) return;
-  const now=Date.now(); if(now-_ultProy<3000) return; _ultProy=now;   // no saturar en guardados seguidos
-  try{
-    const {ranking,jugadores}=filasProyeccion();
-    if(!ranking.length&&!jugadores.length) return;
-    const p=inv("db_project",{modo,ranking,jugadores}); if(p&&p.catch) p.catch(()=>{});
-  }catch(e){}
-}
-// ---------- Fase 2: lecturas servidas por SQLite ----------
-function dbTopJugadores(modo,limite){
-  const inv=_invoke(); if(!inv) return Promise.resolve(null);
-  try{ return Promise.resolve(inv("db_top_jugadores",{modo,limite:limite||10})).catch(()=>null); }catch(e){ return Promise.resolve(null); }
-}
-function dbRanking(modo,sexo,limite){
-  const inv=_invoke(); if(!inv) return Promise.resolve(null);
-  try{ return Promise.resolve(inv("db_ranking",{modo,sexo:sexo||"M",limite:limite||20})).catch(()=>null); }catch(e){ return Promise.resolve(null); }
-}
-// ---------- Fase 3: modelo relacional normalizado ----------
+// ---------- modelo relacional normalizado ----------
 // normalizar() y denormalizar() son PURAS (no tocan SQLite ni el DOM): es la
 // lógica de migración, y su ida y vuelta se puede probar sin Tauri.
 function normalizar(){
@@ -106,25 +68,7 @@ function denormalizar(snap){
     jug:(jugByPid[p.pid]||[]).map(j=>({n:j.nombre,sexo:j.sexo,lado:j.lado,estilo:j.estilo,perso:j.perso,conf:j.conf,pais:j.pais,attrs:attrsByJid[j.jid]||{}}))
   }));
 }
-let _ultSnap=0;
-function dbSnapshot(modo){
-  const inv=_invoke(); if(!inv) return;
-  const now=Date.now(); if(now-_ultSnap<3000) return; _ultSnap=now;
-  try{
-    const s=normalizar();
-    if(!s.parejas.length) return;
-    const p=inv("db_snapshot",{modo,parejas:s.parejas,jugadores:s.jugadores,atributos:s.atributos}); if(p&&p.catch) p.catch(()=>{});
-  }catch(e){}
-}
-function dbNormStats(modo){
-  const inv=_invoke(); if(!inv) return Promise.resolve(null);
-  try{ return Promise.resolve(inv("db_norm_stats",{modo})).catch(()=>null); }catch(e){ return Promise.resolve(null); }
-}
-// ---------- Fase 4a: hidratación (leer el modelo de vuelta y verificarlo) ----------
-function dbCargarSnapshot(modo){
-  const inv=_invoke(); if(!inv) return Promise.resolve(null);
-  try{ return Promise.resolve(inv("db_read_snapshot",{modo})).then(s=>s?denormalizar(s):null).catch(()=>null); }catch(e){ return Promise.resolve(null); }
-}
+// ---------- comparación e integridad ----------
 // Compara dos "mundos" (listas de parejas) por identidad estructural estable
 // (nº, nombres de pareja y de jugadores) — no por datos volátiles (pts, conf).
 function compararMundos(recon,orig){
@@ -139,42 +83,38 @@ function compararMundos(recon,orig){
   });
   return dif===0?{ok:true,n:recon.length}:{ok:false,msg:`${dif} discrepancias`};
 }
-// Lee el modelo de SQLite, lo reconstruye y lo compara con la memoria viva.
-function verificarSnapshot(modo){
-  return dbCargarSnapshot(modo).then(recon=>{
-    if(!recon) return {ok:false,msg:"sin datos en la base"};
-    return compararMundos(recon,(G&&G.world&&G.world.parejas)||[]);
-  }).catch(()=>({ok:false,msg:"error de lectura"}));
+// Lee el mundo de sql.js, lo reconstruye y lo compara con la memoria viva.
+// Ahora es SÍNCRONO: sql.js no tiene la barrera async que tenía Tauri.
+function verificarSnapshot(){
+  const recon=(typeof dbSqlCargarMundo==="function")?dbSqlCargarMundo():null;
+  if(!recon) return {ok:false,msg:"sin datos en la base"};
+  return compararMundos(recon,(G&&G.world&&G.world.parejas)||[]);
 }
-// Overlay de analítica: bajo Tauri consulta SQLite; sin Tauri, aviso claro.
+// Overlay de analítica: consulta sql.js (funciona en la app y en el navegador).
 function abrirAnalitica(){
   const ov=document.getElementById("analitica"), cuerpo=document.getElementById("analiticaCuerpo");
   if(!ov||!cuerpo) return;
   ov.classList.remove("oculto");
-  if(!dbDisponible()){
-    cuerpo.innerHTML=`<div class="foot" style="text-align:left;line-height:1.6">La analítica se sirve desde la base de datos <b>SQLite</b>, disponible solo en la <b>app de escritorio</b>. En el navegador no hay base de datos que consultar.</div>`;
+  const lista=(typeof dbSqlDisponible==="function")&&dbSqlDisponible();
+  if(!lista){
+    cuerpo.innerHTML=`<div class="foot" style="text-align:left;line-height:1.6">La base de datos <b>SQLite</b> aún no está lista. Guarda o juega una partida y vuelve a abrir la analítica.</div>`;
     return;
   }
-  cuerpo.innerHTML=`<div class="foot">Consultando la base de datos…</div>`;
-  const modo=(G&&G.modo)||"carrera";
-  dbTopJugadores(modo,10).then(top=>{
-    if(!top||!top.length){ cuerpo.innerHTML=`<div class="foot" style="text-align:left;line-height:1.6">Aún no hay datos proyectados. Guarda o juega una partida y vuelve a abrir la analítica.</div>`; return; }
-    const filas=top.map((j,i)=>`<tr><td class="pos">${i+1}</td><td>${j.nombre}</td><td class="pts" style="color:var(--lima)">${j.media}</td><td style="color:var(--gris)">${j.estilo||""}</td><td class="niv">${j.sexo}</td></tr>`).join("");
-    cuerpo.innerHTML=`<div class="foot" style="text-align:left;margin-bottom:7px">Top 10 jugadores por media — <b>consulta SQL</b> sobre <code>proj_jugadores</code>:</div><table class="rk">${filas}</table><div class="foot" id="analiticaNorm" style="text-align:left;margin-top:9px">Modelo normalizado: consultando…</div>`;
-    dbNormStats(modo).then(ns=>{
-      const el=document.getElementById("analiticaNorm"); if(!el) return;
-      el.innerHTML= (ns
-        ? `Modelo normalizado (Fase 3): <b>${ns.parejas}</b> parejas · <b>${ns.jugadores}</b> jugadores · <b>${ns.atributos}</b> atributos, con relaciones pareja→jugador→atributo.`
-        : `Modelo normalizado: aún sin datos.`)
-        + `<div id="analiticaInteg" style="margin-top:5px">Integridad (Fase 4a): verificando…</div>`;
-      verificarSnapshot(modo).then(v=>{
-        const ie=document.getElementById("analiticaInteg"); if(!ie) return;
-        ie.innerHTML= v.ok
-          ? `Integridad (Fase 4a): <b style="color:var(--verde)">✓</b> el modelo leído de SQLite reconstruye el mundo (${v.n} parejas) idéntico a memoria.`
-          : `Integridad (Fase 4a): <b style="color:var(--oro)">·</b> ${v.msg}.`;
-      }).catch(()=>{});
-    }).catch(()=>{});
-  }).catch(()=>{ cuerpo.innerHTML=`<div class="foot">No se pudo consultar la base de datos.</div>`; });
+  const top=(typeof dbSqlTopJugadores==="function")?dbSqlTopJugadores(10):[];
+  if(!top.length){
+    cuerpo.innerHTML=`<div class="foot" style="text-align:left;line-height:1.6">Aún no hay datos en la base. Guarda o juega una partida y vuelve a abrir la analítica.</div>`;
+    return;
+  }
+  const filas=top.map((j,i)=>`<tr><td class="pos">${i+1}</td><td>${j.nombre}</td><td class="pts" style="color:var(--lima)">${j.media}</td><td style="color:var(--gris)">${j.estilo||""}</td><td class="niv">${j.sexo}</td></tr>`).join("");
+  const ns=(typeof dbSqlNormStats==="function")?dbSqlNormStats():null;
+  const v=verificarSnapshot();
+  cuerpo.innerHTML=`<div class="foot" style="text-align:left;margin-bottom:7px">Top 10 jugadores por media — <b>consulta SQL</b> (sql.js) sobre <code>norm_jugador</code>:</div>`
+    +`<table class="rk">${filas}</table>`
+    +`<div class="foot" style="text-align:left;margin-top:9px">`
+    +(ns?`Modelo normalizado: <b>${ns.parejas}</b> parejas · <b>${ns.jugadores}</b> jugadores · <b>${ns.atributos}</b> atributos, con relaciones pareja→jugador→atributo.`:`Modelo normalizado: sin datos.`)
+    +`<div style="margin-top:5px">`
+    +(v.ok?`Integridad: <b style="color:var(--verde)">✓</b> el mundo leído de SQLite coincide con memoria (${v.n} parejas).`:`Integridad: <b style="color:var(--oro)">·</b> ${v.msg}.`)
+    +`</div></div>`;
 }
 document.getElementById("btnAnalitica").onclick=abrirAnalitica;
 document.getElementById("analiticaCerrar").onclick=()=>document.getElementById("analitica").classList.add("oculto");
@@ -190,10 +130,7 @@ function guardar(){
   if(!G) return;
   const json=JSON.stringify(G);
   const ok=lsSet(SLOTS[G.modo],json);
-  dbGuardar(G.modo,json);   // espejo en SQLite (no bloquea; no-op fuera de Tauri)
-  dbProyectar(G.modo);      // proyecciones relacionales de solo lectura (Fase 1)
-  dbSnapshot(G.modo);       // snapshot del modelo normalizado (Fase 3, rusqlite)
-  if(typeof dbSqlSnapshotVivo==="function") dbSqlSnapshotVivo();  // write-through a sql.js (Ruta B)
+  if(typeof dbSqlSnapshotVivo==="function") dbSqlSnapshotVivo();  // persistencia del modelo en sql.js
   const st=G.modo==="carrera"?G.carrera.semana:G.clubG.semana;
   document.getElementById("footSave").textContent=ok
     ? `RISING GAMES · v3.0 — ${G.modo} guardada ✓ (semana ${st})`

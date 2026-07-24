@@ -218,11 +218,11 @@ comprueba("Marcador: star point (ventajas y punto de oro tras dos ventajas)", ()
   return "ventajas + star point correctos";
 });
 
-comprueba("Analítica: sin la app de escritorio muestra un aviso claro", () => {
+comprueba("Analítica: sin la base lista muestra un aviso claro", () => {
   abrirAnalitica();
   const cuerpo = document.getElementById("analiticaCuerpo");
-  exige(cuerpo.innerHTML.indexOf("escritorio") >= 0, "no se avisa de que la analítica vive en la app de escritorio");
-  return "aviso de reserva correcto fuera de Tauri";
+  exige(cuerpo.innerHTML.indexOf("no está lista") >= 0, "no se avisa de que la base de datos aún no está lista");
+  return "aviso de reserva correcto sin sql.js";
 });
 
 comprueba("Club: fundar y competir", () => {
