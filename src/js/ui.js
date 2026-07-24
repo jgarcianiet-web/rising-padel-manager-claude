@@ -9,6 +9,7 @@ function irA(s){
   document.getElementById("miniBtns").style.display = (s==="menu")?"none":"flex";
   document.body.classList.toggle("en-partido",s==="partido");  // el partido oculta el panel lateral
   document.body.classList.toggle("en-superliga",s==="superliga");  // la Superliga no usa el HUD lateral
+  if(typeof aplicarI18n==="function") aplicarI18n();   // traduce el texto estático de cada pantalla
   if(s==="partido"){resize();draw();}
 }
 function infoSlot(modo){
@@ -217,7 +218,6 @@ function entrarPartida(){
     if(cl.wildcards===undefined) cl.wildcards=2;
     irA("clubm"); pintarClubM();
   }
-  if(typeof aplicarI18n==="function") aplicarI18n();   // traduce el texto estático de la interfaz
   guardar();
 }
 

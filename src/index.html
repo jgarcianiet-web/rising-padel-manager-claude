@@ -62,13 +62,13 @@
       </div>
       <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)">Sexo <span style="text-transform:none;letter-spacing:0">(define tu circuito: jugarás con y contra tu categoría)</span></label>
       <div class="fila" style="margin:5px 0 12px">
-        <button class="selbtn" id="sexoM">Masculino</button>
-        <button class="selbtn" id="sexoF">Femenino</button>
+        <button class="selbtn" id="sexoM" data-i18n="crea_masculino">Masculino</button>
+        <button class="selbtn" id="sexoF" data-i18n="crea_femenino">Femenino</button>
       </div>
       <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)">Lado de pista</label>
       <div class="fila" style="margin:5px 0 12px">
-        <button class="selbtn" id="ladoRev">Revés</button>
-        <button class="selbtn" id="ladoDer">Derecha</button>
+        <button class="selbtn" id="ladoRev" data-i18n="crea_reves">Revés</button>
+        <button class="selbtn" id="ladoDer" data-i18n="crea_derecha">Derecha</button>
       </div>
       <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)">Carácter competitivo</label>
       <div class="fila" style="margin:5px 0 12px" id="persos"></div>
@@ -77,7 +77,7 @@
       <div class="fila" id="colores" style="margin:5px 0"></div>
     </div>
     <div class="card">
-      <h3>Estilo de juego</h3>
+      <h3 data-i18n="hd_estilo">Estilo de juego</h3>
       <div id="estilos"></div>
     </div>
   </div>
@@ -90,8 +90,8 @@
       <input id="inClubNombre" value="Rising Pádel Club" style="margin:5px 0 12px">
       <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)">Circuito del club</label>
       <div class="fila" style="margin:5px 0 12px">
-        <button class="selbtn" id="clubSexoM">Masculino</button>
-        <button class="selbtn" id="clubSexoF">Femenino</button>
+        <button class="selbtn" id="clubSexoM" data-i18n="crea_masculino">Masculino</button>
+        <button class="selbtn" id="clubSexoF" data-i18n="crea_femenino">Femenino</button>
       </div>
       <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)">Color del club</label>
       <div class="fila" id="coloresClub" style="margin:5px 0 12px"></div>
@@ -129,13 +129,13 @@
           <div id="torneosDisp"></div>
           <div id="accionesDia"></div>
         </div>
-        <div class="card"><h3>Calendario del circuito</h3><div class="log" id="calendario"></div></div>
-        <div class="card"><h3>🎯 Objetivos de la temporada</h3><div id="objTemp"></div></div>
+        <div class="card"><h3 data-i18n="hd_calendario">Calendario del circuito</h3><div class="log" id="calendario"></div></div>
+        <div class="card"><h3 data-i18n="hd_objetivos">🎯 Objetivos de la temporada</h3><div id="objTemp"></div></div>
       </div>
       <div id="tab-staff" class="oculto">
-        <div class="card"><h3>Tu equipo de trabajo</h3><div id="equipoStaff"></div>
+        <div class="card"><h3 data-i18n="hd_equipo_trabajo">Tu equipo de trabajo</h3><div id="equipoStaff"></div>
           <div class="foot" style="text-align:left;margin-top:6px" id="staffCoste"></div></div>
-        <div class="card"><h3>Mercado de personal</h3><div id="mercadoStaff"></div></div>
+        <div class="card"><h3 data-i18n="hd_mercado_personal">Mercado de personal</h3><div id="mercadoStaff"></div></div>
       </div>
       <div id="tab-entreno" class="oculto">
         <div class="card">
@@ -145,8 +145,8 @@
         </div>
       </div>
       <div id="tab-jugador" class="oculto">
-        <div class="card"><h3>Hitos de carrera</h3><div id="hitos"></div></div>
-        <div class="card"><h3>Rivalidades</h3><div id="rivalidades"></div></div>
+        <div class="card"><h3 data-i18n="hd_hitos">Hitos de carrera</h3><div id="hitos"></div></div>
+        <div class="card"><h3 data-i18n="hd_rivalidades">Rivalidades</h3><div id="rivalidades"></div></div>
         <div class="card">
           <div class="perfil">
             <div class="ava" id="hAva">J</div>
@@ -155,30 +155,30 @@
           </div>
           <div class="meta" id="hMeta"></div>
         </div>
-        <div class="card"><h3>Atributos</h3><div class="attrs" id="attrs"></div></div>
+        <div class="card"><h3 data-i18n="hd_atributos">Atributos</h3><div class="attrs" id="attrs"></div></div>
         <div class="card">
           <h3>Pareja · <em id="compName"></em></h3>
           <div class="meta" id="compMeta" style="margin-top:0"></div>
           <div id="mercado" style="margin-top:10px"></div>
         </div>
-        <div class="card"><h3>Cuerpo técnico y patrocinios</h3><div id="staff"></div></div>
+        <div class="card"><h3 data-i18n="hd_tecnico_patro">Cuerpo técnico y patrocinios</h3><div id="staff"></div></div>
       </div>
       <div id="tab-ranking" class="oculto">
         <div class="card">
-          <h3>Circuito Rising · <em>ranking mundial</em></h3>
+          <h3 data-i18n-html="hd_ranking_html">Circuito Rising · <em>ranking mundial</em></h3>
           <table class="rk" id="tablaRk"></table>
-          <div class="foot" style="text-align:left;margin-top:8px">Al cerrar cada temporada, el ranking arrastra el 55% de los puntos.</div>
+          <div class="foot" style="text-align:left;margin-top:8px" data-i18n="foot_ranking_55">Al cerrar cada temporada, el ranking arrastra el 55% de los puntos.</div>
         </div>
-        <div class="card"><h3>Clubes del circuito</h3><table class="rk" id="tablaClubes"></table></div>
-        <div class="card"><h3>Nº1 de cada temporada</h3><table class="rk" id="n1hist"></table></div>
-        <div class="card"><h3>Libro de récords</h3><table class="rk" id="records"></table></div>
+        <div class="card"><h3 data-i18n="hd_clubes">Clubes del circuito</h3><table class="rk" id="tablaClubes"></table></div>
+        <div class="card"><h3 data-i18n="hd_n1">Nº1 de cada temporada</h3><table class="rk" id="n1hist"></table></div>
+        <div class="card"><h3 data-i18n="hd_records">Libro de récords</h3><table class="rk" id="records"></table></div>
       </div>
       <div id="tab-diario" class="oculto">
         <div id="feedNoti"></div>
-        <div class="card"><h3>Agencia RPD · <em>última hora</em></h3><div class="log" id="diario"></div></div>
-        <div class="card"><h3>La grada · <em>RisingSocial</em></h3><div id="social"></div></div>
-        <div class="card"><h3>Trayectoria</h3><table class="rk" id="trayec"></table></div>
-        <div class="card"><h3>Palmarés</h3><div class="log" id="palmares"></div></div>
+        <div class="card"><h3 data-i18n-html="hd_agencia_html">Agencia RPD · <em>última hora</em></h3><div class="log" id="diario"></div></div>
+        <div class="card"><h3 data-i18n-html="hd_grada_html">La grada · <em>RisingSocial</em></h3><div id="social"></div></div>
+        <div class="card"><h3 data-i18n="hd_trayectoria">Trayectoria</h3><table class="rk" id="trayec"></table></div>
+        <div class="card"><h3 data-i18n="hd_palmares">Palmarés</h3><div class="log" id="palmares"></div></div>
       </div>
     </div>
   </div>
@@ -205,28 +205,28 @@
           <h3 id="cmSemTitulo">Plan de la semana</h3>
           <div id="cmTorneo"></div>
           <div id="cmEntreno"></div>
-          <button class="azul" id="cmBtnDescanso" style="width:100%;margin-top:8px">Descanso del equipo (+energía)</button>
+          <button class="azul" id="cmBtnDescanso" style="width:100%;margin-top:8px" data-i18n="btn_descanso_equipo">Descanso del equipo (+energía)</button>
         </div>
-        <div class="card"><h3>Calendario del circuito</h3><div class="log" id="cmCalendario"></div></div>
+        <div class="card"><h3 data-i18n="hd_calendario">Calendario del circuito</h3><div class="log" id="cmCalendario"></div></div>
       </div>
       <div id="cm-plantilla" class="oculto"></div>
       <div id="cm-clubpan" class="oculto"></div>
       <div id="cm-ranking" class="oculto">
         <div class="card">
-          <h3>Circuito Rising · <em>ranking mundial</em></h3>
+          <h3 data-i18n-html="hd_ranking_html">Circuito Rising · <em>ranking mundial</em></h3>
           <table class="rk" id="cmTablaRk"></table>
-          <div class="foot" style="text-align:left;margin-top:8px">Al cerrar cada temporada, el ranking arrastra el 55% de los puntos.</div>
+          <div class="foot" style="text-align:left;margin-top:8px" data-i18n="foot_ranking_55">Al cerrar cada temporada, el ranking arrastra el 55% de los puntos.</div>
         </div>
-        <div class="card"><h3>Clubes del circuito</h3><table class="rk" id="cmTablaClubes"></table></div>
-        <div class="card"><h3>Nº1 de cada temporada</h3><table class="rk" id="cmN1hist"></table></div>
-        <div class="card"><h3>Libro de récords</h3><table class="rk" id="cmRecords"></table></div>
+        <div class="card"><h3 data-i18n="hd_clubes">Clubes del circuito</h3><table class="rk" id="cmTablaClubes"></table></div>
+        <div class="card"><h3 data-i18n="hd_n1">Nº1 de cada temporada</h3><table class="rk" id="cmN1hist"></table></div>
+        <div class="card"><h3 data-i18n="hd_records">Libro de récords</h3><table class="rk" id="cmRecords"></table></div>
       </div>
       <div id="cm-diario" class="oculto">
         <div id="cmFeedNoti"></div>
-        <div class="card"><h3>Agencia RPD · <em>última hora</em></h3><div class="log" id="cmDiario"></div></div>
-        <div class="card"><h3>La grada · <em>RisingSocial</em></h3><div id="cmSocial"></div></div>
-        <div class="card"><h3>Trayectoria</h3><table class="rk" id="cmTrayec"></table></div>
-        <div class="card"><h3>Palmarés</h3><div class="log" id="cmPalmares"></div></div>
+        <div class="card"><h3 data-i18n-html="hd_agencia_html">Agencia RPD · <em>última hora</em></h3><div class="log" id="cmDiario"></div></div>
+        <div class="card"><h3 data-i18n-html="hd_grada_html">La grada · <em>RisingSocial</em></h3><div id="cmSocial"></div></div>
+        <div class="card"><h3 data-i18n="hd_trayectoria">Trayectoria</h3><table class="rk" id="cmTrayec"></table></div>
+        <div class="card"><h3 data-i18n="hd_palmares">Palmarés</h3><div class="log" id="cmPalmares"></div></div>
       </div>
     </div>
   </div>
@@ -239,12 +239,12 @@
         <div id="tInfo" style="font-size:12.5px;margin-bottom:10px;line-height:1.6"></div>
         <div id="planPartido"></div>
         <div class="fila" style="margin-top:12px">
-          <button class="pri" id="btnVer">Ver partido</button>
-          <button id="btnSimular">Simular con tu plan</button>
+          <button class="pri" id="btnVer" data-i18n="btn_ver_partido">Ver partido</button>
+          <button id="btnSimular" data-i18n="btn_simular">Simular con tu plan</button>
           <button class="azul" id="btnSimCoach">🧠 Simular: decide el míster</button>
         </div>
       </div>
-      <div class="card"><h3>Camino al título</h3><div class="log" id="tCuadro"></div></div>
+      <div class="card"><h3 data-i18n="hd_camino_titulo">Camino al título</h3><div class="log" id="tCuadro"></div></div>
     </div>
   </div>
 
@@ -258,7 +258,7 @@
         <div id="slAccion" style="margin-top:12px"></div>
       </div>
       <div id="slCol2">
-        <div class="card"><h3>Tu equipo · <em>alineación</em></h3><div id="slEquipo"></div></div>
+        <div class="card"><h3 data-i18n-html="hd_equipo_alin_html">Tu equipo · <em>alineación</em></h3><div id="slEquipo"></div></div>
         <div class="card"><h3>Resultados</h3><div id="slResult" class="log"></div></div>
       </div>
     </div>
