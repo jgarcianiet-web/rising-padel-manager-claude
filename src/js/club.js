@@ -71,7 +71,7 @@ function pintarMercadoInicial(){
     const dentro=plantillaTmp.includes(j);
     const coste=costeFichaje(j);
     const d=document.createElement("div");d.className="opcion"+(dentro?" sel":"");
-    d.innerHTML=`<b>${j.n}</b> <span class="pill">nivel ${nivelTxt(j)}</span> ${ladoChip(j.lado!==undefined?j.lado:ladoPorAttrs(j.attrs,j.estilo))} <span class="pill">${j.edad} años</span> <span class="pill">${ESTILOS[j.estilo].nombre}</span> <span class="pill">${PERSONALIDADES[j.perso].n}</span><div class="d">Fichaje ${coste}€ · salario ${salarioDe(j)}€/sem${(G&&G.clubG&&G.clubG.staff&&G.clubG.staff.ojeador)?"":" · informe impreciso: contrata un ojeador para afinar"}</div>`;
+    d.innerHTML=`<b>${j.n}</b> <span class="pill">nivel ${nivelTxt(j)}</span> ${ladoChip(j.lado!==undefined?j.lado:ladoPorAttrs(j.attrs,j.estilo))} <span class="pill">${j.edad} años</span> <span class="pill">${estiloNombre(j.estilo)}</span> <span class="pill">${persoNombre(j.perso)}</span><div class="d">Fichaje ${coste}€ · salario ${salarioDe(j)}€/sem${(G&&G.clubG&&G.clubG.staff&&G.clubG.staff.ojeador)?"":" · informe impreciso: contrata un ojeador para afinar"}</div>`;
     const b=document.createElement("button");b.style.width="100%";
     b.textContent=dentro?"Quitar de la plantilla":`Fichar (${coste}€)`;
     b.disabled=!dentro&&(plantillaTmp.length>=4||PRESUP_CLUB-gasto<coste);
@@ -400,8 +400,8 @@ function pintarCmPlantilla(){
     d.innerHTML=`<h3>${j.pais||""} ${j.n} · <em>${mediaAttrs(j.attrs)}</em></h3>
       <div class="meta" style="margin-top:0">
         <div class="chip">${j.edad} años</div>
-        <div class="chip">${ESTILOS[j.estilo].nombre}</div>
-        <div class="chip">${PERSONALIDADES[j.perso].n}</div>
+        <div class="chip">${estiloNombre(j.estilo)}</div>
+        <div class="chip">${persoNombre(j.perso)}</div>
         <div class="chip">Salario <b>${salarioDe(j)}€</b></div>
         <div class="chip">Energía <b style="color:${colAttr(j.energia)}">${j.energia}</b></div>
         <div class="chip">Confianza <b style="color:${colAttr(j.conf)}">${j.conf}</b></div>
@@ -436,7 +436,7 @@ function pintarCmPlantilla(){
     cl.mercado.forEach((j,mi)=>{
       const coste=costeFichaje(j);
       const d=document.createElement("div");d.className="opcion";
-      d.innerHTML=`<b>${j.n}</b> <span class="pill">nivel ${nivelTxt(j)}</span> <span class="pill">${j.edad} años</span> <span class="pill">${ESTILOS[j.estilo].nombre}</span><div class="d">Fichaje ${coste}€ · salario ${salarioDe(j)}€/sem</div>`;
+      d.innerHTML=`<b>${j.n}</b> <span class="pill">nivel ${nivelTxt(j)}</span> <span class="pill">${j.edad} años</span> <span class="pill">${estiloNombre(j.estilo)}</span><div class="d">Fichaje ${coste}€ · salario ${salarioDe(j)}€/sem</div>`;
       const b=document.createElement("button");b.style.width="100%";
       b.textContent=cl.dinero<coste?"Caja insuficiente":`Fichar (${coste}€)`;
       b.disabled=cl.dinero<coste;
@@ -495,7 +495,7 @@ function pintarCmClub(){
   } else {
     cl.cantera.forEach((j,idx)=>{
       const d=document.createElement("div");d.className="opcion";
-      d.innerHTML=`<b>${j.n}</b> <span class="pill">nivel ${nivelTxt(j)}</span> <span class="pill">${j.edad} años</span> <span class="pill">${ESTILOS[j.estilo].nombre}</span><div class="d">Promesa de la academia — nadie sabe su techo todavía</div>`;
+      d.innerHTML=`<b>${j.n}</b> <span class="pill">nivel ${nivelTxt(j)}</span> <span class="pill">${j.edad} años</span> <span class="pill">${estiloNombre(j.estilo)}</span><div class="d">Promesa de la academia — nadie sabe su techo todavía</div>`;
       const f=document.createElement("div");f.className="fila";
       const b1=document.createElement("button");b1.className="pri";b1.textContent="Subir al primer equipo";
       b1.disabled=cl.plantilla.length>=6;
