@@ -10,7 +10,9 @@
   .cont{max-width:1240px}
   body.con-hud .wrap{padding-left:288px}
   body.con-hud .kpis{display:none}          /* sus datos pasan al panel lateral */
-  #hud{display:flex;flex-direction:column;gap:9px;position:fixed;left:0;top:0;bottom:0;width:288px;
+  /* el panel lateral solo existe dentro de una partida (con-hud); sin esta
+     condición pintaba una columna vacía de 288px con su borde en el menú. */
+  body.con-hud #hud{display:flex;flex-direction:column;gap:9px;position:fixed;left:0;top:0;bottom:0;width:288px;
        padding:52px 11px 14px;overflow-y:auto;background:#0C1017;border-right:1px solid var(--borde);z-index:30}
   /* los paneles reparten sus tarjetas en columnas en vez de una tira estrecha */
   #tab-semana,#tab-entreno,#tab-staff,#tab-ranking,#tab-diario,

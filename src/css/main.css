@@ -167,6 +167,15 @@ button:active{transform:translateY(1px)}
 .menu .titulo span{color:var(--lima)}
 .menu .sub{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--gris2);letter-spacing:2px;text-transform:uppercase;margin-bottom:26px}
 .menu button{width:100%;margin-bottom:10px;padding:15px;font-size:14px;border-radius:var(--r)}
+.difsel{margin:0 0 22px;text-align:left}
+.difsel .diflabel{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gris2);margin:0 2px 6px}
+.difrow{display:flex;gap:6px}
+.difrow.difrow-wrap{flex-wrap:wrap}
+.difrow-wrap .difchip{flex:1 1 28%;min-width:88px}
+.difrow .difchip{flex:1;width:auto;margin:0;padding:9px 4px;font-size:12px;font-weight:600;border-radius:8px;background:#10151E;border:1px solid var(--borde);color:var(--gris);box-shadow:none;cursor:pointer;transition:border-color .15s,color .15s}
+.difrow .difchip:hover{color:var(--texto)}
+.difrow .difchip.on{background:rgba(198,245,60,.12);border-color:var(--lima);color:var(--lima)}
+.difsel .difdesc{font-size:11px;line-height:1.45;color:var(--gris);margin:8px 2px 0;min-height:30px}
 #tuto{position:fixed;inset:0;background:rgba(10,13,19,.82);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
 #tuto .card{max-width:420px;width:100%}
 #tuto .paso{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--gris2);letter-spacing:1px;margin-bottom:6px}

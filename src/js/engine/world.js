@@ -11,6 +11,48 @@ const ESTILOS={
 };
 const COLORES=["#C6F53C","#E6B837","#E66837","#9B37E6","#37C8E6"];
 const SEMANAS_TEMP=52;
+
+/* ================================================================
+   DIFICULTAD: un ajuste global de partida que reequilibra el DISEÑO, no solo
+   los atributos de la CPU. Cada perfil trae multiplicadores que el resto del
+   juego consulta a través de dif(); así un mismo cambio afecta de forma
+   coherente a los tres modos (carrera, club y Superliga).
+
+     · lesion   → multiplica la probabilidad de lesionarse (riesgo médico).
+     · economia → multiplica los ingresos por premios (margen económico).
+     · junta    → holgura del objetivo de la junta / patrocinador; positivo
+                  afloja (top-N más alto y alcanzable), negativo aprieta.
+
+   Estas funciones son PURAS o deterministas dado el estado, y se prueban sin
+   navegador. La dificultad elegida vive en G.dif (se guarda con la partida) y,
+   como preferencia por defecto del menú, en localStorage "rpm_dif". Los nombres
+   y descripciones visibles viven en i18n (difNombre/difDesc), no aquí. */
+const PERFILES_DIF={
+  accesible:{id:"accesible",emoji:"🌤",lesion:0.6, economia:1.35,junta:2},
+  manager:  {id:"manager",  emoji:"🎯",lesion:1.0, economia:1.0, junta:0},
+  experto:  {id:"experto",  emoji:"🔥",lesion:1.45,economia:0.72,junta:-2},
+};
+const DIF_DEF="manager";
+// Mapea un id a su perfil (pura). Ante un id desconocido, devuelve el perfil por defecto.
+function perfilDif(id){ return PERFILES_DIF[id]||PERFILES_DIF[DIF_DEF]; }
+// Id de dificultad vigente: la de la partida en curso (G.dif) manda; si no hay
+// partida, la preferencia guardada en el menú; y si tampoco, el valor por defecto.
+function difId(){
+  try{ if(typeof G!=="undefined"&&G&&PERFILES_DIF[G.dif]) return G.dif; }catch(e){}
+  try{ const s=localStorage.getItem("rpm_dif"); if(PERFILES_DIF[s]) return s; }catch(e){}
+  return DIF_DEF;
+}
+// Perfil vigente completo. Es el punto de entrada que usa el resto del juego.
+function dif(){ return perfilDif(difId()); }
+// Preferencia elegida en el menú (localStorage), para fijarla en G.dif al crear
+// una partida nueva. Sin partida en curso, coincide con difId().
+function difMenu(){ try{ const s=localStorage.getItem("rpm_dif"); if(PERFILES_DIF[s]) return s; }catch(e){} return DIF_DEF; }
+// Ingreso ajustado por el margen económico de la dificultad (redondeado).
+function ecoIngreso(x){ return Math.round((x||0)*dif().economia); }
+// Umbral de probabilidad de lesión ajustado por el riesgo médico (0..0.95).
+function kLesion(base){ return clamp((base||0)*dif().lesion,0,0.95); }
+// Objetivo de la junta ajustado por su exigencia (top-N; positivo afloja).
+function juntaTop(base){ return clamp(Math.round((base||8)+dif().junta),1,40); }
 /* Calendario OFICIAL Premier Padel 2026: 25 torneos con sus ciudades y semanas reales
    (4 Majors, 10 P1, 10 P2 y las Finals de Barcelona), y un torneo FIP cada semana. */
 const TRAVEL={ES:60,EU:180,AF:450,ME:550,AM:750};
@@ -288,7 +330,8 @@ function evaluaRenovacionClub(j,salarioOfrecido){
 ================================================================ */
 function mkObjetivosTemporada(c,puesto){
   const p=puesto||40, objs=[];
-  const metaRank = p<=5?Math.max(1,p-1) : p<=20?Math.max(4,p-4) : Math.max(15,p-6);
+  const metaBase = p<=5?Math.max(1,p-1) : p<=20?Math.max(4,p-4) : Math.max(15,p-6);
+  const metaRank = juntaTop(metaBase);   // la dificultad afloja o aprieta la meta de ranking
   objs.push({clave:"rank",txt:`Meterte en el top ${metaRank}`,meta:metaRank,rec:{dinero:600,fans:400,moral:8}});
   const metaTit = p<=10?2:1;
   objs.push({clave:"titulos",txt:`Ganar ${metaTit} torneo${metaTit>1?"s":""} esta temporada`,meta:metaTit,base:(c.palmares||[]).length,rec:{dinero:900,fans:600,moral:6}});
@@ -502,7 +545,7 @@ function riesgoLesionPost(energia,fragil,tieneFisio){
 // Devuelve la lesión (y sube su fragilidad) o null. Muta port.fragil.
 function intentaLesion(port,tieneFisio){
   const fragilEf=Math.max(0,(port.fragil||0)+rasgosLesionAjuste(port));   // rasgos: propenso/hierro
-  const r=riesgoLesionPost(port.energia,fragilEf,tieneFisio);
+  const r=kLesion(riesgoLesionPost(port.energia,fragilEf,tieneFisio));    // la dificultad modula el riesgo médico
   if(Math.random()>=r) return null;
   const les=pickLesion(clamp(1-(port.energia==null?100:port.energia)/40,0,1));
   if(tieneFisio) les.sem=Math.max(1,les.sem-1);
