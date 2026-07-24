@@ -33,6 +33,11 @@ const I18N={
     menu_continuar:" ·  continuar o nueva",
     menu_info_guardado:"El guardado es automático.",
     menu_info_partida:"Tienes partida guardada: al entrar podrás continuarla o empezar una nueva.",
+    nav_semana:"Semana", nav_entreno:"Entreno", nav_staff:"Staff", nav_jugador:"Jugador",
+    nav_ranking:"Ranking", nav_diario:"Diario", nav_plantilla:"Plantilla", nav_club:"Club",
+    bar_exportar:"⤓ Exportar", bar_menu:"Menú",
+    bar_tutorial_title:"Tutorial", bar_export_title:"Exportar partida",
+    kpi_semana:"Semana", kpi_puesto:"Puesto", kpi_puntos:"Puntos", kpi_caja:"Caja", kpi_energia:"Energía", kpi_salarios:"Salarios",
   },
   en:{
     dif_label:"Difficulty",
@@ -49,6 +54,11 @@ const I18N={
     menu_continuar:" ·  continue or new",
     menu_info_guardado:"Your progress is saved automatically.",
     menu_info_partida:"You have a saved game: enter to continue it or start a new one.",
+    nav_semana:"Week", nav_entreno:"Training", nav_staff:"Staff", nav_jugador:"Player",
+    nav_ranking:"Ranking", nav_diario:"Diary", nav_plantilla:"Squad", nav_club:"Club",
+    bar_exportar:"⤓ Export", bar_menu:"Menu",
+    bar_tutorial_title:"Tutorial", bar_export_title:"Export game",
+    kpi_semana:"Week", kpi_puesto:"Rank", kpi_puntos:"Points", kpi_caja:"Cash", kpi_energia:"Energy", kpi_salarios:"Wages",
   },
   fr:{
     dif_label:"Difficulté",
@@ -65,6 +75,11 @@ const I18N={
     menu_continuar:" ·  continuer ou nouvelle",
     menu_info_guardado:"La sauvegarde est automatique.",
     menu_info_partida:"Vous avez une partie sauvegardée : entrez pour la continuer ou en commencer une nouvelle.",
+    nav_semana:"Semaine", nav_entreno:"Entraînement", nav_staff:"Staff", nav_jugador:"Joueur",
+    nav_ranking:"Classement", nav_diario:"Journal", nav_plantilla:"Effectif", nav_club:"Club",
+    bar_exportar:"⤓ Exporter", bar_menu:"Menu",
+    bar_tutorial_title:"Tutoriel", bar_export_title:"Exporter la partie",
+    kpi_semana:"Semaine", kpi_puesto:"Rang", kpi_puntos:"Points", kpi_caja:"Trésorerie", kpi_energia:"Énergie", kpi_salarios:"Salaires",
   },
   de:{
     dif_label:"Schwierigkeit",
@@ -81,6 +96,11 @@ const I18N={
     menu_continuar:" ·  fortsetzen oder neu",
     menu_info_guardado:"Der Spielstand wird automatisch gespeichert.",
     menu_info_partida:"Du hast einen gespeicherten Spielstand: fortsetzen oder neu beginnen.",
+    nav_semana:"Woche", nav_entreno:"Training", nav_staff:"Team", nav_jugador:"Spieler",
+    nav_ranking:"Rangliste", nav_diario:"Tagebuch", nav_plantilla:"Kader", nav_club:"Klub",
+    bar_exportar:"⤓ Export", bar_menu:"Menü",
+    bar_tutorial_title:"Tutorial", bar_export_title:"Spiel exportieren",
+    kpi_semana:"Woche", kpi_puesto:"Platz", kpi_puntos:"Punkte", kpi_caja:"Kasse", kpi_energia:"Energie", kpi_salarios:"Gehälter",
   },
   it:{
     dif_label:"Difficoltà",
@@ -97,6 +117,11 @@ const I18N={
     menu_continuar:" ·  continua o nuova",
     menu_info_guardado:"Il salvataggio è automatico.",
     menu_info_partida:"Hai una partita salvata: entra per continuarla o iniziarne una nuova.",
+    nav_semana:"Settimana", nav_entreno:"Allenamento", nav_staff:"Staff", nav_jugador:"Giocatore",
+    nav_ranking:"Classifica", nav_diario:"Diario", nav_plantilla:"Rosa", nav_club:"Club",
+    bar_exportar:"⤓ Esporta", bar_menu:"Menu",
+    bar_tutorial_title:"Tutorial", bar_export_title:"Esporta partita",
+    kpi_semana:"Settimana", kpi_puesto:"Posizione", kpi_puntos:"Punti", kpi_caja:"Cassa", kpi_energia:"Energia", kpi_salarios:"Stipendi",
   },
 };
 function idiomaValido(id){ return IDIOMAS.some(l=>l.id===id); }
@@ -113,3 +138,16 @@ function t(clave){
 // Nombre y descripción de una dificultad en el idioma vigente.
 function difNombre(id){ return t("dif_"+(id||DIF_DEF)+"_n"); }
 function difDesc(id){ return t("dif_"+(id||DIF_DEF)+"_desc"); }
+
+// Aplica el idioma vigente al texto estático de la interfaz: recorre los
+// elementos marcados con data-i18n (contenido) y data-i18n-title (tooltip) y los
+// traduce. Es el mecanismo para ir internacionalizando el juego por fases: basta
+// con marcar más elementos en el HTML y añadir sus claves, sin tocar lógica.
+function aplicarI18n(root){
+  try{
+    const doc=(root&&root.querySelectorAll)?root:(typeof document!=="undefined"?document:null);
+    if(!doc) return;
+    doc.querySelectorAll("[data-i18n]").forEach(el=>{ el.textContent=t(el.getAttribute("data-i18n")); });
+    doc.querySelectorAll("[data-i18n-title]").forEach(el=>{ el.setAttribute("title",t(el.getAttribute("data-i18n-title"))); });
+  }catch(e){}
+}

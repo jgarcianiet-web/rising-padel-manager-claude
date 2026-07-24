@@ -410,7 +410,7 @@ function pintarCarrera(){
   else if(c.dilemaActivo&&typeof document!=="undefined"&&document.body&&!document.getElementById("dilModal")) setTimeout(()=>mostrarDilema(c),350);
   document.getElementById("topCtx").innerHTML=`<b>Temporada ${temporada()}</b> · S${semanaTemp()}/${SEMANAS_TEMP} · ${c.sexo==="F"?"circuito fem.":"circuito masc."}<br>${c.nombre}, ${c.edad} años · 🎟×${c.wildcards||0} · forma ${rachaHtml(c.racha)}`;
   const nOf=(c.ofertasPatro||[]).length;
-  document.getElementById("tabJugador").innerHTML=`Jugador${nOf?` <span style="color:var(--lima)">●</span>`:""}`;
+  document.getElementById("tabJugador").innerHTML=`${t("nav_jugador")}${nOf?` <span style="color:var(--lima)">●</span>`:""}`;
   document.getElementById("kSem").textContent="S"+semanaTemp();
   document.getElementById("kRank").textContent="#"+miPuesto();
   document.getElementById("kPts").textContent=c.pts;
