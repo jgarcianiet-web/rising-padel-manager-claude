@@ -62,7 +62,7 @@ function hudStaff(){
   }).join(""));
 }
 function hudEvento(){
-  if(torneo) return hudCaja("En juego", hudFila(FASES[torneo.fase], `<span style="font-size:12px">${torneo.nombre}</span>`));
+  if(torneo) return hudCaja("En juego", hudFila(faseNombre(torneo.fase), `<span style="font-size:12px">${torneo.nombre}</span>`));
   let f=""; const sl=slotSemana(semanaTemp());
   if(sl){
     if(sl.premier!==undefined) f+=hudFila("Premier",`<span style="font-size:12px">${CATS[sl.premier].n}</span>`);

@@ -508,9 +508,9 @@ function pintarSemana(){
     const d=document.createElement("div");d.className="opcion";
     if(dia===dPart){
       const r=torneo.rivales[torneo.fase];
-      d.innerHTML=`<b>HOY: ${FASES[torneo.fase]}</b> <span class="pill oro">${torneo.nombre}</span><div class="d">Rival: ${r.nombre} (nivel ${nivelPareja(r)}).</div>`;
+      d.innerHTML=`<b>HOY: ${faseNombre(torneo.fase)}</b> <span class="pill oro">${torneo.nombre}</span><div class="d">Rival: ${r.nombre} (nivel ${nivelPareja(r)}).</div>`;
     } else {
-      d.innerHTML=`<b>En el ${torneo.nombre}</b><div class="d">Próxima ronda: ${FASES[torneo.fase].toLowerCase()} el ${DIAS[dPart-1]}. Hasta entonces, cada día decides: entrenar o descansar.</div>`;
+      d.innerHTML=`<b>En el ${torneo.nombre}</b><div class="d">Próxima ronda: ${faseNombre(torneo.fase).toLowerCase()} el ${DIAS[dPart-1]}. Hasta entonces, cada día decides: entrenar o descansar.</div>`;
     }
     td.appendChild(d);
   } else if(esT&&dia===1&&!c.lesion){
@@ -532,7 +532,7 @@ function pintarSemana(){
   const esDiaPartido=torneo&&dia===diaDeFase(torneo.fase);
   if(esDiaPartido){
     const bJ=document.createElement("button");bJ.className="pri";bJ.style.flex="1.4";
-    bJ.textContent=`🎾 Jugar: ${FASES[torneo.fase]}`;
+    bJ.textContent=`🎾 Jugar: ${faseNombre(torneo.fase)}`;
     bJ.onclick=()=>{pintarTorneo();irA("torneo");};
     fila.appendChild(bJ);
   }
@@ -1147,7 +1147,7 @@ function avanzarDia(){
   const c=G.carrera;
   c.dia=(c.dia||1)+1;
   if(torneo&&c.dia>diaDeFase(torneo.fase)){
-    avisa(`✗ No os presentáis a ${FASES[torneo.fase].toLowerCase()} del ${torneo.nombre}: eliminados por W.O.`);
+    avisa(`✗ No os presentáis a ${faseNombre(torneo.fase).toLowerCase()} del ${torneo.nombre}: eliminados por W.O.`);
     const e=ent();
     e.calRes=e.calRes||{}; e.calRes[semanaTemp()]="•";
     torneo=null;
