@@ -994,3 +994,15 @@ comprueba("Avisos: no se apilan más de 4 toasts a la vez", () => {
   exige(cont.children.length <= 4, "se apilaron " + cont.children.length + " toasts (máx 4)");
   return "tope de 4 respetado tras 12 avisos";
 });
+
+/* ===================== SONIDO DE NAVEGACIÓN ===================== */
+
+comprueba("Navegación: esClicable detecta la UI interactiva y excluye lo demás", () => {
+  exige(esClicable({ tagName: "BUTTON", parentElement: null }) === true, "un <button> debería ser clicable");
+  exige(esClicable({ tagName: "DIV", onclick: function () {}, parentElement: null }) === true, "un div con onclick debería ser clicable");
+  exige(esClicable({ tagName: "SPAN", getAttribute: () => "button", parentElement: null }) === true, "role=button debería ser clicable");
+  exige(esClicable({ tagName: "SPAN", parentElement: { tagName: "BUTTON", parentElement: null } }) === true, "un hijo de <button> debería contar (closest)");
+  exige(esClicable({ tagName: "INPUT", parentElement: null }) === false, "un input de texto no debería sonar");
+  exige(esClicable({ tagName: "P", parentElement: null }) === false, "un párrafo suelto no debería sonar");
+  return "button/a/select/onclick/role/ancestro detectados; texto e input excluidos";
+});

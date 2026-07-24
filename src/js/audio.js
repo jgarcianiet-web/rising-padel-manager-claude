@@ -101,9 +101,23 @@ function musicaOff(){
     setTimeout(()=>{ try{ m.src.stop(); m.lfo&&m.lfo.stop(); }catch(e){} },1400);
   }catch(e){ MUS=null; }
 }
+/* Sonido de click en la navegación. Un único listener global da respuesta sonora
+   a TODA la interfaz sin anotar cada handler. esClicable sube unos niveles
+   buscando un elemento realmente interactivo, para sonar en botones, pestañas y
+   filas con onclick, pero no en clics sueltos sobre texto o campos de formulario. */
+function esClicable(el){
+  let n=el, hops=0;
+  while(n && n!==document && hops++<4){
+    if(n.tagName==="BUTTON"||n.tagName==="A"||n.tagName==="SELECT") return true;
+    if(typeof n.onclick==="function") return true;
+    if(n.getAttribute && n.getAttribute("role")==="button") return true;
+    n=n.parentElement;
+  }
+  return false;
+}
 if(typeof document.addEventListener==="function"){
   document.addEventListener("click",e=>{
-    if(e&&e.target&&e.target.tagName==="BUTTON"){ ac(); sfxClick(); }
+    if(e&&e.target&&esClicable(e.target)){ ac(); sfxClick(); }
   },true);
 }
 
