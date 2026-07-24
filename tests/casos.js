@@ -480,6 +480,26 @@ comprueba("Objetivos: metas de temporada con progreso y recompensa", () => {
   return `${c.objetivos.length} objetivos; títulos ${progresoObjetivo(c, objTit, 30).actual}/${objTit.meta}, meta rank ${objRank.meta}`;
 });
 
+comprueba("Dilemas: decisiones con consecuencias diferidas", () => {
+  const c = { sponsor: { marca: "X", sem: 200 }, energia: 90, fans: 500, dinero: 1000, compiMoral: 65, pendientes: [] };
+  // con patrocinador está disponible el dilema del anuncio
+  exige(dilemasDisponibles(c).some(d => d.id === "dubai"), "no aparece el dilema del anuncio con patrocinador");
+  // decidir "rodar" aplica el efecto inmediato y encola la consecuencia diferida
+  c.dilemaActivo = { id: "dubai", sem: 10 };
+  const dAntes = c.dinero, fAntes = c.fans;
+  const r = aplicarOpcionDilema(c, 0, 10);
+  exige(c.dinero > dAntes && c.fans > fAntes, "el efecto inmediato no se aplica");
+  exige(c.dilemaActivo === null, "el dilema no se cierra al decidir");
+  exige((c.pendientes || []).length === 1 && c.pendientes[0].sem > 10, "no se encola la consecuencia diferida");
+  // la consecuencia NO llega hasta su semana
+  const enAntes = c.energia;
+  exige(resolverPendientes(c, 10).length === 0 && c.energia === enAntes, "la consecuencia se aplicó antes de tiempo");
+  const res = resolverPendientes(c, c.pendientes[0].sem);
+  exige(res.length === 1 && c.energia < enAntes, "la consecuencia diferida no se aplica al llegar su semana");
+  exige((c.pendientes || []).length === 0, "la consecuencia resuelta no se retira de la cola");
+  return `energía ${enAntes}→${c.energia} al resolverse la consecuencia diferida`;
+});
+
 comprueba("Analítica: sin la base lista muestra un aviso claro", () => {
   abrirAnalitica();
   const cuerpo = document.getElementById("analiticaCuerpo");
