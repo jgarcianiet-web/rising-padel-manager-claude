@@ -1,7 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Chakra+Petch:ital,wght@0,600;0,700;1,700&family=IBM+Plex+Mono:wght@400;600&family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap');
 :root{
   --bg:#151922; --pane:#1E242F; --paneHd:#272F3D; --borde:#333B4B; --borde2:#3E4757;
-  --texto:#E6E9F0; --gris:#8B94A7; --gris2:#5E687A;
+  /* texto secundario (--gris) y etiquetas/pies (--gris2) subidos de contraste:
+     los apagados quedaban por debajo del mínimo legible sobre el fondo oscuro */
+  --texto:#E6E9F0; --gris:#9BA4B6; --gris2:#7C8698;
   --lima:#C6F53C; --azul:#4FA3D8; --oro:#E8C15A; --rojo:#E06456; --verde:#7CE08A;
   --tinta:#10141C;
   --r:11px; --r2:7px; --sombra:0 2px 8px rgba(0,0,0,.32); --sombra2:0 8px 24px rgba(0,0,0,.42);
@@ -104,7 +106,7 @@ canvas{width:100%;display:block}
 .score{display:flex;justify-content:space-between;align-items:center;font-family:'IBM Plex Mono',monospace;margin-bottom:8px;gap:8px}
 .score .eq{font-size:11px;font-weight:600;flex:1}
 .score .pts{font-size:18px;font-weight:600;background:#10151E;border:1px solid var(--borde2);color:var(--lima);padding:4px 11px;letter-spacing:2px;white-space:nowrap}
-.foot{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--gris2);text-align:center;margin-top:5px}
+.foot{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--gris);text-align:center;margin-top:5px}
 .rk{font-family:'IBM Plex Mono',monospace;font-size:11px;width:100%;border-collapse:collapse}
 .rk td{padding:6px 6px;border-bottom:1px solid #262D3A;color:#B9C1D0}
 .rk tr.hd td{background:#10151E;color:var(--gris2);font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--borde2)}
