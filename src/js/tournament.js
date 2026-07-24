@@ -64,7 +64,7 @@ function infoPropia(){
 }
 function pintarPlanPartido(){
   const e=ent(); if(!e.tactica) e.tactica={agres:"normal",diana:"repartir"};
-  const t=e.tactica;
+  const t=e.tactica; if(!t.red)t.red="normal"; if(!t.clutch)t.clutch="normal";
   const ent_=entrenadorActual();
   const row=document.getElementById("planPartido");
   const btn=(g,v,txt)=>`<button class="selbtn${t[g]===v?" on":""}" style="font-size:10px;padding:4px 7px" onclick="setTactPrev('${g}','${v}')">${txt}</button>`;
@@ -74,15 +74,21 @@ function pintarPlanPartido(){
     <span style="color:var(--gris2)">·</span>
     ${btn("diana","repartir","Repartir")}${btn("diana","debil","Al flojo")}
   </div>
+  <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:4px">
+    <span class="foot" style="margin:0 2px 0 0">RED</span>${btn("red","aguantar","Aguantar")}${btn("red","normal","Normal")}${btn("red","subir","Subir")}
+    <span style="color:var(--gris2)">·</span>
+    <span class="foot" style="margin:0 2px">PUNTOS CALIENTES</span>${btn("clutch","conservar","Conservar")}${btn("clutch","normal","Normal")}${btn("clutch","arriesgar","Arriesgar")}
+  </div>
   ${G.modo==="carrera"?`<div class="foot" style="text-align:left;margin-top:4px">${ent_.id>0?`${ent_.n} puede llevar el partido por ti: elige táctica según el rival y la ajusta set a set.`:"Sin entrenador: si delegas la simulación, irá a instinto (táctica normal, ajustes básicos)."}</div>`:`<div class="foot" style="text-align:left;margin-top:4px">Si delegas, el banquillo ajusta la táctica set a set.</div>`}`;
   document.getElementById("btnSimCoach").textContent=G.modo==="carrera"&&ent_.id>0?`🧠 Simular: decide ${ent_.n}`:"🧠 Simular: decide el banquillo";
 }
 function setTactPrev(g,v){ ent().tactica[g]=v; guardar(); pintarPlanPartido(); }
 // Aplica la táctica que recomienda el informe del ojeador (un clic → plan listo).
-function aplicarTacticaRec(agres,diana){
+function aplicarTacticaRec(agres,diana,red,clutch){
   const t=ent().tactica||(ent().tactica={agres:"normal",diana:"repartir"});
-  t.agres=agres; t.diana=diana; guardar(); pintarPlanPartido();
-  avisa("🔍 Plan del ojeador aplicado: "+(diana==="debil"?"cargar sobre el flojo":"repartir")+" · "+agres+".");
+  t.agres=agres; t.diana=diana; if(red)t.red=red; if(clutch)t.clutch=clutch;
+  guardar(); pintarPlanPartido();
+  avisa("🔍 Plan del ojeador aplicado: "+(diana==="debil"?"cargar sobre el flojo":"repartir")+" · "+agres+(red&&red!=="normal"?" · red "+red:"")+".");
 }
 function coachTactica(){
   // el míster lee el partido: nivel relativo y marcador
@@ -116,7 +122,7 @@ function pintarTorneo(){
       ${li(inf.deb,"var(--verde)")}
       ${li(inf.fue,"var(--rojo)")}
       <div class="scoutRec"><b>Plan sugerido:</b> ${inf.recTxt}
-        <button class="selbtn" style="font-size:10px;padding:3px 8px;margin-left:4px" onclick="aplicarTacticaRec('${inf.rec.agres}','${inf.rec.diana}')">Aplicar</button></div>
+        <button class="selbtn" style="font-size:10px;padding:3px 8px;margin-left:4px" onclick="aplicarTacticaRec('${inf.rec.agres}','${inf.rec.diana}','${inf.rec.red}','${inf.rec.clutch}')">Aplicar</button></div>
     </div>`;
   }
   document.getElementById("tInfo").innerHTML=`<span style="display:flex;gap:2px;margin-bottom:5px">${(r.jug||[]).map(j=>avatarSVG(j,38)).join("")}</span>Rival: <b>${r.nombre}</b>${clubR} <span class="pill">nivel ${nivelPareja(r)}</span> <span class="pill oro">#${rankingFilas().find(f=>f.id===r.id).pos}</span>${r.pro?' <span class="tagpro">PRO</span>':""}<br>
@@ -276,11 +282,13 @@ const PTS=["0","15","30","40"];
 function pintaTactica(){
   const row=document.getElementById("tactRow");
   if(!match||match.cpu){row.innerHTML="";return;}
-  const t=ent().tactica;
+  const t=ent().tactica; if(!t.red)t.red="normal"; if(!t.clutch)t.clutch="normal";
   const btn=(grupo,val,txt)=>`<button class="selbtn${t[grupo]===val?" on":""}" style="font-size:10px;padding:4px 6px" onclick="setTact('${grupo}','${val}')">${txt}</button>`;
-  row.innerHTML=`<div class="chbar"><span>TÁCTICA</span><span style="display:flex;gap:4px;flex-wrap:wrap">${btn("agres","conservadora","Segura")}${btn("agres","normal","Normal")}${btn("agres","agresiva","A degüello")}<span style="color:var(--gris2)">·</span>${btn("diana","repartir","Repartir")}${btn("diana","debil","Al flojo")}</span></div>`;
+  row.innerHTML=`<div class="chbar"><span>TÁCTICA</span><span style="display:flex;gap:4px;flex-wrap:wrap">${btn("agres","conservadora","Segura")}${btn("agres","normal","Normal")}${btn("agres","agresiva","A degüello")}<span style="color:var(--gris2)">·</span>${btn("diana","repartir","Repartir")}${btn("diana","debil","Al flojo")}</span></div>`
+    +`<div class="chbar" style="margin-top:4px"><span>RED · CALIENTES</span><span style="display:flex;gap:4px;flex-wrap:wrap">${btn("red","aguantar","Aguantar")}${btn("red","normal","Red normal")}${btn("red","subir","Subir")}<span style="color:var(--gris2)">·</span>${btn("clutch","conservar","Conservar")}${btn("clutch","normal","Normal")}${btn("clutch","arriesgar","Arriesgar")}</span></div>`;
 }
-function setTact(g,v){ ent().tactica[g]=v; guardar(); pintaTactica(); addCom(`⚙ Cambio táctico: ${g==="agres"?v:"buscar "+(v==="debil"?"al flojo":"a los dos")}.`,0); }
+const _TACT_TXT={agres:v=>v,diana:v=>"buscar "+(v==="debil"?"al flojo":"a los dos"),red:v=>"red: "+v,clutch:v=>"puntos calientes: "+v};
+function setTact(g,v){ ent().tactica[g]=v; guardar(); pintaTactica(); addCom(`⚙ Cambio táctico: ${(_TACT_TXT[g]||(x=>x))(v)}.`,0); }
 function pintaChallenges(){
   const row=document.getElementById("challengeRow");
   if(!match){row.innerHTML="";return;}
@@ -437,7 +445,7 @@ function pintaBroadcast(){
       +`<span class="bcchip">Errores <b style="color:var(--rojo)">${e[0]}</b>-${e[1]}</span>`
       +`<span class="bcchip">Rotura <b>${bp[0].ganados}/${bp[0].jugados}</b>-${bp[1].ganados}/${bp[1].jugados}</span>`
       +`<span class="bcchip">Fatiga <b>${fat[0]}</b>-${fat[1]}</span>`
-      +`<span class="bcchip${parcial?" hot":""}">Táctica: ${TACT.agres}${TACT.diana==="debil"?" · al flojo":""}</span>`
+      +`<span class="bcchip${parcial?" hot":""}">Táctica: ${TACT.agres}${TACT.diana==="debil"?" · al flojo":""}${TACT.red&&TACT.red!=="normal"?" · red:"+TACT.red:""}${TACT.clutch&&TACT.clutch!=="normal"?" · calientes:"+TACT.clutch:""}</span>`
     +`</div>`;
 }
 function pintaMarcadorP(){

@@ -109,6 +109,25 @@ function resolveShot(pl,shotKey,ctx,rallyLen){
   if(mia2&&TACT.agres==="agresiva") win*=1.22;
   if(mia2&&TACT.agres==="conservadora") win*=.85;
   if(mia2&&TACT.diana==="debil") win*=1.09;   // buscas al flojo: más bola ganadora
+  if(mia2){
+    // estrategia de red (tu equipo): subir (mucha pegada arriba, pero te expones a
+    // que un buen globeador te pase) o aguantar atrás (sólido, pero cierras menos)
+    const red=TACT.red||"normal";
+    if(red==="subir"){ if(ctx.atNet||shotKey==="volea"||shotKey==="bandeja"||AGRESIVOS.includes(shotKey)) win*=1.20; err*=1.06; }
+    else if(red==="aguantar"){ win*=.85; err*=.82; }
+    // puntos calientes: en los puntos importantes, arriesgar (muchos más winners y
+    // fallos) o conservar (menos de ambos)
+    const clutch=TACT.clutch||"normal";
+    if(typeof PRESION!=="undefined"&&PRESION>=.5){
+      if(clutch==="arriesgar"){ win*=1.28; err*=1.22; }
+      else if(clutch==="conservar"){ win*=.78; err*=.75; }
+    }
+  } else if(match&&!match.cpu){
+    // el rival castiga tu plan: si subiste a la red, un buen globeador te pasa por
+    // arriba; si aguantas atrás, al rival le cuesta más cerrar el punto desde la red
+    if(TACT.red==="subir"&&(shotKey==="globo"||shotKey==="globoRapido")) win*=1+clamp(((pl.attrs.globo||60)-58)/95,0,.55);
+    else if(TACT.red==="aguantar"&&(shotKey==="remate"||shotKey==="vibora"||shotKey==="bandeja")) win*=.9;
+  }
   if(ctx.oppScrambling) win*=1.7;
   if(rallyLen>18){err*=1.38;win*=1.25;}
   // fatiga: un jugador cansado falla más y cierra menos puntos
