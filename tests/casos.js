@@ -155,6 +155,10 @@ comprueba("SQLite: la proyección relacional produce filas coherentes", () => {
 comprueba("SQLite Fase 3: el modelo normalizado hace ida y vuelta sin pérdida", () => {
   nuevaCarrera("agresivo");
   const orig = G.world.parejas;
+  // campos NO modelados (deben sobrevivir vía `extras`, para poder cargar el
+  // mundo desde SQLite sin perder datos en la Fase 4b)
+  orig[0]._titulos = 3; orig[0].retiraT = 41;
+  if (orig[0].jug && orig[0].jug[0]) orig[0].jug[0]._ropa = "#123456";
   const snap = normalizar();
   exige(snap.parejas.length === orig.length, "el nº de parejas normalizadas no coincide");
   const totJug = orig.reduce((n, p) => n + (p.jug ? p.jug.length : 0), 0);
@@ -175,6 +179,10 @@ comprueba("SQLite Fase 3: el modelo normalizado hace ida y vuelta sin pérdida",
     });
   });
   exige(fallos === 0, fallos + " discrepancias en la ida y vuelta del modelo");
+  // los campos no modelados sobreviven (extras)
+  const r0 = byId[orig[0].id];
+  exige(r0._titulos === 3 && r0.retiraT === 41, "los campos extra de la pareja no sobreviven (extras)");
+  exige(!orig[0].jug[0] || r0.jug[0]._ropa === "#123456", "el campo extra del jugador no sobrevive (extras)");
   return orig.length + " parejas, " + snap.jugadores.length + " jugadores y " + snap.atributos.length + " atributos: round-trip exacto";
 });
 

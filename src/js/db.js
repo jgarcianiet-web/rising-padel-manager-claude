@@ -12,12 +12,15 @@
    la BD), por eso se pueden probar directamente en Node.
 ================================================================ */
 
+// La columna `extras` (JSON) guarda cualquier campo persistente NO modelado en
+// columnas propias, para que el round-trip sea lossless por construcción (sobreviva
+// el campo que sea, ahora o en el futuro: _titulos, retiraT, _ropa, etc.).
 const DB_SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS norm_pareja(
-  pid INTEGER PRIMARY KEY, nombre TEXT, sexo TEXT, pts INTEGER, pro INTEGER, edad INTEGER, club INTEGER);
+  pid INTEGER PRIMARY KEY, nombre TEXT, sexo TEXT, pts INTEGER, pro INTEGER, edad INTEGER, club INTEGER, extras TEXT);
 CREATE TABLE IF NOT EXISTS norm_jugador(
   jid TEXT PRIMARY KEY, pareja_pid INTEGER, nombre TEXT, sexo TEXT, lado INTEGER,
-  estilo TEXT, perso TEXT, conf INTEGER, pais TEXT);
+  estilo TEXT, perso TEXT, conf INTEGER, pais TEXT, extras TEXT);
 CREATE TABLE IF NOT EXISTS norm_atributo(
   jid TEXT, clave TEXT, valor INTEGER, PRIMARY KEY(jid, clave));
 CREATE INDEX IF NOT EXISTS idx_njp ON norm_jugador(pareja_pid);
@@ -31,10 +34,10 @@ function dbSqlGuardarSnapshot(db, snap){
   db.run("BEGIN");
   try{
     db.run("DELETE FROM norm_atributo; DELETE FROM norm_jugador; DELETE FROM norm_pareja;");
-    let st=db.prepare("INSERT INTO norm_pareja VALUES(?,?,?,?,?,?,?)");
-    (snap.parejas||[]).forEach(p=>st.run([p.pid,p.nombre||"",p.sexo||"M",p.pts|0,p.pro?1:0,p.edad|0,(p.club==null?-1:p.club)])); st.free();
-    st=db.prepare("INSERT INTO norm_jugador VALUES(?,?,?,?,?,?,?,?,?)");
-    (snap.jugadores||[]).forEach(j=>st.run([j.jid,j.pareja_pid,j.nombre||"",j.sexo||"M",j.lado|0,j.estilo||"",j.perso||"",j.conf|0,j.pais||""])); st.free();
+    let st=db.prepare("INSERT INTO norm_pareja VALUES(?,?,?,?,?,?,?,?)");
+    (snap.parejas||[]).forEach(p=>st.run([p.pid,p.nombre||"",p.sexo||"M",p.pts|0,p.pro?1:0,p.edad|0,(p.club==null?-1:p.club),p.extras||"{}"])); st.free();
+    st=db.prepare("INSERT INTO norm_jugador VALUES(?,?,?,?,?,?,?,?,?,?)");
+    (snap.jugadores||[]).forEach(j=>st.run([j.jid,j.pareja_pid,j.nombre||"",j.sexo||"M",j.lado|0,j.estilo||"",j.perso||"",j.conf|0,j.pais||"",j.extras||"{}"])); st.free();
     st=db.prepare("INSERT INTO norm_atributo VALUES(?,?,?)");
     (snap.atributos||[]).forEach(a=>st.run([a.jid,a.clave,a.valor|0])); st.free();
     db.run("COMMIT");
@@ -45,10 +48,10 @@ function dbSqlGuardarSnapshot(db, snap){
 function dbSqlLeerSnapshot(db){
   const out={parejas:[],jugadores:[],atributos:[]};
   const q=(sql,cb)=>{ const r=db.exec(sql); if(r&&r[0]) r[0].values.forEach(cb); };
-  q("SELECT pid,nombre,sexo,pts,pro,edad,club FROM norm_pareja ORDER BY pid",
-    v=>out.parejas.push({pid:v[0],nombre:v[1],sexo:v[2],pts:v[3],pro:!!v[4],edad:v[5],club:v[6]}));
-  q("SELECT jid,pareja_pid,nombre,sexo,lado,estilo,perso,conf,pais FROM norm_jugador ORDER BY jid",
-    v=>out.jugadores.push({jid:v[0],pareja_pid:v[1],nombre:v[2],sexo:v[3],lado:v[4],estilo:v[5],perso:v[6],conf:v[7],pais:v[8]}));
+  q("SELECT pid,nombre,sexo,pts,pro,edad,club,extras FROM norm_pareja ORDER BY pid",
+    v=>out.parejas.push({pid:v[0],nombre:v[1],sexo:v[2],pts:v[3],pro:!!v[4],edad:v[5],club:v[6],extras:v[7]}));
+  q("SELECT jid,pareja_pid,nombre,sexo,lado,estilo,perso,conf,pais,extras FROM norm_jugador ORDER BY jid",
+    v=>out.jugadores.push({jid:v[0],pareja_pid:v[1],nombre:v[2],sexo:v[3],lado:v[4],estilo:v[5],perso:v[6],conf:v[7],pais:v[8],extras:v[9]}));
   q("SELECT jid,clave,valor FROM norm_atributo",
     v=>out.atributos.push({jid:v[0],clave:v[1],valor:v[2]}));
   return out;
