@@ -365,22 +365,55 @@ function continuarTrasPunto(g){
   if(match.fin){setTimeout(finPartido,900);}
   else setTimeout(()=>{if(match&&match.ver&&!match.fin&&!match.pausaTM) jugarPuntoAnim();},1000/speed);
 }
-function pintaLiveStats(){
-  const el=document.getElementById("liveStats");
-  if(!el||!match||!match.ver||!stats) return;
+// Barra de dos lados: local (lima) vs rival (gris), con porcentaje 0..100 del local.
+function _bcBar(pct,colLocal){
+  pct=clamp(Math.round(pct),0,100);
+  return `<div class="bcbar"><i style="width:${pct}%;background:${colLocal||"var(--lima)"}"></i><i style="width:${100-pct}%;background:#3b4a5c"></i></div>`;
+}
+function pintaLiveStats(){ pintaBroadcast(); }   // compat: el marcador llama aquí cada punto
+// Panel de retransmisión: marcador grande + stats en vivo (momentum, dominio de
+// red, winners/errores) + estado del saque. Rellena la columna derecha del partido.
+function pintaBroadcast(){
+  const sc=document.getElementById("bcScore"), st=document.getElementById("bcStats");
+  if(!sc||!st||!match||!teams) return;
+  const m=match;
+  // ---- marcador ----
+  let punt;
+  if(m.golden) punt="★ STAR";
+  else if(m.ventaja===0) punt="VENT · 40";
+  else if(m.ventaja===1) punt="40 · VENT";
+  else punt=`${PTS[m.p[0]]} · ${PTS[m.p[1]]}`;
+  const tb=(m.j[0]===6&&m.j[1]===6)?" · TIE-BREAK":"";
+  const srv=(t)=>m.server===t?'<span class="srv">▸ saque</span>':"";
+  sc.innerHTML=`<div class="teams">`
+    +`<span class="tn">${teams[0].nombre}</span>`
+    +`<span class="big${m.golden?" gold":""}">${punt}</span>`
+    +`<span class="tn r">${teams[1].nombre}</span></div>`
+    +`<div class="sub"><span>${srv(0)}</span>`
+    +`<span>Sets ${m.s[0]}-${m.s[1]} · juegos ${m.j[0]}-${m.j[1]}${tb}</span>`
+    +`<span>${srv(1)}</span></div>`;
+  if(!m.ver||!stats){ st.innerHTML=""; return; }
+  // ---- stats en vivo ----
   const w=[0,1].map(t=>stats[t].jug.reduce((a,j)=>a+(j.w||0),0));
   const e=[0,1].map(t=>stats[t].jug.reduce((a,j)=>a+(j.e||0),0));
   const pg=[0,1].map(t=>stats[t].pganados||0);
-  const dom0=Math.round(pg[0]/(pg[0]+pg[1]||1)*100);
+  const red=[0,1].map(t=>stats[t].red||0);
   const bp=[0,1].map(t=>stats[t].bp||{jugados:0,ganados:0});
   const fat=[0,1].map(t=>Math.round(((stats[t].fatiga||[0,0]).reduce((a,f)=>a+f,0))/2));
-  const red=[0,1].map(t=>stats[t].red||0);
-  const mo=match.momento;
-  const parcial=(mo&&mo.run>=3&&mo.team>=0)?` · 🔥 Parcial ${mo.team===0?mo.run+"-0":"0-"+mo.run}`:"";
-  const barra=`<div style="display:flex;height:6px;border-radius:3px;overflow:hidden;margin:3px 0;background:#22303f">`
-    +`<div style="width:${dom0}%;background:var(--lima)"></div><div style="width:${100-dom0}%;background:#3b4a5c"></div></div>`
-    +`<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--gris2)"><span>Puntos ganados ${pg[0]}${parcial}</span><span>${pg[1]}</span></div>`;
-  el.innerHTML=barra+`Winners <b style="color:var(--lima)">${w[0]}</b>-${w[1]} · Errores <b style="color:#E05656">${e[0]}</b>-${e[1]} · Red <b>${red[0]}</b>-${red[1]} · Rotura <b>${bp[0].ganados}/${bp[0].jugados}</b>-${bp[1].ganados}/${bp[1].jugados} · Fatiga <b>${fat[0]}</b>-${fat[1]} · Táctica: ${TACT.agres}${TACT.diana==="debil"?" · al flojo":""}`;
+  const mo=m.momento;
+  const domPct=pg[0]/(pg[0]+pg[1]||1)*100;
+  const redPct=red[0]/(red[0]+red[1]||1)*100;
+  const parcial=(mo&&mo.run>=3&&mo.team>=0)?`🔥 ${mo.team===0?mo.run+"-0":"0-"+mo.run}`:"";
+  st.innerHTML=
+    `<div class="bcstat"><div class="h"><span>Puntos ganados ${parcial}</span><b>${pg[0]}-${pg[1]}</b></div>${_bcBar(domPct)}</div>`
+    +`<div class="bcstat"><div class="h"><span>🥅 Dominio de red</span><b>${red[0]}-${red[1]}</b></div>${_bcBar(redPct)}</div>`
+    +`<div class="bcchips">`
+      +`<span class="bcchip">Winners <b style="color:var(--lima)">${w[0]}</b>-${w[1]}</span>`
+      +`<span class="bcchip">Errores <b style="color:var(--rojo)">${e[0]}</b>-${e[1]}</span>`
+      +`<span class="bcchip">Rotura <b>${bp[0].ganados}/${bp[0].jugados}</b>-${bp[1].ganados}/${bp[1].jugados}</span>`
+      +`<span class="bcchip">Fatiga <b>${fat[0]}</b>-${fat[1]}</span>`
+      +`<span class="bcchip${parcial?" hot":""}">Táctica: ${TACT.agres}${TACT.diana==="debil"?" · al flojo":""}</span>`
+    +`</div>`;
 }
 function pintaMarcadorP(){
   pintaLiveStats();
@@ -400,7 +433,7 @@ function addCom(txt,team){
   const d=document.createElement("div");
   d.textContent=`${team===0?"›":"‹"} ${txt}`;
   box.prepend(d);
-  while(box.children.length>4) box.removeChild(box.lastChild);
+  while(box.children.length>16) box.removeChild(box.lastChild);
 }
 let anim=null;
 function jugarPuntoAnim(){
