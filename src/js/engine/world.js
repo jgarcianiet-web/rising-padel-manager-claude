@@ -195,6 +195,50 @@ function evaluarRuptura(c,puesto){
   ops.push({id:"dejar",txt:"Aceptar la ruptura",desc:"Cada uno por su lado."});
   return {crisis:true,motivo,ops};
 }
+/* ================================================================
+   NEGOCIACIÓN: fichar un compañero no es pagar y listo. El candidato tiene
+   exigencias (prestigio, lado, entrenador, reparto, ambición) y hay que
+   convencerle. Puro y testable; la UI monta el modal sobre estas funciones.
+================================================================ */
+// Prestigio/reputación del jugador 0..100 (ranking + fama + estatus pro).
+function prestigioJugador(puesto,fans,pro){
+  const porRank=clamp(100-((puesto||40)-1)*2,0,100);              // #1→100, #50→2
+  const porFama=clamp(Math.round(Math.log10((fans||100)+10)*22-20),0,100);
+  return clamp(Math.round(porRank*.6+porFama*.4)+(pro?6:0),0,100);
+}
+// Exigencias de un candidato según su nivel, lado natural y rasgos.
+function exigenciasCompi(cand){
+  const niv=mediaAttrs(cand.attrs), rc=rasgosDe(cand);
+  const ladoQuiere=(cand.lado===0||cand.lado===1)?cand.lado:((typeof ladoPorAttrs==="function")?ladoPorAttrs(cand.attrs,cand.estilo):1);
+  return {
+    niv,
+    prestigioMin:clamp(Math.round((niv-42)*2.2),0,92),            // una estrella no se va con un don nadie
+    ladoQuiere,
+    exigeEntrenador:(niv>=68)||rc.indexOf("ambicioso")>=0,
+    reparto:clamp(40+Math.round((niv-50)*0.6),40,60),            // % de premios que pide
+    objetivoRanking:rc.indexOf("ambicioso")>=0?Math.max(5,Math.round(100-niv)):null,
+    conflictivo:rc.indexOf("conflictivo")>=0,
+    leal:rc.indexOf("leal")>=0,
+  };
+}
+// Evalúa tu oferta. yo = {estilo,perso,lado,rasgos,n}; oferta = {cederLado, tieneEntrenador}.
+// Devuelve {acepta, faltan:[motivos], afinidad, ex}.
+function evaluaOfertaCompi(yo,cand,oferta,prestigio){
+  const ex=exigenciasCompi(cand), faltan=[]; oferta=oferta||{};
+  if(prestigio<ex.prestigioMin) faltan.push(`Prestigio insuficiente: pide ${ex.prestigioMin} y tienes ${prestigio}. Gánate un nombre primero.`);
+  if(ex.exigeEntrenador&&!oferta.tieneEntrenador) faltan.push("Exige que tengas entrenador en el cuerpo técnico.");
+  const colision = yo.lado!==undefined && yo.lado===ex.ladoQuiere, cede=colision&&!!oferta.cederLado;
+  // lado final de cada uno
+  let suLado, tuLado;
+  if(!colision){ suLado=ex.ladoQuiere; tuLado=yo.lado; }
+  else if(cede){ suLado=ex.ladoQuiere; tuLado=1-ex.ladoQuiere; }   // cedes: te mueves al opuesto
+  else { suLado=1-yo.lado; tuLado=yo.lado; }                       // juega forzado en su lado no preferido
+  if(colision&&!cede&&ex.conflictivo) faltan.push(`Quiere el ${ex.ladoQuiere===0?"drive":"revés"} y no acepta jugar en otro sitio.`);
+  let afin=afinidadPareja(Object.assign({},yo,{lado:tuLado}),{estilo:cand.estilo,perso:cand.perso,lado:suLado,rasgos:cand.rasgos,n:cand.n});
+  if(colision&&!cede) afin=clamp(afin-14,5,95);                    // descontento por el lado forzado
+  return {acepta:faltan.length===0,faltan,afinidad:afin,ex,colision,cede,suLado,tuLado};
+}
+
 // Aplica la opción elegida (muta c.compiMoral). Devuelve {rompio, txt}.
 function aplicarOpcionRuptura(c,id,motivo){
   if(id==="dejar") return {rompio:true,txt:"Rotura confirmada: cada uno busca su camino."};
