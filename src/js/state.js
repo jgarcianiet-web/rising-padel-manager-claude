@@ -6,7 +6,7 @@ let torneo=null,match=null,speed=1.6;
 let tabActiva="semana",cmTab="semana";
 let lado=null,colorSel=COLORES[0],persoSel=null,colorClubSel=COLORES[0],sexoSel="M",sexoClubSel="M";
 
-const SLOTS={carrera:"rpm_carrera_v1",club:"rpm_club_v1"};
+const SLOTS={carrera:"rpm_carrera_v1",club:"rpm_club_v1",superliga:"rpm_superliga_v1"};
 function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
 function lsSet(k,v){try{localStorage.setItem(k,v);return true;}catch(e){return false;}}
 function lsDel(k){try{localStorage.removeItem(k);}catch(e){}}
@@ -146,9 +146,9 @@ function guardar(){
   const json=JSON.stringify(G);
   const ok=lsSet(SLOTS[G.modo],json);
   if(typeof dbSqlSnapshotVivo==="function") dbSqlSnapshotVivo();  // persistencia del modelo en sql.js
-  const st=G.modo==="carrera"?G.carrera.semana:G.clubG.semana;
+  const st=G.modo==="carrera"?G.carrera.semana:G.modo==="club"?G.clubG.semana:(G.superliga?("J"+G.superliga.jornada):0);
   document.getElementById("footSave").textContent=ok
-    ? `RISING GAMES · v3.0 — ${G.modo} guardada ✓ (semana ${st})`
+    ? `RISING GAMES · v3.0 — ${G.modo} guardada ✓ (${G.modo==="superliga"?st:"semana "+st})`
     : `RISING GAMES · v2.0 — guardado local no disponible aquí: usa «⤓ Exportar» para no perder la partida`;
 }
 document.getElementById("btnExport").onclick=()=>{

@@ -42,6 +42,7 @@
       <div class="sub">Rising Games · v3.1</div>
       <button class="pri" id="btnCarrera">🎾 Carrera de jugador</button>
       <button class="pri" id="btnClub">🏟 Modo club</button>
+      <button class="pri" id="btnSuperliga">🏆 Superliga</button>
       <button id="btnImport">Importar partida</button>
       <input type="file" id="fileImport" accept=".json" style="display:none">
       <div class="foot" id="menuInfo" style="margin-top:14px"></div>
@@ -247,6 +248,19 @@
     </div>
   </div>
 
+  <!-- ============ SUPERLIGA ============ -->
+  <div id="scr-superliga" class="oculto">
+    <div class="cont">
+      <div class="card">
+        <h3>🏆 Superliga · <em id="slTit">clasificación</em></h3>
+        <div id="slInfo" class="foot" style="text-align:left;margin-bottom:8px"></div>
+        <div id="slTabla"></div>
+        <div id="slAccion" style="margin-top:12px"></div>
+      </div>
+      <div class="card"><h3>Resultados</h3><div id="slResult" class="log"></div></div>
+    </div>
+  </div>
+
   <!-- ============ PARTIDO ============ -->
   <div id="scr-partido" class="oculto">
     <div class="cont">
@@ -336,6 +350,7 @@
 <script src="js/audio.js"></script>
 <script src="js/court.js"></script>
 <script src="js/engine/world.js"></script>
+<script src="js/engine/liga.js"></script>
 <script src="js/state.js"></script>
 <script src="js/db.js"></script>
 <script src="js/ui.js"></script>

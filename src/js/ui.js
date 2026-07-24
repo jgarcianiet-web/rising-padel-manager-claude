@@ -2,12 +2,13 @@
    NAVEGACIÓN Y MENÚ
 ================================================================ */
 function irA(s){
-  ["menu","crear","crearclub","club","clubm","torneo","partido"].forEach(x=>{
+  ["menu","crear","crearclub","club","clubm","torneo","partido","superliga"].forEach(x=>{
     const el=document.getElementById("scr-"+x);
     if(el) el.classList.toggle("oculto",x!==s);
   });
   document.getElementById("miniBtns").style.display = (s==="menu")?"none":"flex";
   document.body.classList.toggle("en-partido",s==="partido");  // el partido oculta el panel lateral
+  document.body.classList.toggle("en-superliga",s==="superliga");  // la Superliga no usa el HUD lateral
   if(s==="partido"){resize();draw();}
 }
 function infoSlot(modo){
@@ -82,6 +83,14 @@ function abrirModo(modo){
 }
 document.getElementById("btnCarrera").onclick=()=>abrirModo("carrera");
 document.getElementById("btnClub").onclick=()=>abrirModo("club");
+(function(){
+  const b=document.getElementById("btnSuperliga"); if(!b) return;
+  b.onclick=()=>{
+    const raw=lsGet(SLOTS.superliga);
+    if(raw){ try{ const d=JSON.parse(raw); if(d&&d.superliga){ G=d; entrarSuperliga(); return; } }catch(e){} }
+    crearSuperliga();
+  };
+})();
 function repartirClubes(){
   if(!G.world||!G.world.parejas) return;
   ["M","F"].forEach(sx=>{
