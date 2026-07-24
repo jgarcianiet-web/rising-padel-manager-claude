@@ -409,6 +409,34 @@ comprueba("Relaciones: afinidad, motivo de crisis y ruptura con alternativas", (
   return `comp ${comp} vs choque ${choque}; motivos ${motivoDescontento(c1, 5).clave}/${motivoDescontento(c2, 45).clave}`;
 });
 
+comprueba("Mercado: negociación de compañero con exigencias reales", () => {
+  const at = (n) => { const o = {}; ATTR_KEYS.forEach(k => o[k] = n); return o; };
+  // prestigio: nº1 con fama >> nº200 sin fama
+  exige(prestigioJugador(1, 20000, true) > prestigioJugador(200, 50, false), "el prestigio no refleja ranking/fama");
+  // un crack exige más prestigio y entrenador; un modesto, poco
+  const crack = { n: "Crack", estilo: "agresivo", perso: "frio", lado: 1, attrs: at(85), rasgos: [] };
+  const modesto = { n: "Modesto", estilo: "constructor", perso: "frio", lado: 0, attrs: at(48), rasgos: [] };
+  exige(exigenciasCompi(crack).prestigioMin > exigenciasCompi(modesto).prestigioMin, "el crack no exige más prestigio");
+  exige(exigenciasCompi(crack).exigeEntrenador === true, "un crack debería exigir entrenador");
+  exige(exigenciasCompi(modesto).exigeEntrenador === false, "un modesto no debería exigir entrenador");
+  exige(exigenciasCompi({ n: "A", estilo: "agresivo", perso: "frio", lado: 1, attrs: at(70), rasgos: ["ambicioso"] }).objetivoRanking != null, "el ambicioso no fija objetivo de ranking");
+  // sin prestigio ni entrenador, el crack no firma
+  const yo = { estilo: "constructor", perso: "frio", lado: 0, rasgos: [], n: "Yo" };
+  const r1 = evaluaOfertaCompi(yo, crack, { tieneEntrenador: false }, 20);
+  exige(r1.acepta === false && r1.faltan.length >= 1, "el crack no debería firmar sin prestigio");
+  // con prestigio y entrenador, y lado que no colisiona (él revés, tú drive), firma
+  const r2 = evaluaOfertaCompi(yo, { n: "C", estilo: "agresivo", perso: "frio", lado: 1, attrs: at(60), rasgos: [] }, { tieneEntrenador: true }, 90);
+  exige(r2.acepta === true, "con prestigio y entrenador debería firmar");
+  // colisión de lado con un conflictivo (ambos drive): no firma salvo que cedas tu lado
+  const conf = { n: "Conf", estilo: "constructor", perso: "frio", lado: 0, attrs: at(55), rasgos: ["conflictivo"] };
+  const rCol = evaluaOfertaCompi(yo, conf, { tieneEntrenador: true }, 90);
+  const rCede = evaluaOfertaCompi(yo, conf, { tieneEntrenador: true, cederLado: true }, 90);
+  exige(rCol.acepta === false, "el conflictivo no debería aceptar el lado forzado");
+  exige(rCede.acepta === true, "cediendo el lado, el conflictivo debería firmar");
+  exige(rCede.afinidad > rCol.afinidad, "ceder el lado debería mejorar la afinidad");
+  return `crack pide prestigio ${exigenciasCompi(crack).prestigioMin}; afinidad forzada ${rCol.afinidad} → cediendo ${rCede.afinidad}`;
+});
+
 comprueba("Analítica: sin la base lista muestra un aviso claro", () => {
   abrirAnalitica();
   const cuerpo = document.getElementById("analiticaCuerpo");

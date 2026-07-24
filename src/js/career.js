@@ -644,11 +644,13 @@ function pintarJugador(){
     const origen=cand.origen==="circuito"
       ?`Juega en ${cand.parejaNombre} (#${cand.parejaPos})`
       :"Agente libre";
-    d.innerHTML=`<b>${cand.pais||""} ${cand.n}</b> <span class="pill">nivel ${mediaAttrs(cand.attrs)}</span> <span class="pill">${ESTILOS[cand.estilo].nombre}</span> <span class="pill">${PERSONALIDADES[cand.perso].n}</span><div class="d">${origen} · prima ${prima}€ · química inicial 35</div>`;
+    const exPrev=exigenciasCompi(cand), prest=prestigioJugador(miPuesto(),c.fans,c.pro);
+    const prestOk=prest>=exPrev.prestigioMin;
+    d.innerHTML=`<b>${cand.pais||""} ${cand.n}</b> <span class="pill">nivel ${mediaAttrs(cand.attrs)}</span> <span class="pill">${ESTILOS[cand.estilo].nombre}</span> <span class="pill">${PERSONALIDADES[cand.perso].n}</span>${chipRasgos(cand)}<div class="d">${origen} · prima ${prima}€ · exige prestigio <b style="color:${prestOk?"var(--verde)":"var(--rojo)"}">${exPrev.prestigioMin}</b> (tienes ${prest})</div>`;
     const b=document.createElement("button");b.style.width="100%";
-    b.textContent=c.dinero<prima?"Caja insuficiente":`Formar pareja (${prima}€)`;
+    b.textContent=c.dinero<prima?"Caja insuficiente":`Negociar (${prima}€)`;
     b.disabled=c.dinero<prima;
-    b.onclick=()=>ficharPareja(ci);
+    b.onclick=()=>negociarPareja(ci);
     d.appendChild(b);mk.appendChild(d);
   });
   const st=document.getElementById("staff");st.innerHTML="";
@@ -679,7 +681,43 @@ function pintarJugador(){
     d.appendChild(b);st.appendChild(d);
   });
 }
-function ficharPareja(ci){
+// Mesa de negociación: ves lo que exige el candidato, ajustas tu oferta (ceder
+// el lado), compruebas la afinidad prevista y firmas si acepta.
+function negociarPareja(ci){
+  const c=G.carrera, cand=c.mercadoP[ci]; if(!cand) return;
+  const prima=primaFichaje(cand);
+  const oferta={cederLado:false, tieneEntrenador:!!(c.staff&&c.staff.entrenador)};
+  const ov=document.getElementById("negModal")||(()=>{const d=document.createElement("div");d.id="negModal";d.style.cssText="position:fixed;inset:0;background:rgba(10,13,19,.93);z-index:82;display:flex;align-items:center;justify-content:center;padding:16px";document.body.appendChild(d);return d;})();
+  const pintar=()=>{
+    const yo={estilo:c.estilo,perso:c.perso,lado:(c.lado===0||c.lado===1)?c.lado:0,rasgos:c.rasgos,n:c.nombre};
+    const prest=prestigioJugador(miPuesto(),c.fans,c.pro);
+    const r=evaluaOfertaCompi(yo,cand,oferta,prest);
+    const ex=r.ex, ladoTxt=l=>l===0?"drive":"revés";
+    const fila=(ok,txt)=>`<div style="font-size:11.5px;color:${ok?"var(--verde)":"var(--rojo)"};padding:1px 0">${ok?"✓":"✗"} ${txt}</div>`;
+    const puedePagar=c.dinero>=prima;
+    ov.innerHTML=`<div class="card" style="max-width:460px;width:100%">
+      <h3 style="margin-top:0">🤝 Negociación · ${cand.n}</h3>
+      <div class="foot" style="text-align:left;margin-bottom:6px">Nivel ${ex.niv} · ${ESTILOS[cand.estilo].nombre} · ${PERSONALIDADES[cand.perso].n} · prima ${prima}€</div>
+      <div style="margin-bottom:8px">
+        ${fila(prest>=ex.prestigioMin,`Prestigio: pide ${ex.prestigioMin}, tienes ${prest}.`)}
+        ${fila(!ex.exigeEntrenador||oferta.tieneEntrenador,ex.exigeEntrenador?`Exige entrenador en tu equipo${oferta.tieneEntrenador?" — lo tienes":" — te falta"}.`:"No exige entrenador.")}
+        ${fila(!r.colision||r.cede,`Quiere jugar al ${ladoTxt(ex.ladoQuiere)}.${r.colision?(r.cede?" Le cedes tu lado (te mueves al "+ladoTxt(1-ex.ladoQuiere)+").":" Coincide con el tuyo: jugaría forzado y a disgusto."):" Encaja con tu lado."}`)}
+        ${ex.objetivoRanking?fila(true,`Ambicioso: espera pelear por el top ${ex.objetivoRanking}.`):""}
+      </div>
+      ${r.colision?`<label style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:8px;cursor:pointer"><input type="checkbox" id="negCede" style="width:auto" ${oferta.cederLado?"checked":""}> Cederle mi lado (${ladoTxt(ex.ladoQuiere)}) y jugar yo al ${ladoTxt(1-ex.ladoQuiere)}</label>`:""}
+      <div class="scout" style="margin:0 0 10px"><div class="scoutHd">Afinidad prevista</div><div style="font-size:22px;font-weight:700;color:${colAttr(r.afinidad)};font-family:'Chakra Petch',sans-serif">${r.afinidad}<span style="font-size:11px;color:var(--gris);font-weight:400"> / 95</span></div></div>
+      ${r.faltan.length?`<div class="foot" style="text-align:left;color:var(--rojo);margin-bottom:8px">No firma: ${r.faltan.join(" ")}</div>`:""}
+      <button class="pri" id="negFirmar" style="width:100%" ${(!r.acepta||!puedePagar)?"disabled":""}>${!puedePagar?"Caja insuficiente":r.acepta?`Firmar (${prima}€)`:"No acepta tu oferta"}</button>
+      <button id="negCancel" style="width:100%;margin-top:7px;background:none;color:var(--gris)">Cancelar</button>
+    </div>`;
+    const cb=document.getElementById("negCede"); if(cb) cb.onchange=()=>{ oferta.cederLado=cb.checked; pintar(); };
+    document.getElementById("negCancel").onclick=()=>quitarEl(ov);
+    const bf=document.getElementById("negFirmar");
+    if(bf&&r.acepta&&puedePagar) bf.onclick=()=>{ quitarEl(ov); ficharPareja(ci,{suLado:r.suLado,tuLado:r.tuLado,objetivoRanking:ex.objetivoRanking,reparto:ex.reparto}); };
+  };
+  pintar();
+}
+function ficharPareja(ci,acuerdo){
   const c=G.carrera, cand=c.mercadoP[ci], prima=primaFichaje(cand);
   if(c.dinero<prima) return;
   c.dinero-=prima;
@@ -695,7 +733,10 @@ function ficharPareja(ci){
   }
   post("fichaje");
   fansAdd(cand.origen==="circuito"?200:40,cand.origen==="circuito"?"bombazo de mercado":null);
-  c.compi={id:"m"+Date.now(),n:cand.n,pais:cand.pais,estilo:cand.estilo,perso:cand.perso,attrs:{...cand.attrs}};
+  const ac=acuerdo||{};
+  c.compi={id:"m"+Date.now(),n:cand.n,pais:cand.pais,estilo:cand.estilo,perso:cand.perso,attrs:{...cand.attrs},rasgos:(cand.rasgos?cand.rasgos.slice():undefined),
+    lado:(ac.suLado===0||ac.suLado===1)?ac.suLado:undefined, _acuerdo:{objetivo:ac.objetivoRanking||null,reparto:ac.reparto||50}};
+  if(ac.tuLado===0||ac.tuLado===1) c.lado=ac.tuLado;   // si cediste el lado, te recolocas
   c.quimica=35; c.compiMoral=70; c.compiPlan="auto";
   c.mercadoP.splice(ci,1);
   noticia("fichaje",`Nueva pareja: ${cand.n}`,cand.origen==="circuito"?`Llega desde ${cand.parejaNombre}`:"Agente libre — a rodar la química");
