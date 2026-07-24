@@ -101,6 +101,15 @@ input,select{background:#10151E;border:1px solid var(--borde2);color:var(--texto
 .scoutRec b{color:var(--lima)}
 /* ---- chips de rasgos de jugador ---- */
 .rasgo{display:inline-block;font-size:9.5px;font-weight:600;border:1px solid var(--oro);border-radius:20px;padding:1px 8px;margin:2px 3px 0 0;background:rgba(0,0,0,.2)}
+/* ---- plan de partido (pre-partido), en rejilla aireada ---- */
+.phead{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--texto);margin-bottom:9px}
+.phead span{color:var(--gris2);letter-spacing:.5px;font-weight:400}
+.plangrid{display:grid;grid-template-columns:1fr 1fr;gap:9px 22px}
+.pgrow{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.pgrow .plbl{font-size:9.5px;color:var(--gris);min-width:88px;text-transform:uppercase;letter-spacing:.5px}
+.pgrow .pbtns{display:flex;gap:5px;flex-wrap:wrap}
+.pgrow .pbtns .selbtn{font-size:10.5px;padding:5px 11px}
+@media(max-width:680px){ .plangrid{grid-template-columns:1fr;gap:7px} .pgrow .plbl{min-width:76px} }
 .entreno{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
 .entreno button{font-size:10.5px;padding:7px 2px;line-height:1.4;font-weight:500;color:var(--gris)}
 .entreno button b{font-size:13px;font-family:'IBM Plex Mono',monospace}
