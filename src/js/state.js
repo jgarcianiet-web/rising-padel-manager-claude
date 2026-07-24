@@ -120,12 +120,39 @@ function abrirAnalitica(){
     cuerpo.innerHTML=`<div class="foot" style="text-align:left;line-height:1.6">Aún no hay datos en la base. Guarda o juega una partida y vuelve a abrir la analítica.</div>`;
     return;
   }
-  const filas=top.map((j,i)=>`<tr><td class="pos">${i+1}</td><td>${j.nombre}</td><td class="pts" style="color:var(--lima)">${j.media}</td><td style="color:var(--gris)">${j.estilo||""}</td><td class="niv">${j.sexo}</td></tr>`).join("");
+  // consultas de analítica (SQL real sobre el modelo normalizado)
+  const parejas=(typeof dbSqlMejoresParejas==="function")?dbSqlMejoresParejas(null,8):[];
+  const estilos=(typeof dbSqlPorEstilo==="function")?dbSqlPorEstilo():[];
+  const paises=(typeof dbSqlTopPaises==="function")?dbSqlTopPaises(null,6):[];
+  const distri=(typeof dbSqlDistribucionNivel==="function")?dbSqlDistribucionNivel():[];
   const ns=(typeof dbSqlNormStats==="function")?dbSqlNormStats():null;
   const v=verificarSnapshot();
-  cuerpo.innerHTML=`<div class="foot" style="text-align:left;margin-bottom:7px">Top 10 jugadores por media — <b>consulta SQL</b> (sql.js) sobre <code>norm_jugador</code>:</div>`
-    +`<table class="rk">${filas}</table>`
-    +`<div class="foot" style="text-align:left;margin-top:9px">`
+  const sec=(t)=>`<div class="anaHd">${t}</div>`;
+  const medIn=(m)=>`<b style="color:${colAttr(m)};font-family:'IBM Plex Mono',monospace">${m}</b>`;
+  const barra=(pct,col)=>`<div class="abar" style="flex:1;margin:0 8px"><i style="width:${Math.max(3,Math.min(100,pct))}%;background:${col}"></i></div>`;
+
+  // 1) top jugadores por media
+  const fJug=top.map((j,i)=>`<tr><td class="pos">${i+1}</td><td>${j.nombre}</td><td class="pts">${medIn(j.media)}</td><td style="color:var(--gris)">${j.estilo||""}</td><td class="niv">${j.sexo}</td></tr>`).join("");
+  // 2) mejores parejas por media conjunta
+  const fPar=parejas.map((p,i)=>`<tr><td class="pos">${i+1}</td><td>${p.pareja}</td><td class="pts">${medIn(p.media)}</td><td class="niv">${p.sexo}</td></tr>`).join("");
+  // 3) media por estilo (barra proporcional a la media)
+  const fEst=estilos.map(e=>`<div class="anaRow"><span class="anaK">${e.estilo}</span>${barra(e.media,colAttr(e.media))}<span class="anaV">${medIn(e.media)} <span style="color:var(--gris2)">·${e.n}</span></span></div>`).join("");
+  // 4) distribución por banda de nivel (barra proporcional al mayor grupo)
+  const maxN=Math.max(1,...distri.map(b=>b.n));
+  const COLB=["#7CE08A","#B9DB7F","#E6E9F0","#B9C0CE","#8B94A7"];
+  const fDis=distri.map((b,i)=>`<div class="anaRow"><span class="anaK" style="min-width:118px">${b.k}</span>${barra(b.n/maxN*100,COLB[i]||"#8B94A7")}<span class="anaV">${b.n}</span></div>`).join("");
+  // 5) top países
+  const fPais=paises.map(p=>`<span class="chip">${p.pais} ${medIn(p.media)} <span style="color:var(--gris2)">·${p.n}</span></span>`).join(" ");
+
+  cuerpo.innerHTML=
+     sec("Top 10 jugadores por media")
+    +`<div class="foot" style="text-align:left;margin:-2px 0 5px">Consulta <b>SQL</b> (sql.js) sobre <code>norm_jugador</code> → <code>norm_atributo</code>.</div>`
+    +`<table class="rk">${fJug}</table>`
+    +(fPar?sec("Mejores parejas (media conjunta)")+`<table class="rk">${fPar}</table>`:"")
+    +(fEst?sec("Nivel medio por estilo")+`<div style="margin-top:2px">${fEst}</div>`:"")
+    +(fDis?sec("Distribución de nivel del circuito")+`<div style="margin-top:2px">${fDis}</div>`:"")
+    +(fPais?sec("Mejores nacionalidades")+`<div class="meta" style="margin-top:2px">${fPais}</div>`:"")
+    +`<div class="foot" style="text-align:left;margin-top:12px">`
     +(ns?`Modelo normalizado: <b>${ns.parejas}</b> parejas · <b>${ns.jugadores}</b> jugadores · <b>${ns.atributos}</b> atributos, con relaciones pareja→jugador→atributo.`:`Modelo normalizado: sin datos.`)
     +`<div style="margin-top:5px">`
     +(v.ok?`Integridad: <b style="color:var(--verde)">✓</b> el mundo leído de SQLite coincide con memoria (${v.n} parejas).`:`Integridad: <b style="color:var(--oro)">·</b> ${v.msg}.`)

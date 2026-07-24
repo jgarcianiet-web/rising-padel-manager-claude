@@ -54,5 +54,48 @@ module.exports = async function ejecutarPruebasSql() {
   const n = d2.exec("SELECT COUNT(*) FROM norm_pareja")[0].values[0][0];
   chk(n === 2, "sql.js · export/import de bytes conserva los datos", n + " parejas tras reabrir");
 
+  // ---------- analítica: consultas sobre el modelo normalizado ----------
+  // se puebla una BD nueva con datos con relieve (dos estilos, dos países, medias distintas)
+  const da = new SQL.Database(); db.dbSqlSchema(da);
+  const snapA = {
+    parejas: [
+      { pid: 1, nombre: "Alta / Alta", sexo: "M", pts: 0, pro: true, edad: 26, club: 1, extras: "{}" },
+      { pid: 2, nombre: "Baja / Baja", sexo: "F", pts: 0, pro: false, edad: 20, club: 2, extras: "{}" },
+    ],
+    jugadores: [
+      { jid: "1-0", pareja_pid: 1, nombre: "Ana", sexo: "M", lado: 0, estilo: "agresivo", perso: "frio", conf: 60, pais: "ES", extras: "{}" },
+      { jid: "1-1", pareja_pid: 1, nombre: "Ben", sexo: "M", lado: 1, estilo: "agresivo", perso: "frio", conf: 60, pais: "ES", extras: "{}" },
+      { jid: "2-0", pareja_pid: 2, nombre: "Cal", sexo: "F", lado: 0, estilo: "defensivo", perso: "frio", conf: 60, pais: "AR", extras: "{}" },
+      { jid: "2-1", pareja_pid: 2, nombre: "Dan", sexo: "F", lado: 1, estilo: "defensivo", perso: "frio", conf: 60, pais: "AR", extras: "{}" },
+    ],
+    atributos: [
+      { jid: "1-0", clave: "remate", valor: 90 }, { jid: "1-1", clave: "remate", valor: 80 }, // pareja 1: media 85 (élite/bueno)
+      { jid: "2-0", clave: "fondo", valor: 40 }, { jid: "2-1", clave: "fondo", valor: 30 },   // pareja 2: media 35 (flojo)
+    ],
+  };
+  db.dbSqlGuardarSnapshot(da, snapA);
+
+  const est = db.dbSqlPorEstilo(da);
+  chk(est.length === 2 && est[0].estilo === "agresivo" && est[0].media === 85 && est[0].n === 2,
+    "analítica · nivel medio por estilo (agresivo lidera con 85)", JSON.stringify(est));
+
+  const par = db.dbSqlMejoresParejas(da, 8);
+  chk(par.length === 2 && par[0].pareja === "Alta / Alta" && par[0].media === 85 && par[1].media === 35,
+    "analítica · mejores parejas por media conjunta", par.map(p => p.pareja + ":" + p.media).join(", "));
+
+  const pais = db.dbSqlTopPaises(da, 8);
+  chk(pais.length === 2 && pais[0].pais === "ES" && pais[0].media === 85 && pais[0].n === 2,
+    "analítica · mejores nacionalidades (ES 85, AR 35)", pais.map(p => p.pais + ":" + p.media).join(", "));
+
+  const dis = db.dbSqlDistribucionNivel(da);
+  const eliteN = dis[0].n, flojoN = dis[4].n;   // jugadores: medias 90, 80 (élite) y 40, 30 (flojo)
+  chk(dis.length === 5 && eliteN === 2 && flojoN === 2,
+    "analítica · distribución por banda de nivel (2 élite, 2 flojos)", dis.map(b => b.k + ":" + b.n).join(" · "));
+
+  // sin datos: no revienta, devuelve vacío
+  const vacia = new SQL.Database(); db.dbSqlSchema(vacia);
+  chk(db.dbSqlPorEstilo(vacia).length === 0 && db.dbSqlMejoresParejas(vacia).length === 0,
+    "analítica · sin datos las consultas devuelven vacío, no error");
+
   return res;
 };

@@ -120,7 +120,62 @@ function dbSqlCargarMundo(){
   try{ const snap=dbSqlLeerSnapshot(SQLDB); return snap.parejas.length?denormalizar(snap):null; }catch(e){ return null; }
 }
 
+/* ---------- consultas de ANALÍTICA (SQL real sobre el modelo normalizado) ----------
+   Todas aceptan un handle de BD opcional que cae a la base viva (SQLDB): así la
+   interfaz las llama sin argumentos y las pruebas les pasan una BD sql.js real.
+   La media de cada jugador se calcula con una subconsulta reutilizable. */
+const _MEDIA_JUG = "(SELECT jid, AVG(valor) v FROM norm_atributo GROUP BY jid)";
+function _filas(db,sql){ const r=(db||SQLDB).exec(sql); return (r&&r[0])?r[0].values:[]; }
+
+// Media de nivel y número de jugadores por estilo de juego (el estilo que domina).
+function dbSqlPorEstilo(db){
+  db=db||SQLDB; if(!db) return [];
+  try{
+    return _filas(db,
+      "SELECT j.estilo, COUNT(*) n, AVG(m.v) media FROM norm_jugador j "+
+      "JOIN "+_MEDIA_JUG+" m ON m.jid=j.jid WHERE j.estilo<>'' "+
+      "GROUP BY j.estilo ORDER BY media DESC")
+      .map(v=>({estilo:v[0],n:v[1]|0,media:Math.round(v[2]||0)}));
+  }catch(e){ return []; }
+}
+// Mejores parejas por media conjunta de sus jugadores (JOIN pareja→jugador→atributo).
+function dbSqlMejoresParejas(db,limite){
+  db=db||SQLDB; if(!db) return [];
+  try{
+    return _filas(db,
+      "SELECT p.nombre, p.sexo, AVG(a.valor) media, COUNT(DISTINCT j.jid) nj "+
+      "FROM norm_pareja p JOIN norm_jugador j ON j.pareja_pid=p.pid "+
+      "JOIN norm_atributo a ON a.jid=j.jid GROUP BY p.pid "+
+      "ORDER BY media DESC LIMIT "+((limite|0)||8))
+      .map(v=>({pareja:v[0],sexo:v[1],media:Math.round(v[2]||0),jugadores:v[3]|0}));
+  }catch(e){ return []; }
+}
+// Mejores países (nacionalidades) por media, con al menos 2 jugadores en el circuito.
+function dbSqlTopPaises(db,limite){
+  db=db||SQLDB; if(!db) return [];
+  try{
+    return _filas(db,
+      "SELECT j.pais, COUNT(*) n, AVG(m.v) media FROM norm_jugador j "+
+      "JOIN "+_MEDIA_JUG+" m ON m.jid=j.jid WHERE j.pais<>'' "+
+      "GROUP BY j.pais HAVING n>=2 ORDER BY media DESC LIMIT "+((limite|0)||8))
+      .map(v=>({pais:v[0],n:v[1]|0,media:Math.round(v[2]||0)}));
+  }catch(e){ return []; }
+}
+// Distribución de jugadores por banda de nivel (mismos cortes que colAttr).
+function dbSqlDistribucionNivel(db){
+  db=db||SQLDB; if(!db) return [];
+  try{
+    const bandas=[{k:"Élite (80+)",n:0},{k:"Bueno (68-79)",n:0},{k:"Correcto (56-67)",n:0},{k:"Discreto (44-55)",n:0},{k:"Flojo (<44)",n:0}];
+    _filas(db,
+      "SELECT CASE WHEN v>=80 THEN 0 WHEN v>=68 THEN 1 WHEN v>=56 THEN 2 WHEN v>=44 THEN 3 ELSE 4 END banda, "+
+      "COUNT(*) n FROM "+_MEDIA_JUG+" GROUP BY banda")
+      .forEach(v=>{ const i=v[0]|0; if(bandas[i]) bandas[i].n=v[1]|0; });
+    return bandas;
+  }catch(e){ return []; }
+}
+
 // En Node (pruebas) exportamos las funciones puras; en el navegador quedan como globales.
 if(typeof module!=="undefined"&&module.exports){
-  module.exports={DB_SCHEMA_SQL,dbSqlSchema,dbSqlGuardarSnapshot,dbSqlLeerSnapshot};
+  module.exports={DB_SCHEMA_SQL,dbSqlSchema,dbSqlGuardarSnapshot,dbSqlLeerSnapshot,
+    dbSqlPorEstilo,dbSqlMejoresParejas,dbSqlTopPaises,dbSqlDistribucionNivel};
 }
