@@ -370,9 +370,42 @@ function miPuesto(){return rankingFilas().find(f=>f.yo).pos;}
 function semanaTemp(){return ((ent().semana-1)%SEMANAS_TEMP)+1;}
 function temporada(){return Math.floor((ent().semana-1)/SEMANAS_TEMP)+1;}
 function esSemanaTorneo(){return true;} // hay torneo FIP todas las semanas
-function avisa(m){
-  const e=ent(); if(!e) return;
-  e.diario.unshift(m); e.diario=e.diario.slice(0,10);
+// Infiere la "gravedad" de un aviso a partir de su contenido, para darle color y
+// sonido sin tener que anotar cada una de las decenas de llamadas a avisa(). Se
+// apoya en los emojis/prefijos que el juego ya usa de forma consistente.
+function tipoAviso(m){
+  const s=String(m||"");
+  if(/^[🏆🎯✔✅✍🎉⭐💰🥇]/u.test(s)||/\bcampe(ón|ones)\b/i.test(s)) return "ok";
+  if(/^[✗❌💥]/u.test(s)||/rescinde|eliminad|derrota/i.test(s)) return "bad";
+  if(/⚠/u.test(s)||/lesión|lesion|baja médica|sin caja|números rojos/i.test(s)) return "warn";
+  return "info";
+}
+// Aviso emergente (toast) con jerarquía visual + sonido, además de guardarlo en
+// el diario. Es el feedback inmediato del que antes carecían las acciones fuera
+// del partido; lo comparten los tres modos, que ya llamaban a avisa().
+function mostrarAviso(m,tipo){
+  try{
+    let cont=document.getElementById("toasts");
+    if(!cont){ cont=document.createElement("div"); cont.id="toasts"; (document.body||document.documentElement).appendChild(cont); }
+    // no dejar que se apilen sin fin: como mucho, los 4 más recientes. El guard
+    // y el shift explícito cubren el DOM real (HTMLCollection viva) y el DOM
+    // simulado de las pruebas (array cuyo removeChild es un no-op).
+    let guard=0;
+    while(cont.children&&cont.children.length>=4&&guard++<8){
+      quitarEl(cont.children[0]);
+      if(Array.isArray(cont.children)) cont.children.shift();
+    }
+    const el=document.createElement("div");
+    el.className="toast t-"+tipo; el.textContent=m;
+    cont.appendChild(el);
+    setTimeout(()=>{ try{ el.classList.add("out"); }catch(e){} setTimeout(()=>quitarEl(el),360); },3800);
+  }catch(e){}
+  try{ sfxAviso(tipo); }catch(e){}
+}
+function avisa(m,tipo){
+  const e=ent();
+  if(e){ e.diario.unshift(m); e.diario=e.diario.slice(0,10); }
+  mostrarAviso(m,tipo||tipoAviso(m));
 }
 function colAttr(v){return v>=80?"#7CE08A":v>=70?"#B9DB7F":v>=55?"#E6E9F0":"#8B94A7";}
 function loserIdx(f){return f>=2?(6-f):5;}
