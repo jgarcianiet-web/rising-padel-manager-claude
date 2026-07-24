@@ -188,6 +188,13 @@ button:active{transform:translateY(1px)}
 .difrow .difchip.on{background:rgba(198,245,60,.12);border-color:var(--lima);color:var(--lima)}
 .difsel .difdesc{font-size:11px;line-height:1.45;color:var(--gris);margin:8px 2px 0;min-height:30px}
 
+/* Analítica: encabezados de sección y filas con mini-barra. */
+.anaHd{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--lima);font-weight:700;margin:15px 0 6px;border-left:2px solid var(--lima);padding-left:7px}
+.anaHd:first-child{margin-top:2px}
+.anaRow{display:flex;align-items:center;font-size:12px;padding:3px 2px}
+.anaRow .anaK{color:var(--gris);text-transform:capitalize;min-width:92px}
+.anaRow .anaV{font-family:'IBM Plex Mono',monospace;min-width:56px;text-align:right}
+
 /* Avisos emergentes (toasts): feedback inmediato con jerarquía por color. */
 #toasts{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:120;
   display:flex;flex-direction:column;gap:8px;align-items:stretch;
