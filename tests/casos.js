@@ -1102,3 +1102,13 @@ comprueba("Idiomas: avisos de inscripción y estado de semana traducen e interpo
   } finally { localStorage.removeItem("rpm_idioma"); }
   return "avisos de torneo/semana en inglés";
 });
+
+comprueba("Idiomas: noticias de carrera traducen e interpolan", () => {
+  try {
+    localStorage.setItem("rpm_idioma", "en");
+    exige(t("not_debut_t", { nombre: "Jesús" }) === "Jesús, 16: a career is born", "debut: " + t("not_debut_t", { nombre: "Jesús" }));
+    exige(t("not_rescinde_s", { obj: 5, pos: 9 }) === "They demanded top 5; you finished #9", "rescinde: " + t("not_rescinde_s", { obj: 5, pos: 9 }));
+    exige(t("not_objetivo_t") === "Objective met", "objetivo: " + t("not_objetivo_t"));
+  } finally { localStorage.removeItem("rpm_idioma"); }
+  return "noticias de carrera en inglés";
+});
