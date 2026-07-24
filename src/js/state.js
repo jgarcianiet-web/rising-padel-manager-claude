@@ -120,6 +120,32 @@ function dbNormStats(modo){
   const inv=_invoke(); if(!inv) return Promise.resolve(null);
   try{ return Promise.resolve(inv("db_norm_stats",{modo})).catch(()=>null); }catch(e){ return Promise.resolve(null); }
 }
+// ---------- Fase 4a: hidratación (leer el modelo de vuelta y verificarlo) ----------
+function dbCargarSnapshot(modo){
+  const inv=_invoke(); if(!inv) return Promise.resolve(null);
+  try{ return Promise.resolve(inv("db_read_snapshot",{modo})).then(s=>s?denormalizar(s):null).catch(()=>null); }catch(e){ return Promise.resolve(null); }
+}
+// Compara dos "mundos" (listas de parejas) por identidad estructural estable
+// (nº, nombres de pareja y de jugadores) — no por datos volátiles (pts, conf).
+function compararMundos(recon,orig){
+  if(!Array.isArray(recon)||!Array.isArray(orig)) return {ok:false,msg:"datos inválidos"};
+  if(recon.length!==orig.length) return {ok:false,msg:`parejas: ${recon.length} vs ${orig.length}`};
+  const byId={}; recon.forEach(p=>byId[p.id]=p);
+  let dif=0;
+  orig.forEach(o=>{
+    const r=byId[o.id];
+    if(!r||r.nombre!==o.nombre){ dif++; return; }
+    (o.jug||[]).forEach((oj,i)=>{ if(!r.jug[i]||r.jug[i].n!==oj.n) dif++; });
+  });
+  return dif===0?{ok:true,n:recon.length}:{ok:false,msg:`${dif} discrepancias`};
+}
+// Lee el modelo de SQLite, lo reconstruye y lo compara con la memoria viva.
+function verificarSnapshot(modo){
+  return dbCargarSnapshot(modo).then(recon=>{
+    if(!recon) return {ok:false,msg:"sin datos en la base"};
+    return compararMundos(recon,(G&&G.world&&G.world.parejas)||[]);
+  }).catch(()=>({ok:false,msg:"error de lectura"}));
+}
 // Overlay de analítica: bajo Tauri consulta SQLite; sin Tauri, aviso claro.
 function abrirAnalitica(){
   const ov=document.getElementById("analitica"), cuerpo=document.getElementById("analiticaCuerpo");
@@ -137,9 +163,16 @@ function abrirAnalitica(){
     cuerpo.innerHTML=`<div class="foot" style="text-align:left;margin-bottom:7px">Top 10 jugadores por media — <b>consulta SQL</b> sobre <code>proj_jugadores</code>:</div><table class="rk">${filas}</table><div class="foot" id="analiticaNorm" style="text-align:left;margin-top:9px">Modelo normalizado: consultando…</div>`;
     dbNormStats(modo).then(ns=>{
       const el=document.getElementById("analiticaNorm"); if(!el) return;
-      el.innerHTML= ns
+      el.innerHTML= (ns
         ? `Modelo normalizado (Fase 3): <b>${ns.parejas}</b> parejas · <b>${ns.jugadores}</b> jugadores · <b>${ns.atributos}</b> atributos, con relaciones pareja→jugador→atributo.`
-        : `Modelo normalizado: aún sin datos.`;
+        : `Modelo normalizado: aún sin datos.`)
+        + `<div id="analiticaInteg" style="margin-top:5px">Integridad (Fase 4a): verificando…</div>`;
+      verificarSnapshot(modo).then(v=>{
+        const ie=document.getElementById("analiticaInteg"); if(!ie) return;
+        ie.innerHTML= v.ok
+          ? `Integridad (Fase 4a): <b style="color:var(--verde)">✓</b> el modelo leído de SQLite reconstruye el mundo (${v.n} parejas) idéntico a memoria.`
+          : `Integridad (Fase 4a): <b style="color:var(--oro)">·</b> ${v.msg}.`;
+      }).catch(()=>{});
     }).catch(()=>{});
   }).catch(()=>{ cuerpo.innerHTML=`<div class="foot">No se pudo consultar la base de datos.</div>`; });
 }
