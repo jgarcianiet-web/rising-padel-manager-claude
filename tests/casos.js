@@ -1045,3 +1045,14 @@ comprueba("Idiomas: aplicarI18n traduce el texto marcado con data-i18n", () => {
   } finally { localStorage.removeItem("rpm_idioma"); }
   return "data-i18n → contenido; data-i18n-title → tooltip";
 });
+
+comprueba("Idiomas: aplicarI18n traduce encabezados con formato via data-i18n-html", () => {
+  try {
+    localStorage.setItem("rpm_idioma", "en");
+    const el = { at: { "data-i18n-html": "hd_ranking_html" }, getAttribute(k) { return this.at[k]; }, setAttribute() {}, innerHTML: "", textContent: "" };
+    const root = { querySelectorAll(sel) { return sel.indexOf("html") >= 0 ? [el] : []; } };
+    aplicarI18n(root);
+    exige(el.innerHTML.indexOf("world ranking") >= 0 && el.innerHTML.indexOf("<em>") >= 0, "no aplicó data-i18n-html: " + el.innerHTML);
+  } finally { localStorage.removeItem("rpm_idioma"); }
+  return "data-i18n-html → innerHTML con <em>";
+});
