@@ -68,6 +68,73 @@ function entradaEn(ci){
   }
   return pos<=cat.cupoD?2:0;          // FIP: abierto a todos
 }
+/* ================================================================
+   RASGOS: identidad sistémica de cada jugador. No son etiquetas: cada rasgo
+   tiene efectos concretos (en partido, lesiones o desarrollo). Se asignan de
+   forma DETERMINISTA a partir del nombre, así el mismo jugador tiene siempre
+   los mismos rasgos, sin necesidad de migrar guardados antiguos.
+================================================================ */
+const RASGOS={
+  clutch:{n:"Especialista",desc:"En los puntos decisivos, aparece.",bueno:1},
+  fragil:{n:"Cristal frágil",desc:"Bajo presión, tiembla.",bueno:-1},
+  escenario:{n:"De grandes escenarios",desc:"Crece bajo los focos de un Premier.",bueno:1},
+  pegador:{n:"Pura pegada",desc:"Winner o error: no conoce el término medio.",bueno:0},
+  muro:{n:"Muro",desc:"Devuelve una más. Rara vez regala.",bueno:1},
+  propenso:{n:"Propenso a lesiones",desc:"Su físico da sustos.",bueno:-1},
+  hierro:{n:"Físico de hierro",desc:"No se rompe ni a tiros.",bueno:1},
+  talento:{n:"Talento precoz",desc:"Aprende a una velocidad rara.",bueno:1},
+  vago:{n:"Entrena mal, compite bien",desc:"Un desastre entrenando; un jugador el domingo.",bueno:0},
+};
+const _RASGO_IDS=Object.keys(RASGOS);
+const _RASGO_INC={clutch:"fragil",fragil:"clutch",propenso:"hierro",hierro:"propenso",talento:"vago",vago:"talento"};
+function _rngStr(s){ let h=Math.abs(hashStr(s||"?"))||1; return ()=>{ h=(h*1103515245+12345)&0x7fffffff; return h/0x7fffffff; }; }
+function _generaRasgos(nom,j){
+  const rnd=_rngStr("rasgo:"+nom);
+  const r0=rnd(), n = r0<.42?0 : r0<.85?1 : 2;    // 42% ninguno · 43% uno · 15% dos
+  const est=j&&j.estilo, per=j&&j.perso, bias={};
+  if(est==="rematador"||est==="agresivo"){ bias.pegador=3; bias.escenario=1.5; }
+  if(est==="defensivo"||est==="constructor") bias.muro=3;
+  if(per==="valiente") bias.clutch=2.5;
+  if(per==="emocional") bias.fragil=2.5;
+  if(per==="frio") bias.clutch=1.6;
+  const out=[], pool=_RASGO_IDS.slice();
+  let guard=0;
+  while(out.length<n && guard++<20){
+    const items=pool.filter(id=>!out.includes(id)&&!(  _RASGO_INC[id]&&out.includes(_RASGO_INC[id])  )).map(id=>({id,w:bias[id]||1}));
+    if(!items.length) break;
+    let s=items.reduce((a,i)=>a+i.w,0), r=rnd()*s, sel=items[items.length-1].id;
+    for(const it of items){ r-=it.w; if(r<=0){ sel=it.id; break; } }
+    out.push(sel);
+  }
+  return out;
+}
+// Rasgos de un jugador (los cachea y los genera de forma determinista si faltan).
+// Acepta cualquier objeto con nombre (n o nombre): jugador NPC, tú (carrera), compi…
+function rasgosDe(j){
+  if(!j) return [];
+  if(Array.isArray(j.rasgos)) return j.rasgos;
+  return (j.rasgos=_generaRasgos(j.n||j.nombre||"?",j));
+}
+function tieneRasgo(j,id){ return rasgosDe(j).indexOf(id)>=0; }
+// Efecto de los rasgos del ejecutor sobre un golpe: multiplicadores {win,err}.
+function rasgosMatch(j,shotKey,ctx){
+  const rg=rasgosDe(j); let win=1,err=1; if(!rg.length) return {win,err};
+  const pres=(ctx&&ctx.presion)||0;
+  if(pres>=.5){
+    if(rg.indexOf("clutch")>=0){ win*=1.12; err*=.90; }
+    if(rg.indexOf("fragil")>=0){ win*=.88; err*=1.15; }
+  }
+  if(ctx&&ctx.premier&&rg.indexOf("escenario")>=0){ win*=1.08; err*=.95; }
+  if(ctx&&ctx.agresivo&&rg.indexOf("pegador")>=0){ win*=1.12; err*=1.06; }
+  if(rg.indexOf("muro")>=0) err*=.92;
+  if(rg.indexOf("vago")>=0) win*=1.05;
+  return {win,err};
+}
+// Ajuste de fragilidad ante la lesión por rasgos: +propenso, −hierro.
+function rasgosLesionAjuste(j){ const rg=rasgosDe(j); return (rg.indexOf("propenso")>=0?2:0)-(rg.indexOf("hierro")>=0?2:0); }
+// Multiplicador de ganancia de entrenamiento por rasgos.
+function rasgosEntreno(j){ const rg=rasgosDe(j); return rg.indexOf("talento")>=0?1.4:(rg.indexOf("vago")>=0?0.6:1); }
+
 // Informe de ojeo del rival: lee sus atributos, estilo y personalidad y produce
 // lecturas CONCRETAS (debilidades y fortalezas) más una táctica recomendada, para
 // que el jugador pueda leer el partido antes de jugarlo. Función pura y testable:
@@ -98,6 +165,14 @@ function informeRival(par, miNivel){
   const emo=j.find(p=>p.perso==="emocional");
   if(emo) deb.push(`🧠 ${emo.n} es emocional: rómpele pronto y se vendrá abajo.`);
   else { const val=j.find(p=>p.perso==="valiente"); if(val) fue.push(`🔥 ${val.n} crece en los puntos calientes.`); }
+  // rasgos del rival (el ojeador los revela): identidad que cambia el partido
+  j.forEach(p=>{
+    if(tieneRasgo(p,"fragil")) deb.push(`💔 ${p.n} es de cristal frágil: aprieta en los puntos calientes.`);
+    if(tieneRasgo(p,"propenso")) deb.push(`🩹 ${p.n} arrastra un físico frágil: los puntos largos le pasan factura.`);
+    if(tieneRasgo(p,"clutch")) fue.push(`🧊 ${p.n} es un especialista: aparece en los puntos decisivos.`);
+    if(tieneRasgo(p,"muro")) fue.push(`🧱 ${p.n} es un muro: tendrás que ganarle el punto dos veces.`);
+    if(tieneRasgo(p,"pegador")) fue.push(`💣 ${p.n} es pura pegada: no le des bola alta cómoda.`);
+  });
   if(!deb.length) deb.push("Sin grietas evidentes: tendrás que ganarlo con paciencia y oficio.");
   if(!fue.length) fue.push("Pareja discreta arriba: puedes disputarles la red.");
   // táctica recomendada
@@ -163,7 +238,8 @@ function riesgoLesionPost(energia,fragil,tieneFisio){
 // Intenta lesionar a un portador (carrera o jugador de club) tras un partido.
 // Devuelve la lesión (y sube su fragilidad) o null. Muta port.fragil.
 function intentaLesion(port,tieneFisio){
-  const r=riesgoLesionPost(port.energia,port.fragil||0,tieneFisio);
+  const fragilEf=Math.max(0,(port.fragil||0)+rasgosLesionAjuste(port));   // rasgos: propenso/hierro
+  const r=riesgoLesionPost(port.energia,fragilEf,tieneFisio);
   if(Math.random()>=r) return null;
   const les=pickLesion(clamp(1-(port.energia==null?100:port.energia)/40,0,1));
   if(tieneFisio) les.sem=Math.max(1,les.sem-1);

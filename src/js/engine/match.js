@@ -128,6 +128,12 @@ function resolveShot(pl,shotKey,ctx,rallyLen){
     if(TACT.red==="subir"&&(shotKey==="globo"||shotKey==="globoRapido")) win*=1+clamp(((pl.attrs.globo||60)-58)/95,0,.55);
     else if(TACT.red==="aguantar"&&(shotKey==="remate"||shotKey==="vibora"||shotKey==="bandeja")) win*=.9;
   }
+  // rasgos del ejecutor: identidad sistémica (especialista, cristal frágil, pura
+  // pegada, muro…). Afecta a los dos equipos, así que los NPC también tienen carácter.
+  if(typeof rasgosMatch==="function"){
+    const rm=rasgosMatch(pl,shotKey,{presion:(typeof PRESION!=="undefined"?PRESION:0),premier:(typeof torneo!=="undefined"&&torneo&&torneo.premierT),agresivo:AGRESIVOS.includes(shotKey)});
+    win*=rm.win; err*=rm.err;
+  }
   if(ctx.oppScrambling) win*=1.7;
   if(rallyLen>18){err*=1.38;win*=1.25;}
   // fatiga: un jugador cansado falla más y cierra menos puntos
