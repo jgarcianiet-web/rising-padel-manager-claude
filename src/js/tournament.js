@@ -115,11 +115,13 @@ function pintarTorneo(){
 function miTeam(){
   if(G.modo==="carrera"){
     const c=G.carrera;
-    const f=(0.86+0.14*(c.energia/100))*(0.94+0.12*(c.quimica/100));
-    const mk=(attrs)=>{const o={};ATTR_KEYS.forEach(k=>o[k]=Math.round(attrs[k]*f));return o;};
+    const fBase=factorForma(c.energia,c.quimica,null);   // energía + química
+    const fYo=factorForma(c.energia,c.quimica,c.merma);  // tú, además, con la secuela de tu última lesión
+    const mk=(attrs,fac)=>{const o={};ATTR_KEYS.forEach(k=>o[k]=Math.round(attrs[k]*fac));return o;};
     const miLado=(c.lado===0||c.lado===1)?c.lado:0;
-    const yo={n:c.nombre,estilo:c.estilo,perso:c.perso,conf:c.conf,attrs:mk(c.attrs),me:true,sexo:c.sexo,ava:c.ava,_ropa:c._ropa||c.color,lado:miLado};
-    const compi={n:c.compi.n,estilo:c.compi.estilo,perso:c.compi.perso,conf:55,attrs:mk(c.compi.attrs),sexo:c.sexo,lado:1-miLado};
+    const yo={n:c.nombre,estilo:c.estilo,perso:c.perso,conf:c.conf,attrs:mk(c.attrs,fYo),me:true,sexo:c.sexo,ava:c.ava,_ropa:c._ropa||c.color,lado:miLado};
+    // la moral del compañero se traduce en confianza real sobre la pista
+    const compi={n:c.compi.n,estilo:c.compi.estilo,perso:c.compi.perso,conf:clamp(55+moralAjusteConf(c.compiMoral),15,95),attrs:mk(c.compi.attrs,fBase),sexo:c.sexo,lado:1-miLado};
     ME_COLOR=c.color;TEAM0_COLOR="#4FA3D8";
     const jug=c.lado===0?[yo,compi]:[compi,yo];
     return {nombre:`${c.nombre}/${c.compi.n}`,jug,atNet:false};
@@ -128,7 +130,7 @@ function miTeam(){
   if(!al){ return {nombre:cl.nombre||"Tu club",jug:[{n:"—",attrs:mkAttrsNivel(40,"agresivo"),perso:"frio",sexo:cl.sexo},{n:"—",attrs:mkAttrsNivel(40,"defensivo"),perso:"frio",sexo:cl.sexo}],atNet:false}; }
   TEAM0_COLOR=cl.color;ME_COLOR=cl.color;
   const mkJ=(j)=>{
-    const f=(0.86+0.14*(j.energia/100))*(0.94+0.12*(q/100));
+    const f=factorForma(j.energia,q,j.merma);   // energía + química + secuela de lesión
     const o={};ATTR_KEYS.forEach(k=>o[k]=Math.round(j.attrs[k]*f));
     return {n:j.n,estilo:j.estilo,perso:j.perso,conf:j.conf,attrs:o,_ref:j};
   };
@@ -567,10 +569,13 @@ function finPartido(){
     c.racha=(c.racha||[]).concat(gane?"V":"D").slice(-5);
     const dMoral=gane?(f>=4?7:4):(f<2?-7:-4);
     c.compiMoral=clamp((c.compiMoral??65)+dMoral,5,95);
-    if(c.energia<20&&Math.random()<(staffNiv("fisio")?Math.max(.08,.3-.05*staffNiv("fisio")):.3)){
-      c.lesion={...pick(LESIONES)};
-      if(c.staff&&c.staff.fisio) c.lesion.sem=Math.max(1,c.lesion.sem-1);
+    const les=intentaLesion(c,!!(c.staff&&c.staff.fisio));
+    if(les){
+      c.lesion=les;
       seLesiona=true;lesionTxt=c.lesion.n;
+      c.conf=clamp(c.conf-4,15,95);                              // lesionarse mina la cabeza
+      c.compiMoral=clamp((c.compiMoral??65)-5,5,95);             // y preocupa al compañero
+      if(c.lesion.grav>=3) noticia("lesion",`Lesión de gravedad`,`${c.lesion.n}: parte médico serio, ${c.lesion.sem} semanas de baja`,miParejaProt());
     }
     if((gane||misW>=4)&&Math.random()<.45){
       const favor={defensivo:["globo","pared","chiquita","fondo"],agresivo:["remate","vibora","volea","bandeja"],bandejero:["bandeja","vibora","volea"],rematador:["remate","bandeja","volea"],constructor:["chiquita","dejada","fondo","globo"]}[c.estilo];
@@ -592,10 +597,14 @@ function finPartido(){
         const k=pick(ATTR_KEYS);
         if(j.attrs[k]<88) j.attrs[k]++;
       }
-      if(j.energia<20&&Math.random()<(G.clubG.staff.fisio?.15:.3)&&!j.lesion){
-        j.lesion={...pick(LESIONES)};
-        if(G.clubG.staff.fisio) j.lesion.sem=Math.max(1,j.lesion.sem-1);
-        seLesiona=true;lesionTxt=`${j.n}: ${j.lesion.n}`;
+      if(!j.lesion){
+        const les=intentaLesion(j,!!G.clubG.staff.fisio);
+        if(les){
+          j.lesion=les;
+          j.conf=clamp(j.conf-4,15,95);
+          seLesiona=true;lesionTxt=`${j.n}: ${j.lesion.n}`;
+          if(j.lesion.grav>=3) noticia("lesion",`Lesión de gravedad en el ${cl.nombre}`,`${j.n}: ${j.lesion.n}, ${j.lesion.sem} semanas de baja`);
+        }
       }
     });
     avisa(`${gane?"✔ Victoria":"✗ Derrota"} ${marcadorFinal} del ${cl.nombre} vs ${rival.nombre} (${FASES[f].toLowerCase()}).`);

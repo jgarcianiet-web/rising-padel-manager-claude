@@ -68,13 +68,77 @@ function entradaEn(ci){
   }
   return pos<=cat.cupoD?2:0;          // FIP: abierto a todos
 }
+// Lesiones con gravedad (grav 1 leve … 3 grave). Las graves tiran más semanas
+// y, sobre todo, dejan secuela al volver.
 const LESIONES=[
-  {n:"sobrecarga en el gemelo",sem:1},
-  {n:"rotura fibrilar en el sóleo",sem:2},
-  {n:"tendinitis en el hombro",sem:2},
-  {n:"epicondilitis (codo de pádel)",sem:3},
-  {n:"fascitis plantar",sem:2},
+  {n:"sobrecarga en el gemelo",sem:1,grav:1},
+  {n:"fascitis plantar",sem:2,grav:1},
+  {n:"tendinitis en el hombro",sem:2,grav:2},
+  {n:"rotura fibrilar en el sóleo",sem:3,grav:2},
+  {n:"epicondilitis (codo de pádel)",sem:3,grav:2},
+  {n:"esguince grave de tobillo",sem:5,grav:3},
+  {n:"rotura del tendón de Aquiles",sem:8,grav:3},
 ];
+// Elige una lesión ponderando por gravedad: las graves son raras y casi solo
+// aparecen cuando el riesgo es alto (energía por los suelos, fragilidad). riesgo 0..1.
+function pickLesion(riesgo){
+  riesgo=clamp(riesgo==null?.4:riesgo,0,1);
+  const items=LESIONES.map(l=>{
+    let w=l.grav===1?6:l.grav===2?3:1;
+    if(l.grav===3) w*=.25+riesgo*1.6;      // graves: se disparan con riesgo alto
+    if(l.grav===1) w*=1.4-riesgo*.7;       // leves: dominan cuando el riesgo es bajo
+    return {l,w:Math.max(.04,w)};
+  });
+  let s=items.reduce((a,i)=>a+i.w,0), r=Math.random()*s;
+  for(const i of items){ r-=i.w; if(r<=0) return {...i.l}; }
+  return {...LESIONES[0]};
+}
+// Secuela al recibir el alta: una merma temporal de rendimiento (pct de atributos)
+// durante unas semanas. Las lesiones leves no dejan secuela.
+function secuelaDe(lesion){
+  const g=(lesion&&lesion.grav)||1;
+  if(g<=1) return null;
+  return {sem:g===3?3:2, pct:g===3?10:5};
+}
+// Factor de forma 0..~1.1 combinando energía, química y secuela (merma).
+function factorForma(energia,quimica,merma){
+  let f=(0.86+0.14*(clamp(energia==null?100:energia,0,100)/100))*(0.94+0.12*(clamp(quimica==null?60:quimica,0,100)/100));
+  if(merma&&merma.pct) f*=(1-merma.pct/100);
+  return f;
+}
+// Probabilidad de lesión tras un partido según energía y fragilidad (historial).
+function riesgoLesionPost(energia,fragil,tieneFisio){
+  const en=energia==null?100:energia;
+  let base = en<20 ? .30 : (en<35 ? .06 : 0);   // muy justo de fuerzas → riesgo real
+  base += Math.min(.15,(fragil||0)*.03);        // cada lesión previa te hace más frágil
+  if(tieneFisio) base*=.5;
+  return clamp(base,0,.5);
+}
+// Intenta lesionar a un portador (carrera o jugador de club) tras un partido.
+// Devuelve la lesión (y sube su fragilidad) o null. Muta port.fragil.
+function intentaLesion(port,tieneFisio){
+  const r=riesgoLesionPost(port.energia,port.fragil||0,tieneFisio);
+  if(Math.random()>=r) return null;
+  const les=pickLesion(clamp(1-(port.energia==null?100:port.energia)/40,0,1));
+  if(tieneFisio) les.sem=Math.max(1,les.sem-1);
+  port.fragil=(port.fragil||0)+1;
+  return les;
+}
+// Alta médica: limpia la baja y, si toca, deja la secuela (merma). Devuelve la secuela.
+function curarLesion(port){
+  const sec=secuelaDe(port.lesion);
+  port.lesion=null;
+  if(sec) port.merma=sec;
+  return sec;
+}
+// Enfría la merma una semana; la elimina cuando se agota.
+function decaeMerma(port){
+  if(port.merma){ port.merma.sem--; if(port.merma.sem<=0) port.merma=null; }
+}
+// La moral pesa en la pista: 5..95 → ajuste de confianza -11..+7.
+function moralAjusteConf(moral){
+  return Math.round((clamp(moral==null?65:moral,5,95)-60)/5);
+}
 const WORLD_N=80;
 const PAISES=[["🇪🇸",46],["🇦🇷",30],["🇧🇷",5],["🇫🇷",4],["🇮🇹",4],["🇵🇹",3],["🇸🇪",2],["🇲🇽",2],["🇨🇱",2],["🇧🇪",2]];
 // hash determinista del nombre → siempre la misma cara para el mismo jugador
