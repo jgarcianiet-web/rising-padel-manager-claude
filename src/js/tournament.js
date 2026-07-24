@@ -67,19 +67,16 @@ function pintarPlanPartido(){
   const t=e.tactica; if(!t.red)t.red="normal"; if(!t.clutch)t.clutch="normal";
   const ent_=entrenadorActual();
   const row=document.getElementById("planPartido");
-  const btn=(g,v,txt)=>`<button class="selbtn${t[g]===v?" on":""}" style="font-size:10px;padding:4px 7px" onclick="setTactPrev('${g}','${v}')">${txt}</button>`;
-  row.innerHTML=`<div class="foot" style="text-align:left;margin-bottom:4px">PLAN DE PARTIDO — se aplica al ver y al simular:</div>
-  <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
-    ${btn("agres","conservadora","Segura")}${btn("agres","normal","Normal")}${btn("agres","agresiva","A degüello")}
-    <span style="color:var(--gris2)">·</span>
-    ${btn("diana","repartir","Repartir")}${btn("diana","debil","Al flojo")}
+  const btn=(g,v,txt)=>`<button class="selbtn${t[g]===v?" on":""}" onclick="setTactPrev('${g}','${v}')">${txt}</button>`;
+  const grupo=(lbl,g,opts)=>`<div class="pgrow"><span class="plbl">${lbl}</span><span class="pbtns">${opts.map(o=>btn(g,o[0],o[1])).join("")}</span></div>`;
+  row.innerHTML=`<div class="phead">Plan de partido <span>· se aplica al ver y al simular</span></div>
+  <div class="plangrid">
+    ${grupo("Agresividad","agres",[["conservadora","Segura"],["normal","Normal"],["agresiva","A degüello"]])}
+    ${grupo("Objetivo","diana",[["repartir","Repartir"],["debil","Al flojo"]])}
+    ${grupo("Red","red",[["aguantar","Aguantar"],["normal","Normal"],["subir","Subir"]])}
+    ${grupo("Puntos calientes","clutch",[["conservar","Conservar"],["normal","Normal"],["arriesgar","Arriesgar"]])}
   </div>
-  <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:4px">
-    <span class="foot" style="margin:0 2px 0 0">RED</span>${btn("red","aguantar","Aguantar")}${btn("red","normal","Normal")}${btn("red","subir","Subir")}
-    <span style="color:var(--gris2)">·</span>
-    <span class="foot" style="margin:0 2px">PUNTOS CALIENTES</span>${btn("clutch","conservar","Conservar")}${btn("clutch","normal","Normal")}${btn("clutch","arriesgar","Arriesgar")}
-  </div>
-  ${G.modo==="carrera"?`<div class="foot" style="text-align:left;margin-top:4px">${ent_.id>0?`${ent_.n} puede llevar el partido por ti: elige táctica según el rival y la ajusta set a set.`:"Sin entrenador: si delegas la simulación, irá a instinto (táctica normal, ajustes básicos)."}</div>`:`<div class="foot" style="text-align:left;margin-top:4px">Si delegas, el banquillo ajusta la táctica set a set.</div>`}`;
+  ${G.modo==="carrera"?`<div class="foot" style="text-align:left;margin-top:8px">${ent_.id>0?`${ent_.n} puede llevar el partido por ti: elige táctica según el rival y la ajusta set a set.`:"Sin entrenador: si delegas la simulación, irá a instinto (táctica normal, ajustes básicos)."}</div>`:`<div class="foot" style="text-align:left;margin-top:8px">Si delegas, el banquillo ajusta la táctica set a set.</div>`}`;
   document.getElementById("btnSimCoach").textContent=G.modo==="carrera"&&ent_.id>0?`🧠 Simular: decide ${ent_.n}`:"🧠 Simular: decide el banquillo";
 }
 function setTactPrev(g,v){ ent().tactica[g]=v; guardar(); pintarPlanPartido(); }
