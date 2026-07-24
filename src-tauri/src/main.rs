@@ -407,6 +407,107 @@ fn db_norm_stats(db: tauri::State<Db>, modo: String) -> Result<NormStats, String
     Ok(NormStats { parejas, jugadores, atributos })
 }
 
+// ---- Fase 4a: leer de vuelta el modelo normalizado (hidratación) ----
+
+#[derive(serde::Serialize)]
+struct ParejaOut {
+    pid: i64,
+    nombre: String,
+    sexo: String,
+    pts: i64,
+    pro: bool,
+    edad: i64,
+    club: i64,
+}
+#[derive(serde::Serialize)]
+struct JugOut {
+    jid: String,
+    pareja_pid: i64,
+    nombre: String,
+    sexo: String,
+    lado: i64,
+    estilo: String,
+    perso: String,
+    conf: i64,
+    pais: String,
+}
+#[derive(serde::Serialize)]
+struct AttrOut {
+    jid: String,
+    clave: String,
+    valor: i64,
+}
+#[derive(serde::Serialize)]
+struct Snapshot {
+    parejas: Vec<ParejaOut>,
+    jugadores: Vec<JugOut>,
+    atributos: Vec<AttrOut>,
+}
+
+/// Devuelve el modelo normalizado completo de un modo, para reconstruir el
+/// estado desde la base (base de la Fase 4: SQLite como fuente de verdad).
+#[tauri::command]
+fn db_read_snapshot(db: tauri::State<Db>, modo: String) -> Result<Snapshot, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+
+    let mut sp = conn
+        .prepare("SELECT pid, nombre, sexo, pts, pro, edad, club FROM norm_pareja WHERE modo = ?1 ORDER BY pid")
+        .map_err(|e| e.to_string())?;
+    let parejas = sp
+        .query_map(params![modo], |r| {
+            Ok(ParejaOut {
+                pid: r.get(0)?,
+                nombre: r.get(1)?,
+                sexo: r.get(2)?,
+                pts: r.get(3)?,
+                pro: r.get::<_, i64>(4)? != 0,
+                edad: r.get(5)?,
+                club: r.get(6)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    let mut sj = conn
+        .prepare("SELECT jid, pareja_pid, nombre, sexo, lado, estilo, perso, conf, pais FROM norm_jugador WHERE modo = ?1 ORDER BY jid")
+        .map_err(|e| e.to_string())?;
+    let jugadores = sj
+        .query_map(params![modo], |r| {
+            Ok(JugOut {
+                jid: r.get(0)?,
+                pareja_pid: r.get(1)?,
+                nombre: r.get(2)?,
+                sexo: r.get(3)?,
+                lado: r.get(4)?,
+                estilo: r.get(5)?,
+                perso: r.get(6)?,
+                conf: r.get(7)?,
+                pais: r.get(8)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    let mut sa = conn
+        .prepare("SELECT jid, clave, valor FROM norm_atributo WHERE modo = ?1")
+        .map_err(|e| e.to_string())?;
+    let atributos = sa
+        .query_map(params![modo], |r| {
+            Ok(AttrOut {
+                jid: r.get(0)?,
+                clave: r.get(1)?,
+                valor: r.get(2)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    Ok(Snapshot { parejas, jugadores, atributos })
+}
+
 fn main() {
     tauri::Builder::default()
         .setup(|app| {
@@ -422,7 +523,8 @@ fn main() {
             db_top_jugadores,
             db_ranking,
             db_snapshot,
-            db_norm_stats
+            db_norm_stats,
+            db_read_snapshot
         ])
         .run(tauri::generate_context!())
         .expect("error while running Rising Pádel Manager");

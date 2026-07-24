@@ -178,6 +178,20 @@ comprueba("SQLite Fase 3: el modelo normalizado hace ida y vuelta sin pérdida",
   return orig.length + " parejas, " + snap.jugadores.length + " jugadores y " + snap.atributos.length + " atributos: round-trip exacto";
 });
 
+comprueba("SQLite Fase 4a: la comparación mundo↔BD detecta identidad y discrepancias", () => {
+  nuevaCarrera("agresivo");
+  const recon = denormalizar(normalizar());   // lo que devolvería la BD tras un round-trip
+  const igual = compararMundos(recon, G.world.parejas);
+  exige(igual.ok, "no reconoce dos mundos idénticos: " + (igual.msg || ""));
+  // quitar una pareja debe detectarse
+  exige(!compararMundos(recon.slice(0, recon.length - 1), G.world.parejas).ok, "no detecta que falta una pareja");
+  // cambiar el nombre de un jugador debe detectarse
+  const alterado = JSON.parse(JSON.stringify(recon));
+  if (alterado[0] && alterado[0].jug && alterado[0].jug[0]) alterado[0].jug[0].n = "XxX";
+  exige(!compararMundos(alterado, G.world.parejas).ok, "no detecta un jugador cambiado");
+  return "identidad y discrepancias detectadas (" + igual.n + " parejas)";
+});
+
 comprueba("Analítica: sin la app de escritorio muestra un aviso claro", () => {
   abrirAnalitica();
   const cuerpo = document.getElementById("analiticaCuerpo");

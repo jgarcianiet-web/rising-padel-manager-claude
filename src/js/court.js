@@ -4,10 +4,17 @@ let PW=0,PH=0,SC=0,OX=0,OY=0;
 let players=[],ball={x:5,y:2.5,z:0,vis:false,trail:[]};
 let TEAM0_COLOR="#4FA3D8", ME_COLOR="#C6F53C", TEAM1_COLOR="#E06456";
 function resize(){
-  const w=cv.parentElement.clientWidth;
+  let w=cv.parentElement.clientWidth||360;
+  // En escritorio, no dejar que la pista se haga gigante: se limita para que
+  // quepa a lo alto y se centra, dejando aire a la retransmisión. En móvil se
+  // usa todo el ancho de la columna, como siempre.
+  if((window.innerWidth||0)>=760){
+    const capAlto=Math.round(((window.innerHeight||760)-220)/1.5);
+    w=Math.max(300,Math.min(w,capAlto,430));
+  }
   PW=w;PH=Math.round(w*1.5);
   cv.width=PW*devicePixelRatio;cv.height=PH*devicePixelRatio;
-  cv.style.height=PH+"px";
+  cv.style.width=PW+"px";cv.style.height=PH+"px";cv.style.margin="0 auto";
   cx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
   SC=(PH-40)/L;OX=(PW-W*SC)/2;OY=20;
 }

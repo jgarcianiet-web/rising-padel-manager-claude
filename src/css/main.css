@@ -167,8 +167,8 @@ button:active{transform:translateY(1px)}
 @media(min-width:760px){
   #tab-jugador,#cm-plantilla,#cm-clubpan{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start}
   #tab-jugador .card,#cm-plantilla .card,#cm-clubpan .card{margin-bottom:0}
-  #scr-partido .cont{display:grid;grid-template-columns:1.15fr .85fr;gap:8px;align-items:start}
-  #scr-partido .card{margin-bottom:0}
+  #scr-partido .cont{display:grid;grid-template-columns:1fr .9fr;gap:8px;align-items:start}
+  #scr-partido .cont>.card{margin-bottom:0;min-width:0}
   #scr-torneo .cont{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start}
   #scr-torneo .card{margin-bottom:0}
   #scr-crear,#scr-crearclub{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start;max-width:960px;margin:0 auto;padding:8px}
