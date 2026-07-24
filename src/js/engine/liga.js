@@ -28,9 +28,9 @@ function mkCalendarioLiga(n){
   }
   return jornadas.concat(jornadas.map(jor=>jor.map(([a,b])=>[b,a])));   // vuelta: se invierte local/visitante
 }
-// Crea el estado de una temporada de Superliga: 7 clubes NPC + tu club (8 equipos).
+// Crea el estado de una temporada de Superliga: 15 clubes NPC + tu club (16 equipos).
 function mkSuperliga(tuNombre,tuFuerza,tuColor){
-  const npc=CLUBES_NPC.slice(0,7).map(c=>({n:c.n,color:c.color,fuerza:fuerzaClubNPC(c.n),tuyo:false}));
+  const npc=CLUBES_NPC.slice(0,15).map(c=>({n:c.n,color:c.color,fuerza:fuerzaClubNPC(c.n),tuyo:false}));
   const equipos=[{n:tuNombre||"Rising SC",color:tuColor||"#C6F53C",fuerza:tuFuerza||62,tuyo:true}].concat(npc);
   return {equipos,calendario:mkCalendarioLiga(equipos.length),jornada:0,
     tabla:equipos.map(()=>({pts:0,pj:0,pg:0,pp:0,gf:0,gc:0})),fase:"liga",playoff:null,ultima:null,temporada:1};
@@ -55,16 +55,24 @@ function clasificacionLiga(sl){
     .sort((x,y)=>y.t.pts-x.t.pts||(y.t.gf-y.t.gc)-(x.t.gf-x.t.gc)||y.t.gf-x.t.gf);
 }
 function _iniciaPlayoffs(sl){
-  const top=clasificacionLiga(sl).slice(0,4).map(t=>t.i);
+  const top=clasificacionLiga(sl).slice(0,8).map(t=>t.i);
   sl.fase="playoff";
-  sl.playoff={ronda:"semis",semis:[[top[0],top[3]],[top[1],top[2]]],finalistas:null,final:null,campeon:null};
+  // cuartos con emparejamiento por siembra; el 1º y el 2º quedan en llaves distintas
+  sl.playoff={ronda:"cuartos",
+    cuartos:[[top[0],top[7]],[top[3],top[4]],[top[1],top[6]],[top[2],top[5]]],
+    semis:null,final:null,campeon:null};
 }
-// Juega la ronda de playoff pendiente (semis → final). Devuelve {fase, ...}.
+// Juega la ronda de playoff pendiente (cuartos → semis → final). Devuelve {fase, ...}.
 function jugarPlayoff(sl,rnd){
   const p=sl.playoff; if(!p||sl.fase!=="playoff") return null;
+  if(p.ronda==="cuartos"){
+    const g=p.cuartos.map(([a,b])=>resuelveCruce(sl.equipos[a].fuerza,sl.equipos[b].fuerza,rnd).ganador===0?a:b);
+    p.semis=[[g[0],g[1]],[g[2],g[3]]]; p.ronda="semis";
+    return {fase:"cuartos",ganadores:g};
+  }
   if(p.ronda==="semis"){
     const g=p.semis.map(([a,b])=>resuelveCruce(sl.equipos[a].fuerza,sl.equipos[b].fuerza,rnd).ganador===0?a:b);
-    p.finalistas=g; p.final=g.slice(); p.ronda="final";
+    p.final=g.slice(); p.ronda="final";
     return {fase:"semis",finalistas:g};
   }
   if(p.ronda==="final"){
@@ -88,7 +96,7 @@ function crearSuperliga(){
 }
 function _slFilaTabla(sl,fila,pos){
   const e=fila.e,t=fila.t, tuyo=e.tuyo;
-  const zona=pos<=4?"border-left:3px solid var(--lima)":"border-left:3px solid transparent";
+  const zona=pos<=8?"border-left:3px solid var(--lima)":"border-left:3px solid transparent";
   return `<tr style="${zona}${tuyo?";background:rgba(198,245,60,.08)":""}">
     <td class="pos">${pos}</td>
     <td style="font-size:11.5px"><span style="color:${e.color}">●</span> ${tuyo?"<b>":""}${e.n}${tuyo?"</b>":""}</td>
@@ -105,11 +113,12 @@ function pintarSuperliga(){
   const nom=i=>sl.equipos[i].n;
   let info="", accion="";
   if(sl.fase==="liga"){
-    info=`Jornada ${sl.jornada+ (sl.jornada<sl.calendario.length?1:0)} de ${sl.calendario.length} · liga regular. Los 4 primeros pasan a los playoffs.`;
+    info=`Jornada ${sl.jornada+ (sl.jornada<sl.calendario.length?1:0)} de ${sl.calendario.length} · liga regular. Los 8 primeros pasan a los playoffs.`;
     accion=`<button class="pri" style="width:100%" onclick="accionSuperliga()">▶ Jugar jornada ${sl.jornada+1}</button>`;
   } else if(sl.fase==="playoff"){
     const p=sl.playoff;
-    if(p.ronda==="semis"){ info=`🏆 PLAYOFFS · Semifinales: ${nom(p.semis[0][0])} vs ${nom(p.semis[0][1])} · ${nom(p.semis[1][0])} vs ${nom(p.semis[1][1])}`; accion=`<button class="pri" style="width:100%" onclick="accionSuperliga()">▶ Jugar semifinales</button>`; }
+    if(p.ronda==="cuartos"){ info=`🏆 PLAYOFFS · Cuartos: ${p.cuartos.map(c=>`${nom(c[0])}–${nom(c[1])}`).join(" · ")}`; accion=`<button class="pri" style="width:100%" onclick="accionSuperliga()">▶ Jugar cuartos de final</button>`; }
+    else if(p.ronda==="semis"){ info=`🏆 PLAYOFFS · Semifinales: ${nom(p.semis[0][0])} vs ${nom(p.semis[0][1])} · ${nom(p.semis[1][0])} vs ${nom(p.semis[1][1])}`; accion=`<button class="pri" style="width:100%" onclick="accionSuperliga()">▶ Jugar semifinales</button>`; }
     else { info=`🏆 PLAYOFFS · FINAL: ${nom(p.final[0])} vs ${nom(p.final[1])}`; accion=`<button class="pri" style="width:100%" onclick="accionSuperliga()">▶ Jugar la final</button>`; }
   } else if(sl.fase==="fin"){
     const camp=sl.playoff.campeon;

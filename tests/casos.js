@@ -501,23 +501,25 @@ comprueba("Dilemas: decisiones con consecuencias diferidas", () => {
 });
 
 comprueba("Superliga: liga a doble vuelta, tabla y playoffs", () => {
-  // calendario doble vuelta: 14 jornadas de 4 cruces para 8 equipos
-  const cal = mkCalendarioLiga(8);
-  exige(cal.length === 14, "el calendario de 8 equipos debería tener 14 jornadas");
-  exige(cal.every(j => j.length === 4), "cada jornada debería tener 4 cruces");
-  cal.forEach(j => { const v = new Set(); j.forEach(([a, b]) => { v.add(a); v.add(b); }); exige(v.size === 8, "un equipo se repite o falta en una jornada"); });
+  // calendario doble vuelta: 16 equipos → 30 jornadas de 8 cruces
+  const cal = mkCalendarioLiga(16);
+  exige(cal.length === 30, "el calendario de 16 equipos debería tener 30 jornadas");
+  exige(cal.every(j => j.length === 8), "cada jornada debería tener 8 cruces");
+  cal.forEach(j => { const v = new Set(); j.forEach(([a, b]) => { v.add(a); v.add(b); }); exige(v.size === 16, "un equipo se repite o falta en una jornada"); });
   // cruce a 3 parejas: el club fuerte gana la mayoría de las veces
   let ganaFuerte = 0;
   for (let i = 0; i < 300; i++) if (resuelveCruce(75, 55).ganador === 0) ganaFuerte++;
   exige(ganaFuerte > 200, `el club fuerte debería ganar la mayoría (${ganaFuerte}/300)`);
   exige([0, 1].includes(resuelveCruce(60, 60).ganador), "el cruce no devuelve un ganador válido");
-  // jugar la liga entera lleva a playoffs y a un campeón
+  // jugar la liga entera lleva a playoffs (top 8) y a un campeón
   const sl = mkSuperliga("Test SC", 64, "#fff");
-  exige(sl.equipos.length === 8 && sl.equipos[0].tuyo === true, "tu club no encabeza la lista de equipos");
-  let g = 0; while (sl.fase === "liga" && g++ < 50) jugarJornadaLiga(sl);
-  exige(sl.fase === "playoff", "al acabar la liga no arrancan los playoffs");
-  exige(sl.tabla.every(t => t.pj === 14), "no todos los equipos han jugado sus 14 partidos");
-  exige(sl.tabla.reduce((s, t) => s + t.pts, 0) === 4 * 14 * 3, "los puntos totales no cuadran con las victorias");
+  exige(sl.equipos.length === 16 && sl.equipos[0].tuyo === true, "la liga debería tener 16 clubes con el tuyo el primero");
+  let g = 0; while (sl.fase === "liga" && g++ < 60) jugarJornadaLiga(sl);
+  exige(sl.fase === "playoff" && sl.playoff.ronda === "cuartos", "al acabar la liga no arrancan los cuartos de playoff");
+  exige(sl.playoff.cuartos.length === 4, "los cuartos deberían tener 4 cruces (top 8)");
+  exige(sl.tabla.every(t => t.pj === 30), "no todos los equipos han jugado sus 30 partidos");
+  exige(sl.tabla.reduce((s, t) => s + t.pts, 0) === 8 * 30 * 3, "los puntos totales no cuadran con las victorias");
+  jugarPlayoff(sl); exige(sl.playoff.ronda === "semis", "tras los cuartos no se llega a semis");
   jugarPlayoff(sl); exige(sl.playoff.ronda === "final", "tras las semis no se llega a la final");
   jugarPlayoff(sl); exige(sl.fase === "fin" && sl.playoff.campeon != null, "no se corona un campeón");
   return `${cal.length} jornadas; campeón #${sl.playoff.campeon}; fuerte gana ${ganaFuerte}/300`;
