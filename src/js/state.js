@@ -42,15 +42,30 @@ function filasProyeccion(){
 // ---------- modelo relacional normalizado ----------
 // normalizar() y denormalizar() son PURAS (no tocan SQLite ni el DOM): es la
 // lógica de migración, y su ida y vuelta se puede probar sin Tauri.
+// Campos que van a columnas propias; el resto se guarda en `extras` (JSON).
+const _MODELADO_PAREJA=["id","nombre","sexo","pts","pro","edad","club","jug"];
+const _MODELADO_JUG=["n","sexo","lado","estilo","perso","conf","pais","attrs"];
+function _extrasJSON(obj,excluir){
+  const e={};
+  for(const k in obj){
+    if(!Object.prototype.hasOwnProperty.call(obj,k)) continue;
+    if(excluir.indexOf(k)>=0) continue;
+    const v=obj[k], t=typeof v;
+    if(t==="function"||t==="undefined") continue;
+    e[k]=v;
+  }
+  try{ return JSON.stringify(e); }catch(err){ return "{}"; }
+}
+function _parseExtras(s){ if(!s) return {}; try{ const o=JSON.parse(s); return (o&&typeof o==="object")?o:{}; }catch(e){ return {}; } }
 function normalizar(){
   const out={parejas:[],jugadores:[],atributos:[]};
   if(!G||!G.world||!Array.isArray(G.world.parejas)) return out;
   const ent=n=>Number.isFinite(n)?Math.round(n):0;
   G.world.parejas.forEach(p=>{
-    out.parejas.push({pid:p.id,nombre:p.nombre||"",sexo:p.sexo||"M",pts:ent(p.pts||0),pro:!!p.pro,edad:ent(p.edad||0),club:(p.club==null?-1:p.club)});
+    out.parejas.push({pid:p.id,nombre:p.nombre||"",sexo:p.sexo||"M",pts:ent(p.pts||0),pro:!!p.pro,edad:ent(p.edad||0),club:(p.club==null?-1:p.club),extras:_extrasJSON(p,_MODELADO_PAREJA)});
     (p.jug||[]).forEach((j,idx)=>{
       const jid=p.id+"-"+idx;
-      out.jugadores.push({jid,pareja_pid:p.id,nombre:j.n||"",sexo:j.sexo||p.sexo||"M",lado:(j.lado===1?1:0),estilo:j.estilo||"",perso:j.perso||"",conf:ent(j.conf||0),pais:j.pais||""});
+      out.jugadores.push({jid,pareja_pid:p.id,nombre:j.n||"",sexo:j.sexo||p.sexo||"M",lado:(j.lado===1?1:0),estilo:j.estilo||"",perso:j.perso||"",conf:ent(j.conf||0),pais:j.pais||"",extras:_extrasJSON(j,_MODELADO_JUG)});
       const a=j.attrs||{};
       ATTR_KEYS.forEach(k=>{ if(a[k]!=null) out.atributos.push({jid,clave:k,valor:ent(a[k])}); });
     });
@@ -63,9 +78,9 @@ function denormalizar(snap){
   const jugByPid={};
   (snap.jugadores||[]).forEach(j=>{ (jugByPid[j.pareja_pid]=jugByPid[j.pareja_pid]||[]).push(j); });
   Object.keys(jugByPid).forEach(pid=>jugByPid[pid].sort((a,b)=>a.jid<b.jid?-1:a.jid>b.jid?1:0));
-  return (snap.parejas||[]).map(p=>({
+  return (snap.parejas||[]).map(p=>Object.assign({}, _parseExtras(p.extras), {
     id:p.pid,nombre:p.nombre,sexo:p.sexo,pts:p.pts,pro:!!p.pro,edad:p.edad,club:p.club,
-    jug:(jugByPid[p.pid]||[]).map(j=>({n:j.nombre,sexo:j.sexo,lado:j.lado,estilo:j.estilo,perso:j.perso,conf:j.conf,pais:j.pais,attrs:attrsByJid[j.jid]||{}}))
+    jug:(jugByPid[p.pid]||[]).map(j=>Object.assign({}, _parseExtras(j.extras), {n:j.nombre,sexo:j.sexo,lado:j.lado,estilo:j.estilo,perso:j.perso,conf:j.conf,pais:j.pais,attrs:attrsByJid[j.jid]||{}}))
   }));
 }
 // ---------- comparación e integridad ----------

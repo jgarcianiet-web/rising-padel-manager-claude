@@ -44,7 +44,18 @@ function abrirModo(modo){
   const continuar=()=>{
     const s2=infoSlot(modo);
     if(!s2){ alert("La partida guardada no se pudo cargar."); lsDel(SLOTS[modo]); pintarMenu(); return; }
-    G=s2.d; entrarPartida();
+    G=s2.d;
+    // Fase 4b: el mundo se carga desde SQLite (autoritativo) si sql.js lo tiene y
+    // coincide estructuralmente con el blob; si no (o no está listo), se usa el blob.
+    try{
+      if(typeof dbSqlCargarMundo==="function" && G && G.world && Array.isArray(G.world.parejas)){
+        const mundoSql=dbSqlCargarMundo();
+        if(mundoSql && typeof compararMundos==="function" && compararMundos(mundoSql,G.world.parejas).ok){
+          G.world.parejas=mundoSql; G._mundoDesdeSql=true;
+        }
+      }
+    }catch(e){}
+    entrarPartida();
   };
   if(!s){ nueva(); return; }   // sin guardado: directo a crear
   // hay guardado → ventana de elección
