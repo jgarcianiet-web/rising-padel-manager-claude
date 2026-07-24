@@ -189,7 +189,7 @@ function simTorneoParejaB(ci){
     rival.pts+=cat.pts[loserIdx(fase)]||0;
     if(!res.gane){
       idxPts=loserIdx(fase);
-      resumen.push(`caen en ${FASES[fase].toLowerCase()} (${res.marcador}) vs ${rival.nombre}`);
+      resumen.push(`caen en ${faseNombre(fase).toLowerCase()} (${res.marcador}) vs ${rival.nombre}`);
       break;
     }
     if(res.gane&&Math.random()<.2){const k=pick(ATTR_KEYS);const j=pick(parB);if(j.attrs[k]<88)j.attrs[k]++;}

@@ -102,7 +102,7 @@ function coachTactica(){
 }
 function pintarTorneo(){
   pintarPlanPartido();
-  document.getElementById("tNombre").innerHTML=`${torneo.premierT?"PREMIER · ":"CIRCUITO FIP · "}${torneo.nombre} · <em>${FASES[torneo.fase]}</em>`;
+  document.getElementById("tNombre").innerHTML=`${torneo.premierT?"PREMIER · ":"CIRCUITO FIP · "}${torneo.nombre} · <em>${faseNombre(torneo.fase)}</em>`;
   const r=torneo.rivales[torneo.fase];
   const h2=ent().h2h[r.id];
   const h2txt=h2?`Os conocéis: ${h2.v}-${h2.d} a ${h2.v>=h2.d?"vuestro":"su"} favor.`:"Nunca os habéis enfrentado.";
@@ -669,7 +669,7 @@ function finPartido(){
       const freno=c.attrs[k]>=72?.4:1;
       if(c.attrs[k]<95&&Math.random()<freno) c.attrs[k]++;
     }
-    avisa(`${gane?"✔ Victoria":"✗ Derrota"} ${marcadorFinal} vs ${rival.nombre} (${FASES[f].toLowerCase()}). Tú: ${misW}W/${stats[0].jug[c.lado].e}E.`);
+    avisa(t("aviso_res_carrera",{res:gane?"✔ "+t("res_victoria"):"✗ "+t("res_derrota"),marc:marcadorFinal,rival:rival.nombre,fase:faseNombre(f).toLowerCase(),w:misW,e:stats[0].jug[c.lado].e}));
   } else {
     const cl=G.clubG;
     const qk=quimKey(cl);
@@ -693,7 +693,7 @@ function finPartido(){
         }
       }
     });
-    avisa(`${gane?"✔ Victoria":"✗ Derrota"} ${marcadorFinal} del ${cl.nombre} vs ${rival.nombre} (${FASES[f].toLowerCase()}).`);
+    avisa(t("aviso_res_club",{res:gane?"✔ "+t("res_victoria"):"✗ "+t("res_derrota"),marc:marcadorFinal,club:cl.nombre,rival:rival.nombre,fase:faseNombre(f).toLowerCase()}));
   }
   match=null;
 
@@ -704,7 +704,7 @@ function finPartido(){
     const idx=loserIdx(f);
     e.pts+=torneo.pts[idx]||0;e.dinero+=neto(torneo.premio[idx]||0);
     rival.pts+=torneo.pts[Math.max(0,idx-1)]||0;
-    avisa(`✗ Eliminados en ${FASES[f].toLowerCase()} del ${torneo.nombre}: +${torneo.pts[idx]||0} pts, +${neto(torneo.premio[idx]||0)}€. ${G.modo==="carrera"?"El resto de la semana, a tu aire.":""}`+(seLesiona?` ⚠ ${lesionTxt}.`:""));
+    avisa(t("aviso_eliminados",{fase:faseNombre(f).toLowerCase(),torneo:torneo.nombre,pts:torneo.pts[idx]||0,din:neto(torneo.premio[idx]||0),resto:G.modo==="carrera"?t("aviso_resto_semana"):""})+(seLesiona?` ⚠ ${lesionTxt}.`:""));
     cerrarTorneo();return;
   }
   rival.pts+=torneo.pts[loserIdx(f)]||0;
@@ -730,7 +730,7 @@ function finPartido(){
     ent()._ultCamp=true;
     sfxTitulo();
     noticia("titulo",`¡Campeones del ${torneo.nombre}!`,`${G.modo==="carrera"?G.carrera.nombre+"/"+G.carrera.compi.n:G.clubG.nombre} · +${torneo.pts[0]} pts y ${torneo.premio[0]}€`,miParejaProt());
-    avisa(`🏆 ¡CAMPEONES del ${torneo.nombre}! +${torneo.pts[0]} pts, +${neto(torneo.premio[0])}€.${extra}`+(seLesiona?` ⚠ ${lesionTxt}.`:""));
+    avisa(t("aviso_campeones",{torneo:torneo.nombre,pts:torneo.pts[0],din:neto(torneo.premio[0])})+extra+(seLesiona?` ⚠ ${lesionTxt}.`:""));
     cerrarTorneo();return;
   }
   if(seLesiona){
@@ -748,7 +748,7 @@ function finPartido(){
     avisa("🎉 ¡Superada la previa! Primer cuadro final de un torneo Premier: debut profesional.");
   }
   if(G.modo==="carrera"){
-    avisa(`✔ Ronda superada en el ${torneo.nombre}: ${FASES[torneo.fase].toLowerCase()} el ${DIAS[diaDeFase(torneo.fase)-1]}.`);
+    avisa(t("aviso_ronda",{torneo:torneo.nombre,fase:faseNombre(torneo.fase).toLowerCase(),dia:diaNombre(diaDeFase(torneo.fase)-1)}));
     G.carrera._jugoTorneo=true;
     avanzarDia();
     irA("club");
@@ -762,7 +762,7 @@ function ruedaDePrensa(gano,fase){
   const ov=document.getElementById("rueda");
   document.getElementById("ruedaQ").textContent=gano
     ?`Micrófonos tras el título: "¿Cómo se digiere ganar el ${torneo_ultimo?torneo_ultimo.nombre:"torneo"}?"`
-    :`Zona mixta tras caer en ${FASES[fase].toLowerCase()}: "¿Qué ha faltado hoy?"`;
+    :`Zona mixta tras caer en ${faseNombre(fase).toLowerCase()}: "¿Qué ha faltado hoy?"`;
   const bH=document.getElementById("ruedaHumilde"),bA=document.getElementById("ruedaAmbi"),bP=document.getElementById("ruedaPicante");
   bH.textContent=gano?"«Trabajo y humildad. A seguir.»":"«El rival fue mejor. A entrenar.»";
   bA.textContent=gano?"«Vamos a por el nº1, sin esconderse.»":"«Volveremos más fuertes. Esto no queda así.»";

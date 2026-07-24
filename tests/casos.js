@@ -1078,3 +1078,16 @@ comprueba("Idiomas: catálogo de estilos y personalidades traducido", () => {
   } finally { localStorage.removeItem("rpm_idioma"); }
   return "estilos y personalidades ES/EN";
 });
+
+comprueba("Idiomas: avisos de resultado de partido y fases traducen e interpolan", () => {
+  exige(faseNombre(5) === "FINAL" && faseNombre(2) === "Octavos", "fases base en español");
+  try {
+    localStorage.setItem("rpm_idioma", "en");
+    exige(faseNombre(2) === "Round of 16", "fase no traducida: " + faseNombre(2));
+    const a = t("aviso_res_carrera", { res: "✔ Win", marc: "6-4 6-3", rival: "X", fase: "final", w: 5, e: 2 });
+    exige(a === "✔ Win 6-4 6-3 vs X (final). You: 5W/2E.", "aviso mal interpolado: " + a);
+    const camp = t("aviso_campeones", { torneo: "Madrid", pts: 1000, din: 5000 });
+    exige(camp.indexOf("CHAMPIONS of the Madrid") >= 0 && camp.indexOf("🏆") >= 0, "campeones: " + camp);
+  } finally { localStorage.removeItem("rpm_idioma"); }
+  return "avisos de partido y fases en inglés";
+});
