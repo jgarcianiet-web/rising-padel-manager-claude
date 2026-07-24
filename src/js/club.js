@@ -237,7 +237,7 @@ function pintarClubM(){
     G=null; irA("menu"); pintarMenu(); return;
   }
   const cl=G.clubG;
-  document.getElementById("topCtx").innerHTML=`<b>Temporada ${temporada()}</b> · S${semanaTemp()}/${SEMANAS_TEMP} · ${cl.sexo==="F"?"circuito fem.":"circuito masc."}<br>${cl.nombre} · 🎟×${cl.wildcards||0}`;
+  document.getElementById("topCtx").innerHTML=`<b>${t("ctx_temporada")} ${temporada()}</b> · S${semanaTemp()}/${SEMANAS_TEMP} · ${cl.sexo==="F"?t("ctx_circuito_f"):t("ctx_circuito_m")}<br>${cl.nombre} · 🎟×${cl.wildcards||0}`;
   document.getElementById("cmSem").textContent="S"+semanaTemp();
   document.getElementById("cmRank").textContent="#"+miPuesto();
   document.getElementById("cmPts").textContent=cl.pts;
@@ -253,7 +253,7 @@ function pintarClubM(){
 }
 function pintarCmSemana(){
   const cl=G.clubG,esT=esSemanaTorneo();
-  document.getElementById("cmSemTitulo").innerHTML=(slotSemana(semanaTemp()).premier!==undefined?`Semana ${semanaTemp()} · <em>Premier + FIP</em>`:`Semana ${semanaTemp()} · <em>circuito FIP</em>`);
+  document.getElementById("cmSemTitulo").innerHTML=(slotSemana(semanaTemp()).premier!==undefined?`${t("kpi_semana")} ${semanaTemp()} · <em>${t("ctx_premier_fip")}</em>`:`${t("kpi_semana")} ${semanaTemp()} · <em>${t("ctx_circuito_fip")}</em>`);
   const tor=document.getElementById("cmTorneo");tor.innerHTML="";
   const al=alineacion();
   if(esT){

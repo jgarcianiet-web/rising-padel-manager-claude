@@ -408,7 +408,7 @@ function pintarCarrera(){
   const c=G.carrera;
   if(c._crisisPareja&&typeof document!=="undefined"&&document.body&&!document.getElementById("ruptModal")) setTimeout(()=>mostrarRuptura(c),350);
   else if(c.dilemaActivo&&typeof document!=="undefined"&&document.body&&!document.getElementById("dilModal")) setTimeout(()=>mostrarDilema(c),350);
-  document.getElementById("topCtx").innerHTML=`<b>Temporada ${temporada()}</b> · S${semanaTemp()}/${SEMANAS_TEMP} · ${c.sexo==="F"?"circuito fem.":"circuito masc."}<br>${c.nombre}, ${c.edad} años · 🎟×${c.wildcards||0} · forma ${rachaHtml(c.racha)}`;
+  document.getElementById("topCtx").innerHTML=`<b>${t("ctx_temporada")} ${temporada()}</b> · S${semanaTemp()}/${SEMANAS_TEMP} · ${c.sexo==="F"?t("ctx_circuito_f"):t("ctx_circuito_m")}<br>${c.nombre}, ${c.edad} ${t("ctx_anios")} · 🎟×${c.wildcards||0} · ${t("ctx_forma")} ${rachaHtml(c.racha)}`;
   const nOf=(c.ofertasPatro||[]).length;
   document.getElementById("tabJugador").innerHTML=`${t("nav_jugador")}${nOf?` <span style="color:var(--lima)">●</span>`:""}`;
   document.getElementById("kSem").textContent="S"+semanaTemp();
@@ -486,7 +486,7 @@ function pintarEventosSemana(td, disponible, motivoNo){
 function pintarSemana(){
   const c=G.carrera;
   const dia=c.dia||1, esT=esSemanaTorneo();
-  document.getElementById("semTitulo").innerHTML=c.lesion?`Baja médica · <em>${c.lesion.n} (${c.lesion.sem} sem.)</em>`:`Semana ${semanaTemp()} · <em>${DIAS[dia-1].toUpperCase()}</em>`+(c.merma?` · <span style="color:#E0A030">mermado -${c.merma.pct}% (${c.merma.sem} sem.)</span>`:"");
+  document.getElementById("semTitulo").innerHTML=c.lesion?`${t("sem_baja")} · <em>${c.lesion.n} (${c.lesion.sem} ${t("sem_abrev")})</em>`:`${t("kpi_semana")} ${semanaTemp()} · <em>${diaNombre(dia-1).toUpperCase()}</em>`+(c.merma?` · <span style="color:#E0A030">${t("sem_mermado")} -${c.merma.pct}% (${c.merma.sem} ${t("sem_abrev")})</span>`:"");
   pintarObjetivos();
   const td=document.getElementById("torneosDisp");td.innerHTML="";
   // tira lunes-domingo

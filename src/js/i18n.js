@@ -65,6 +65,23 @@ const I18N={
     hd_agencia_html:"Agencia RPD · <em>última hora</em>",
     hd_grada_html:"La grada · <em>RisingSocial</em>",
     hd_equipo_alin_html:"Tu equipo · <em>alineación</em>",
+    dia_lunes:"lunes",
+    dia_martes:"martes",
+    dia_miercoles:"miércoles",
+    dia_jueves:"jueves",
+    dia_viernes:"viernes",
+    dia_sabado:"sábado",
+    dia_domingo:"domingo",
+    ctx_temporada:"Temporada",
+    ctx_circuito_m:"circuito masc.",
+    ctx_circuito_f:"circuito fem.",
+    ctx_anios:"años",
+    ctx_forma:"forma",
+    sem_baja:"Baja médica",
+    sem_abrev:"sem.",
+    sem_mermado:"mermado",
+    ctx_premier_fip:"Premier + FIP",
+    ctx_circuito_fip:"circuito FIP",
   },
   en:{
     dif_label:"Difficulty",
@@ -113,6 +130,23 @@ const I18N={
     hd_agencia_html:"RPD Agency · <em>breaking news</em>",
     hd_grada_html:"The stands · <em>RisingSocial</em>",
     hd_equipo_alin_html:"Your team · <em>line-up</em>",
+    dia_lunes:"Monday",
+    dia_martes:"Tuesday",
+    dia_miercoles:"Wednesday",
+    dia_jueves:"Thursday",
+    dia_viernes:"Friday",
+    dia_sabado:"Saturday",
+    dia_domingo:"Sunday",
+    ctx_temporada:"Season",
+    ctx_circuito_m:"men's tour",
+    ctx_circuito_f:"women's tour",
+    ctx_anios:"yrs",
+    ctx_forma:"form",
+    sem_baja:"Medical leave",
+    sem_abrev:"wk",
+    sem_mermado:"hampered",
+    ctx_premier_fip:"Premier + FIP",
+    ctx_circuito_fip:"FIP tour",
   },
   fr:{
     dif_label:"Difficulté",
@@ -161,6 +195,23 @@ const I18N={
     hd_agencia_html:"Agence RPD · <em>dernière heure</em>",
     hd_grada_html:"Les tribunes · <em>RisingSocial</em>",
     hd_equipo_alin_html:"Ton équipe · <em>composition</em>",
+    dia_lunes:"lundi",
+    dia_martes:"mardi",
+    dia_miercoles:"mercredi",
+    dia_jueves:"jeudi",
+    dia_viernes:"vendredi",
+    dia_sabado:"samedi",
+    dia_domingo:"dimanche",
+    ctx_temporada:"Saison",
+    ctx_circuito_m:"circuit masc.",
+    ctx_circuito_f:"circuit fém.",
+    ctx_anios:"ans",
+    ctx_forma:"forme",
+    sem_baja:"Arrêt médical",
+    sem_abrev:"sem.",
+    sem_mermado:"diminué",
+    ctx_premier_fip:"Premier + FIP",
+    ctx_circuito_fip:"circuit FIP",
   },
   de:{
     dif_label:"Schwierigkeit",
@@ -209,6 +260,23 @@ const I18N={
     hd_agencia_html:"RPD-Agentur · <em>Eilmeldung</em>",
     hd_grada_html:"Die Ränge · <em>RisingSocial</em>",
     hd_equipo_alin_html:"Dein Team · <em>Aufstellung</em>",
+    dia_lunes:"Montag",
+    dia_martes:"Dienstag",
+    dia_miercoles:"Mittwoch",
+    dia_jueves:"Donnerstag",
+    dia_viernes:"Freitag",
+    dia_sabado:"Samstag",
+    dia_domingo:"Sonntag",
+    ctx_temporada:"Saison",
+    ctx_circuito_m:"Herren-Tour",
+    ctx_circuito_f:"Damen-Tour",
+    ctx_anios:"J.",
+    ctx_forma:"Form",
+    sem_baja:"Krankenstand",
+    sem_abrev:"Wo.",
+    sem_mermado:"geschwächt",
+    ctx_premier_fip:"Premier + FIP",
+    ctx_circuito_fip:"FIP-Tour",
   },
   it:{
     dif_label:"Difficoltà",
@@ -257,6 +325,23 @@ const I18N={
     hd_agencia_html:"Agenzia RPD · <em>ultim'ora</em>",
     hd_grada_html:"Gli spalti · <em>RisingSocial</em>",
     hd_equipo_alin_html:"La tua squadra · <em>formazione</em>",
+    dia_lunes:"lunedì",
+    dia_martes:"martedì",
+    dia_miercoles:"mercoledì",
+    dia_jueves:"giovedì",
+    dia_viernes:"venerdì",
+    dia_sabado:"sabato",
+    dia_domingo:"domenica",
+    ctx_temporada:"Stagione",
+    ctx_circuito_m:"circuito masch.",
+    ctx_circuito_f:"circuito femm.",
+    ctx_anios:"anni",
+    ctx_forma:"forma",
+    sem_baja:"Infortunio",
+    sem_abrev:"sett.",
+    sem_mermado:"a mezzo servizio",
+    ctx_premier_fip:"Premier + FIP",
+    ctx_circuito_fip:"circuito FIP",
   },
 };
 function idiomaValido(id){ return IDIOMAS.some(l=>l.id===id); }
@@ -264,15 +349,23 @@ function idiomaValido(id){ return IDIOMAS.some(l=>l.id===id); }
 function idiomaActual(){ try{ const s=localStorage.getItem("rpm_idioma"); if(idiomaValido(s)) return s; }catch(e){} return IDIOMA_DEF; }
 // Traduce una clave al idioma vigente, con doble red: idioma por defecto y, si
 // tampoco existe, la propia clave (así una clave sin traducir se nota, no rompe).
-function t(clave){
-  const L=I18N[idiomaActual()]||I18N[IDIOMA_DEF];
-  if(L&&L[clave]!=null) return L[clave];
-  const D=I18N[IDIOMA_DEF];
-  return (D&&D[clave]!=null)?D[clave]:clave;
+// Con un segundo argumento, interpola: los marcadores {campo} de la cadena se
+// sustituyen por params[campo]. Así los mensajes con datos (nombres, cifras) se
+// traducen sin romper el orden de las palabras entre idiomas.
+function t(clave,params){
+  const L=I18N[idiomaActual()]||I18N[IDIOMA_DEF], D=I18N[IDIOMA_DEF];
+  let s = (L&&L[clave]!=null) ? L[clave] : ((D&&D[clave]!=null)?D[clave]:clave);
+  if(params&&typeof s==="string"&&s.indexOf("{")>=0){
+    s=s.replace(/\{(\w+)\}/g,(m,k)=> (params[k]!=null?params[k]:m));
+  }
+  return s;
 }
 // Nombre y descripción de una dificultad en el idioma vigente.
 function difNombre(id){ return t("dif_"+(id||DIF_DEF)+"_n"); }
 function difDesc(id){ return t("dif_"+(id||DIF_DEF)+"_desc"); }
+const _DIAS_I18N=["dia_lunes","dia_martes","dia_miercoles","dia_jueves","dia_viernes","dia_sabado","dia_domingo"];
+// Nombre del día (0=lunes) en el idioma vigente.
+function diaNombre(i){ return t(_DIAS_I18N[((i%7)+7)%7]); }
 
 // Aplica el idioma vigente al texto estático de la interfaz: recorre los
 // elementos marcados con data-i18n (contenido) y data-i18n-title (tooltip) y los
