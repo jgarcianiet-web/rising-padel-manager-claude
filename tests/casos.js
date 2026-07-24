@@ -567,11 +567,15 @@ comprueba("Superliga: economía, objetivo, desarrollo y fichajes", () => {
   const cajaAntes = sl.caja, res = cierreTempSuperliga(sl);
   exige(res.caja === cajaAntes + res.premio - res.sal, "la caja no cuadra con premios y salarios");
   exige(typeof res.objetivoCumplido === "boolean" && res.pos >= 1 && res.pos <= 16, "no calcula posición/objetivo");
-  // desarrollo: un joven con techo alto mejora al pasar de temporada
+  // desarrollo: un joven con techo alto mejora al pasar de temporada. Se compara
+  // la SUMA de atributos (no la media redondeada): evolucionaPlantillaSL sube un
+  // atributo en +1/+2, y mirar la media redondeada hacía el test no determinista
+  // (si las subidas caían todas en +1, la media redondeada no cambiaba).
+  const suma = (a) => ATTR_KEYS.reduce((s, k) => s + a[k], 0);
   const joven = { n: "Joven", edad: 20, pot: 90, attrs: at(60), estilo: "constructor", lado: 0 };
-  const nivAntes = mediaAttrs(joven.attrs);
-  let subio = false; for (let i = 0; i < 10 && !subio; i++) { evolucionaPlantillaSL([joven]); if (mediaAttrs(joven.attrs) > nivAntes) subio = true; }
-  exige(subio, "un joven con techo alto debería mejorar con el tiempo");
+  const sumaAntes = suma(joven.attrs);
+  evolucionaPlantillaSL([joven]);   // edad 20→21 (≤24) y muy por debajo del techo: mejora seguro
+  exige(suma(joven.attrs) > sumaAntes, "un joven con techo alto debería mejorar con el tiempo");
   // fichaje: paga con caja y entra en la plantilla; sin caja, no
   sl.caja = 100000; const antesN = sl.plantilla.length;
   const cand = { n: "Fichaje", edad: 24, pot: 80, attrs: at(66), estilo: "agresivo", lado: 1 };
