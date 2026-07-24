@@ -119,6 +119,7 @@ body.en-partido #hud{display:none}
 body.en-superliga #hud{display:none}
 body.en-superliga .wrap{padding-left:0}
 @media(min-width:760px){ #scr-superliga .cont{display:grid;grid-template-columns:1.6fr 1fr;gap:8px;align-items:start} #scr-superliga .cont>.card{margin-bottom:0} }
+#scr-superliga #slCol2>.card{margin-bottom:8px}
 body.en-partido.con-hud .wrap{padding-left:0}
 .banner-pro{background:linear-gradient(90deg,var(--lima),#8FD32A);color:var(--tinta);padding:12px;text-align:center;font-weight:700;font-size:13.5px;margin-bottom:8px}
 canvas{width:100%;display:block}

@@ -18,6 +18,46 @@ function resuelveCruce(baseA,baseB,rnd){
   for(let i=0;i<3;i++){ const ganaA=r()<probPunto(fa[i],fb[i]); if(ganaA)gA++; else gB++; puntos.push(ganaA?0:1); }
   return {ganador:gA>gB?0:1,gA,gB,puntos};
 }
+// Fuerzas de las 3 parejas de un equipo: las reales si tiene alineación propia
+// (tu club), o el escalonado desde la fuerza base (clubes NPC).
+function fuerzasDeEquipo(eq){ return (eq.parejas&&eq.parejas.length===3)?eq.parejas.slice():fuerzasTriples(eq.fuerza); }
+// Resuelve un cruce entre dos EQUIPOS (usa sus 3 parejas reales o escalonadas).
+function resuelveCruceEquipos(eqA,eqB,rnd){
+  const r=rnd||Math.random, fa=fuerzasDeEquipo(eqA), fb=fuerzasDeEquipo(eqB);
+  let gA=0,gB=0; const puntos=[];
+  for(let i=0;i<3;i++){ const ganaA=r()<probPunto(fa[i],fb[i]); if(ganaA)gA++; else gB++; puntos.push(ganaA?0:1); }
+  return {ganador:gA>gB?0:1,gA,gB,puntos};
+}
+// --- plantilla y alineación de TU club ---
+// Genera una plantilla de 6 jugadores (reutiliza mkAgente del modo club).
+function mkPlantillaSuperliga(){
+  const a=[],seen=new Set();
+  for(let i=0;i<6;i++){ let j,g=0; do{ j=mkAgente(52,72,"M"); }while(seen.has(j.n)&&g++<20); seen.add(j.n); a.push(j); }
+  return a;
+}
+// Fuerza de una pareja (media de los dos jugadores + química de lados: drive+revés suma).
+function fuerzaParejaSL(plantilla,par){
+  const a=plantilla[par[0]],b=plantilla[par[1]]; if(!a||!b) return 55;
+  let f=(mediaAttrs(a.attrs)+mediaAttrs(b.attrs))/2;
+  if(a.lado!==undefined&&b.lado!==undefined) f+=(a.lado!==b.lado)?2:-3;
+  return Math.round(f);
+}
+// Recalcula las fuerzas de tu club a partir de la alineación de las 3 parejas.
+function sincronizaClubSL(sl){
+  if(!sl.plantilla||!sl.alin) return;
+  const tu=sl.equipos.findIndex(e=>e.tuyo); if(tu<0) return;
+  const fs=sl.alin.map(par=>fuerzaParejaSL(sl.plantilla,par)).sort((x,y)=>y-x);
+  sl.equipos[tu].parejas=fs;
+  sl.equipos[tu].fuerza=Math.round(fs.reduce((s,x)=>s+x,0)/fs.length);
+}
+// Mueve un jugador a otra pareja intercambiando (mantiene 2 por pareja).
+function reasignaPareja(alin,jug,destino){
+  let oi=-1,op=-1; for(let i=0;i<3;i++){ const k=alin[i].indexOf(jug); if(k>=0){ oi=i; op=k; } }
+  if(oi<0||oi===destino) return alin;
+  const otro=alin[destino][0];
+  alin[destino][0]=jug; alin[oi][op]=otro;
+  return alin;
+}
 // Calendario round-robin a doble vuelta para n equipos (n par). Array de jornadas; cada jornada, pares [local,visitante].
 function mkCalendarioLiga(n){
   const m=n, mitad=m/2, jornadas=[]; let arr=[...Array(m).keys()];
@@ -40,7 +80,7 @@ function jugarJornadaLiga(sl,rnd){
   if(sl.fase!=="liga"||sl.jornada>=sl.calendario.length) return null;
   const jor=sl.calendario[sl.jornada], res=[];
   jor.forEach(([a,b])=>{
-    const r=resuelveCruce(sl.equipos[a].fuerza,sl.equipos[b].fuerza,rnd), ta=sl.tabla[a],tb=sl.tabla[b];
+    const r=resuelveCruceEquipos(sl.equipos[a],sl.equipos[b],rnd), ta=sl.tabla[a],tb=sl.tabla[b];
     ta.pj++;tb.pj++; ta.gf+=r.gA;ta.gc+=r.gB; tb.gf+=r.gB;tb.gc+=r.gA;
     if(r.ganador===0){ ta.pg++;ta.pts+=3;tb.pp++; } else { tb.pg++;tb.pts+=3;ta.pp++; }
     res.push({a,b,gA:r.gA,gB:r.gB});
@@ -66,17 +106,17 @@ function _iniciaPlayoffs(sl){
 function jugarPlayoff(sl,rnd){
   const p=sl.playoff; if(!p||sl.fase!=="playoff") return null;
   if(p.ronda==="cuartos"){
-    const g=p.cuartos.map(([a,b])=>resuelveCruce(sl.equipos[a].fuerza,sl.equipos[b].fuerza,rnd).ganador===0?a:b);
+    const g=p.cuartos.map(([a,b])=>resuelveCruceEquipos(sl.equipos[a],sl.equipos[b],rnd).ganador===0?a:b);
     p.semis=[[g[0],g[1]],[g[2],g[3]]]; p.ronda="semis";
     return {fase:"cuartos",ganadores:g};
   }
   if(p.ronda==="semis"){
-    const g=p.semis.map(([a,b])=>resuelveCruce(sl.equipos[a].fuerza,sl.equipos[b].fuerza,rnd).ganador===0?a:b);
+    const g=p.semis.map(([a,b])=>resuelveCruceEquipos(sl.equipos[a],sl.equipos[b],rnd).ganador===0?a:b);
     p.final=g.slice(); p.ronda="final";
     return {fase:"semis",finalistas:g};
   }
   if(p.ronda==="final"){
-    const [a,b]=p.final, r=resuelveCruce(sl.equipos[a].fuerza,sl.equipos[b].fuerza,rnd);
+    const [a,b]=p.final, r=resuelveCruceEquipos(sl.equipos[a],sl.equipos[b],rnd);
     p.campeon=r.ganador===0?a:b; p.ronda="fin"; sl.fase="fin";
     return {fase:"final",campeon:p.campeon};
   }
@@ -91,8 +131,18 @@ function entrarSuperliga(){
 function crearSuperliga(){
   let nom="Rising SC";
   try{ if(typeof prompt==="function"){ const x=prompt("Nombre de tu club en la Superliga:","Rising SC"); if(x) nom=x.slice(0,24); } }catch(e){}
-  G={modo:"superliga",superliga:mkSuperliga(nom,62,"#C6F53C")};
+  const sl=mkSuperliga(nom,62,"#C6F53C");
+  sl.plantilla=mkPlantillaSuperliga();
+  sl.alin=[[0,1],[2,3],[4,5]];
+  sincronizaClubSL(sl);
+  G={modo:"superliga",superliga:sl};
   entrarSuperliga();
+}
+// El jugador reordena su alineación (mueve un jugador a otra pareja).
+function asignaParejaSL(jug,destino){
+  const sl=G&&G.superliga; if(!sl||!sl.alin) return;
+  reasignaPareja(sl.alin,jug,destino); sincronizaClubSL(sl);
+  guardar(); pintarSuperliga();
 }
 function _slFilaTabla(sl,fila,pos){
   const e=fila.e,t=fila.t, tuyo=e.tuyo;
@@ -105,7 +155,9 @@ function _slFilaTabla(sl,fila,pos){
 }
 function pintarSuperliga(){
   const sl=G&&G.superliga; if(!sl) return;
+  if(!sl.plantilla){ sl.plantilla=mkPlantillaSuperliga(); sl.alin=[[0,1],[2,3],[4,5]]; sincronizaClubSL(sl); }   // guardados anteriores
   document.getElementById("topCtx").innerHTML=`<b>Superliga</b> · Temporada ${sl.temporada} · ${sl.equipos.length} clubes`;
+  _pintarEquipoSL(sl);
   const cls=clasificacionLiga(sl);
   const tabla=`<table class="rk"><tr class="hd"><td>#</td><td>Club</td><td>PJ</td><td>G</td><td>P</td><td>Ptos</td><td>Pts</td></tr>${cls.map((f,i)=>_slFilaTabla(sl,f,i+1)).join("")}</table>`;
   const slTabla=document.getElementById("slTabla"); if(slTabla) slTabla.innerHTML=tabla;
@@ -134,6 +186,23 @@ function pintarSuperliga(){
     } else slRes.innerHTML="";
   }
 }
+// Panel de tu plantilla con la alineación de 3 parejas (editable).
+function _pintarEquipoSL(sl){
+  const slEq=document.getElementById("slEquipo"); if(!slEq||!sl.plantilla||!sl.alin) return;
+  const tu=sl.equipos.find(e=>e.tuyo)||{fuerza:0};
+  const ladoT=l=>(typeof ladoTxt==="function")?ladoTxt(l):(l===1?"revés":"drive");
+  let html=`<div class="foot" style="text-align:left;margin-bottom:6px">Fuerza del club: <b style="color:var(--lima)">${tu.fuerza}</b> · alinea tus 3 parejas: deciden tus cruces.</div>`;
+  sl.alin.forEach((par,pi)=>{
+    html+=`<div class="opcion" style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:11px">Pareja ${pi+1}</b><span class="pill lima">fuerza ${fuerzaParejaSL(sl.plantilla,par)}</span></div>`;
+    par.forEach(ji=>{ const j=sl.plantilla[ji];
+      html+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;font-size:11px">
+        <span>${j.n} <span style="color:var(--gris)">· ${mediaAttrs(j.attrs)} · ${ladoT(j.lado)}</span></span>
+        <span>${[0,1,2].filter(d=>d!==pi).map(d=>`<button class="selbtn" style="font-size:9px;padding:2px 6px" onclick="asignaParejaSL(${ji},${d})">→ P${d+1}</button>`).join("")}</span></div>`;
+    });
+    html+=`</div>`;
+  });
+  slEq.innerHTML=html;
+}
 function accionSuperliga(){
   const sl=G&&G.superliga; if(!sl) return;
   if(sl.fase==="liga") jugarJornadaLiga(sl);
@@ -143,8 +212,10 @@ function accionSuperliga(){
 function nuevaTempSuperliga(){
   const sl=G&&G.superliga; if(!sl) return;
   const tuyo=sl.equipos.find(e=>e.tuyo)||{n:"Rising SC",color:"#C6F53C",fuerza:62};
-  G.superliga=mkSuperliga(tuyo.n,tuyo.fuerza,tuyo.color); G.superliga.temporada=(sl.temporada||1)+1;
-  guardar(); pintarSuperliga();
+  const nueva=mkSuperliga(tuyo.n,tuyo.fuerza,tuyo.color); nueva.temporada=(sl.temporada||1)+1;
+  nueva.plantilla=sl.plantilla||mkPlantillaSuperliga(); nueva.alin=sl.alin||[[0,1],[2,3],[4,5]];
+  sincronizaClubSL(nueva);
+  G.superliga=nueva; guardar(); pintarSuperliga();
 }
 
 if(typeof module!=="undefined"&&module.exports){ module.exports={}; }

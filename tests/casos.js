@@ -525,6 +525,34 @@ comprueba("Superliga: liga a doble vuelta, tabla y playoffs", () => {
   return `${cal.length} jornadas; campeón #${sl.playoff.campeon}; fuerte gana ${ganaFuerte}/300`;
 });
 
+comprueba("Superliga: plantilla y alineación de tus 3 parejas", () => {
+  const sl = mkSuperliga("Test SC", 62, "#fff");
+  sl.plantilla = mkPlantillaSuperliga();
+  exige(sl.plantilla.length === 6, "la plantilla debería tener 6 jugadores");
+  sl.alin = [[0, 1], [2, 3], [4, 5]];
+  sincronizaClubSL(sl);
+  const tu = sl.equipos.find(e => e.tuyo);
+  exige(Array.isArray(tu.parejas) && tu.parejas.length === 3, "no se calculan las 3 fuerzas de tu club");
+  exige(tu.parejas[0] >= tu.parejas[1] && tu.parejas[1] >= tu.parejas[2], "las fuerzas de pareja no van ordenadas");
+  exige(tu.fuerza > 0, "la fuerza del club no se deriva de la alineación");
+  // reasignar mantiene 2 jugadores por pareja y mueve al jugador
+  reasignaPareja(sl.alin, 4, 0);   // el jugador 4 pasa a la pareja 1
+  exige(sl.alin.every(p => p.length === 2), "una pareja se queda con distinto número de jugadores");
+  exige(sl.alin[0].includes(4), "el jugador no se movió a la pareja destino");
+  const todos = new Set(sl.alin.flat());
+  exige(todos.size === 6, "se ha perdido o duplicado algún jugador al reasignar");
+  // una mejor alineación da más fuerza: subir el nivel de dos jugadores sube la fuerza del club
+  const antes = (sincronizaClubSL(sl), sl.equipos.find(e => e.tuyo).fuerza);
+  ATTR_KEYS.forEach(k => { sl.plantilla[0].attrs[k] = 95; sl.plantilla[1].attrs[k] = 95; });
+  sincronizaClubSL(sl);
+  exige(sl.equipos.find(e => e.tuyo).fuerza > antes, "mejorar la plantilla no sube la fuerza del club");
+  // el enfrentamiento usa las parejas reales del equipo
+  const fuerte = { parejas: [90, 88, 85] }, flojo = { parejas: [50, 48, 45] };
+  let gf = 0; for (let i = 0; i < 200; i++) if (resuelveCruceEquipos(fuerte, flojo).ganador === 0) gf++;
+  exige(gf > 150, `el equipo con mejores parejas debería ganar la mayoría (${gf}/200)`);
+  return `fuerza club ${sl.equipos.find(e => e.tuyo).fuerza}; equipo fuerte gana ${gf}/200`;
+});
+
 comprueba("Analítica: sin la base lista muestra un aviso claro", () => {
   abrirAnalitica();
   const cuerpo = document.getElementById("analiticaCuerpo");
