@@ -170,9 +170,18 @@ document.getElementById("analiticaCerrar").onclick=()=>document.getElementById("
 })();
 function guardar(){
   if(!G) return;
+  // Fase 4c: al haber base SQLite, la partida queda marcada como migrada (su
+  // modelo vive también en las tablas). La marca viaja en el propio blob.
+  if(typeof dbSqlDisponible==="function" && dbSqlDisponible()) G._vSql=1;
   const json=JSON.stringify(G);
   const ok=lsSet(SLOTS[G.modo],json);
-  if(typeof dbSqlSnapshotVivo==="function") dbSqlSnapshotVivo();  // persistencia del modelo en sql.js
+  if(typeof dbSqlSnapshotVivo==="function"){
+    dbSqlSnapshotVivo();  // write-through del modelo a sql.js
+    // guardia de consistencia: ¿las tablas reconstruyen el estado vivo? (flag de sesión)
+    if(typeof dbSqlVerificarVivo==="function" && typeof normalizar==="function"){
+      try{ G._sqlOK = !!dbSqlVerificarVivo(normalizar()).ok; }catch(e){ G._sqlOK=false; }
+    }
+  }
   const st=G.modo==="carrera"?G.carrera.semana:G.modo==="club"?G.clubG.semana:(G.superliga?("J"+G.superliga.jornada):0);
   document.getElementById("footSave").textContent=ok
     ? `RISING GAMES · v3.0 — ${G.modo} guardada ✓ (${G.modo==="superliga"?st:"semana "+st})`

@@ -1022,3 +1022,13 @@ comprueba("Jerarquía: colAttr escala con el valor y diferencia el rango bajo", 
   exige(colAttr(90) === colAttr(85), "valores de la misma banda comparten color");
   return "6 escalones distintos; rango bajo diferenciado";
 });
+
+/* ===================== PERSISTENCIA (Fase 4c) ===================== */
+
+comprueba("Persistencia (4c): sin sql.js, guardar es seguro y no marca migración", () => {
+  const c = nuevaCarrera("agresivo");
+  guardar();
+  exige(c === G.carrera, "la partida debería seguir activa tras guardar");
+  exige(!G._vSql, "no debería marcar _vSql cuando la base SQLite no está disponible");
+  return "guardado seguro sin la base; sin marca de migración";
+});
