@@ -381,6 +381,34 @@ comprueba("Rasgos: identidad de jugador con efectos concretos", () => {
   return `${conAlgo}/300 con rasgo; esp win ${esp.win.toFixed(2)}, frágil err ${fra.err.toFixed(2)}`;
 });
 
+comprueba("Relaciones: afinidad, motivo de crisis y ruptura con alternativas", () => {
+  const j = (est, lado, rasgos) => ({ n: est + lado + (rasgos || []).join(""), estilo: est, perso: "frio", lado, rasgos: rasgos || [] });
+  // estilos complementarios + lados distintos > dos atacantes del mismo lado
+  const comp = afinidadPareja(j("defensivo", 0, []), j("agresivo", 1, []));
+  const choque = afinidadPareja(j("agresivo", 0, []), j("agresivo", 0, []));
+  exige(comp > choque, `complementaria (${comp}) debería superar a dos gallos pisándose (${choque})`);
+  exige(afinidadPareja(j("defensivo", 0, ["conflictivo"]), j("agresivo", 1, [])) < comp, "conflictivo no reduce la afinidad");
+  exige(afinidadPareja(j("defensivo", 0, ["leal"]), j("agresivo", 1, [])) > comp, "leal no aumenta la afinidad");
+  // motivo concreto: racha de derrotas / ambición estancada
+  const c1 = { nombre: "Yo", estilo: "agresivo", perso: "frio", lado: 0, rasgos: [], compiMoral: 30, racha: ["D", "D", "D", "V", "D"], compi: j("agresivo", 1, []) };
+  exige(motivoDescontento(c1, 5).clave === "resultados", "no detecta la racha de derrotas");
+  const c2 = { nombre: "Yo", estilo: "agresivo", perso: "frio", lado: 0, rasgos: [], compiMoral: 30, racha: ["V", "V"], compi: j("defensivo", 1, ["ambicioso"]) };
+  exige(motivoDescontento(c2, 45).clave === "ambicion", "no detecta la ambición estancada");
+  // crisis: moral alta = sin crisis; moral baja = crisis con alternativas (incluida 'dejar')
+  exige(evaluarRuptura({ compiMoral: 60, compi: j("agresivo", 1, []), racha: [] }, 10).crisis === false, "no debería haber crisis con moral alta");
+  const ev = evaluarRuptura(c1, 5);
+  exige(ev.crisis === true && ev.ops.some(o => o.id === "dejar"), "la crisis no ofrece alternativas / la de dejarlo");
+  // el leal se reconduce más fácil que el conflictivo
+  exige(probReconduccion({ compi: j("d", 1, ["leal"]) }, "hablar") > probReconduccion({ compi: j("d", 1, ["conflictivo"]) }, "hablar"), "el leal no es más fácil de reconducir");
+  // aplicar: 'dejar' rompe; una charla exitosa (forzando el azar) sube la moral y NO rompe
+  exige(aplicarOpcionRuptura(c1, "dejar").rompio === true, "dejar debería romper la pareja");
+  const _r = Math.random; Math.random = () => 0;
+  const antes = c1.compiMoral, res = aplicarOpcionRuptura(c1, "hablar", ev.motivo);
+  Math.random = _r;
+  exige(res.rompio === false && c1.compiMoral > antes, "una reconducción exitosa debería subir la moral sin romper");
+  return `comp ${comp} vs choque ${choque}; motivos ${motivoDescontento(c1, 5).clave}/${motivoDescontento(c2, 45).clave}`;
+});
+
 comprueba("Analítica: sin la base lista muestra un aviso claro", () => {
   abrirAnalitica();
   const cuerpo = document.getElementById("analiticaCuerpo");
