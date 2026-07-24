@@ -187,22 +187,43 @@ function empezarPartido(ver,coach){
 }
 function resolverPunto(g){
   const m=match,r={};
+  if(stats&&stats[g]) stats[g].pganados=(stats[g].pganados||0)+1;   // puntos ganados (para la barra en vivo)
   // break points (ocasiones de rotura): el equipo al resto, a un punto de romper el saque
   const _rec=1-m.server;
   if(stats&&stats[_rec]&&stats[_rec].bp&&m.p[_rec]===3){
     stats[_rec].bp.jugados++;
     if(g===_rec) stats[_rec].bp.ganados++;
   }
-  if(m.p[g]===3){
-    m.p=[0,0];m.j[g]++;m.server=1-m.server;r.juego=g;
-    const o=1-g;
+  // --- marcador del juego: STAR POINT ---
+  // Ventajas normales, pero si se dan dos ventajas sin concretar el juego
+  // (deuce→ventaja→deuce→ventaja→deuce), se pasa a punto de oro (un punto decide).
+  const o=1-g;
+  let ganaJuego=false;
+  if(m.golden){
+    ganaJuego=true;                              // star point: el punto decide el juego
+  } else if(m.p[g]===3 && m.p[o]===3){
+    if(m.ventaja==null){ m.ventaja=g; }          // 40-40 → ventaja para g
+    else if(m.ventaja===g){ ganaJuego=true; }    // concreta su ventaja → juego
+    else {                                        // rompe la ventaja rival → vuelta a deuce
+      m.ventaja=null;
+      m.ventajasFallidas=(m.ventajasFallidas||0)+1;
+      if(m.ventajasFallidas>=2) m.golden=true;   // dos ventajas sin concretar → star point
+    }
+  } else if(m.p[g]===3){
+    ganaJuego=true;                              // 40 con el rival por debajo → juego
+  } else {
+    m.p[g]++;                                     // punto normal (puede llegar a 40-40)
+  }
+  if(ganaJuego){
+    m.p=[0,0]; m.ventaja=null; m.ventajasFallidas=0; m.golden=false;
+    m.j[g]++; m.server=1-m.server; r.juego=g;
     if((m.j[g]>=6&&m.j[g]-m.j[o]>=2)||m.j[g]===7){
       r.set=g;r.marcadorSet=`${m.j[0]}-${m.j[1]}`;
       m.hist.push(r.marcadorSet);
       m.s[g]++;m.j=[0,0];
       if(m.s[g]>=2) m.fin=true;
     }
-  } else m.p[g]++;
+  }
   return r;
 }
 const PTS=["0","15","30","40"];
@@ -324,23 +345,27 @@ function pintaLiveStats(){
   if(!el||!match||!match.ver||!stats) return;
   const w=[0,1].map(t=>stats[t].jug.reduce((a,j)=>a+(j.w||0),0));
   const e=[0,1].map(t=>stats[t].jug.reduce((a,j)=>a+(j.e||0),0));
-  const tiros=[0,1].map(t=>stats[t].tiros||0);
-  const pos0=Math.round(tiros[0]/(tiros[0]+tiros[1]||1)*100);
+  const pg=[0,1].map(t=>stats[t].pganados||0);
+  const dom0=Math.round(pg[0]/(pg[0]+pg[1]||1)*100);
   const bp=[0,1].map(t=>stats[t].bp||{jugados:0,ganados:0});
   const fat=[0,1].map(t=>Math.round(((stats[t].fatiga||[0,0]).reduce((a,f)=>a+f,0))/2));
   const barra=`<div style="display:flex;height:6px;border-radius:3px;overflow:hidden;margin:3px 0;background:#22303f">`
-    +`<div style="width:${pos0}%;background:var(--lima)"></div><div style="width:${100-pos0}%;background:#3b4a5c"></div></div>`
-    +`<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--gris2)"><span>Posesión ${pos0}%</span><span>${100-pos0}%</span></div>`;
+    +`<div style="width:${dom0}%;background:var(--lima)"></div><div style="width:${100-dom0}%;background:#3b4a5c"></div></div>`
+    +`<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--gris2)"><span>Puntos ganados ${pg[0]}</span><span>${pg[1]}</span></div>`;
   el.innerHTML=barra+`Winners <b style="color:var(--lima)">${w[0]}</b>-${w[1]} · Errores <b style="color:#E05656">${e[0]}</b>-${e[1]} · Rotura <b>${bp[0].ganados}/${bp[0].jugados}</b>-${bp[1].ganados}/${bp[1].jugados} · Fatiga <b>${fat[0]}</b>-${fat[1]} · Táctica: ${TACT.agres}${TACT.diana==="debil"?" · al flojo":""}`;
 }
 function pintaMarcadorP(){
   pintaLiveStats();
   const m=match;
-  const oro=m.p[0]===3&&m.p[1]===3;
-  document.getElementById("pMarcador").textContent=oro?"ORO":`${PTS[m.p[0]]} · ${PTS[m.p[1]]}`;
+  let marc;
+  if(m.golden) marc="★ STAR POINT";
+  else if(m.ventaja===0) marc="VENT · 40";
+  else if(m.ventaja===1) marc="40 · VENT";
+  else marc=`${PTS[m.p[0]]} · ${PTS[m.p[1]]}`;
+  document.getElementById("pMarcador").textContent=marc;
   const tb=m.j[0]===6&&m.j[1]===6?" · TIE-BREAK":"";
   const hist=m.hist.length?` (${m.hist.join(", ")})`:"";
-  document.getElementById("pJuegos").textContent=`Sets ${m.s[0]} — ${m.s[1]}${hist} · juegos ${m.j[0]}-${m.j[1]}${tb} · 3 sets a 6, punto de oro`;
+  document.getElementById("pJuegos").textContent=`Sets ${m.s[0]} — ${m.s[1]}${hist} · juegos ${m.j[0]}-${m.j[1]}${tb} · 3 sets a 6, star point`;
 }
 function addCom(txt,team){
   const box=document.getElementById("coms");

@@ -7,6 +7,7 @@ function irA(s){
     if(el) el.classList.toggle("oculto",x!==s);
   });
   document.getElementById("miniBtns").style.display = (s==="menu")?"none":"flex";
+  document.body.classList.toggle("en-partido",s==="partido");  // el partido oculta el panel lateral
   if(s==="partido"){resize();draw();}
 }
 function infoSlot(modo){

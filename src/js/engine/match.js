@@ -142,5 +142,5 @@ const F_ERR=["Se le va por poco...","¡A la red! Error no forzado.","La bola mue
 const F_PERSO={valiente:" — no le tiembla el pulso",conservador:" — a lo seguro",frio:" — hielo en las venas",emocionalAlto:" — está en racha y se nota",emocionalBajo:" — se le nota la tensión"};
 
 let teams=[],stats;
-function mkStats(){return {jug:[{w:0,e:0},{w:0,e:0}], tiros:0, bp:{jugados:0,ganados:0}, fatiga:[0,0]};}
+function mkStats(){return {jug:[{w:0,e:0},{w:0,e:0}], tiros:0, bp:{jugados:0,ganados:0}, fatiga:[0,0], pganados:0};}
 
