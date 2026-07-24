@@ -697,7 +697,9 @@ function finPartido(){
   }
   match=null;
 
-  const neto=(x)=>{const r=G.modo==="carrera"&&G.carrera.staff&&G.carrera.staff.rep;return r?Math.round(x*(1-(r.com||15)/100)):x;};
+  // neto() aplica el margen económico de la dificultad a TODO premio de torneo
+  // (un solo punto para carrera y club) y, en carrera, la comisión del representante.
+  const neto=(x)=>{x=ecoIngreso(x);const r=G.modo==="carrera"&&G.carrera.staff&&G.carrera.staff.rep;return r?Math.round(x*(1-(r.com||15)/100)):x;};
   if(!gane){
     const idx=loserIdx(f);
     e.pts+=torneo.pts[idx]||0;e.dinero+=neto(torneo.premio[idx]||0);
@@ -723,7 +725,7 @@ function finPartido(){
     let extra="";
     if(G.modo==="carrera"){
       G.carrera.compiMoral=clamp((G.carrera.compiMoral??65)+8,5,95);
-      if(G.carrera.sponsor){e.dinero+=G.carrera.sponsor.bonus;extra=` Bonus de ${G.carrera.sponsor.marca}: +${G.carrera.sponsor.bonus}€.`;}
+      if(G.carrera.sponsor){const bono=ecoIngreso(G.carrera.sponsor.bonus);e.dinero+=bono;extra=` Bonus de ${G.carrera.sponsor.marca}: +${bono}€.`;}
     }
     ent()._ultCamp=true;
     sfxTitulo();

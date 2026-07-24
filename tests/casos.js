@@ -717,3 +717,102 @@ comprueba("Escritorio: el panel de mando se rellena en carrera y en club", () =>
   exige(hud.innerHTML.indexOf("Instalaciones") >= 0, "el panel no se adapta al modo club");
   return "panel completo en ambos modos";
 });
+
+/* ===================== DIFICULTAD ===================== */
+
+comprueba("Dificultad: tres perfiles bien formados y fallback seguro", () => {
+  ["accesible", "manager", "experto"].forEach(id => {
+    const p = PERFILES_DIF[id];
+    exige(p && p.id === id, "falta el perfil " + id);
+    exige(typeof p.lesion === "number" && typeof p.economia === "number" && typeof p.junta === "number", "perfil " + id + " sin multiplicadores");
+    exige(p.n && p.emoji && p.desc, "perfil " + id + " sin textos de UI");
+  });
+  exige(perfilDif("no-existe") === PERFILES_DIF[DIF_DEF], "un id desconocido no cae al perfil por defecto");
+  return DIF_DEF + " por defecto; 3 perfiles";
+});
+
+comprueba("Dificultad: G.dif manda sobre la preferencia del menú", () => {
+  const prev = (typeof G !== "undefined" && G) ? G.dif : undefined;
+  try {
+    localStorage.setItem("rpm_dif", "accesible");
+    G = { dif: "experto" };
+    exige(difId() === "experto", "G.dif debería tener prioridad sobre localStorage");
+    exige(dif().id === "experto", "dif() no refleja la dificultad de la partida");
+    G = null;
+    exige(difId() === "accesible", "sin partida debería mandar la preferencia del menú");
+  } finally {
+    localStorage.removeItem("rpm_dif");
+    G = (prev !== undefined) ? { dif: prev } : null;
+  }
+  return "prioridad partida > menú > defecto";
+});
+
+comprueba("Dificultad: la economía escala accesible > mánager > experto", () => {
+  const g = G; G = null;
+  try {
+    const eco = id => { G = { dif: id }; return ecoIngreso(1000); };
+    const a = eco("accesible"), m = eco("manager"), x = eco("experto");
+    exige(a > m && m > x, `orden económico incorrecto: ${a}/${m}/${x}`);
+    exige(m === 1000, "en mánager el premio no debería alterarse");
+    return `1000€ → ${a} / ${m} / ${x}`;
+  } finally { G = g; }
+});
+
+comprueba("Dificultad: el riesgo de lesión sube con la exigencia y se acota", () => {
+  const g = G; G = null;
+  try {
+    const k = id => { G = { dif: id }; return kLesion(0.3); };
+    exige(k("experto") > k("manager") && k("manager") > k("accesible"), "el riesgo no ordena por dificultad");
+    G = { dif: "experto" };
+    exige(kLesion(2) <= 0.95, "el riesgo de lesión no está acotado");
+    exige(kLesion(0) === 0, "riesgo base 0 debe seguir siendo 0");
+    return "experto > mánager > accesible, tope 0.95";
+  } finally { G = g; }
+});
+
+comprueba("Dificultad: la junta afloja o aprieta el objetivo top-N", () => {
+  const g = G; G = null;
+  try {
+    const t = id => { G = { dif: id }; return juntaTop(8); };
+    exige(t("accesible") > t("manager") && t("manager") > t("experto"), "el objetivo no se ajusta por dificultad");
+    exige(t("manager") === 8, "en mánager el objetivo base no debería cambiar");
+    G = { dif: "experto" };
+    exige(juntaTop(1) >= 1, "el objetivo no puede bajar de top 1");
+    return `top 8 → ${t("accesible")} / ${t("manager")} / ${t("experto")}`;
+  } finally { G = g; }
+});
+
+comprueba("Dificultad: cada partida nueva fija su propia dificultad en G.dif", () => {
+  try {
+    localStorage.setItem("rpm_dif", "experto");
+    nuevaCarrera("agresivo");
+    exige(G.dif === "experto", "la carrera no hereda la dificultad elegida en el menú");
+    exige(G.superliga === undefined && G.modo === "carrera", "estado de carrera inconsistente");
+  } finally { localStorage.removeItem("rpm_dif"); }
+  return "G.dif = experto en la partida nueva";
+});
+
+comprueba("Dificultad: la Superliga nace con el objetivo de junta ajustado", () => {
+  const g = G;
+  try {
+    localStorage.setItem("rpm_dif", "experto"); G = null;
+    const dura = mkSuperliga("Test", 62, "#C6F53C").objetivo;
+    localStorage.setItem("rpm_dif", "accesible");
+    const blanda = mkSuperliga("Test", 62, "#C6F53C").objetivo;
+    exige(blanda > dura, `accesible (${blanda}) debería exigir un top más holgado que experto (${dura})`);
+    return `experto top ${dura} · accesible top ${blanda}`;
+  } finally { localStorage.removeItem("rpm_dif"); G = g; }
+});
+
+comprueba("Dificultad: el selector del menú marca y persiste la elección", () => {
+  try {
+    setDif("experto");
+    exige(localStorage.getItem("rpm_dif") === "experto", "setDif no persiste la preferencia");
+    const cont = document.getElementById("selDif");
+    exige(cont.innerHTML.indexOf("difchip") >= 0, "el selector no se pinta");
+    exige(cont.innerHTML.indexOf('aria-pressed="true"') >= 0, "ningún chip queda marcado como activo");
+    setDif("bla-bla");
+    exige(localStorage.getItem("rpm_dif") === "experto", "un id inválido no debería cambiar la preferencia");
+  } finally { localStorage.removeItem("rpm_dif"); }
+  return "chip activo y persistencia correctos";
+});

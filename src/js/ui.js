@@ -31,6 +31,21 @@ function pintarMenu(){
     ? "Tienes partida guardada: al entrar podrás continuarla o empezar una nueva."
     : "El guardado es automático. Puedes exportar/importar tu partida como copia de seguridad.";
   document.getElementById("topCtx").innerHTML="<b>Rising Games</b>";
+  pintarSelectorDif();
+}
+
+/* Selector de dificultad del menú. La elección se guarda como preferencia
+   (localStorage "rpm_dif") y cada partida nueva la fija en G.dif al crearse.
+   No afecta a partidas ya empezadas: cada una conserva su propia dificultad. */
+function setDif(id){ if(!PERFILES_DIF[id]) return; try{ localStorage.setItem("rpm_dif",id); }catch(e){} pintarSelectorDif(); }
+function pintarSelectorDif(){
+  const cont=document.getElementById("selDif"); if(!cont) return;
+  const sel=difMenu();
+  const chips=Object.keys(PERFILES_DIF).map(id=>{
+    const p=PERFILES_DIF[id], on=id===sel;
+    return `<button type="button" class="difchip${on?" on":""}" onclick="setDif('${id}')" aria-pressed="${on}">${p.emoji} ${p.n}</button>`;
+  }).join("");
+  cont.innerHTML=`<div class="diflabel">Dificultad</div><div class="difrow">${chips}</div><div class="difdesc">${perfilDif(sel).desc}</div>`;
 }
 // modal de elección: continuar guardada o empezar nueva
 function quitarEl(el){

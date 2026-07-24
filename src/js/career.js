@@ -312,7 +312,7 @@ function empezarCarrera(estiloKey){
   if(lado===null){lado=0;marcaLado();}
   if(persoSel===null) persoSel="frio";
   const nombre=document.getElementById("inNombre").value.trim()||"Jugador";
-  G={v:1,modo:"carrera",world:mkWorld(),clubG:null,carrera:{
+  G={v:1,modo:"carrera",dif:difMenu(),world:mkWorld(),clubG:null,carrera:{
     nombre,estilo:estiloKey,perso:persoSel,lado,color:colorSel,ava:{...AVA_EDIT},_ropa:colorSel,
     attrs:{...ESTILOS[estiloKey].attrs},
     semana:1,edad:16,pts:0,dinero:2500,energia:100,conf:55,
@@ -375,7 +375,7 @@ function pintarObjetivos(){
   const box=document.getElementById("objTemp"); if(!box) return;
   const c=G.carrera; if(!c) return;
   if(!c.objetivos) c.objetivos=mkObjetivosTemporada(c,miPuesto());
-  box.innerHTML=c.objetivos.map(o=>{
+  box.innerHTML=`<div class="foot" style="text-align:left;margin:-2px 0 8px" title="${dif().desc}">Dificultad: <b style="color:var(--lima)">${dif().emoji} ${dif().n}</b></div>`+c.objetivos.map(o=>{
     const pr=progresoObjetivo(c,o,miPuesto());
     const rec=o.rec?[o.rec.dinero?`+${o.rec.dinero}€`:"",o.rec.fans?`+${o.rec.fans} seg.`:"",o.rec.moral?`+${o.rec.moral} moral`:""].filter(Boolean).join(" · "):"";
     return `<div class="opcion" style="margin-bottom:6px">

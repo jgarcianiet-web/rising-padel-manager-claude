@@ -89,7 +89,7 @@ function pintarMercadoInicial(){
     if(plantillaTmp.length<2) return;
     const gasto2=plantillaTmp.reduce((s,j)=>s+costeFichaje(j),0);
     const nombre=document.getElementById("inClubNombre").value.trim()||"Rising Pádel Club";
-    G={v:1,modo:"club",world:mkWorld(),carrera:null,clubG:{
+    G={v:1,modo:"club",dif:difMenu(),world:mkWorld(),carrera:null,clubG:{
       nombre,color:colorClubSel,
       plantilla:plantillaTmp.map(j=>({...j})),
       alin:[0,1],alinB:null,quims:{},
@@ -197,7 +197,7 @@ function simTorneoParejaB(ci){
     fase++;
     // lesión por fatiga a mitad de torneo
     const cansado=parB.find(j=>j.energia<20&&!j.lesion);
-    if(cansado&&Math.random()<(cl.staff.fisio?.15:.3)){
+    if(cansado&&Math.random()<kLesion(cl.staff.fisio?.15:.3)){
       cansado.lesion=pickLesion(clamp(1-cansado.energia/40,0,1));
       if(cl.staff.fisio) cansado.lesion.sem=Math.max(1,cansado.lesion.sem-1);
       cansado.fragil=(cansado.fragil||0)+1;

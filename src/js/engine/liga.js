@@ -88,7 +88,7 @@ function evolucionaPlantillaSL(plantilla,rnd){
 function cierreTempSuperliga(sl){
   const tu=sl.equipos.findIndex(e=>e.tuyo);
   const cls=clasificacionLiga(sl), pos=cls.findIndex(f=>f.i===tu)+1;
-  const premio=premioSuperliga(pos)+bonusPlayoffSL(sl,tu), sal=salariosSuperliga(sl.plantilla);
+  const premio=ecoIngreso(premioSuperliga(pos)+bonusPlayoffSL(sl,tu)), sal=salariosSuperliga(sl.plantilla);
   sl.caja=(sl.caja||0)+premio-sal;
   const evo=evolucionaPlantillaSL(sl.plantilla);
   return {pos,premio,sal,caja:sl.caja,objetivoCumplido:pos<=(sl.objetivo||8),campeon:!!(sl.playoff&&sl.playoff.campeon===tu),evo};
@@ -121,7 +121,7 @@ function mkSuperliga(tuNombre,tuFuerza,tuColor){
   const equipos=[{n:tuNombre||"Rising SC",color:tuColor||"#C6F53C",fuerza:tuFuerza||62,tuyo:true}].concat(npc);
   return {equipos,calendario:mkCalendarioLiga(equipos.length),jornada:0,
     tabla:equipos.map(()=>({pts:0,pj:0,pg:0,pp:0,gf:0,gc:0})),fase:"liga",playoff:null,ultima:null,temporada:1,
-    caja:40000,objetivo:8,mercado:null};
+    caja:40000,objetivo:juntaTop(8),mercado:null};
 }
 // Juega la jornada actual (todos los cruces), actualiza la tabla y avanza. Devuelve los resultados.
 function jugarJornadaLiga(sl,rnd){
@@ -184,7 +184,7 @@ function crearSuperliga(){
   sl.alin=[[0,1],[2,3],[4,5]];
   sl.mercado=mkMercadoSL();
   sincronizaClubSL(sl);
-  G={modo:"superliga",superliga:sl};
+  G={modo:"superliga",dif:difMenu(),superliga:sl};
   entrarSuperliga();
 }
 // El jugador reordena su alineación (mueve un jugador a otra pareja).
@@ -243,7 +243,7 @@ function _pintarEquipoSL(sl){
   const ladoT=l=>(typeof ladoTxt==="function")?ladoTxt(l):(l===1?"revés":"drive");
   const cls=clasificacionLiga(sl), tuIdx=sl.equipos.findIndex(e=>e.tuyo), pos=cls.findIndex(f=>f.i===tuIdx)+1;
   const objOk=pos>0&&pos<=(sl.objetivo||8);
-  let html=`<div class="meta" style="margin:0 0 8px"><div class="chip">Fuerza <b style="color:var(--lima)">${tu.fuerza}</b></div><div class="chip">Caja <b style="color:${(sl.caja||0)<0?"var(--rojo)":"var(--lima)"}">${(sl.caja||0).toLocaleString("es")}€</b></div><div class="chip">Junta: <b style="color:${objOk?"var(--verde)":"var(--rojo)"}">top ${sl.objetivo||8}</b> ${pos>0?`(vas ${pos}º)`:""}</div></div>
+  let html=`<div class="meta" style="margin:0 0 8px"><div class="chip">Fuerza <b style="color:var(--lima)">${tu.fuerza}</b></div><div class="chip">Caja <b style="color:${(sl.caja||0)<0?"var(--rojo)":"var(--lima)"}">${(sl.caja||0).toLocaleString("es")}€</b></div><div class="chip">Junta: <b style="color:${objOk?"var(--verde)":"var(--rojo)"}">top ${sl.objetivo||8}</b> ${pos>0?`(vas ${pos}º)`:""}</div><div class="chip" title="${dif().desc}">${dif().emoji} <b>${dif().n}</b></div></div>
   <div class="foot" style="text-align:left;margin-bottom:6px">Alinea tus 3 parejas: la química de lados (drive+revés) suma.</div>`;
   sl.alin.forEach((par,pi)=>{
     html+=`<div class="opcion" style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:11px">Pareja ${pi+1}</b><span class="pill lima">fuerza ${fuerzaParejaSL(sl.plantilla,par)}</span></div>`;
