@@ -118,6 +118,16 @@ function abrirModo(modo){
           prot.hist=hSql; G._histDesdeSql=true;
         }
       }
+      // Fase 4d·5: cara a cara contra rivales (mapa id→{v,d,...}) — coincide si
+      // tiene las mismas claves y los mismos marcadores v/d que el blob.
+      if(typeof dbSqlCargarH2h==="function" && prot && prot.h2h && typeof prot.h2h==="object"){
+        const hhSql=dbSqlCargarH2h(), hhb=prot.h2h;
+        const ks=hhSql?Object.keys(hhSql):null, kb=Object.keys(hhb);
+        if(ks && ks.length===kb.length &&
+           kb.every(k=>hhSql[k] && hhSql[k].v===(hhb[k].v|0) && hhSql[k].d===(hhb[k].d|0))){
+          prot.h2h=hhSql; G._h2hDesdeSql=true;
+        }
+      }
     }catch(e){}
     entrarPartida();
   };

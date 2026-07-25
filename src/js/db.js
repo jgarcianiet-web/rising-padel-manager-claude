@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS norm_diario(
   ord INTEGER PRIMARY KEY AUTOINCREMENT, texto TEXT);
 CREATE TABLE IF NOT EXISTS norm_hist(
   ord INTEGER PRIMARY KEY AUTOINCREMENT, temporada INTEGER, pos INTEGER, pts INTEGER, tit INTEGER);
+CREATE TABLE IF NOT EXISTS norm_h2h(
+  rid TEXT PRIMARY KEY, v INTEGER, d INTEGER, nombre TEXT, ult_t INTEGER, alta INTEGER);
 `;
 
 function dbSqlSchema(db){ db.run(DB_SCHEMA_SQL); }
@@ -139,6 +141,35 @@ function dbSqlLeerHist(db){
   return out;
 }
 
+// Cara a cara contra rivales: mapa id_rival → {v, d, n, ultT, alta}. Es un
+// diccionario (sin orden significativo); la clave primaria es el id del rival.
+// `alta` solo se materializa si es >0, para que el round-trip respete la forma
+// original (el juego lo crea perezosamente con (h2r.alta||0)+1).
+function dbSqlGuardarH2h(db, mapa){
+  db.run("BEGIN");
+  try{
+    db.run("DELETE FROM norm_h2h;");
+    const st=db.prepare("INSERT INTO norm_h2h(rid,v,d,nombre,ult_t,alta) VALUES(?,?,?,?,?,?)");
+    Object.keys(mapa||{}).forEach(rid=>{
+      const h=mapa[rid]||{};
+      st.run([String(rid),h.v|0,h.d|0,h.n||"",h.ultT|0,h.alta|0]);
+    }); st.free();
+    db.run("COMMIT");
+  }catch(e){ try{ db.run("ROLLBACK"); }catch(_){} throw e; }
+}
+function dbSqlLeerH2h(db){
+  const out={};
+  const r=db.exec("SELECT rid,v,d,nombre,ult_t,alta FROM norm_h2h");
+  if(r&&r[0]) r[0].values.forEach(f=>{
+    const h={v:f[1],d:f[2]};
+    if(f[3]) h.n=f[3];
+    if(f[4]) h.ultT=f[4];
+    if(f[5]) h.alta=f[5];
+    out[f[0]]=h;
+  });
+  return out;
+}
+
 /* ---------- capa de navegador/app: init, persistencia y write-through ---------- */
 let SQLDB=null;
 function _sqlInitFn(){
@@ -182,6 +213,7 @@ function dbSqlSnapshotVivo(){
         dbSqlGuardarPalmares(SQLDB, prot.palmares||[]);
         dbSqlGuardarDiario(SQLDB, prot.diario||[]);
         dbSqlGuardarHist(SQLDB, prot.hist||[]);
+        dbSqlGuardarH2h(SQLDB, prot.h2h||{});
       }
     }catch(_){}
     dbSqlPersistir();
@@ -206,6 +238,11 @@ function dbSqlCargarDiario(){
 function dbSqlCargarHist(){
   if(!SQLDB) return null;
   try{ return dbSqlLeerHist(SQLDB); }catch(e){ return null; }
+}
+// Reconstruye el cara a cara contra rivales desde sql.js (Fase 4d·5).
+function dbSqlCargarH2h(){
+  if(!SQLDB) return null;
+  try{ return dbSqlLeerH2h(SQLDB); }catch(e){ return null; }
 }
 
 /* ---------- consultas para la analítica (síncronas, sobre sql.js) ---------- */
@@ -317,6 +354,7 @@ if(typeof module!=="undefined"&&module.exports){
   module.exports={DB_SCHEMA_SQL,dbSqlSchema,dbSqlGuardarSnapshot,dbSqlLeerSnapshot,
     dbSqlGuardarN1,dbSqlLeerN1,dbSqlGuardarPalmares,dbSqlLeerPalmares,
     dbSqlGuardarDiario,dbSqlLeerDiario,dbSqlGuardarHist,dbSqlLeerHist,
+    dbSqlGuardarH2h,dbSqlLeerH2h,
     dbSqlPorEstilo,dbSqlMejoresParejas,dbSqlTopPaises,dbSqlDistribucionNivel,
     dbSqlSnapshotCoincide};
 }

@@ -170,5 +170,22 @@ module.exports = async function ejecutarPruebasSql() {
   db.dbSqlGuardarHist(d, []);
   chk(db.dbSqlLeerHist(d).length === 0, "4d · hist: lista vacía deja la tabla vacía");
 
+  // ---------- cara a cara contra rivales (Fase 4d·5) ----------
+  // mapa id_rival → {v,d,n,ultT,alta}; `alta` solo existe si es >0
+  const h2h = {
+    "7": { v: 3, d: 1, n: "Gabán/Chingorro", ultT: 2, alta: 2 },
+    "12": { v: 0, d: 2, n: "Sánchiz/Ustera", ultT: 1 },
+  };
+  db.dbSqlGuardarH2h(d, h2h);
+  db.dbSqlGuardarH2h(d, h2h); // reproyectar: debe REEMPLAZAR, no acumular
+  const h2hb = db.dbSqlLeerH2h(d);
+  chk(Object.keys(h2hb).length === 2, "4d · h2h: round-trip conserva 2 rivales (reemplaza, no acumula)");
+  chk(h2hb["7"].v === 3 && h2hb["7"].d === 1 && h2hb["7"].n === "Gabán/Chingorro" && h2hb["7"].ultT === 2,
+    "4d · h2h: marcador, nombre y última temporada reconstruidos", JSON.stringify(h2hb["7"]));
+  chk(h2hb["7"].alta === 2 && !("alta" in h2hb["12"]),
+    "4d · h2h: `alta` solo se materializa si es >0 (round-trip identidad)");
+  db.dbSqlGuardarH2h(d, {});
+  chk(Object.keys(db.dbSqlLeerH2h(d)).length === 0, "4d · h2h: mapa vacío deja la tabla vacía");
+
   return res;
 };
