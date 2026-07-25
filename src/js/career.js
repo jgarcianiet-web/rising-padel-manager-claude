@@ -392,7 +392,8 @@ function mostrarDilema(c){
   const d=(typeof _dilemaPorId==="function")&&c.dilemaActivo&&_dilemaPorId(c.dilemaActivo.id);
   if(!d){ c.dilemaActivo=null; return; }
   const ov=document.getElementById("dilModal")||(()=>{const x=document.createElement("div");x.id="dilModal";x.style.cssText="position:fixed;inset:0;background:rgba(10,13,19,.93);z-index:82;display:flex;align-items:center;justify-content:center;padding:16px";document.body.appendChild(x);return x;})();
-  const botones=d.ops.map((o,i)=>`<button class="${i===d.ops.length-1&&d.ops.length>1?"":"pri"}" style="width:100%;text-align:left;margin-top:7px;line-height:1.35" data-op="${i}"><b>${o.txt}</b><div style="font-size:11px;color:${(i===d.ops.length-1&&d.ops.length>1)?"var(--gris)":"rgba(0,0,0,.7)"};font-weight:400;margin-top:2px">${o.desc}</div></button>`).join("");
+  const val=v=>typeof v==="function"?v(c):v;   // txt/desc pasan por t() (i18n)
+  const botones=d.ops.map((o,i)=>`<button class="${i===d.ops.length-1&&d.ops.length>1?"":"pri"}" style="width:100%;text-align:left;margin-top:7px;line-height:1.35" data-op="${i}"><b>${val(o.txt)}</b><div style="font-size:11px;color:${(i===d.ops.length-1&&d.ops.length>1)?"var(--gris)":"rgba(0,0,0,.7)"};font-weight:400;margin-top:2px">${val(o.desc)}</div></button>`).join("");
   ov.innerHTML=`<div class="card" style="max-width:460px;width:100%">
     <h3 style="margin-top:0">⚖ ${(typeof d.titulo==="function"?d.titulo(c):d.titulo)}</h3>
     <div style="font-size:12.5px;color:var(--gris);line-height:1.5;margin-bottom:8px">${(typeof d.texto==="function"?d.texto(c):d.texto)}</div>
@@ -400,7 +401,7 @@ function mostrarDilema(c){
   ov.querySelectorAll("button[data-op]").forEach(b=>b.onclick=()=>{
     const res=aplicarOpcionDilema(c,parseInt(b.getAttribute("data-op"),10),c.semana);
     quitarEl(ov);
-    if(res){ avisa(`⚖ ${res.op.txt}.${res.pend?" (Habrá consecuencias más adelante.)":""}`); }
+    if(res){ avisa(`⚖ ${val(res.op.txt)}.${res.pend?t("dil_consec"):""}`); }
     guardar(); pintarCarrera();
   });
 }

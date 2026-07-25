@@ -852,6 +852,29 @@ comprueba("Idiomas: t() traduce y cae con red de seguridad", () => {
   return "traduce, fallback de idioma y de clave";
 });
 
+comprueba("Idiomas: los dilemas se muestran en el idioma activo", () => {
+  const c = { sponsor: { marca: "PadelPro", sem: 200 }, energia: 90 };
+  const d = _dilemaPorId("dubai");
+  try {
+    localStorage.setItem("rpm_idioma", "en");
+    const tEn = d.titulo(c), o1En = d.ops[0].txt(c);
+    exige(tEn.includes("PadelPro"), "el título no interpola la marca en inglés");
+    exige(o1En === "Shoot the ad", "la opción 1 no está en inglés: " + o1En);
+    // la consecuencia diferida se materializa en el idioma vigente al decidir
+    const c2 = { sponsor: { marca: "PadelPro", sem: 200 }, energia: 90, dilemaActivo: { id: "dubai", sem: 5 } };
+    const r = aplicarOpcionDilema(c2, 0, 5);
+    exige(r.pend && r.pend.txt.includes("Dubai") && r.pend.txt.includes("toll"), "la consecuencia no se guarda en inglés: " + r.pend.txt);
+    localStorage.setItem("rpm_idioma", "es");
+    exige(d.ops[0].txt(c) === "Rodar el anuncio", "la opción 1 no vuelve al español");
+    exige(d.titulo(c).includes("PadelPro"), "el título no interpola la marca en español");
+    // las 24 claves dil_* existen en los 5 idiomas
+    const claves = Object.keys(I18N.es).filter(k => k.indexOf("dil_") === 0);
+    exige(claves.length >= 24, "faltan claves dil_* en español: " + claves.length);
+    ["en", "fr", "de", "it"].forEach(l => claves.forEach(k => exige(typeof I18N[l][k] === "string" && I18N[l][k].length > 0, `falta ${k} en ${l}`)));
+  } finally { localStorage.removeItem("rpm_idioma"); }
+  return "títulos, opciones y consecuencias diferidas en 5 idiomas";
+});
+
 comprueba("Idiomas: los nombres de dificultad cambian con el idioma", () => {
   try {
     localStorage.setItem("rpm_idioma", "it");
