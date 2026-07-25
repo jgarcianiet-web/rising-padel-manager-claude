@@ -14,13 +14,16 @@ const ROLES_STAFF={
   ojeador:{n:"Ojeador",salBase:60,ico:"🔭"},
 };
 const ESP_GRUPOS=[["fondo","globo","pared"],["remate","vibora","bandeja"],["volea","chiquita","dejada"],["remate","volea","fondo"],["bandeja","globo","dejada"]];
+// Cada frase es una CLAVE i18n; se resuelve al pintarla, así el staff ya
+// contratado habla en el idioma activo (los guardados antiguos llevan el texto
+// literal y t() lo devuelve tal cual).
 const FRASES_STAFF={
-  entrenador:["Pizarra vieja, ideas nuevas.","No grita: mira. Y con eso basta.","Formó a media cantera de su región.","Obsesión: que el fácil no se falle."],
-  fisio:["Manos de oro, agenda llena.","Detecta la sobrecarga antes que tú.","Sus vendajes son leyenda regional.","Cree en el hielo como otros creen en la suerte."],
-  psico:["Convierte el miedo en rutina.","Trabaja el punto siguiente, no el anterior.","Sesiones cortas, cabezas largas.","El tie-break es su oficina."],
-  fisico:["Piernas frescas en el tercer set.","Su pretemporada es temida y bendecida.","Mide todo: hasta el sueño.","Contrataciones que se notan en abril."],
-  rep:["Tiene el teléfono de todas las marcas.","Negocia como juega: al cuerpo.","Su comisión duele menos que su ausencia.","Vende humo solo cuando hay fuego."],
-  ojeador:["Ve el techo donde otros ven el nivel.","Kilómetros y libretas.","Su ojo llega donde no llega el ranking.","Las gangas lo persiguen."],
+  entrenador:["fr_ent_1","fr_ent_2","fr_ent_3","fr_ent_4"],
+  fisio:["fr_fisio_1","fr_fisio_2","fr_fisio_3","fr_fisio_4"],
+  psico:["fr_psico_1","fr_psico_2","fr_psico_3","fr_psico_4"],
+  fisico:["fr_fisico_1","fr_fisico_2","fr_fisico_3","fr_fisico_4"],
+  rep:["fr_rep_1","fr_rep_2","fr_rep_3","fr_rep_4"],
+  ojeador:["fr_ojeador_1","fr_ojeador_2","fr_ojeador_3","fr_ojeador_4"],
 };
 function mkStaff(rol,nivFijo){
   const niv=nivFijo||Math.min(5,Math.max(1,Math.round(R(1,3.6)+(Math.random()<.18?1:0))));
@@ -28,7 +31,7 @@ function mkStaff(rol,nivFijo){
   const nom=`${nombrePorSexo(sx)} ${pick(APELL)}`;
   const st={rol,n:nom,sexo:sx,edad:Math.round(R(30,62)),niv,
     sal:Math.round(ROLES_STAFF[rol].salBase*niv*(1+R(-.12,.15))),
-    frase:pick(FRASES_STAFF[rol]||["Profesional contrastado."])};
+    frase:pick(FRASES_STAFF[rol]||["fr_generica"])};
   if(rol==="entrenador") st.esp=pick(ESP_GRUPOS);
   if(rol==="rep") st.com=Math.max(8,20-niv*2);   // % de comisión: mejor agente, menos muerde
   return st;
@@ -130,7 +133,7 @@ function renderEquipoStaff(el){
     const st=e.staff[r];
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--borde)">
       <div style="font-size:11.5px">${ROLES_STAFF[r].ico} <b>${st?st.n:"—"}</b> <span style="color:var(--gris2)">· ${t("rol_"+r)}</span>
-        ${st?`<div style="font-size:10px;color:var(--gris)">${"★".repeat(st.niv)}${"☆".repeat(5-st.niv)} · ${st.sal}€/sem${st.rol==="rep"?` · ${t("staff_comision",{c:st.com})}`:""}${st.esp?` · ${st.esp.join("/")}`:""}<br><em style="color:var(--gris2)">«${st.frase}»</em></div>`:`<div style="font-size:10px;color:var(--gris2)">${t("staff_vacante")}</div>`}
+        ${st?`<div style="font-size:10px;color:var(--gris)">${"★".repeat(st.niv)}${"☆".repeat(5-st.niv)} · ${st.sal}€/sem${st.rol==="rep"?` · ${t("staff_comision",{c:st.com})}`:""}${st.esp?` · ${atLista(st.esp).join("/")}`:""}<br><em style="color:var(--gris2)">«${t(st.frase)}»</em></div>`:`<div style="font-size:10px;color:var(--gris2)">${t("staff_vacante")}</div>`}
       </div>
       ${st?`<button style="font-size:10px;padding:3px 7px" onclick="despedirStaff('${r}')">${t("staff_despedir")}</button>`:""}
     </div>`;}).join("");
@@ -149,17 +152,17 @@ function renderMercadoStaff(el){
   el.innerHTML=filtroBar+`<div class="foot" style="text-align:left;margin-bottom:6px">${t("staff_bolsa",{n:listaVis.length})}</div>`+listaVis.map((st)=>{const i=e.mercadoStaff.indexOf(st);return `
     <div class="opcion" style="padding:8px">
       <div style="font-size:11.5px">${ROLES_STAFF[st.rol].ico} <b>${st.n}</b>, ${st.edad} <span class="pill">${t("rol_"+st.rol)}</span> ${st.seOfrece?`<span class="pill" style="color:var(--lima)">${t("staff_se_ofrece")}</span>`:""}${st.equipoDe?`<span class="pill" style="color:var(--oro)">${t("staff_entrena_a",{pos:puestoDePareja(st.equipoDe),equipo:st.equipoDe})}</span>`:""}</div>
-      <div style="font-size:10px;color:var(--gris);margin:3px 0">${"★".repeat(st.niv)}${"☆".repeat(5-st.niv)} · ${st.sal}€/sem${st.rol==="rep"?` · ${t("staff_comision",{c:st.com})}`:""}${st.esp?` · ${t("staff_especialista",{lista:st.esp.join(", ")})}`:""} · <em>«${st.frase}»</em>${st.equipoDe?(()=>{const cl=clausulaEntrenador(st);const alcanza=miPuesto()-puestoDePareja(st.equipoDe)<=([99,30,20,12,7,4][st.niv]||15);return `<br><span style="color:var(--oro)">${t("staff_clausula",{cl:cl.toLocaleString("es")})}</span>${alcanza?"":` <span style="color:#E05656">${t("staff_fuera_alcance")}</span>`}`;})():""}</div>
+      <div style="font-size:10px;color:var(--gris);margin:3px 0">${"★".repeat(st.niv)}${"☆".repeat(5-st.niv)} · ${st.sal}€/sem${st.rol==="rep"?` · ${t("staff_comision",{c:st.com})}`:""}${st.esp?` · ${t("staff_especialista",{lista:atLista(st.esp).join(", ")})}`:""} · <em>«${t(st.frase)}»</em>${st.equipoDe?(()=>{const cl=clausulaEntrenador(st);const alcanza=miPuesto()-puestoDePareja(st.equipoDe)<=([99,30,20,12,7,4][st.niv]||15);return `<br><span style="color:var(--oro)">${t("staff_clausula",{cl:cl.toLocaleString("es")})}</span>${alcanza?"":` <span style="color:#E05656">${t("staff_fuera_alcance")}</span>`}`;})():""}</div>
       ${st.equipoDe?(()=>{const cl=clausulaEntrenador(st);const alcanza=miPuesto()-puestoDePareja(st.equipoDe)<=([99,30,20,12,7,4][st.niv]||15);return `<button style="width:100%;font-size:11px" onclick="ficharStaff(${i})"${(!alcanza||e.dinero<cl)?' disabled':''}>${!alcanza?t("staff_no_aceptaria"):e.dinero<cl?t("staff_clausula_sin_caja",{cl:cl.toLocaleString("es")}):t("staff_negociar",{cl:cl.toLocaleString("es")})}</button>`;})():`<button style="width:100%;font-size:11px" onclick="ficharStaff(${i})">${t("staff_contratar",{sal:st.sal})}</button>`}
     </div>`;}).join("");
 }
 function entrenadorActual(){
   const e=ent();
-  return (e&&e.staff&&e.staff.entrenador)||{n:"Sin entrenador",sal:0,esp:[],niv:0,frase:"Tu plan y tu instinto."};
+  return (e&&e.staff&&e.staff.entrenador)||{n:t("staff_sin_ent"),sal:0,esp:[],niv:0,frase:"fr_sin_ent"};
 }
 function staffNiv(rol){ const e=ent(); return (e&&e.staff&&e.staff[rol])?(e.staff[rol].niv||2):0; }
 const ENTRENADORES=[
-  {id:0,n:"Sin entrenador",sal:0,esp:[],desc:"Tu plan y tu instinto. Nadie te corrige."},
+  {id:0,n:"Sin entrenador",sal:0,esp:[],desc:"Tu plan y tu instinto. Nadie te corrige."},   // catálogo heredado (no se pinta ya)
   {id:1,n:"Míster del club",sal:60,esp:["fondo","globo","pared"],desc:"Viejo zorro de la defensa: fondo, globo y pared."},
   {id:2,n:"Ex profesional ofensivo",sal:160,esp:["remate","vibora","bandeja"],desc:"Vivió de la bandeja y la víbora. Ataque puro."},
   {id:3,n:"Maestra técnica",sal:160,esp:["volea","chiquita","dejada"],desc:"El toque: volea, chiquita y dejada de manual."},
@@ -580,7 +583,7 @@ function pintarSemana(){
   document.getElementById("calendario").innerHTML=calHtml();
 }
 function attrHtml(attrs){
-  return ATTR_KEYS.map(k=>`<div class="acell"><div class="arow"><span class="k">${k}</span><span class="v" style="color:${colAttr(attrs[k])}">${attrs[k]}</span></div><div class="abar"><i style="width:${attrs[k]}%;background:${colAttr(attrs[k])}"></i></div></div>`).join("");
+  return ATTR_KEYS.map(k=>`<div class="acell"><div class="arow"><span class="k">${atNombre(k)}</span><span class="v" style="color:${colAttr(attrs[k])}">${attrs[k]}</span></div><div class="abar"><i style="width:${attrs[k]}%;background:${colAttr(attrs[k])}"></i></div></div>`).join("");
 }
 function rachaHtml(r){
   if(!r||!r.length) return '<span style="color:var(--gris2)">—</span>';
@@ -592,47 +595,47 @@ function pintarEntreno(){
   const cp=document.getElementById("compiPlanRow");cp.innerHTML="";
   const ent_=entrenadorActual();
   const info=document.createElement("div");info.className="foot";info.style.textAlign="left";info.style.marginBottom="7px";
-  info.innerHTML=`Cada día que entrenas suma una sesión; el <b>domingo</b> llega el balance (5 sesiones = rendimiento pleno). Entrenador: <b>${ent_.n}</b>${ent_.esp.length?` — especialista en ${ent_.esp.join(", ")} (★)`:""} · se cambia en la pestaña Jugador.`;
+  info.innerHTML=t("ent_info",{n:ent_.n,esp:ent_.esp.length?t("ent_info_esp",{lista:atLista(ent_.esp).join(", ")}):""});
   be.appendChild(info);
   const bAuto=document.createElement("button");
   bAuto.className="selbtn"+((c.planJug||"auto")==="auto"?" on":"");
   bAuto.style.width="100%";bAuto.style.marginBottom="5px";
-  bAuto.textContent=ent_.esp.length?`Plan automático (${ent_.n} decide)`:"Plan automático (tu golpe más flojo)";
+  bAuto.textContent=ent_.esp.length?t("ent_plan_auto_ent",{n:ent_.n}):t("ent_plan_auto");
   bAuto.onclick=()=>{c.planJug="auto";guardar();pintarCarrera();};
   be.appendChild(bAuto);
   const grid=document.createElement("div");grid.className="attrs";grid.style.gap="4px";
   ATTR_KEYS.forEach(k=>{
     const b=document.createElement("button");
     b.className=(c.planJug===k?"selbtn on":"selbtn");
-    b.innerHTML=`${k} <b style="color:${colAttr(c.attrs[k])}">${c.attrs[k]}</b>${ent_.esp.includes(k)?" ★":""}`;
+    b.innerHTML=`${atNombre(k)} <b style="color:${colAttr(c.attrs[k])}">${c.attrs[k]}</b>${ent_.esp.includes(k)?" ★":""}`;
     b.onclick=()=>{c.planJug=k;guardar();pintarCarrera();};
     grid.appendChild(b);
   });
   be.appendChild(grid);
   // intensidad
   const tInt=document.createElement("div");tInt.className="foot";tInt.style.textAlign="left";tInt.style.margin="9px 0 4px";
-  tInt.textContent="Intensidad de las sesiones:";
+  tInt.textContent=t("ent_intensidad");
   be.appendChild(tInt);
   const fInt=document.createElement("div");fInt.className="fila";
   ["suave","normal","intensa"].forEach(it=>{
     const b=document.createElement("button");
     b.className="selbtn"+((c.intens||"normal")===it?" on":"");
     b.style.fontSize="11px";
-    b.textContent=it==="suave"?"Suave (-3 en./día)":it==="normal"?"Normal (-4 en./día)":"Intensa (-6 en./día ⚠)";
+    b.textContent=it==="suave"?t("ent_int_suave"):it==="normal"?t("ent_int_normal"):t("ent_int_intensa");
     b.onclick=()=>{c.intens=it;guardar();pintarCarrera();};
     fInt.appendChild(b);
   });
   be.appendChild(fInt);
   // plan del compañero
   const tCo=document.createElement("div");tCo.className="foot";tCo.style.textAlign="left";tCo.style.margin="9px 0 4px";
-  tCo.textContent=`Plan de ${c.compi.n} (entrena contigo):`;
+  tCo.textContent=t("ent_plan_compi",{n:c.compi.n});
   cp.appendChild(tCo);
   const sel=document.createElement("select");sel.style.width="100%";
-  const op0=document.createElement("option");op0.value="auto";op0.textContent="Automático (su golpe más flojo)";
+  const op0=document.createElement("option");op0.value="auto";op0.textContent=t("ent_auto_compi");
   sel.appendChild(op0);
   ATTR_KEYS.forEach(k=>{
     const o=document.createElement("option");o.value=k;
-    o.textContent=`${k} (${c.compi.attrs[k]})`;
+    o.textContent=`${atNombre(k)} (${c.compi.attrs[k]})`;
     sel.appendChild(o);
   });
   sel.value=c.compiPlan||"auto";
@@ -1421,9 +1424,9 @@ function entrenoSemanalCarrera(factor){
     if(factor<1&&Math.random()>factor+.25) g=0;         // semana de torneo: poco tiempo de pista de entreno
     if(g>0){ const rf=rasgosEntreno(atleta); if(rf>1&&Math.random()<rf-1) g++; else if(rf<1&&Math.random()<1-rf) g=Math.max(0,g-1); }   // talento / entrena mal
     atleta.attrs[k]=clamp(v+g,20,95);
-    return `${k} ${g>0?"+"+g:"·"}`;
+    return `${atNombre(k)} ${g>0?"+"+g:"·"}`;
   };
-  res.push("tú: "+sesion(c,c.planJug,c.edad));
+  res.push(t("ent_tu")+": "+sesion(c,c.planJug,c.edad));
   res.push(`${c.compi.n}: `+sesion(c.compi,c.compiPlan));
   if(factor>=.8&&it==="intensa"&&Math.random()<.06&&!c.lesion){
     c.lesion={n:"sobrecarga por exceso de entrenamiento",k:"les_sobre",sem:1};
