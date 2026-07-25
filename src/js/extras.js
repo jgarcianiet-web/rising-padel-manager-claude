@@ -1,21 +1,9 @@
 /* ---------- tutorial ---------- */
+// Cada paso es un par de claves i18n [título, cuerpo HTML]; se resuelven con
+// t() al pintar, así el tutorial sale en el idioma activo.
 const TUTO={
-  carrera:[
-    ["Tu carrera","Tienes <b>16 años</b>, 2.500€ y el calendario real de 52 semanas. La semana va <b>de lunes a domingo</b>: el lunes te inscribes (o no), y cada día eliges entrenar o descansar. Si hay torneo, la previa cae martes-miércoles, los octavos el jueves... y la final, el domingo."],
-    ["Dos circuitos","Cada semana hay un torneo <b>FIP</b> abierto y, muchas semanas, un <b>Premier</b> con corte por ranking. Si no llegas al corte de un Premier, puedes usar una de tus <b>2 wildcards</b> anuales para colarte en su previa."],
-    ["Los torneos","Cada ronda se juega <b>en su día</b>. En los partidos que ves mandas tú: <b>táctica en vivo</b> (agresividad, buscar al flojo), <b>tiempo muerto</b> entre sets con tu charla, y <b>3 revisiones de vídeo</b>. Tras los partidos grandes, la prensa querrá titulares — mide tus palabras."],
-    ["Tu pareja","Tu compañero tiene <b>química</b> (sube jugando juntos) y <b>moral</b>: si perdéis pronto y a menudo, se quema — y puede dejarte a final de temporada. En el mercado puedes fichar agentes libres o robar a jugadores del circuito."],
-    ["El dinero","Premios reales (un Major paga 60.000€ a la pareja campeona; un FIP Bronze, 800€), viajes que cuestan (Dubái no es Valladolid), patrocinios con objetivos y tu equipo: entrenador especialista a sueldo, fisio, psico, preparador y un <b>representante</b> que se lleva el 15%."],
-    ["El mundo vive","Al cierre de temporada el ranking arrastra el 55%, los veteranos se retiran, debutan jóvenes y hay rupturas de parejas. Objetivo: pisar el cuadro de un Premier... y algún día, el nº1. ¡Suerte!"],
-  ],
-  club:[
-    ["Tu club","Eres el mánager de un club <b>masculino o femenino</b> (lo eliges al fundarlo): fichas jugadores de ese circuito y compites en su ranking. La plantilla (hasta 6) cobra salario semanal; socios y premios sostienen la caja."],
-    ["Dos parejas","En Plantilla asignas la <b>pareja A</b> y la <b>pareja B</b>. La A juega su torneo contigo en el banquillo; la B puede ir a otro torneo en paralelo (resultado rápido, puntúa al 50% para el club)."],
-    ["El calendario","FIP abierto cada semana; Premier (P2/P1/Major) con corte por ranking del club. La energía y las lesiones deciden a quién puedes alinear."],
-    ["Entrenamiento","Cada jugador tiene su <b>plan</b> (golpe concreto o auto). Un botón entrena a toda la plantilla a la vez. Instalaciones, gimnasio y sala de vídeo mejoran el rendimiento."],
-    ["Dinero y fichajes","Mercado de agentes libres (el ojeador trae joyas), academia con promesas, reformas del club, cuerpo técnico... y <b>clubes rivales</b> que fichan y vendrán con ofertas por los tuyos: tú decides si vendes."],
-    ["El objetivo","La <b>junta</b> fija un objetivo de ranking cada temporada: cúmplelo y llega presupuesto extra; falla dos años seguidos y <b>te destituyen</b>. Ojo al mercado: los niveles ajenos son horquillas — el ojeador afina informes y huele el techo de cada promesa."],
-  ],
+  carrera:[1,2,3,4,5,6].map(i=>[`tuto_ca_${i}_t`,`tuto_ca_${i}_x`]),
+  club:[1,2,3,4,5,6].map(i=>[`tuto_cl_${i}_t`,`tuto_cl_${i}_x`]),
 };
 let tutoIdx=0, tutoModo="carrera";
 function verTuto(modo,force){
@@ -26,10 +14,10 @@ function verTuto(modo,force){
 }
 function pintaTuto(){
   const pasos=TUTO[tutoModo], p=pasos[tutoIdx];
-  document.getElementById("tutoTit").textContent=p[0];
-  document.getElementById("tutoPaso").textContent=`PASO ${tutoIdx+1} / ${pasos.length}`;
-  document.getElementById("tutoTxt").innerHTML=p[1];
-  document.getElementById("tutoSig").textContent=tutoIdx===pasos.length-1?"¡A jugar!":"Siguiente ›";
+  document.getElementById("tutoTit").textContent=t(p[0]);
+  document.getElementById("tutoPaso").textContent=t("tuto_paso",{i:tutoIdx+1,n:pasos.length});
+  document.getElementById("tutoTxt").innerHTML=t(p[1]);
+  document.getElementById("tutoSig").textContent=tutoIdx===pasos.length-1?t("tuto_fin"):t("tuto_sig");
 }
 function cierraTuto(){
   document.getElementById("tuto").classList.add("oculto");
@@ -56,19 +44,19 @@ function hudCaja(titulo,filas){ return `<div class="hudCaja"><div class="hudTit"
 function hudFila(etq,val,color){ return `<div class="hudFila"><span>${etq}</span><b${color?` style="color:${color}"`:""}>${val}</b></div>`; }
 function hudStaff(){
   const e=ent(); if(!e||!e.staff) return "";
-  return hudCaja("Equipo técnico", rolesDeModo().map(r=>{
+  return hudCaja(t("hud_equipo"), rolesDeModo().map(r=>{
     const st=e.staff[r], info=ROLES_STAFF[r];
-    return hudFila(`${info.ico} ${info.n.split("/")[0]}`, st?"★".repeat(st.niv):"—", st?"":"var(--gris2)");
+    return hudFila(`${info.ico} ${t("rol_"+r).split("/")[0]}`, st?"★".repeat(st.niv):"—", st?"":"var(--gris2)");
   }).join(""));
 }
 function hudEvento(){
-  if(torneo) return hudCaja("En juego", hudFila(faseNombre(torneo.fase), `<span style="font-size:12px">${torneo.nombre}</span>`));
+  if(torneo) return hudCaja(t("hud_enjuego"), hudFila(faseNombre(torneo.fase), `<span style="font-size:12px">${torneo.nombre}</span>`));
   let f=""; const sl=slotSemana(semanaTemp());
   if(sl){
     if(sl.premier!==undefined) f+=hudFila("Premier",`<span style="font-size:12px">${CATS[sl.premier].n}</span>`);
     if(sl.fip!==undefined) f+=hudFila("FIP",`<span style="font-size:12px">${CATS[sl.fip].n}</span>`);
   }
-  return f?hudCaja("Esta semana",f):"";
+  return f?hudCaja(t("hud_estasem"),f):"";
 }
 function pintarHUD(){
   const hud=document.getElementById("hud");
@@ -83,18 +71,18 @@ function pintarHUD(){
         ${js.map(j=>avatarSVG(j,34)).join("")}
         <div style="min-width:0">
           <div class="hudNom">${c.nombre}</div>
-          <div style="font-size:10px;color:var(--gris)">con ${c.compi?c.compi.n:"—"}</div>
+          <div style="font-size:10px;color:var(--gris)">${t("hud_con",{n:c.compi?c.compi.n:"—"})}</div>
         </div>
       </div>
       <div>${js.map(j=>ladoChip(j.lado)).join(" ")}</div>
     </div>`;
-    html+=hudCaja(`Temporada ${temporada()}`,
-      hudFila("Semana",`${semanaTemp()}<span style="font-size:10px;color:var(--gris)">/52</span>`)+
-      hudFila("Puesto",`#${miPuesto()}`)+
-      hudFila("Puntos",c.pts)+
-      hudFila("Caja",`${(c.dinero||0).toLocaleString("es")}€`,dinCol(c.dinero||0))+
-      hudFila("Energía",Math.round(c.energia||0))+
-      (c.fans!==undefined?hudFila("Seguidores",fmtFans(c.fans)):""));
+    html+=hudCaja(t("hud_temporada",{t:temporada()}),
+      hudFila(t("hud_semana"),`${semanaTemp()}<span style="font-size:10px;color:var(--gris)">/52</span>`)+
+      hudFila(t("hud_puesto"),`#${miPuesto()}`)+
+      hudFila(t("hud_puntos"),c.pts)+
+      hudFila(t("hud_caja"),`${(c.dinero||0).toLocaleString("es")}€`,dinCol(c.dinero||0))+
+      hudFila(t("hud_energia"),Math.round(c.energia||0))+
+      (c.fans!==undefined?hudFila(t("hud_seguidores"),fmtFans(c.fans)):""));
   } else {
     const cl=G.clubG; if(!cl) return;
     const al=alineacion()||[];
@@ -103,21 +91,21 @@ function pintarHUD(){
         <div style="width:12px;height:34px;border-radius:2px;background:${cl.color||"#C6F53C"}"></div>
         ${al.map(j=>avatarSVG(j,34)).join("")}
         <div style="min-width:0"><div class="hudNom">${cl.nombre}</div>
-        <div style="font-size:10px;color:var(--gris)">${(cl.plantilla||[]).length} jugadores</div></div>
+        <div style="font-size:10px;color:var(--gris)">${t("hud_jugadores",{n:(cl.plantilla||[]).length})}</div></div>
       </div>
       <div>${al.map(j=>ladoChip(j.lado)).join(" ")}</div>
     </div>`;
-    html+=hudCaja(`Temporada ${temporada()}`,
-      hudFila("Semana",`${semanaTemp()}<span style="font-size:10px;color:var(--gris)">/52</span>`)+
-      hudFila("Puesto",`#${miPuesto()}`)+
-      hudFila("Puntos",cl.pts)+
-      hudFila("Caja",`${(cl.dinero||0).toLocaleString("es")}€`,dinCol(cl.dinero||0))+
-      hudFila("Instalaciones","★".repeat(cl.instal||1))+
-      (cl.fans!==undefined?hudFila("Seguidores",fmtFans(cl.fans)):""));
+    html+=hudCaja(t("hud_temporada",{t:temporada()}),
+      hudFila(t("hud_semana"),`${semanaTemp()}<span style="font-size:10px;color:var(--gris)">/52</span>`)+
+      hudFila(t("hud_puesto"),`#${miPuesto()}`)+
+      hudFila(t("hud_puntos"),cl.pts)+
+      hudFila(t("hud_caja"),`${(cl.dinero||0).toLocaleString("es")}€`,dinCol(cl.dinero||0))+
+      hudFila(t("hud_instal"),"★".repeat(cl.instal||1))+
+      (cl.fans!==undefined?hudFila(t("hud_seguidores"),fmtFans(cl.fans)):""));
   }
   html+=hudEvento();
   html+=hudStaff();
-  html+=`<div style="font-size:9px;color:var(--gris2);letter-spacing:1px;text-align:center;margin-top:auto;padding-top:8px">1-6 PESTAÑAS · ESC CERRAR</div>`;
+  html+=`<div style="font-size:9px;color:var(--gris2);letter-spacing:1px;text-align:center;margin-top:auto;padding-top:8px">${t("hud_atajos")}</div>`;
   hud.innerHTML=html;
 }
 
