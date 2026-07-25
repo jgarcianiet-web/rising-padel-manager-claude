@@ -659,10 +659,10 @@ function finPartido(){
     const les=intentaLesion(c,!!(c.staff&&c.staff.fisio));
     if(les){
       c.lesion=les;
-      seLesiona=true;lesionTxt=c.lesion.n;
+      seLesiona=true;lesionTxt=lesNombre(c.lesion);
       c.conf=clamp(c.conf-4,15,95);                              // lesionarse mina la cabeza
       c.compiMoral=clamp((c.compiMoral??65)-5,5,95);             // y preocupa al compañero
-      if(c.lesion.grav>=3) noticia("lesion",t("not_lesion_grave_t"),t("not_lesion_grave_s",{lesion:c.lesion.n,sem:c.lesion.sem}),miParejaProt());
+      if(c.lesion.grav>=3) noticia("lesion",t("not_lesion_grave_t"),t("not_lesion_grave_s",{lesion:lesNombre(c.lesion),sem:c.lesion.sem}),miParejaProt());
     }
     if((gane||misW>=4)&&Math.random()<.45){
       const favor={defensivo:["globo","pared","chiquita","fondo"],agresivo:["remate","vibora","volea","bandeja"],bandejero:["bandeja","vibora","volea"],rematador:["remate","bandeja","volea"],constructor:["chiquita","dejada","fondo","globo"]}[c.estilo];
@@ -689,8 +689,8 @@ function finPartido(){
         if(les){
           j.lesion=les;
           j.conf=clamp(j.conf-4,15,95);
-          seLesiona=true;lesionTxt=`${j.n}: ${j.lesion.n}`;
-          if(j.lesion.grav>=3) noticia("lesion",t("not_lesion_club_t",{club:cl.nombre}),t("not_lesion_club_s",{jug:j.n,lesion:j.lesion.n,sem:j.lesion.sem}));
+          seLesiona=true;lesionTxt=`${j.n}: ${lesNombre(j.lesion)}`;
+          if(j.lesion.grav>=3) noticia("lesion",t("not_lesion_club_t",{club:cl.nombre}),t("not_lesion_club_s",{jug:j.n,lesion:lesNombre(j.lesion),sem:j.lesion.sem}));
         }
       }
     });
@@ -762,22 +762,22 @@ function ruedaDePrensa(gano,fase){
   const c=G.carrera; if(!c) return;
   const ov=document.getElementById("rueda");
   document.getElementById("ruedaQ").textContent=gano
-    ?`Micrófonos tras el título: "¿Cómo se digiere ganar el ${torneo_ultimo?torneo_ultimo.nombre:"torneo"}?"`
-    :`Zona mixta tras caer en ${faseNombre(fase).toLowerCase()}: "¿Qué ha faltado hoy?"`;
+    ?t("pr_q_gano",{torneo:torneo_ultimo?torneo_ultimo.nombre:"—"})
+    :t("pr_q_pierde",{fase:faseNombre(fase).toLowerCase()});
   const bH=document.getElementById("ruedaHumilde"),bA=document.getElementById("ruedaAmbi"),bP=document.getElementById("ruedaPicante");
-  bH.textContent=gano?"«Trabajo y humildad. A seguir.»":"«El rival fue mejor. A entrenar.»";
-  bA.textContent=gano?"«Vamos a por el nº1, sin esconderse.»":"«Volveremos más fuertes. Esto no queda así.»";
-  bP.textContent=gano?"«Que se preparen los de arriba.»":"«El arbitraje nos ha condicionado, y lo sabe todo el mundo.»";
+  bH.textContent=gano?t("pr_h_gano"):t("pr_h_pierde");
+  bA.textContent=gano?t("pr_a_gano"):t("pr_a_pierde");
+  bP.textContent=gano?t("pr_p_gano"):t("pr_p_pierde");
   ov.classList.remove("oculto");
   const fin=(msg,fx)=>{ov.classList.add("oculto");fx();avisa(msg);guardar();pintarCarrera();};
-  bH.onclick=()=>fin("🎙 Declaraciones sobrias. El vestuario lo agradece.",()=>{
+  bH.onclick=()=>fin(t("pr_av_sobrio"),()=>{
     c.compiMoral=clamp((c.compiMoral??65)+4,5,95);
   });
-  bA.onclick=()=>fin("🎙 Ambición en titulares. La afición se enciende.",()=>{
+  bA.onclick=()=>fin(t("pr_av_ambicion"),()=>{
     c.conf=clamp(c.conf+4,15,95);
-    if(c.sponsor&&Math.random()<.35){c.dinero+=100;avisa(`${c.sponsor.marca} premia la repercusión: +100€.`);}
+    if(c.sponsor&&Math.random()<.35){c.dinero+=100;avisa(t("pr_av_prima",{marca:c.sponsor.marca}));}
   });
-  bP.onclick=()=>fin("🎙 Titular incendiario. Hay ruido... y consecuencias.",()=>{
+  bP.onclick=()=>fin(t("pr_av_picante"),()=>{
     if(c.perso==="valiente"||c.perso==="emocional") c.conf=clamp(c.conf+7,15,95);
     else c.conf=clamp(c.conf-3,15,95);
     if(c.compi.perso==="conservador"||c.compi.perso==="frio") c.compiMoral=clamp((c.compiMoral??65)-5,5,95);
