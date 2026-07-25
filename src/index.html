@@ -85,22 +85,22 @@
   <!-- ============ CREAR CLUB ============ -->
   <div id="scr-crearclub" class="cont oculto">
     <div class="card">
-      <h3>Modo club · <em>funda tu club</em></h3>
-      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)">Nombre del club</label>
+      <h3 data-i18n-html="clb_hd_modo_full">Modo club · <em>funda tu club</em></h3>
+      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)" data-i18n="clb_nombre">Nombre del club</label>
       <input id="inClubNombre" value="Rising Pádel Club" style="margin:5px 0 12px">
-      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)">Circuito del club</label>
+      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)" data-i18n="clb_circuito">Circuito del club</label>
       <div class="fila" style="margin:5px 0 12px">
         <button class="selbtn" id="clubSexoM" data-i18n="crea_masculino">Masculino</button>
         <button class="selbtn" id="clubSexoF" data-i18n="crea_femenino">Femenino</button>
       </div>
-      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)">Color del club</label>
+      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)" data-i18n="clb_color">Color del club</label>
       <div class="fila" id="coloresClub" style="margin:5px 0 12px"></div>
-      <div style="font-size:12px;color:var(--gris);line-height:1.6">Presupuesto inicial: <b style="color:var(--texto)">1.200 €</b>. Ficha al menos <b style="color:var(--texto)">2 jugadores</b> del mercado para poder competir. Cada semana pagarás sus salarios; los premios y los socios sostienen la caja.</div>
+      <div style="font-size:12px;color:var(--gris);line-height:1.6" data-i18n-html="clb_presu">Presupuesto inicial: <b style="color:var(--texto)">1.200 €</b>. Ficha al menos <b style="color:var(--texto)">2 jugadores</b> del mercado para poder competir. Cada semana pagarás sus salarios; los premios y los socios sostienen la caja.</div>
     </div>
     <div class="card">
-      <h3>Mercado de fichajes · <em id="mercTitulo"></em></h3>
+      <h3><span data-i18n="clb_mercado_hd">Mercado de fichajes</span> · <em id="mercTitulo"></em></h3>
       <div id="mercadoInicial"></div>
-      <button class="pri" id="btnEmpezarClub" style="width:100%;margin-top:6px" disabled>Necesitas 2 jugadores</button>
+      <button class="pri" id="btnEmpezarClub" style="width:100%;margin-top:6px" disabled data-i18n="clb_necesitas_0">Necesitas 2 jugadores</button>
     </div>
   </div>
 
@@ -323,7 +323,7 @@
     <div class="card" style="max-width:460px;width:100%">
       <h3>Analítica · <em>base de datos</em></h3>
       <div id="analiticaCuerpo"></div>
-      <button class="pri" id="analiticaCerrar" style="width:100%;margin-top:10px">Cerrar</button>
+      <button class="pri" id="analiticaCerrar" style="width:100%;margin-top:10px" data-i18n="btn_cerrar">Cerrar</button>
     </div>
   </div>
   <div id="hawk" class="oculto">

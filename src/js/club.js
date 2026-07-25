@@ -36,7 +36,7 @@ function mkAgente(nivMin,nivMax,sx){
 function nivelTxt(j){
   const n=mediaAttrs(j.attrs), oj=G&&G.modo==="club"&&G.clubG&&G.clubG.staff&&G.clubG.staff.ojeador;
   if(oj){
-    const techo=(j.pot||n)>=78?"techo alto":(j.pot||n)>=66?"techo medio":"techo corto";
+    const techo=(j.pot||n)>=78?t("clb_techo_alto"):(j.pot||n)>=66?t("clb_techo_medio"):t("clb_techo_corto");
     return `${Math.max(20,n-2)}-${Math.min(96,n+3)} · ${techo}`;
   }
   return `${Math.max(20,n-5)}-${Math.min(96,n+7)}`;
@@ -66,14 +66,14 @@ const PRESUP_CLUB=12000;
 function pintarMercadoInicial(){
   const el=document.getElementById("mercadoInicial");el.innerHTML="";
   let gasto=plantillaTmp.reduce((s,j)=>s+costeFichaje(j),0);
-  document.getElementById("mercTitulo").textContent=`caja ${(PRESUP_CLUB-gasto).toLocaleString("es")}€`;
+  document.getElementById("mercTitulo").textContent=t("clb_caja",{n:(PRESUP_CLUB-gasto).toLocaleString("es")});
   mercadoTmp.forEach(j=>{
     const dentro=plantillaTmp.includes(j);
     const coste=costeFichaje(j);
     const d=document.createElement("div");d.className="opcion"+(dentro?" sel":"");
-    d.innerHTML=`<b>${j.n}</b> <span class="pill">nivel ${nivelTxt(j)}</span> ${ladoChip(j.lado!==undefined?j.lado:ladoPorAttrs(j.attrs,j.estilo))} <span class="pill">${j.edad} años</span> <span class="pill">${estiloNombre(j.estilo)}</span> <span class="pill">${persoNombre(j.perso)}</span><div class="d">Fichaje ${coste}€ · salario ${salarioDe(j)}€/sem${(G&&G.clubG&&G.clubG.staff&&G.clubG.staff.ojeador)?"":" · informe impreciso: contrata un ojeador para afinar"}</div>`;
+    d.innerHTML=`<b>${j.n}</b> <span class="pill">${t("clb_nivel",{n:nivelTxt(j)})}</span> ${ladoChip(j.lado!==undefined?j.lado:ladoPorAttrs(j.attrs,j.estilo))} <span class="pill">${t("clb_anios",{n:j.edad})}</span> <span class="pill">${estiloNombre(j.estilo)}</span> <span class="pill">${persoNombre(j.perso)}</span><div class="d">${t("clb_ficha_linea",{coste,sal:salarioDe(j)})}${(G&&G.clubG&&G.clubG.staff&&G.clubG.staff.ojeador)?"":t("clb_informe_impreciso")}</div>`;
     const b=document.createElement("button");b.style.width="100%";
-    b.textContent=dentro?"Quitar de la plantilla":`Fichar (${coste}€)`;
+    b.textContent=dentro?t("clb_quitar"):t("clb_fichar",{coste});
     b.disabled=!dentro&&(plantillaTmp.length>=4||PRESUP_CLUB-gasto<coste);
     b.onclick=()=>{
       if(dentro) plantillaTmp=plantillaTmp.filter(x=>x!==j);
@@ -84,7 +84,7 @@ function pintarMercadoInicial(){
   });
   const be=document.getElementById("btnEmpezarClub");
   be.disabled=plantillaTmp.length<2;
-  be.textContent=plantillaTmp.length<2?`Necesitas 2 jugadores (${plantillaTmp.length}/2)`:"Comenzar temporada";
+  be.textContent=plantillaTmp.length<2?t("clb_necesitas",{n:plantillaTmp.length}):t("clb_comenzar");
   be.onclick=()=>{
     if(plantillaTmp.length<2) return;
     const gasto2=plantillaTmp.reduce((s,j)=>s+costeFichaje(j),0);
@@ -387,7 +387,7 @@ function pintarCmPlantilla(){
   });
   const q=document.createElement("div");q.className="foot";q.style.textAlign="left";
   const alB2=alineacionB();
-  q.innerHTML=`Química A: ${quimActual(cl)}${alB2?` · Química B: ${quimDe(cl,cl.alinB)}`:cl.alinB&&cl.alinB.length===1?" · Pareja B: elige un segundo jugador":" · Sin pareja B (necesitas 4+ jugadores)"}`;
+  q.innerHTML=t("clb_quim_a",{a:quimActual(cl)})+(alB2?t("clb_quim_b",{b:quimDe(cl,cl.alinB)}):cl.alinB&&cl.alinB.length===1?t("clb_par_b_elige"):t("clb_par_b_no"));
   alCard.appendChild(q);
   el.appendChild(alCard);
   // fichas de jugadores
@@ -404,7 +404,7 @@ function pintarCmPlantilla(){
         <div class="chip">${persoNombre(j.perso)}</div>
         <div class="chip">Salario <b>${salarioDe(j)}€</b></div>
         <div class="chip">Energía <b style="color:${colAttr(j.energia)}">${j.energia}</b></div>
-        <div class="chip">Confianza <b style="color:${colAttr(j.conf)}">${j.conf}</b></div>
+        <div class="chip">${t("kpi_confianza2")} <b style="color:${colAttr(j.conf)}">${j.conf}</b></div>
         <div class="chip">Moral <b style="color:${colAttr(moralC)}">${moralC}</b></div>
         <div class="chip">Contrato <b>${ct.temporadas||1} temp.</b></div>
         <div class="chip">Cláusula <b>${(valorClausula(j)).toLocaleString("es")}€</b></div>
@@ -429,7 +429,7 @@ function pintarCmPlantilla(){
   });
   // mercado
   const m=document.createElement("div");m.className="card";
-  m.innerHTML=`<h3>Mercado de fichajes</h3>`;
+  m.innerHTML=`<h3>${t("clb_mercado_hd")}</h3>`;
   if(cl.plantilla.length>=6){
     m.innerHTML+=`<div class="foot" style="text-align:left">Plantilla completa (6). Traspasa antes de fichar.</div>`;
   } else {

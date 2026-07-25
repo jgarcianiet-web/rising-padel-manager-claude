@@ -648,8 +648,8 @@ function pintarJugador(){
   _hsub.innerHTML=`${c.edad} años · ${ladoTxt(c.lado)} · ${estiloNombre(c.estilo)} · ${persoNombre(c.perso)}`+(()=>{const r=chipRasgos(c);return r?`<div style="margin-top:4px">${r}</div>`:"";})();
   document.getElementById("hMedia").textContent=mediaAttrs(c.attrs);
   document.getElementById("hMeta").innerHTML=`
-    <div class="chip">Confianza <b style="color:${colAttr(c.conf)}">${c.conf}</b></div>
-    <div class="chip">Química <b style="color:${colAttr(c.quimica)}">${c.quimica}</b></div>
+    <div class="chip">${t("kpi_confianza2")} <b style="color:${colAttr(c.conf)}">${c.conf}</b></div>
+    <div class="chip">${t("kpi_quimica2")} <b style="color:${colAttr(c.quimica)}">${c.quimica}</b></div>
     <div class="chip">Forma ${rachaHtml(c.racha)}</div>
     <div class="chip">Récord <b>${(c.vd||{v:0,d:0}).v}-${(c.vd||{v:0,d:0}).d}</b></div>
     <div class="chip">Seguidores <b style="color:var(--lima)">${fmtFans(c.fans||0)}</b></div>
@@ -783,7 +783,7 @@ function ficharPareja(ci,acuerdo){
 function renderRanking(el){
   const filas=rankingFilas();
   const yo=filas.find(f=>f.yo);
-  let html=`<tr class="hd"><td>#</td><td>Pareja</td><td class="niv">Niv</td><td class="pts">Pts</td></tr>`;
+  let html=`<tr class="hd"><td>#</td><td>${t("tab_pareja")}</td><td class="niv">Niv</td><td class="pts">Pts</td></tr>`;
   html+=filas.slice(0,12).map(f=>filaRk(f)).join("");
   if(yo.pos>13){
     html+=`<tr class="sep"><td colspan="4">···</td></tr>`;
@@ -847,7 +847,7 @@ function verClub(idx){
     <table class="rk">${pares.map(p=>`<tr><td style="font-size:11px"><span style="display:inline-block;vertical-align:middle;margin-right:3px">${avatarSVG(p.jug[0],18)}${avatarSVG(p.jug[1],18)}</span>${p.nombre}</td><td class="pts">#${posDe(p.nombre)}</td><td class="pts">${nivelPareja(p)}</td></tr>`).join("")||'<tr><td class="foot">Sin parejas esta temporada</td></tr>'}</table>
     <div style="font-size:11px;color:var(--gris);text-transform:uppercase;letter-spacing:1px;margin:10px 0 3px">Palmarés reciente (${tit.length})</div>
     ${tit.length?`<div class="foot" style="text-align:left">${tit.slice(0,8).map(t=>`🏆 ${t}`).join("<br>")}</div>`:'<div class="foot" style="text-align:left">Aún sin títulos. La historia se escribe.</div>'}
-    <button class="pri" style="width:100%;margin-top:10px" onclick="quitarEl(document.getElementById('clubModal'))">Cerrar</button>
+    <button class="pri" style="width:100%;margin-top:10px" onclick="quitarEl(document.getElementById('clubModal'))">${t("btn_cerrar")}</button>
   </div>`;
   ov.onclick=(e)=>{ if(e.target===ov) quitarEl(ov); };
 }
@@ -868,7 +868,7 @@ function renderRivalidades(el){
     .map(([id,h2])=>({id,...h2,tot:h2.v+h2.d,cl:clasificaRiv(h2)}))
     .filter(x=>x.tot>=2&&x.n)
     .sort((a,b)=>b.tot-a.tot).slice(0,6);
-  if(!filas.length){ el.innerHTML=`<div class="foot" style="text-align:left">Aún no hay historia con nadie. Los rivales se hacen cruzándose.</div>`; return; }
+  if(!filas.length){ el.innerHTML=`<div class="foot" style="text-align:left">${t("pan_sin_rivales")}</div>`; return; }
   el.innerHTML=filas.map(x=>`
     <div style="display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--borde)">
       <div style="font-size:11.5px">${x.cl?`<span style="color:${x.cl.col};font-weight:700">${x.cl.emo} ${x.cl.tag}</span> · `:""}${x.n}
@@ -908,8 +908,8 @@ function post(tipo,ctx){
 }
 function renderSocial(el){
   const e=ent(), posts=e.social||[];
-  const head=`<div class="foot" style="text-align:left;margin-bottom:7px">Seguidores: <b style="color:var(--lima)">${fmtFans(e.fans||0)}</b> — suben ganando, con títulos y dando que hablar.</div>`;
-  if(!posts.length){ el.innerHTML=head+`<div class="foot" style="text-align:left">La grada todavía no habla de vosotros. Dales motivos.</div>`; return; }
+  const head=`<div class="foot" style="text-align:left;margin-bottom:7px">${t("pan_fans_head",{n:fmtFans(e.fans||0)})}</div>`;
+  if(!posts.length){ el.innerHTML=head+`<div class="foot" style="text-align:left">${t("pan_sin_posts")}</div>`; return; }
   el.innerHTML=head+posts.map(p2=>`
     <div class="spost">
       <div class="sava" style="background:${["#4FA3D8","#E06AA0","#3FBF8F","#E0A030","#9B59D0","#5CC8E6"][p2.user.length%6]}">${p2.user[0]}</div>
@@ -998,7 +998,7 @@ function renderRecords(el){
 }
 function renderN1(el){
   const h=(G.world.n1hist||[]);
-  if(!h.length){ el.innerHTML=`<tr><td class="foot" style="border:none;text-align:left">Aún no se ha cerrado ninguna temporada.</td></tr>`; return; }
+  if(!h.length){ el.innerHTML=`<tr><td class="foot" style="border:none;text-align:left">${t("pan_sin_temporadas")}</td></tr>`; return; }
   let html=`<tr class="hd"><td>T</td><td>Nº1 al cierre</td><td class="pts">Pts</td></tr>`;
   html+=h.slice(-10).map(x=>`<tr class="${x.yo?"yo":""}"><td class="pos">T${x.t}</td><td>${x.yo?"👑 ":""}${x.nombre}</td><td class="pts">${x.pts}</td></tr>`).join("");
   el.innerHTML=html;
@@ -1078,12 +1078,12 @@ function renderNoticias(el){
   const ns=ent().noticias||[];
   const kcol={titulo:"#8A6A00",n1:"#8A6A00",contrato:"#8A6A00",lesion:"#8A1E1E",ruptura:"#8A1E1E",retirada:"#5A5548",fichaje:"#1E4E8A",venta:"#1E4E8A",debut:"#3E6B1E",hito:"#3E6B1E"};
   const mast=`<div class="mast">RISING <em>PÁDEL</em></div>
-    <div class="mastsub">EL DIARIO DEL CIRCUITO · TEMPORADA ${temporada()} · SEMANA ${semanaTemp()} · ${miSexo()==="F"?"CIRCUITO FEMENINO":"CIRCUITO MASCULINO"} · 1,50€</div>`;
+    <div class="mastsub">${t("pre_masthead",{t:temporada(),s:semanaTemp(),circuito:miSexo()==="F"?t("pre_circ_f"):t("pre_circ_m")})}</div>`;
   if(!ns.length){
     el.innerHTML=`<div class="paper">${mast}
       <div class="apertura"><div class="atit">El circuito espera su próxima historia</div>
       <div class="asub">Esta portada se escribirá con tus títulos, tus fichajes y tus batallas. La rotativa está lista.</div></div>
-      <div class="pfoot">RISING PÁDEL · PRENSA DEPORTIVA DESDE 2026</div></div>`;
+      <div class="pfoot">${t("pre_pie")}</div></div>`;
     return;
   }
   const [a,...resto]=ns;
@@ -1102,8 +1102,8 @@ function renderNoticias(el){
         <div class="mtit">${n.titular}</div>
       </div>`).join("")}</div>`:""}
     ${tambien.length?`<div class="tambien"><b>TAMBIÉN EN PORTADA</b>${tambien.map(n=>`<div>· ${n.titular} <span style="color:#7A7462;font-size:9px">T${n.t}S${n.sem}</span></div>`).join("")}</div>`:""}
-    ${(()=>{const e2=ent();const ops=[[fmtFans(e2.fans||0),"seguidores y subiendo"],["#"+miPuesto(),"en el ranking del circuito"],[(e2.rachaAct||0)>=3?e2.rachaAct:(e2.vd||{v:0}).v,(e2.rachaAct||0)>=3?"victorias seguidas y contando":"victorias esta carrera"],[e2.palmares.length,"títulos en las vitrinas"]];const [num,txt]=ops[semanaTemp()%ops.length];return `<div class="lacifra"><span>LA CIFRA</span><b>${num}</b>${txt}</div>`;})()}
-    <div class="pfoot">RISING PÁDEL · PRENSA DEPORTIVA DESDE 2026 · EDICIÓN ${G.modo==="carrera"?"CARRERA":"CLUBES"}</div>
+    ${(()=>{const e2=ent();const ops=[[fmtFans(e2.fans||0),t("cifra_seguidores")],["#"+miPuesto(),t("cifra_ranking")],[(e2.rachaAct||0)>=3?e2.rachaAct:(e2.vd||{v:0}).v,(e2.rachaAct||0)>=3?t("cifra_racha"):t("cifra_victorias")],[e2.palmares.length,t("cifra_titulos")]];const [num,txt]=ops[semanaTemp()%ops.length];return `<div class="lacifra"><span>${t("cifra_hd")}</span><b>${num}</b>${txt}</div>`;})()}
+    <div class="pfoot">${t("pre_pie_ed",{ed:G.modo==="carrera"?t("pre_ed_carrera"):t("pre_ed_clubes")})}</div>
   </div>`;
 }
 function colorNoticia(x){
@@ -1122,7 +1122,7 @@ function renderDiario(elD,elP){
   elD.innerHTML=e.diario.length
     ?`<div class="teletipo"><div class="thead">ÚLTIMA HORA · AGENCIA RPD · CIRCUITO ${miSexo()==="F"?"FEMENINO":"MASCULINO"}</div>${briefs}</div>`
     :"<div class='foot' style='text-align:left'>Sin novedades.</div>";
-  elP.innerHTML=e.palmares.length?e.palmares.map(x=>`<div style="color:var(--oro)">🏆 ${x}</div>`).join(""):"<div>Sin títulos todavía.</div>";
+  elP.innerHTML=e.palmares.length?e.palmares.map(x=>`<div style="color:var(--oro)">🏆 ${x}</div>`).join(""):`<div>${t("pan_sin_titulos")}</div>`;
 }
 
 function ingresosSemanaCarrera(){

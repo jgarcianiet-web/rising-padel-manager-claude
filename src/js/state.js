@@ -145,17 +145,17 @@ function abrirAnalitica(){
   const fPais=paises.map(p=>`<span class="chip">${p.pais} ${medIn(p.media)} <span style="color:var(--gris2)">·${p.n}</span></span>`).join(" ");
 
   cuerpo.innerHTML=
-     sec("Top 10 jugadores por media")
-    +`<div class="foot" style="text-align:left;margin:-2px 0 5px">Consulta <b>SQL</b> (sql.js) sobre <code>norm_jugador</code> → <code>norm_atributo</code>.</div>`
+     sec(t("ana_top"))
+    +`<div class="foot" style="text-align:left;margin:-2px 0 5px">${t("ana_sql_jug")}</div>`
     +`<table class="rk">${fJug}</table>`
-    +(fPar?sec("Mejores parejas (media conjunta)")+`<table class="rk">${fPar}</table>`:"")
-    +(fEst?sec("Nivel medio por estilo")+`<div style="margin-top:2px">${fEst}</div>`:"")
-    +(fDis?sec("Distribución de nivel del circuito")+`<div style="margin-top:2px">${fDis}</div>`:"")
-    +(fPais?sec("Mejores nacionalidades")+`<div class="meta" style="margin-top:2px">${fPais}</div>`:"")
+    +(fPar?sec(t("ana_parejas"))+`<table class="rk">${fPar}</table>`:"")
+    +(fEst?sec(t("ana_estilo"))+`<div style="margin-top:2px">${fEst}</div>`:"")
+    +(fDis?sec(t("ana_distri"))+`<div style="margin-top:2px">${fDis}</div>`:"")
+    +(fPais?sec(t("ana_paises"))+`<div class="meta" style="margin-top:2px">${fPais}</div>`:"")
     +`<div class="foot" style="text-align:left;margin-top:12px">`
-    +(ns?`Modelo normalizado: <b>${ns.parejas}</b> parejas · <b>${ns.jugadores}</b> jugadores · <b>${ns.atributos}</b> atributos, con relaciones pareja→jugador→atributo.`:`Modelo normalizado: sin datos.`)
+    +(ns?t("ana_modelo",{p:ns.parejas,j:ns.jugadores,a:ns.atributos}):t("ana_modelo_no"))
     +`<div style="margin-top:5px">`
-    +(v.ok?`Integridad: <b style="color:var(--verde)">✓</b> el mundo leído de SQLite coincide con memoria (${v.n} parejas).`:`Integridad: <b style="color:var(--oro)">·</b> ${v.msg}.`)
+    +(v.ok?t("ana_integridad_ok",{n:v.n}):t("ana_integridad_no",{msg:v.msg}))
     +`</div></div>`;
 }
 document.getElementById("btnAnalitica").onclick=abrirAnalitica;

@@ -852,6 +852,32 @@ comprueba("Idiomas: t() traduce y cae con red de seguridad", () => {
   return "traduce, fallback de idioma y de clave";
 });
 
+comprueba("Idiomas: catálogo completo y sin claves huérfanas en los 5 idiomas", () => {
+  // toda clave definida en español existe en los otros 4 y no está vacía
+  const claves = Object.keys(I18N.es);
+  exige(claves.length > 700, "el catálogo español parece incompleto: " + claves.length);
+  const faltan = [];
+  ["en", "fr", "de", "it"].forEach(l => claves.forEach(k => {
+    if (typeof I18N[l][k] !== "string" || !I18N[l][k].length) faltan.push(l + ":" + k);
+  }));
+  exige(faltan.length === 0, "claves sin traducir: " + faltan.slice(0, 8).join(", "));
+  // y ningún idioma tiene claves que no estén en español (huérfanas por typo)
+  const huerfanas = [];
+  ["en", "fr", "de", "it"].forEach(l => Object.keys(I18N[l]).forEach(k => {
+    if (!(k in I18N.es)) huerfanas.push(l + ":" + k);
+  }));
+  exige(huerfanas.length === 0, "claves huérfanas: " + huerfanas.slice(0, 8).join(", "));
+  // las claves con interpolación deben llevar los mismos campos en todos los idiomas
+  const campos = s => (s.match(/\{(\w+)\}/g) || []).sort().join(",");
+  const desajuste = [];
+  claves.forEach(k => {
+    const ref = campos(I18N.es[k]);
+    ["en", "fr", "de", "it"].forEach(l => { if (campos(I18N[l][k]) !== ref) desajuste.push(l + ":" + k); });
+  });
+  exige(desajuste.length === 0, "interpolaciones desalineadas: " + desajuste.slice(0, 8).join(", "));
+  return `${claves.length} claves × 5 idiomas, interpolaciones alineadas`;
+});
+
 comprueba("Idiomas: golpes y frases del staff en el idioma activo", () => {
   try {
     localStorage.setItem("rpm_idioma", "en");
