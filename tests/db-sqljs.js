@@ -154,5 +154,21 @@ module.exports = async function ejecutarPruebasSql() {
   db.dbSqlGuardarDiario(d, []);
   chk(db.dbSqlLeerDiario(d).length === 0, "4d · diario: lista vacía deja la tabla vacía");
 
+  // ---------- trayectoria por temporada (Fase 4d·4) ----------
+  const hist = [
+    { t: 1, pos: 38, pts: 410, tit: 0 },
+    { t: 2, pos: 17, pts: 1980, tit: 1 },
+    { t: 3, pos: 4, pts: 5120, tit: 3 },
+  ];
+  db.dbSqlGuardarHist(d, hist);
+  db.dbSqlGuardarHist(d, hist); // reproyectar: debe REEMPLAZAR, no acumular
+  const histb = db.dbSqlLeerHist(d);
+  chk(histb.length === 3, "4d · hist: round-trip conserva 3 temporadas (reemplaza, no acumula)", histb.length + " filas");
+  chk(histb[0].t === 1 && histb[2].t === 3, "4d · hist: orden cronológico preservado");
+  chk(histb[1].pos === 17 && histb[1].pts === 1980 && histb[1].tit === 1,
+    "4d · hist: campos pos/pts/tit reconstruidos", JSON.stringify(histb[1]));
+  db.dbSqlGuardarHist(d, []);
+  chk(db.dbSqlLeerHist(d).length === 0, "4d · hist: lista vacía deja la tabla vacía");
+
   return res;
 };

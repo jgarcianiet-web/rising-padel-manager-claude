@@ -110,6 +110,14 @@ function abrirModo(modo){
         const diaSql=dbSqlCargarDiario();
         if(igual(diaSql,prot.diario)){ prot.diario=diaSql; G._diarioDesdeSql=true; }
       }
+      // Fase 4d·4: trayectoria por temporada {t,pos,pts,tit} — coincide si cada
+      // fila reproduce la temporada y la posición del blob.
+      if(typeof dbSqlCargarHist==="function" && prot && Array.isArray(prot.hist)){
+        const hSql=dbSqlCargarHist(), hb=prot.hist;
+        if(hSql && hSql.length===hb.length && hSql.every((h,i)=>h.t===hb[i].t && h.pos===hb[i].pos)){
+          prot.hist=hSql; G._histDesdeSql=true;
+        }
+      }
     }catch(e){}
     entrarPartida();
   };

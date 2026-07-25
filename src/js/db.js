@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS norm_palmares(
   ord INTEGER PRIMARY KEY AUTOINCREMENT, titulo TEXT);
 CREATE TABLE IF NOT EXISTS norm_diario(
   ord INTEGER PRIMARY KEY AUTOINCREMENT, texto TEXT);
+CREATE TABLE IF NOT EXISTS norm_hist(
+  ord INTEGER PRIMARY KEY AUTOINCREMENT, temporada INTEGER, pos INTEGER, pts INTEGER, tit INTEGER);
 `;
 
 function dbSqlSchema(db){ db.run(DB_SCHEMA_SQL); }
@@ -119,6 +121,24 @@ function dbSqlLeerDiario(db){
   return out;
 }
 
+// Trayectoria por temporada del protagonista: {t, pos, pts, tit} — una fila
+// por temporada cerrada, en orden cronológico. Mismo patrón que norm_n1.
+function dbSqlGuardarHist(db, lista){
+  db.run("BEGIN");
+  try{
+    db.run("DELETE FROM norm_hist;");
+    const st=db.prepare("INSERT INTO norm_hist(temporada,pos,pts,tit) VALUES(?,?,?,?)");
+    (lista||[]).forEach(h=>st.run([h.t|0,h.pos|0,h.pts|0,h.tit|0])); st.free();
+    db.run("COMMIT");
+  }catch(e){ try{ db.run("ROLLBACK"); }catch(_){} throw e; }
+}
+function dbSqlLeerHist(db){
+  const out=[];
+  const r=db.exec("SELECT temporada,pos,pts,tit FROM norm_hist ORDER BY ord");
+  if(r&&r[0]) r[0].values.forEach(v=>out.push({t:v[0],pos:v[1],pts:v[2],tit:v[3]}));
+  return out;
+}
+
 /* ---------- capa de navegador/app: init, persistencia y write-through ---------- */
 let SQLDB=null;
 function _sqlInitFn(){
@@ -161,6 +181,7 @@ function dbSqlSnapshotVivo(){
       if(prot){
         dbSqlGuardarPalmares(SQLDB, prot.palmares||[]);
         dbSqlGuardarDiario(SQLDB, prot.diario||[]);
+        dbSqlGuardarHist(SQLDB, prot.hist||[]);
       }
     }catch(_){}
     dbSqlPersistir();
@@ -180,6 +201,11 @@ function dbSqlCargarPalmares(){
 function dbSqlCargarDiario(){
   if(!SQLDB) return null;
   try{ return dbSqlLeerDiario(SQLDB); }catch(e){ return null; }
+}
+// Reconstruye la trayectoria por temporada desde sql.js (Fase 4d·4).
+function dbSqlCargarHist(){
+  if(!SQLDB) return null;
+  try{ return dbSqlLeerHist(SQLDB); }catch(e){ return null; }
 }
 
 /* ---------- consultas para la analítica (síncronas, sobre sql.js) ---------- */
@@ -290,7 +316,7 @@ function dbSqlDistribucionNivel(db){
 if(typeof module!=="undefined"&&module.exports){
   module.exports={DB_SCHEMA_SQL,dbSqlSchema,dbSqlGuardarSnapshot,dbSqlLeerSnapshot,
     dbSqlGuardarN1,dbSqlLeerN1,dbSqlGuardarPalmares,dbSqlLeerPalmares,
-    dbSqlGuardarDiario,dbSqlLeerDiario,
+    dbSqlGuardarDiario,dbSqlLeerDiario,dbSqlGuardarHist,dbSqlLeerHist,
     dbSqlPorEstilo,dbSqlMejoresParejas,dbSqlTopPaises,dbSqlDistribucionNivel,
     dbSqlSnapshotCoincide};
 }
