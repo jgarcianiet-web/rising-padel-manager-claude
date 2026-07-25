@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS norm_atributo(
 CREATE INDEX IF NOT EXISTS idx_njp ON norm_jugador(pareja_pid);
 CREATE TABLE IF NOT EXISTS norm_n1(
   ord INTEGER PRIMARY KEY AUTOINCREMENT, temporada INTEGER, nombre TEXT, pts INTEGER, yo INTEGER, sexo TEXT);
+CREATE TABLE IF NOT EXISTS norm_palmares(
+  ord INTEGER PRIMARY KEY AUTOINCREMENT, titulo TEXT);
 `;
 
 function dbSqlSchema(db){ db.run(DB_SCHEMA_SQL); }
@@ -78,6 +80,24 @@ function dbSqlLeerN1(db){
   return out;
 }
 
+// Palmarés del protagonista (carrera o club): lista ordenada de títulos (strings).
+// Mismo patrón que norm_n1: se guarda entera y se lee en orden de inserción.
+function dbSqlGuardarPalmares(db, lista){
+  db.run("BEGIN");
+  try{
+    db.run("DELETE FROM norm_palmares;");
+    const st=db.prepare("INSERT INTO norm_palmares(titulo) VALUES(?)");
+    (lista||[]).forEach(x=>st.run([String(x)])); st.free();
+    db.run("COMMIT");
+  }catch(e){ try{ db.run("ROLLBACK"); }catch(_){} throw e; }
+}
+function dbSqlLeerPalmares(db){
+  const out=[];
+  const r=db.exec("SELECT titulo FROM norm_palmares ORDER BY ord");
+  if(r&&r[0]) r[0].values.forEach(v=>out.push(v[0]));
+  return out;
+}
+
 /* ---------- capa de navegador/app: init, persistencia y write-through ---------- */
 let SQLDB=null;
 function _sqlInitFn(){
@@ -115,6 +135,10 @@ function dbSqlSnapshotVivo(){
   try{
     dbSqlGuardarSnapshot(SQLDB, normalizar());
     try{ if(typeof G!=="undefined"&&G&&G.world) dbSqlGuardarN1(SQLDB, G.world.n1hist||[]); }catch(_){}
+    try{
+      const prot=(typeof G!=="undefined"&&G)?(G.modo==="carrera"?G.carrera:G.clubG):null;
+      if(prot) dbSqlGuardarPalmares(SQLDB, prot.palmares||[]);
+    }catch(_){}
     dbSqlPersistir();
   }catch(e){}
 }
@@ -122,6 +146,11 @@ function dbSqlSnapshotVivo(){
 function dbSqlCargarN1(){
   if(!SQLDB) return null;
   try{ return dbSqlLeerN1(SQLDB); }catch(e){ return null; }
+}
+// Reconstruye el palmarés del protagonista desde sql.js (Fase 4d·2).
+function dbSqlCargarPalmares(){
+  if(!SQLDB) return null;
+  try{ return dbSqlLeerPalmares(SQLDB); }catch(e){ return null; }
 }
 
 /* ---------- consultas para la analítica (síncronas, sobre sql.js) ---------- */
@@ -231,7 +260,7 @@ function dbSqlDistribucionNivel(db){
 // En Node (pruebas) exportamos las funciones puras; en el navegador quedan como globales.
 if(typeof module!=="undefined"&&module.exports){
   module.exports={DB_SCHEMA_SQL,dbSqlSchema,dbSqlGuardarSnapshot,dbSqlLeerSnapshot,
-    dbSqlGuardarN1,dbSqlLeerN1,
+    dbSqlGuardarN1,dbSqlLeerN1,dbSqlGuardarPalmares,dbSqlLeerPalmares,
     dbSqlPorEstilo,dbSqlMejoresParejas,dbSqlTopPaises,dbSqlDistribucionNivel,
     dbSqlSnapshotCoincide};
 }

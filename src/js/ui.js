@@ -97,6 +97,17 @@ function abrirModo(modo){
         }
       }
     }catch(e){}
+    // Fase 4d·2: el palmarés del protagonista, con la misma red de seguridad —
+    // solo se toma de SQLite si coincide con el del blob (longitud y títulos).
+    try{
+      const prot=G?(G.modo==="carrera"?G.carrera:G.clubG):null;
+      if(typeof dbSqlCargarPalmares==="function" && prot && Array.isArray(prot.palmares)){
+        const palSql=dbSqlCargarPalmares(), blob=prot.palmares;
+        if(palSql && palSql.length===blob.length && palSql.every((x,i)=>x===blob[i])){
+          prot.palmares=palSql; G._palmaresDesdeSql=true;
+        }
+      }
+    }catch(e){}
     entrarPartida();
   };
   if(!s){ nueva(); return; }   // sin guardado: directo a crear
