@@ -106,8 +106,7 @@ function pintarMercadoInicial(){
     mercadoTmp=null;plantillaTmp=[];
     avisa(t("clb_nace",{nombre,lista:G.clubG.plantilla.map(j=>j.n).join(", ")}));
   noticia("debut",t("not_club_debut_t",{nombre}),t("not_club_debut_s"));
-    entrarPartida();
-    verTuto("club");
+    entrarPartida();   // arranca también la guía jugable
   };
 }
 const STAFF_CLUB={fisio:{n:"Fisioterapeuta",sal:210,desc:"Menos lesiones y recuperaciones más cortas para toda la plantilla."},psico:{n:"Psicólogo deportivo",sal:180,desc:"La confianza de la plantilla se recupera sola cada semana."},fisico:{n:"Preparador físico",sal:210,desc:"+4 de energía semanal extra para todos."},ojeador:{n:"Ojeador",sal:240,desc:"Mercados más grandes y con mejores jugadores."}};
@@ -146,7 +145,13 @@ function repararAlin(){
     const idx=cl.plantilla.map((j,i)=>i).sort((a,b)=>(mediaAttrs(cl.plantilla[b].attrs)-(cl.plantilla[b].lesion?100:0))-(mediaAttrs(cl.plantilla[a].attrs)-(cl.plantilla[a].lesion?100:0)));
     cl.alin=idx.length>=2?[idx[0],idx[1]]:idx.length===1?[idx[0],idx[0]]:[0,1];
   }
-  if(cl.alinB&&!val(cl.alinB)) cl.alinB=null;
+  /* La pareja B se forma en dos clics, y entre uno y otro queda a medias. Como
+     cada clic repinta —y repintar pasa por aquí—, borrar todo lo que no midiera
+     dos dejaba la pareja B en null para siempre: era imposible formarla. Se
+     respeta el estado intermedio mientras el jugador elegido siga existiendo. */
+  if(cl.alinB&&cl.alinB.length===1){
+    if(!cl.plantilla[cl.alinB[0]]) cl.alinB=null;
+  } else if(cl.alinB&&!val(cl.alinB)) cl.alinB=null;
 }
 function alineacion(){ repararAlin(); return parejaDe(G.clubG&&G.clubG.alin); }
 function alineacionB(){return G.clubG&&G.clubG.alinB?parejaDe(G.clubG.alinB):null;}
@@ -372,7 +377,7 @@ function pintarCmPlantilla(){
     fr.appendChild(bA);fr.appendChild(bR);oc.appendChild(fr);
     el.appendChild(oc);
   } else if(cl.ofertaRival){ cl.ofertaRival=null; }
-  const alCard=document.createElement("div");alCard.className="card";
+  const alCard=document.createElement("div");alCard.className="card";alCard.id="cmAlin";
   alCard.innerHTML=`<h3>${t("clb_hd_alin")}</h3>`;
   cl.plantilla.forEach((j,idx)=>{
     const row=document.createElement("div");row.className="fila";row.style.marginBottom="5px";row.style.alignItems="center";

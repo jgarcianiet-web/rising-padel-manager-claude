@@ -127,7 +127,11 @@ function despedirStaff(rol){
   avisa(t("staff_av_adios",{n:st.n,sal:st.sal}));
   guardar(); pintarTodo();
 }
-function pintarTodo(){ if(G.modo==="carrera") pintarCarrera(); else pintarClubM(); }
+function pintarTodo(){
+  if(G.modo==="carrera") pintarCarrera(); else pintarClubM();
+  // la guía de las primeras semanas mira el estado después de cada repintado
+  if(typeof guiaComprueba==="function") guiaComprueba();
+}
 function renderEquipoStaff(el){
   const e=ent(), roles=rolesDeModo();
   el.innerHTML=roles.map(r=>{
@@ -356,10 +360,10 @@ function empezarCarrera(estiloKey){
   }};
   G.carrera.mercadoP=mkMercadoParejas();
   G.carrera.objetivos=mkObjetivosTemporada(G.carrera,miPuesto());
-  avisa(t("av_debut",{nombre,estilo:estiloNombre(estiloKey).toLowerCase(),perso:persoNombre(persoSel).toLowerCase()}));
-  noticia("debut",t("not_debut_t",{nombre}),t("not_debut_s"));
-  entrarPartida();
-  verTuto("carrera");
+  const pos=miPuesto();   // el circuito creció: el puesto de salida ya no es fijo
+  avisa(t("av_debut",{nombre,estilo:estiloNombre(estiloKey).toLowerCase(),perso:persoNombre(persoSel).toLowerCase(),pos}));
+  noticia("debut",t("not_debut_t",{nombre}),t("not_debut_s",{pos}));
+  entrarPartida();   // arranca también la guía jugable; el tutorial de fichas queda como consulta (botón ?)
 }
 
 ["semana","entreno","staff","jugador","ranking","diario"].forEach(t=>{
@@ -631,6 +635,7 @@ function pintarSemana(){
     fila.appendChild(bJ);
   }
   const bE=document.createElement("button");
+  bE.id="btnEntrenarHoy";          // la guía lo señala
   bE.textContent=t("sem_entrenar");
   bE.disabled=!!c.lesion||esDiaPartido||c.energia<10;
   bE.title=c.lesion?t("sem_t_baja"):esDiaPartido?t("sem_t_partido"):t("sem_t_sesion");

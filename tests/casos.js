@@ -2005,3 +2005,114 @@ comprueba("Idiomas: noticias de carrera con variantes aleatorias (pick) traducen
   } finally { localStorage.removeItem("rpm_idioma"); }
   return "variantes y contrato/mercado en inglés";
 });
+
+/* Guía de las primeras semanas -------------------------------------------
+   Fallos reales que cazó la verificación en navegador y que no vuelven:
+   la guía se quedaba clavada en el paso 1 (nada la despertaba al cambiar de
+   pestaña) y, al arreglarlo con un salto hacia adelante, se comía media
+   carrera de golpe porque `tabActiva` ya vale "semana" nada más empezar. */
+function guiaLimpia() {
+  ["carrera", "club"].forEach(m => localStorage.removeItem("rpm_guia_" + m));
+  _guiaModo = null; _guiaPaso = 0;
+  torneo = null;            // el torneo abierto de otro caso es un hito de la guía
+}
+function guiaId() { return guiaPasos()[_guiaPaso].id; }
+
+comprueba("Guía: empieza por el principio aunque la pestaña ya sea la de la semana", () => {
+  guiaLimpia();
+  const c = nuevaCarrera();
+  exige(tabActiva === "semana", "el juego debería arrancar en la pestaña Semana");
+  guiaEmpieza("carrera");
+  exige(_guiaModo === "carrera", "la guía no arrancó");
+  exige(guiaId() === "ficha", "arrancó en el paso '" + guiaId() + "' en vez del primero");
+  exige(c.semana === 1, "la carrera no empieza en la semana 1");
+  return "paso 1 de 9, sin saltos";
+});
+
+comprueba("Guía: cada paso se da por hecho con su acción, no con otra", () => {
+  guiaLimpia();
+  const c = nuevaCarrera();
+  guiaEmpieza("carrera");
+  const paso = (etiqueta, hacer) => { hacer(); guiaComprueba(); return guiaId(); };
+  exige(paso("jugador", () => tabActiva = "jugador") === "entreno", "tras abrir Jugador: " + guiaId());
+  exige(paso("entreno", () => tabActiva = "entreno") === "golpe", "tras abrir Entreno: " + guiaId());
+  exige(paso("golpe", () => c.planJug = "remate") === "semana", "tras elegir golpe: " + guiaId());
+  exige(paso("semana", () => tabActiva = "semana") === "entrenar", "tras volver a Semana: " + guiaId());
+  exige(paso("entrenar", () => c._sesEntreno = 1) === "inscribir", "tras entrenar: " + guiaId());
+  return "5 pasos encadenados";
+});
+
+comprueba("Guía: el plan del ojeador cuenta aunque se deje en normal", () => {
+  guiaLimpia();
+  const c = nuevaCarrera();
+  guiaEmpieza("carrera");
+  tabActiva = "jugador"; guiaComprueba();
+  tabActiva = "entreno"; guiaComprueba();
+  c.planJug = "remate"; guiaComprueba();
+  tabActiva = "semana"; guiaComprueba();
+  c._sesEntreno = 1; guiaComprueba();
+  abrirTorneo(0); guiaComprueba();
+  exige(guiaId() === "ojeador", "no llegó al informe: " + guiaId());
+  // el plan recomendado puede ser exactamente el neutro: lo que vale es haberlo tocado
+  aplicarTacticaRec("normal", "repartir", "normal", "normal");
+  guiaComprueba();
+  exige(guiaId() === "jugar", "aplicar el plan neutro no contó: " + guiaId());
+  return "el plan se marca al tocarlo";
+});
+
+comprueba("Guía: un hito posterior desatasca; el estado de la interfaz no", () => {
+  guiaLimpia();
+  const c = nuevaCarrera();
+  guiaEmpieza("carrera");
+  tabActiva = "semana"; guiaComprueba();
+  exige(guiaId() === "ficha", "una pestaña no es un hito: " + guiaId());
+  c.semana = 2; guiaComprueba();          // hito: se pasó de semana sin seguir la guía
+  exige(guiaId() === "fin", "el hito no desatascó la guía: " + guiaId());
+  return "salta solo con hechos consumados";
+});
+
+comprueba("Guía: se retoma donde estaba y no vuelve si se cierra", () => {
+  guiaLimpia();
+  const c = nuevaCarrera();
+  guiaEmpieza("carrera");
+  tabActiva = "jugador"; guiaComprueba();
+  tabActiva = "entreno"; guiaComprueba();
+  const donde = guiaId();
+  exige(localStorage.getItem("rpm_guia_carrera") === "2", "no guardó el paso: " + localStorage.getItem("rpm_guia_carrera"));
+  _guiaModo = null; _guiaPaso = 0;                       // como si se recargara la página
+  guiaEmpieza("carrera");
+  exige(guiaId() === donde, "no retomó en '" + donde + "' sino en '" + guiaId() + "'");
+  guiaCierra();
+  exige(guiaTerminada("carrera"), "cerrarla no queda registrado");
+  guiaEmpieza("carrera");
+  exige(_guiaModo === null, "la guía cerrada volvió a salir");
+  guiaLimpia();
+  return "sobrevive a la recarga, no al cierre";
+});
+
+comprueba("Guía: no pide la pareja B a un club que no tiene con quién formarla", () => {
+  guiaLimpia();
+  const cl = fundarClub();                 // se funda con dos jugadores
+  exige(cl.plantilla.length < 4, "el club de prueba debería tener menos de cuatro");
+  guiaEmpieza("club");
+  cmTab = "plantilla"; guiaComprueba();
+  exige(guiaId() === "panel", "pidió la pareja B siendo imposible: " + guiaId());
+  guiaLimpia();
+  return "el paso imposible se salta";
+});
+
+comprueba("Club: la pareja B se forma en dos clics (regresión: se borraba sola)", () => {
+  const cl = fundarClub();
+  while (cl.plantilla.length < 4) cl.plantilla.push({ ...cl.plantilla[0], n: "Suplente " + cl.plantilla.length });
+  cl.alin = [0, 1]; cl.alinB = null;
+  cl.alinB = [2];                          // primer clic: pareja a medias
+  repararAlin();
+  exige(cl.alinB && cl.alinB.length === 1, "el estado intermedio se borró al repintar");
+  cl.alinB = [2, 3];                       // segundo clic
+  repararAlin();
+  exige(cl.alinB && cl.alinB.length === 2, "la pareja B completa no se conserva");
+  cl.plantilla.length = 3;                 // se va el jugador elegido a medias
+  cl.alinB = [3]; repararAlin();
+  exige(cl.alinB === null, "un índice que ya no existe debería limpiarse");
+  return "pareja B formable y a prueba de bajas";
+});

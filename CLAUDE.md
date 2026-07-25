@@ -99,6 +99,30 @@ Tres cosas que hay que respetar al tocar el código:
 `tests/estatico.js` lo hace cumplir: falla si aparece un `Math.random` sin
 marcar en un fichero de simulación, o si alguien vuelve a tapar `rnd`.
 
+## La guía de las primeras semanas
+
+`guia.js` sustituye al tutorial de fichas por una tira que pide **una cosa cada
+vez**, señala dónde está con un aro (`.guiaFoco`) y se pasa sola. Los pasos se
+comprueban sobre el **estado de la partida**, no sobre el DOM.
+
+Tres cosas que hay que respetar al añadir o mover un paso:
+
+1. **`hito:true` solo para hechos consumados** —entrenaste, jugaste, pasó la
+   semana—. Un paso marcado como hito puede desatascar la guía saltando hacia
+   adelante; uno que mira el estado de la interfaz, no. `tabActiva` ya vale
+   `"semana"` nada más empezar: si eso pudiera provocar un salto, la guía se
+   comería media carrera en el primer repintado (pasó).
+2. **`salta` para lo que no aplica a esa partida.** Un club puede fundarse con
+   dos jugadores, y entonces no hay con quién formar la pareja B. Pedir lo
+   imposible deja la guía atascada.
+3. **El enganche es un oyente de clic propio**, aparte del despachador de
+   `data-ac`, porque las pestañas se enganchan con `.onclick` y no pasan por
+   él. Si se toca `ui.js`, ese segundo oyente tiene que seguir ahí.
+
+El paso por el que va se guarda en `localStorage` (`rpm_guia_<modo>`: número, o
+`-1` si se cerró), y `entrarPartida()` la retoma. Quien recarga a mitad no la
+pierde y quien la cerró no la vuelve a ver.
+
 ## Pruebas
 
 - `node tests/smoke.js` — toda la suite (motor, mundo, SQLite con sql.js real,

@@ -287,3 +287,30 @@ button:active{transform:translateY(1px)}
   #tab-semana .card,#cm-semana .card{margin-bottom:0}
 }
 
+
+/* ---- guía de las primeras semanas ----
+   Tira fija abajo que pide una cosa cada vez. No bloquea nada: se puede jugar
+   por encima de ella e ignorarla. Va por debajo de los avisos emergentes en la
+   pila de capas para que un aviso nunca quede tapado. */
+#guia{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:110;
+  width:min(94vw,620px);pointer-events:none}
+#guia.oculto{display:none !important}
+.guiaCaja{display:flex;align-items:center;gap:11px;pointer-events:auto;
+  background:linear-gradient(#1E2635,#161D29);border:1px solid var(--lima);
+  border-radius:11px;padding:9px 11px;box-shadow:0 8px 28px rgba(0,0,0,.5)}
+.guiaNum{flex:none;min-width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:rgba(198,245,60,.14);color:var(--lima);font-family:'IBM Plex Mono',monospace;
+  font-size:calc(10px * var(--esc));font-weight:600;padding:0 6px}
+.guiaTxt{flex:1;min-width:0;line-height:1.4}
+.guiaTxt b{font-size:calc(12.5px * var(--esc));color:var(--texto)}
+.guiaTxt div{font-size:calc(11px * var(--esc));color:var(--gris);margin-top:1px}
+.guiaX{flex:none;background:none;border:1px solid var(--borde2);color:var(--gris);
+  padding:6px 10px;font-size:calc(11px * var(--esc));box-shadow:none}
+.guiaX:hover{color:var(--texto);border-color:var(--gris2);background:none}
+/* con la guía puesta, los avisos suben por encima de ella */
+body.con-guia #toasts{bottom:calc(28px + var(--guiaAlto,72px))}
+/* el elemento que hay que pulsar, con un latido suave */
+.guiaFoco{position:relative;outline:2px solid var(--lima) !important;outline-offset:1px;
+  animation:guiaLatido 1.5s ease-in-out infinite}
+@keyframes guiaLatido{0%,100%{outline-color:var(--lima)}50%{outline-color:rgba(198,245,60,.28)}}
+@media(prefers-reduced-motion:reduce){.guiaFoco{animation:none}}

@@ -44,6 +44,13 @@ document.addEventListener("click",ev=>{
   }
   fn.apply(null,args);
 });
+/* La guía mira el estado después de CUALQUIER clic, no solo de los que pasan
+   por el despachador: las pestañas se enganchan con .onclick y sin esto la
+   guía se quedaba parada en el primer paso. Va en su propio oyente para que
+   dispare aunque el clic no sea una acción registrada. */
+document.addEventListener("click",()=>{
+  if(typeof guiaComprueba==="function") guiaComprueba();
+});
 
 function irA(s){
   ["menu","crear","crearclub","club","clubm","torneo","partido","superliga"].forEach(x=>{
@@ -421,6 +428,10 @@ function repartirClubes(){
   });
 }
 function entrarPartida(){
+  /* El torneo en curso es un global fuera de la partida y no se guarda: si se
+     entra en otra partida sin limpiarlo, el juego cree que hay un torneo
+     abierto que no es suyo. */
+  torneo=null; match=null;
   /* Retoma el flujo de azar donde lo dejó esta partida. Las partidas anteriores
      a la semilla no la traen: se les asigna una al vuelo, y a partir de ahí ya
      son reproducibles como las nuevas. */
@@ -515,6 +526,8 @@ function entrarPartida(){
     if(cl.wildcards===undefined) cl.wildcards=2;
     irA("clubm"); pintarClubM();
   }
+  // La guía se retoma donde estaba: quien recarga a mitad del tutorial no lo pierde.
+  if(typeof guiaEmpieza==="function") guiaEmpieza(G.modo==="carrera"?"carrera":"club");
   guardar();
 }
 

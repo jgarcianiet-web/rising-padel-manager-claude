@@ -221,11 +221,14 @@ function pintarPlanPartido(){
   ${G.modo==="carrera"?`<div class="foot" style="text-align:left;margin-top:8px">${ent_.id>0?t("tac_coach_si",{n:ent_.n}):t("tac_coach_no")}</div>`:`<div class="foot" style="text-align:left;margin-top:8px">${t("tac_coach_club")}</div>`}`;
   document.getElementById("btnSimCoach").textContent=G.modo==="carrera"&&ent_.id>0?t("tac_sim_coach",{n:ent_.n}):t("tac_sim_banq");
 }
-function setTactPrev(g,v){ ent().tactica[g]=v; guardar(); pintarPlanPartido(); }
+/* `_plan` es la huella de que el jugador ha tocado el plan alguna vez. Hace
+   falta porque el plan neutro es una elección legítima: sin la marca no hay
+   forma de distinguir «lo he dejado en normal» de «ni lo he mirado». */
+function setTactPrev(g,v){ const ta=ent().tactica; ta[g]=v; ta._plan=1; guardar(); pintarPlanPartido(); }
 // Aplica la táctica que recomienda el informe del ojeador (un clic → plan listo).
 function aplicarTacticaRec(agres,diana,red,clutch){
   const ta=ent().tactica||(ent().tactica={agres:"normal",diana:"repartir"});
-  ta.agres=agres; ta.diana=diana; if(red)ta.red=red; if(clutch)ta.clutch=clutch;
+  ta.agres=agres; ta.diana=diana; if(red)ta.red=red; if(clutch)ta.clutch=clutch; ta._plan=1;
   guardar(); pintarPlanPartido();
   const agresTxt=(agres==="agresiva"?t("tac_op_deguello"):agres==="conservadora"?t("tac_op_segura"):t("tac_op_normal")).toLowerCase();
   const plan=(diana==="debil"?t("tac_av_flojo"):t("tac_av_repartir"))+" · "+agresTxt+
@@ -259,7 +262,7 @@ function pintarTorneo(){
   let infoHTML="";
   if(inf){
     const li=(arr,col)=>arr.map(x=>`<div style="font-size:11px;color:${col};padding:1px 0;line-height:1.4">${x}</div>`).join("");
-    infoHTML=`<div class="scout">
+    infoHTML=`<div class="scout" id="scoutCaja">
       <div class="scoutHd">${t("scout_hd")}</div>
       ${li(inf.deb,"var(--verde)")}
       ${li(inf.fue,"var(--rojo)")}
