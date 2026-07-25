@@ -771,6 +771,85 @@ comprueba("Ranuras: una partida corrupta se muestra y se puede borrar", () => {
   return "visible y recuperable";
 });
 
+comprueba("Circuito: 90 parejas por categoría y se debuta por el puesto 91", () => {
+  const c = nuevaCarrera("agresivo");
+  exige(G.world.parejas.length === WORLD_N, `el circuito tiene ${G.world.parejas.length}, esperaba ${WORLD_N}`);
+  const porSexo = { M: 0, F: 0 };
+  G.world.parejas.forEach(p => porSexo[p.sexo || "M"]++);
+  exige(porSexo.M === porSexo.F, `categorías desiguales: ${porSexo.M}M / ${porSexo.F}F`);
+  exige(porSexo.M >= 80 && porSexo.M <= 100, `deberían ser 80-100 por categoría, hay ${porSexo.M}`);
+  // el jugador debuta por el fondo del ranking, no a mitad de tabla
+  const puesto = miPuesto();
+  exige(puesto >= 80, `se debuta demasiado arriba: puesto ${puesto}`);
+  exige(puesto <= porSexo.M + 1, `puesto imposible: ${puesto} de ${porSexo.M + 1}`);
+  return `${WORLD_N} parejas · ${porSexo.M} por categoría · debut en el ${puesto}`;
+});
+
+comprueba("Circuito: el nivel cubre toda la escalera en ambas categorías", () => {
+  nuevaCarrera("agresivo");
+  ["M", "F"].forEach(sx => {
+    const niveles = G.world.parejas.filter(p => (p.sexo || "M") === sx).map(p => nivelPareja(p));
+    const min = Math.min(...niveles), max = Math.max(...niveles);
+    // si el nivel se repartiera por índice global, cada sexo tendría media escalera
+    exige(min <= 45, `${sx}: la pareja más floja está en ${min}, debería haber novatos`);
+    exige(max >= 80, `${sx}: la mejor pareja está en ${max}, falta la élite`);
+  });
+  return "de novato a élite en las dos categorías";
+});
+
+comprueba("Circuito: las parejas se reparten por TODOS los clubes", () => {
+  nuevaCarrera("agresivo");
+  repartirClubes();
+  const porClub = {};
+  G.world.parejas.forEach(p => { porClub[p.club] = (porClub[p.club] || 0) + 1; });
+  const usados = Object.keys(porClub).length;
+  exige(usados === CLUBES_NPC.length, `solo ${usados} de ${CLUBES_NPC.length} clubes tienen parejas`);
+  // clubAlAzar() debe poder devolver cualquier índice, no solo los 9 primeros
+  const vistos = new Set();
+  for (let i = 0; i < 3000; i++) vistos.add(clubAlAzar());
+  exige(vistos.size === CLUBES_NPC.length, `clubAlAzar solo alcanza ${vistos.size} de ${CLUBES_NPC.length} clubes`);
+  exige(Math.max(...vistos) === CLUBES_NPC.length - 1, "clubAlAzar no llega al último club");
+  return `${CLUBES_NPC.length} clubes, todos con plantilla`;
+});
+
+comprueba("Circuito: los nombres respetan la bandera del jugador", () => {
+  nuevaCarrera("agresivo");
+  // muestras de repertorios inconfundibles
+  const marcas = {
+    "🇸🇪": /Lindqvist|Bergström|Sandberg|Nyström|Åkerlund|Hedlund|Sjöberg|Wallin|Ekström|Holmberg|Dahl/,
+    "🇶🇦": /\bAl-/,          // el nombre va abreviado ("R. Al-Hajri"), no anclar al principio
+    "🇳🇱": /Van Dijk|De Vries|Bakker|Visser|Hoekstra|Kuipers|Van Leeuwen|Smits|Verhoeven|Blom/,
+  };
+  let comprobados = 0;
+  G.world.parejas.forEach(p => (p.jug || []).forEach(j => {
+    const re = marcas[j.pais];
+    if (!re || p.pro) return;                 // la élite lleva nombres escritos a mano
+    comprobados++;
+    exige(re.test(j.n), `${j.pais} con nombre que no es de ahí: ${j.n}`);
+  }));
+  exige(comprobados >= 3, "casi no salieron jugadores de esos países para comprobar (" + comprobados + ")");
+  // y el generador acepta países sin repertorio propio sin reventar
+  exige(nombrePorSexo("M", "🇯🇵").length > 0, "un país sin repertorio debería caer al español");
+  exige(apellidoPais("🇯🇵").length > 0, "apellido de país sin repertorio");
+  return comprobados + " jugadores con nombre acorde a su bandera";
+});
+
+comprueba("Circuito: el mundo grande se genera y simula rápido", () => {
+  const t0 = Date.now();
+  nuevaCarrera("agresivo");
+  const tMundo = Date.now() - t0;
+  const t1 = Date.now();
+  for (let i = 0; i < 26; i++) simCircuito([]);
+  const tSim = Date.now() - t1;
+  const kb = Math.round(JSON.stringify(G).length / 1024);
+  // márgenes anchos: la prueba es contra una regresión de orden de magnitud,
+  // no contra el ruido de una máquina más lenta
+  exige(tMundo < 2000, `generar el mundo tarda ${tMundo}ms`);
+  exige(tSim < 2000, `26 semanas de circuito tardan ${tSim}ms`);
+  exige(kb < 400, `la partida ocupa ${kb} KB, demasiado para localStorage con 3 ranuras`);
+  return `mundo ${tMundo}ms · 26 semanas ${tSim}ms · ${kb} KB`;
+});
+
 comprueba("Pádel: todas las parejas combinan drive y revés", () => {
   nuevaCarrera("agresivo");
   let mal = 0;

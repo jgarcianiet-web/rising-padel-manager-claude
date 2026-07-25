@@ -28,8 +28,9 @@ const FRASES_STAFF={
 function mkStaff(rol,nivFijo){
   const niv=nivFijo||Math.min(5,Math.max(1,Math.round(R(1,3.6)+(rnd()<.18?1:0))));
   const sx=rnd()<.5?"M":"F";
-  const nom=`${nombrePorSexo(sx)} ${pick(APELL)}`;
-  const st={rol,n:nom,sexo:sx,edad:Math.round(R(30,62)),niv,
+  const pais=pickPais();
+  const nom=`${nombrePorSexo(sx,pais)} ${apellidoPais(pais)}`;
+  const st={rol,n:nom,sexo:sx,pais,edad:Math.round(R(30,62)),niv,
     sal:Math.round(ROLES_STAFF[rol].salBase*niv*(1+R(-.12,.15))),
     frase:pick(FRASES_STAFF[rol]||["fr_generica"])};
   if(rol==="entrenador") st.esp=pick(ESP_GRUPOS);
@@ -235,7 +236,8 @@ function mkLibre(nivMin,nivMax,sx){
   const nivel=Math.round(R(nivMin,nivMax));
   sx=sx||"M";
   const apodo=rnd()<.28?` «${pick(APODOS)}»`:"";
-  return {n:nombrePorSexo(sx)+apodo+" "+pick(APELL),pais:pickPais(),sexo:sx,origen:"libre",estilo:est,perso:pick(Object.keys(PERSONALIDADES)),attrs:mkAttrsNivel(nivel,est)};
+  const pais=pickPais();
+  return {n:nombrePorSexo(sx,pais)+apodo+" "+apellidoPais(pais),pais,sexo:sx,origen:"libre",estilo:est,perso:pick(Object.keys(PERSONALIDADES)),attrs:mkAttrsNivel(nivel,est)};
 }
 function mkMercadoParejas(){
   const c=G.carrera, pos=miPuesto(), lista=[];

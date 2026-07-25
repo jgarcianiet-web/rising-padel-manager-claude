@@ -752,8 +752,26 @@ function decaeMerma(port){
 function moralAjusteConf(moral){
   return Math.round((clamp(moral==null?65:moral,5,95)-60)/5);
 }
-const WORLD_N=80;
-const PAISES=[["🇪🇸",46],["🇦🇷",30],["🇧🇷",5],["🇫🇷",4],["🇮🇹",4],["🇵🇹",3],["🇸🇪",2],["🇲🇽",2],["🇨🇱",2],["🇧🇪",2]];
+/* Tamaño del circuito. WORLD_N es el total (las dos categorías juntas) y
+   NPC_POR_SEXO cuántas parejas GENERADAS lleva cada una, aparte de la élite con
+   nombre propio (18 por sexo). 18+72 = 90 por categoría, así que se debuta por
+   el puesto noventa y tantos.
+
+   Si tocas esto, mide: simCircuito recorre la lista entera cada semana y el
+   ranking la ordena en cada repintado. tests/casos.js tiene una prueba de
+   rendimiento que falla si generar el mundo se va de tiempo. */
+const NPC_POR_SEXO=72;
+const WORLD_N=(18+NPC_POR_SEXO)*2;      // 180
+/* Un club al azar de TODOS los que hay. Antes era rnd()*9 repetido en cinco
+   sitios, con lo que los clubes del 10 en adelante no recibían nunca parejas
+   nuevas por mucho que la lista creciera. */
+function clubAlAzar(){ return Math.floor(rnd()*CLUBES_NPC.length); }
+/* Reparto de banderas del circuito. España y Argentina siguen mandando, que es
+   la verdad del pádel, pero ya no se comen el 76%: el resto del mundo pasa de
+   un 24% testimonial a un tercio largo del vestuario, con presencia de los
+   países donde el calendario tiene parada (Qatar, Egipto, Reino Unido...).
+   Cada bandera tiene su repertorio de nombres en NOMBRES_PAIS. */
+const PAISES=[["🇪🇸",33],["🇦🇷",22],["🇧🇷",7],["🇮🇹",6],["🇫🇷",6],["🇵🇹",4],["🇸🇪",4],["🇲🇽",3],["🇨🇱",3],["🇧🇪",2],["🇳🇱",2],["🇩🇪",2],["🇬🇧",2],["🇶🇦",2],["🇪🇬",1],["🇺🇸",1]];
 // hash determinista del nombre → siempre la misma cara para el mismo jugador
 function hashStr(str){let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
 const AVA_PIEL=["#EFC49E","#E3AE85","#D2996E","#BE8154","#A26940","#7F4E2E","#5E3A22"];
@@ -931,6 +949,21 @@ const CLUBES_NPC=[
   {n:"Old School Pádel",color:"#8A96A8",sede:"Londres",lema:"Oficio y paciencia",fil:"tactica"},
   {n:"Cantera del Sur",color:"#D8804A",sede:"Granada",lema:"De abajo se sube más fuerte",fil:"humilde"},
   {n:"Titanes PC",color:"#5CA0C8",sede:"México DF",lema:"Fuerza bruta con cabeza",fil:"garra"},
+  // Ampliación: con 180 parejas en el circuito, 16 clubes dejaban plantillas de
+  // once y doce parejas cada uno. Estos doce reparten la carga y abren el mapa a
+  // las sedes por donde pasa el calendario.
+  {n:"Doha Falcons",color:"#C89A3C",sede:"Doha",lema:"El desierto no perdona un fallo",fil:"tactica"},
+  {n:"Nilo Pádel",color:"#3C9E8C",sede:"El Cairo",lema:"Paciencia de río",fil:"defensa"},
+  {n:"Rotterdam Smash",color:"#E0603C",sede:"Rotterdam",lema:"Directos al grano",fil:"ataque"},
+  {n:"Bruxelles Padel",color:"#8CA0D8",sede:"Bruselas",lema:"Orden y disciplina",fil:"tactica"},
+  {n:"Milano Vetro",color:"#C84A6A",sede:"Milán",lema:"Elegancia y colmillo",fil:"ataque"},
+  {n:"Colonia Eisen",color:"#6A7A8C",sede:"Colonia",lema:"Se entrena, no se improvisa",fil:"defensa"},
+  {n:"Asunción PC",color:"#4AB86A",sede:"Asunción",lema:"Corazón guaraní",fil:"garra"},
+  {n:"Acapulco Sol",color:"#E0A85C",sede:"Acapulco",lema:"Con la ola a favor",fil:"humilde"},
+  {n:"Riad Halcón",color:"#B08A40",sede:"Riad",lema:"Ambición sin techo",fil:"ataque"},
+  {n:"Gijón Cantábrico",color:"#3C7AA8",sede:"Gijón",lema:"Con lluvia se juega igual",fil:"humilde"},
+  {n:"Pretoria Baobab",color:"#A87A3C",sede:"Pretoria",lema:"Raíces hondas",fil:"cantera"},
+  {n:"Burdeos Reserva",color:"#8C3C5C",sede:"Burdeos",lema:"Los años nos mejoran",fil:"tactica"},
 ];
 const FILOSOFIAS={garra:"Aprietan cada punto como si fuera el último.",ataque:"Viven del remate y la víbora.",tactica:"Estudian al rival y no regalan nada.",cantera:"Fabrican jugadores, no los compran.",defensa:"Devuelven una bola más. Siempre una más.",humilde:"Sin presupuesto, a base de corazón."};
 const PROS_F=[
@@ -956,5 +989,82 @@ const PROS_F=[
 const APELL=["García","López","Santos","Vega","Marín","Ortega","Robles","Pardo","Ferrer","Campos","Nieto","Salas","Rueda","Bravo","Cano","Mora","Peña","Gil","Serna","Lara","Prieto","Soto","Reyes","Varela","Aguirre","Toledo","Baena","Cruz","Duarte","Escudero","Fuentes","Galán","Herrero","Ibarra","Juárez","Lozano","Miranda","Navas","Osuna","Quirós","Acosta","Benítez","Sosa","Giménez","Cabrera","Ríos","Coronel","Ledesma","Paz","Quiroga","Ponce","Funes","Bustos","Arce","Maidana","Villalba","Alcaraz","Beltrán","Carrasco","Estévez","Fajardo","Garrido","Hidalgo","Iglesias","Jurado","Llorente","Machado","Naranjo","Oliva","Pizarro","Quintana","Redondo","Trujillo","Urrutia","Zamora","Molina","Herrera","Vidal","Rocamora","Cifuentes"];
 const NOMBRES_M=["Hugo","Iker","Mateo","Leo","Adri","Nico","Dani","Marc","Pau","Álex","Bruno","Izan","Javi","Sergio","Rubén","Curro","Facu","Lauti","Thiago","Franco","Agus","Joaco","Santi","Guille","Rafa","Emi","Ciro","Teo","Coco","Manu","Fer","Gonzalo","Bauti","Tomás"];
 const NOMBRES_F=["Lucía","Marta","Vera","Noa","Ari","Bea","Carla","Elena","Irene","Julia","Laura","Nerea","Paula","Sara","Valen","Alba","Claudia","Emma","Gala","Lola","María","Nadia","Ona","Rocío","Triana","Delfi","Gemma","Vicky","Bel","Sofi","Aitana","Candela"];
-function nombrePorSexo(sx){return pick(sx==="F"?NOMBRES_F:NOMBRES_M);}
+
+/* ================================================================
+   NOMBRES POR PAÍS
+
+   El circuito viaja a Doha, Giza, Estocolmo y Buenos Aires, pero durante mucho
+   tiempo todo el vestuario se llamaba Hugo Bravo o Lucía Peña: 66 nombres y 80
+   apellidos, todos españoles o hispanoamericanos. Un jugador italiano o alemán
+   —que para eso está el juego traducido— competía en un circuito mundial donde
+   nadie era de su país.
+
+   Ahora cada bandera tiene su repertorio y el nombre se elige según ella. Los
+   países sin repertorio propio caen al español, que sigue siendo la cantera
+   mayoritaria del pádel y el respaldo natural.
+
+   Ojo: esto es GENERACIÓN, no texto de interfaz. Los nombres propios no se
+   traducen — un sueco se llama Erik en las cinco versiones del juego.
+================================================================ */
+const NOMBRES_PAIS={
+  "🇦🇷":{m:["Facu","Lauti","Thiago","Franco","Agus","Joaco","Santi","Bauti","Tomi","Nico","Juanpi","Mati","Valen","Gonza","Lisandro"],
+        f:["Delfi","Sofi","Valen","Cami","Juli","Martu","Agus","Male","Flor","Guada","Paula","Bel","Mica","Rocío","Tati"],
+        a:["Maidana","Villalba","Ledesma","Funes","Bustos","Arce","Coronel","Quiroga","Paz","Sosa","Benítez","Giménez","Acosta","Riveros","Barrionuevo"]},
+  "🇧🇷":{m:["Thiago","Rafa","Caio","Bruno","Gustavo","Léo","Vinícius","Matheus","Pedro","Lucas","Fabrício","Rodrigo"],
+        f:["Bia","Camila","Larissa","Fernanda","Juliana","Marina","Rafaela","Isabela","Letícia","Gabriela"],
+        a:["Oliveira","Souza","Ferreira","Almeida","Ribeiro","Barbosa","Carvalho","Nogueira","Teixeira","Macedo","Rocha","Pinheiro"]},
+  "🇫🇷":{m:["Théo","Hugo","Lucas","Enzo","Nathan","Léo","Maxime","Antoine","Julien","Clément","Baptiste","Rémi"],
+        f:["Manon","Camille","Chloé","Léa","Inès","Jade","Louise","Émilie","Margaux","Clara","Amandine","Océane"],
+        a:["Duprés","Lefèvre","Moreau","Girard","Chevalier","Rousseau","Marchand","Perrin","Blanchard","Fontaine","Leroy","Dubois"]},
+  "🇮🇹":{m:["Matteo","Lorenzo","Alessio","Riccardo","Davide","Gianluca","Federico","Andrea","Stefano","Tommaso","Nicolò"],
+        f:["Giulia","Chiara","Sofia","Martina","Alessia","Francesca","Elisa","Valentina","Ilaria","Beatrice"],
+        a:["Ricci","Moretti","Barbieri","Conti","Gallo","Rizzo","Ferrari","Bianchi","Marchetti","Costa","Greco","Fabbri"]},
+  "🇵🇹":{m:["Tiago","Rui","João","Diogo","Miguel","Gonçalo","André","Bernardo","Duarte","Vasco"],
+        f:["Inês","Beatriz","Matilde","Carolina","Mariana","Rita","Joana","Leonor","Catarina","Constança"],
+        a:["Do Campo","Figueiredo","Antunes","Marques","Pereira","Fonseca","Baptista","Azevedo","Coelho","Tavares","Esteves"]},
+  "🇸🇪":{m:["Erik","Oskar","Viktor","Elias","Axel","Gustav","Emil","Anton","Hugo","Filip","Måns"],
+        f:["Elsa","Astrid","Freja","Alva","Ebba","Wilma","Saga","Maja","Linnea","Ingrid"],
+        a:["Lindqvist","Bergström","Sandberg","Nyström","Åkerlund","Hedlund","Sjöberg","Wallin","Ekström","Holmberg","Dahl"]},
+  "🇧🇪":{m:["Lars","Wout","Jasper","Milan","Senne","Vic","Thibault","Arne","Stan","Lowie"],
+        f:["Fien","Marie","Lotte","Emma","Noor","Julie","Amber","Elise","Lore","Hanne"],
+        a:["Van Damme","De Smet","Claessens","Peeters","Maes","Willems","Janssens","Vermeulen","De Backer","Goossens"]},
+  "🇲🇽":{m:["Santi","Emiliano","Diego","Rodrigo","Sebas","Ale","Iker","Memo","Pato","Chuy"],
+        f:["Regina","Ximena","Renata","Valeria","Fernanda","Andrea","Danna","Montse","Ana Sofía","Paulina"],
+        a:["Juárez","Ramírez","Zúñiga","Alcántara","Ibarra","Estrada","Bautista","Rivas","Camacho","Cuevas","Berrones"]},
+  "🇨🇱":{m:["Vicente","Benja","Matías","Cristóbal","Ignacio","Joaquín","Agustín","Tomás","Maxi","Nico"],
+        f:["Antonia","Josefa","Catalina","Isidora","Florencia","Emilia","Trinidad","Amanda","Javiera","Colomba"],
+        a:["Riveros","Contreras","Muñoz","Fuentealba","Sepúlveda","Cárcamo","Vergara","Valenzuela","Aravena","Silva"]},
+  "🇶🇦":{m:["Khalid","Youssef","Omar","Hamad","Faisal","Rashid","Tariq","Nasser","Salem","Jassim"],
+        f:["Alya","Noor","Fatima","Maryam","Hessa","Sara","Latifa","Amna","Shaikha","Reem"],
+        a:["Al-Marri","Al-Kuwari","Al-Sulaiti","Al-Naimi","Al-Hajri","Al-Emadi","Al-Dosari","Al-Mannai"]},
+  "🇪🇬":{m:["Ahmed","Mostafa","Karim","Youssef","Amr","Tarek","Hassan","Sherif","Ziad","Marwan"],
+        f:["Nour","Farida","Habiba","Salma","Yasmin","Mariam","Rana","Dina","Aya","Menna"],
+        a:["El-Sayed","Hafez","Mansour","Farouk","Zaki","Shawky","Ghoneim","Radwan","Nabil","Sobhy"]},
+  "🇬🇧":{m:["Oliver","Harry","Jack","George","Callum","Ethan","Louie","Freddie","Alfie","Reece"],
+        f:["Amelia","Olivia","Poppy","Isla","Freya","Millie","Daisy","Elsie","Maisie","Evie"],
+        a:["Whitfield","Ashworth","Bramley","Halliwell","Cartwright","Thornton","Ellery","Radcliffe","Winslow","Marlow"]},
+  "🇳🇱":{m:["Sem","Daan","Luuk","Bram","Jesse","Ruben","Tijn","Stijn","Mees","Cas"],
+        f:["Sanne","Fenna","Roos","Anouk","Lieke","Bo","Nienke","Isa","Maud","Tess"],
+        a:["Van Dijk","De Vries","Bakker","Visser","Hoekstra","Kuipers","Van Leeuwen","Smits","Verhoeven","Blom"]},
+  "🇩🇪":{m:["Jonas","Finn","Leon","Nico","Til","Moritz","Lennard","Jannik","Fabian","Rasmus"],
+        f:["Lena","Mia","Hanna","Greta","Frida","Marlene","Johanna","Nele","Lina","Antonia"],
+        a:["Brandt","Keller","Hoffmann","Schreiber","Reinhardt","Kaufmann","Lindner","Winkler","Sommer","Vogel"]},
+  "🇺🇸":{m:["Tyler","Brandon","Cody","Hunter","Jalen","Mason","Chase","Trevor","Blake","Dalton"],
+        f:["Brooke","Sydney","Kayla","Peyton","Riley","Jordan","Taylor","Hailey","Madison","Devon"],
+        a:["Whitaker","Sullivan","Brennan","Callahan","Delaney","Hoffman","Kingsley","Sutton","Vance","Ramsey"]},
+};
+/* Elige nombre y apellido acordes a la bandera. Sin repertorio propio, español. */
+function nombrePorSexo(sx,pais){
+  const r=NOMBRES_PAIS[pais];
+  if(r) return pick(sx==="F"?r.f:r.m);
+  return pick(sx==="F"?NOMBRES_F:NOMBRES_M);
+}
+function apellidoPais(pais){
+  const r=NOMBRES_PAIS[pais];
+  return pick(r?r.a:APELL);
+}
+/* Nombre completo abreviado, como se ve en el ranking: "E. Lindqvist". */
+function nombreCompleto(sx,pais){
+  return nombrePorSexo(sx,pais)[0]+". "+apellidoPais(pais);
+}
 

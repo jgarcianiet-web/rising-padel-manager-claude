@@ -19,6 +19,7 @@ const IDIOMAS=[
 const IDIOMA_DEF="es";
 const I18N={
   es:{
+    aviso_circuito_amplia:"📰 La federación amplía el circuito: entran parejas nuevas al ranking. Ahora sois {n} por categoría.",
     crea_semilla:"Semilla",
     crea_semilla_d:"Dos partidas con la misma semilla viven exactamente lo mismo. Déjala como está si no te importa.",
     ana_semilla:"Semilla de la partida: <b>{semilla}</b>. Otra partida con esta misma semilla vive lo mismo.",
@@ -926,6 +927,7 @@ const I18N={
     ctx_circuito_fip:"circuito Continental",
   },
   en:{
+    aviso_circuito_amplia:"📰 The federation expands the tour: new pairs join the ranking. You're now {n} per category.",
     crea_semilla:"Seed",
     crea_semilla_d:"Two games with the same seed live exactly the same story. Leave it be if you don't care.",
     ana_semilla:"Game seed: <b>{semilla}</b>. Another game with this same seed lives the same story.",
@@ -1833,6 +1835,7 @@ const I18N={
     ctx_circuito_fip:"Continental tour",
   },
   fr:{
+    aviso_circuito_amplia:"📰 La fédération élargit le circuit : de nouvelles paires entrent au classement. Vous êtes maintenant {n} par catégorie.",
     crea_semilla:"Graine",
     crea_semilla_d:"Deux parties avec la même graine vivent exactement la même chose. Laisse-la telle quelle si ça t'est égal.",
     ana_semilla:"Graine de la partie : <b>{semilla}</b>. Une autre partie avec cette graine vit la même chose.",
@@ -2740,6 +2743,7 @@ const I18N={
     ctx_circuito_fip:"circuit Continental",
   },
   de:{
+    aviso_circuito_amplia:"📰 Der Verband erweitert die Tour: neue Paare kommen ins Ranking. Ihr seid jetzt {n} pro Kategorie.",
     crea_semilla:"Startwert",
     crea_semilla_d:"Zwei Spiele mit demselben Startwert erleben genau dasselbe. Lass ihn stehen, wenn es dir egal ist.",
     ana_semilla:"Startwert des Spiels: <b>{semilla}</b>. Ein anderes Spiel mit demselben Wert erlebt dasselbe.",
@@ -3647,6 +3651,7 @@ const I18N={
     ctx_circuito_fip:"Continental-Tour",
   },
   it:{
+    aviso_circuito_amplia:"📰 La federazione amplia il circuito: entrano nuove coppie in classifica. Ora siete {n} per categoria.",
     crea_semilla:"Seme",
     crea_semilla_d:"Due partite con lo stesso seme vivono esattamente la stessa storia. Lascialo com'è se non ti interessa.",
     ana_semilla:"Seme della partita: <b>{semilla}</b>. Un'altra partita con questo seme vive la stessa storia.",

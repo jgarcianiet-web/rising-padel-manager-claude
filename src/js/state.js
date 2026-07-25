@@ -294,21 +294,31 @@ function mkWorld(){
     const jug=[mk(pr.p),mk(pr.q)];
     asignaLadosPareja(jug);
     const nivel=nivelPareja({jug});
-    parejas.push({id:i,nombre:`${jug[0].n} / ${jug[1].n}`,jug,edad:Math.round(R(22,30)),pro:true,sexo:sx,pts:Math.round((nivel-40)*(nivel-40)*R(3.2,4.2)),club:Math.floor(rnd()*9),atNet:false});
+    parejas.push({id:i,nombre:`${jug[0].n} / ${jug[1].n}`,jug,edad:Math.round(R(22,30)),pro:true,sexo:sx,pts:Math.round((nivel-40)*(nivel-40)*R(3.2,4.2)),club:clubAlAzar(),atNet:false});
   });
   const usados=new Set();
-  const nom=(sx)=>{let n;do{n=nombrePorSexo(sx)[0]+". "+pick(APELL);}while(usados.has(n));usados.add(n);return n;};
+  // el país se sortea primero y el nombre lo respeta: un sueco se llama Lindqvist
+  const nom=(sx,pais)=>{let n,g=0;do{n=nombreCompleto(sx,pais);}while(usados.has(n)&&g++<40);usados.add(n);return n;};
   const ofens=["rematador","agresivo","bandejero"],defs=["defensivo","constructor"];
-  for(let i=0;i<44;i++){
-    const nivel=Math.round(40+i*(26/43)+R(-2,2));
-    const e1=pick(ofens),e2=pick(defs), sx=i%2===0?"M":"F";
+  /* Cuerpo del circuito. Antes eran 44 parejas (22 por sexo) que, con la élite,
+     dejaban el ranking en 40 y al jugador debutando el 41º: un circuito mundial
+     donde cabías de memoria. Ahora son NPC_POR_SEXO por categoría, así que se
+     empieza por el noventa y tantos y subir al top 20 es un camino, no un paseo.
+     El nivel se reparte por índice DENTRO del sexo, para que ambas categorías
+     tengan la escalera completa de 40 a 66 y no media cada una. */
+  const total=NPC_POR_SEXO*2;
+  for(let i=0;i<total;i++){
+    const sx=i%2===0?"M":"F";
+    const k=Math.floor(i/2);                       // 0..NPC_POR_SEXO-1 dentro de su sexo
+    const nivel=Math.round(40+k*(26/(NPC_POR_SEXO-1))+R(-2,2));
+    const e1=pick(ofens),e2=pick(defs);
+    const p1=pickPais(), p2=rnd()<.78?p1:pickPais();   // las parejas suelen ser del mismo país
     const jug=[
-      {n:nom(sx),estilo:e1,perso:pick(Object.keys(PERSONALIDADES)),attrs:mkAttrsNivel(nivel,e1),conf:55,pais:pickPais(),sexo:sx},
-      {n:nom(sx),estilo:e2,perso:pick(Object.keys(PERSONALIDADES)),attrs:mkAttrsNivel(nivel,e2),conf:55,pais:pickPais(),sexo:sx}
+      {n:nom(sx,p1),estilo:e1,perso:pick(Object.keys(PERSONALIDADES)),attrs:mkAttrsNivel(nivel,e1),conf:55,pais:p1,sexo:sx},
+      {n:nom(sx,p2),estilo:e2,perso:pick(Object.keys(PERSONALIDADES)),attrs:mkAttrsNivel(nivel,e2),conf:55,pais:p2,sexo:sx}
     ];
     asignaLadosPareja(jug);
-    parejas.push({id:PROS.length+PROS_F.length+i,nombre:`${jug[0].n}/${jug[1].n}`,jug,edad:Math.round(R(18,32)),pro:false,sexo:sx,pts:Math.max(0,Math.round((nivel-40)*(nivel-40)*R(2.6,3.6))),club:Math.floor(rnd()*9),atNet:false});
-    if(usados.size>110) usados.clear();
+    parejas.push({id:PROS.length+PROS_F.length+i,nombre:`${jug[0].n}/${jug[1].n}`,jug,edad:Math.round(R(18,32)),pro:false,sexo:sx,pts:Math.max(0,Math.round((nivel-40)*(nivel-40)*R(2.6,3.6))),club:clubAlAzar(),atNet:false});
   }
   return {parejas,lider:null};
 }
@@ -342,7 +352,8 @@ function simCircuito(excluir){
 }
 function mkJovenNPC(sx){
   const est=pick(Object.keys(ESTILOS));
-  return {n:nombrePorSexo(sx)[0]+". "+pick(APELL),estilo:est,perso:pick(Object.keys(PERSONALIDADES)),attrs:null,conf:55,pais:pickPais(),sexo:sx,_est:est};
+  const pais=pickPais();
+  return {n:nombreCompleto(sx,pais),estilo:est,perso:pick(Object.keys(PERSONALIDADES)),attrs:null,conf:55,pais,sexo:sx,_est:est};
 }
 // ---------- IA de clubes: personalidad de mercado ----------
 // Cada club tiene una forma de moverse en el mercado, derivada de su filosofía:
@@ -446,7 +457,7 @@ function evolucionaMundo(){
     const j1=mkJovenNPC(sx), j2=mkJovenNPC(sx);
     j1.attrs=mkAttrsNivel(nivel,j1._est); j2.attrs=mkAttrsNivel(nivel,j2._est);
     const p={id:w.nextId++,nombre:`${j1.n}/${j2.n}`,jug:[j1,j2],edad:Math.round(R(18,21)),pro:perla,sexo:sx,
-      pts:Math.max(0,Math.round((nivel-40)*(nivel-40)*R(.8,1.4))),club:Math.floor(rnd()*9),atNet:false};
+      pts:Math.max(0,Math.round((nivel-40)*(nivel-40)*R(.8,1.4))),club:clubAlAzar(),atNet:false};
     w.parejas.push(p);
     noticias.push(perla?`🚀 Debuta ${p.nombre}, la pareja joven de la que todos hablan (${nivel}).`:`🚀 Debut en el circuito: ${p.nombre}.`);
     if(perla) noticia("debut",t("not_perla_t",{nombre:p.nombre}),t("not_perla_s",{nivel}));

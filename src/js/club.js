@@ -25,8 +25,9 @@ function mkAgente(nivMin,nivMax,sx){
   sx=sx||(rnd()<.5?"M":"F");
   const apodo=rnd()<.28?` «${pick(APODOS)}»`:"";
   const pot=Math.round(clamp(nivel+R(2,24)-(rnd()<.2?10:0),nivel,93));
+  const _p=pickPais();
   return {
-    n:nombrePorSexo(sx)+apodo+" "+pick(APELL),pais:pickPais(),sexo:sx,pot,edad:Math.round(R(17,31)),
+    n:nombrePorSexo(sx,_p)+apodo+" "+apellidoPais(_p),pais:_p,sexo:sx,pot,edad:Math.round(R(17,31)),
     estilo:est,perso:pick(Object.keys(PERSONALIDADES)),
     attrs:mkAttrsNivel(nivel,est),
     lado:ladoPorAttrs(mkAttrsNivel(nivel,est),est),
@@ -729,7 +730,7 @@ function avanzarSemanaClub(){
       const cands=cl.plantilla.map((j,i)=>i).filter(i=>!cl.alin.includes(i));
       if(cands.length){
         const descon=cands.filter(i=>estadoJugadorClub(cl.plantilla[i]).clave==="salir");
-        const ji=pick(descon.length?descon:cands), cr=Math.floor(rnd()*9), jj=cl.plantilla[ji];
+        const ji=pick(descon.length?descon:cands), cr=clubAlAzar(), jj=cl.plantilla[ji];
         const quiereIrse=estadoJugadorClub(jj).clave==="salir";
         cl.ofertaRival={clubIdx:cr,jugIdx:ji,monto:Math.round(valorClausula(jj)*R(quiereIrse?.75:.85,1.1))};
         avisa(`📋 El ${CLUBES_NPC[cr].n} ofrece ${cl.ofertaRival.monto}€ por ${jj.n} (cláusula ${valorClausula(jj).toLocaleString("es")}€).${quiereIrse?` ${jj.n} quiere salir: presiona por marcharse.`:""} Decide en Plantilla.`);

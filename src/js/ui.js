@@ -404,9 +404,11 @@ function entrarPartida(){
       const j1=mkJovenNPC(sx), j2=mkJovenNPC(sx);
       j1.attrs=mkAttrsNivel(nivel,j1._est); j2.attrs=mkAttrsNivel(nivel,j2._est);
       G.world.parejas.push({id:G.world.nextId++,nombre:`${j1.n}/${j2.n}`,jug:[j1,j2],edad:Math.round(R(19,30)),pro:false,sexo:sx,
-        pts:Math.max(0,Math.round((nivel-40)*(nivel-40)*R(1.2,2.4))),club:Math.floor(rnd()*9),atNet:false});
+        pts:Math.max(0,Math.round((nivel-40)*(nivel-40)*R(1.2,2.4))),club:clubAlAzar(),atNet:false});
     }
-    avisa("📰 La federación amplía el circuito: nuevas parejas entran al ranking. Ahora sois 41 por categoría.");
+    // El número sale de la constante, no escrito a mano: cuando el circuito
+    // creció de 40 a 90 por categoría, este aviso seguía diciendo 41.
+    avisa(t("aviso_circuito_amplia",{n:Math.round(WORLD_N/2)}));
   }
   if(!G.calV52){  // migración al calendario real de 52 semanas
     const e=G.modo==="carrera"?G.carrera:G.clubG;
