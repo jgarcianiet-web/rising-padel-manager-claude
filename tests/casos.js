@@ -852,6 +852,24 @@ comprueba("Idiomas: t() traduce y cae con red de seguridad", () => {
   return "traduce, fallback de idioma y de clave";
 });
 
+comprueba("Idiomas: mercado de parejas y objetivos en el idioma activo", () => {
+  try {
+    localStorage.setItem("rpm_idioma", "en");
+    const objs = mkObjetivosTemporada({ compi: { n: "Chino" }, palmares: [], pts: 0 }, 40);
+    exige(objs[0].txt.includes("Break into the top"), "el objetivo de ranking no se crea en inglés: " + objs[0].txt);
+    exige(progresoObjetivo({ palmares: [] }, objs[0], 38).txt.includes("target top"), "el progreso de ranking no sale en inglés");
+    const r = evaluaOfertaCompi({ estilo: "constructor", perso: "frio", lado: 0, n: "Yo" },
+      { n: "Cand", estilo: "rematador", perso: "frio", attrs: { fondo: 80, globo: 80, chiquita: 80, volea: 80, dejada: 80, bandeja: 80, vibora: 80, remate: 80, pared: 80 } }, {}, 0);
+    exige(!r.acepta && r.faltan.join(" ").includes("prestige"), "los motivos de rechazo no salen en inglés: " + r.faltan.join(" | "));
+    localStorage.setItem("rpm_idioma", "es");
+    exige(mkObjetivosTemporada({ compi: { n: "X" }, palmares: [], pts: 0 }, 40)[0].txt.includes("Meterte en el top"), "los objetivos no vuelven al español");
+    const claves = Object.keys(I18N.es).filter(k => /^(mkt_|obj_|comp_)/.test(k));
+    exige(claves.length >= 49, "faltan claves de mercado/objetivos: " + claves.length);
+    ["en", "fr", "de", "it"].forEach(l => claves.forEach(k => exige(typeof I18N[l][k] === "string" && I18N[l][k].length > 0, `falta ${k} en ${l}`)));
+  } finally { localStorage.removeItem("rpm_idioma"); }
+  return "mercado, negociación y objetivos en 5 idiomas";
+});
+
 comprueba("Idiomas: staff y patrocinio traducidos en los 5 idiomas", () => {
   try {
     localStorage.setItem("rpm_idioma", "en");

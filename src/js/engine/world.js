@@ -267,15 +267,15 @@ function exigenciasCompi(cand){
 // Devuelve {acepta, faltan:[motivos], afinidad, ex}.
 function evaluaOfertaCompi(yo,cand,oferta,prestigio){
   const ex=exigenciasCompi(cand), faltan=[]; oferta=oferta||{};
-  if(prestigio<ex.prestigioMin) faltan.push(`Prestigio insuficiente: pide ${ex.prestigioMin} y tienes ${prestigio}. Gánate un nombre primero.`);
-  if(ex.exigeEntrenador&&!oferta.tieneEntrenador) faltan.push("Exige que tengas entrenador en el cuerpo técnico.");
+  if(prestigio<ex.prestigioMin) faltan.push(t("mkt_falta_prest",{min:ex.prestigioMin,p:prestigio}));
+  if(ex.exigeEntrenador&&!oferta.tieneEntrenador) faltan.push(t("mkt_falta_ent"));
   const colision = yo.lado!==undefined && yo.lado===ex.ladoQuiere, cede=colision&&!!oferta.cederLado;
   // lado final de cada uno
   let suLado, tuLado;
   if(!colision){ suLado=ex.ladoQuiere; tuLado=yo.lado; }
   else if(cede){ suLado=ex.ladoQuiere; tuLado=1-ex.ladoQuiere; }   // cedes: te mueves al opuesto
   else { suLado=1-yo.lado; tuLado=yo.lado; }                       // juega forzado en su lado no preferido
-  if(colision&&!cede&&ex.conflictivo) faltan.push(`Quiere el ${ex.ladoQuiere===0?"drive":"revés"} y no acepta jugar en otro sitio.`);
+  if(colision&&!cede&&ex.conflictivo) faltan.push(t("mkt_falta_lado",{lado:ex.ladoQuiere===0?t("mkt_lado_drive"):t("mkt_lado_reves")}));
   let afin=afinidadPareja(Object.assign({},yo,{lado:tuLado}),{estilo:cand.estilo,perso:cand.perso,lado:suLado,rasgos:cand.rasgos,n:cand.n});
   if(colision&&!cede) afin=clamp(afin-14,5,95);                    // descontento por el lado forzado
   return {acepta:faltan.length===0,faltan,afinidad:afin,ex,colision,cede,suLado,tuLado};
@@ -332,17 +332,17 @@ function mkObjetivosTemporada(c,puesto){
   const p=puesto||40, objs=[];
   const metaBase = p<=5?Math.max(1,p-1) : p<=20?Math.max(4,p-4) : Math.max(15,p-6);
   const metaRank = juntaTop(metaBase);   // la dificultad afloja o aprieta la meta de ranking
-  objs.push({clave:"rank",txt:`Meterte en el top ${metaRank}`,meta:metaRank,rec:{dinero:600,fans:400,moral:8}});
+  objs.push({clave:"rank",txt:t("obj_rank",{m:metaRank}),meta:metaRank,rec:{dinero:600,fans:400,moral:8}});
   const metaTit = p<=10?2:1;
-  objs.push({clave:"titulos",txt:`Ganar ${metaTit} torneo${metaTit>1?"s":""} esta temporada`,meta:metaTit,base:(c.palmares||[]).length,rec:{dinero:900,fans:600,moral:6}});
-  if(tieneRasgo(c.compi,"ambicioso")) objs.push({clave:"parejaPts",txt:`Sumar 2.500 puntos para contentar a ${(c.compi&&c.compi.n)||"tu pareja"}`,meta:2500,base:c.pts||0,rec:{dinero:0,fans:200,moral:16}});
-  else objs.push({clave:"racha",txt:"Encadenar una racha de 5 victorias",meta:5,rec:{dinero:400,fans:500,moral:6}});
+  objs.push({clave:"titulos",txt:t("obj_titulos",{m:metaTit}),meta:metaTit,base:(c.palmares||[]).length,rec:{dinero:900,fans:600,moral:6}});
+  if(tieneRasgo(c.compi,"ambicioso")) objs.push({clave:"parejaPts",txt:t("obj_pareja",{n:(c.compi&&c.compi.n)||t("obj_tu_pareja")}),meta:2500,base:c.pts||0,rec:{dinero:0,fans:200,moral:16}});
+  else objs.push({clave:"racha",txt:t("obj_racha"),meta:5,rec:{dinero:400,fans:500,moral:6}});
   return objs;
 }
 function progresoObjetivo(c,obj,puesto){
-  if(obj.clave==="rank"){ const p=puesto||40; return {actual:p,hecho:p<=obj.meta,txt:`#${p} · meta top ${obj.meta}`}; }
+  if(obj.clave==="rank"){ const p=puesto||40; return {actual:p,hecho:p<=obj.meta,txt:t("obj_p_rank",{p,m:obj.meta})}; }
   if(obj.clave==="titulos"){ const n=(c.palmares||[]).length-(obj.base||0); return {actual:n,hecho:n>=obj.meta,txt:`${n}/${obj.meta}`}; }
-  if(obj.clave==="parejaPts"){ const n=(c.pts||0)-(obj.base||0); return {actual:Math.max(0,n),hecho:n>=obj.meta,txt:`${Math.max(0,n)}/${obj.meta} pts`}; }
+  if(obj.clave==="parejaPts"){ const n=(c.pts||0)-(obj.base||0); return {actual:Math.max(0,n),hecho:n>=obj.meta,txt:t("obj_p_pts",{n:Math.max(0,n),m:obj.meta})}; }
   if(obj.clave==="racha"){ const n=c.rachaAct||0; return {actual:n,hecho:n>=obj.meta,txt:`${n}/${obj.meta}`}; }
   return {actual:0,hecho:false,txt:""};
 }
