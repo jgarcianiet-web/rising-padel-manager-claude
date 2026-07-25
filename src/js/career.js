@@ -170,43 +170,43 @@ const ENTRENADORES=[
 /* Del bar de la esquina a la multinacional: cuatro escalones de patrocinio */
 const MARCAS=[
   // tier 1 · el barrio
-  {n:"Paletería Rincón",tier:1,sec:"tienda de palas del barrio"},
-  {n:"Bar Manolo",tier:1,sec:"el bar de la esquina"},
-  {n:"Ferretería El Clavo",tier:1,sec:"ferretería de toda la vida"},
-  {n:"Gimnasio Hierro Viejo",tier:1,sec:"gimnasio de barrio"},
-  {n:"Autoescuela Volante",tier:1,sec:"autoescuela local"},
-  {n:"Kebab Estrella",tier:1,sec:"el kebab de después de entrenar"},
+  {n:"Paletería Rincón",tier:1,sec:"sec_31"},
+  {n:"Bar Manolo",tier:1,sec:"sec_10"},
+  {n:"Ferretería El Clavo",tier:1,sec:"sec_14"},
+  {n:"Gimnasio Hierro Viejo",tier:1,sec:"sec_16"},
+  {n:"Autoescuela Volante",tier:1,sec:"sec_03"},
+  {n:"Kebab Estrella",tier:1,sec:"sec_12"},
   // tier 2 · marca nacional
-  {n:"RisingWear",tier:2,sec:"ropa deportiva nacional"},
-  {n:"VoltIso",tier:2,sec:"bebida isotónica"},
-  {n:"PalaTech",tier:2,sec:"palas de gama media"},
-  {n:"Seguros Peninsular",tier:2,sec:"aseguradora nacional"},
-  {n:"Colchones Morfeo",tier:2,sec:"descanso deportivo"},
-  {n:"Gasolineras Petro-Lite",tier:2,sec:"red de gasolineras"},
+  {n:"RisingWear",tier:2,sec:"sec_28"},
+  {n:"VoltIso",tier:2,sec:"sec_06"},
+  {n:"PalaTech",tier:2,sec:"sec_22"},
+  {n:"Seguros Peninsular",tier:2,sec:"sec_02"},
+  {n:"Colchones Morfeo",tier:2,sec:"sec_09"},
+  {n:"Gasolineras Petro-Lite",tier:2,sec:"sec_26"},
   // tier 3 · gigante del deporte
-  {n:"Toropádel",tier:3,sec:"palas de élite"},
-  {n:"Cabeza Sport",tier:3,sec:"multinacional de raqueta"},
-  {n:"Knoxx",tier:3,sec:"palas profesionales"},
-  {n:"Adipala",tier:3,sec:"gigante deportivo"},
-  {n:"Babolate",tier:3,sec:"marca histórica de raqueta"},
-  {n:"Banco Meridional",tier:3,sec:"banca deportiva"},
-  {n:"Peña El Revés",tier:1,sec:"peña padelística local"},
-  {n:"Panadería La Miga",tier:1,sec:"la panadería de abajo"},
+  {n:"Toropádel",tier:3,sec:"sec_23"},
+  {n:"Cabeza Sport",tier:3,sec:"sec_20"},
+  {n:"Knoxx",tier:3,sec:"sec_24"},
+  {n:"Adipala",tier:3,sec:"sec_15"},
+  {n:"Babolate",tier:3,sec:"sec_19"},
+  {n:"Banco Meridional",tier:3,sec:"sec_04"},
+  {n:"Peña El Revés",tier:1,sec:"sec_25"},
+  {n:"Panadería La Miga",tier:1,sec:"sec_17"},
   // tier 2 · marca nacional
-  {n:"Deportes Zabala",tier:2,sec:"cadena de deportes"},
-  {n:"Clínica FisioVida",tier:2,sec:"clínica de fisioterapia"},
+  {n:"Deportes Zabala",tier:2,sec:"sec_07"},
+  {n:"Clínica FisioVida",tier:2,sec:"sec_08"},
   // tier 3 · gigante del deporte
-  {n:"Puwma",tier:3,sec:"multinacional del felino"},
-  {n:"Relojes Tissec",tier:3,sec:"relojería suiza"},
+  {n:"Puwma",tier:3,sec:"sec_21"},
+  {n:"Relojes Tissec",tier:3,sec:"sec_27"},
   // tier 4 · multinacional global
-  {n:"Colavola",tier:4,sec:"el refresco de siempre"},
-  {n:"RedToro",tier:4,sec:"bebida energética global"},
-  {n:"Nikke",tier:4,sec:"el gigante del swoosh"},
-  {n:"Catarí Airways",tier:4,sec:"aerolínea del Golfo"},
-  {n:"Movistrella",tier:4,sec:"teleco multinacional"},
-  {n:"Amazonia Prime",tier:4,sec:"tecnológica global"},
-  {n:"Rolox",tier:4,sec:"lujo de alta gama"},
-  {n:"Emiratos Fly",tier:4,sec:"aerolínea de bandera"},
+  {n:"Colavola",tier:4,sec:"sec_13"},
+  {n:"RedToro",tier:4,sec:"sec_05"},
+  {n:"Nikke",tier:4,sec:"sec_11"},
+  {n:"Catarí Airways",tier:4,sec:"sec_01"},
+  {n:"Movistrella",tier:4,sec:"sec_30"},
+  {n:"Amazonia Prime",tier:4,sec:"sec_29"},
+  {n:"Rolox",tier:4,sec:"sec_18"},
+  {n:"Emiratos Fly",tier:4,sec:"sec_00"},
 ];
 const SPOT_TIPOS=["spot_1","spot_2","spot_3","spot_4","spot_5","spot_6"];   // claves i18n; los guardados antiguos llevan el texto literal (t() lo devuelve tal cual)
 /* catálogo de primas por objetivos (se cobran una vez al lograrse, mientras dure el contrato) */
@@ -766,7 +766,7 @@ function pintarJugador(){
   if(c.sponsor){
     const s=c.sponsor;
     const d=document.createElement("div");d.className="opcion";
-    d.innerHTML=`<b>${t("patro_contrato",{marca:s.marca})}</b> ${s.tier?`<span class="pill" style="color:${s.tier===4?"var(--oro)":s.tier===3?"#9B59D0":s.tier===2?"#4FA3D8":"var(--gris)"}">${tierTxt(s.tier)}</span>`:""}${s.sec?`<div class="d" style="font-style:italic">${s.sec}</div>`:""}<div class="d">${t("patro_detalle",{sem:s.sem,bonus:s.bonus,obj:s.objetivo,n:s.tRest})}${miPuesto()>s.objetivo?` <span style="color:var(--rojo)">${t("patro_no_cumples",{p:miPuesto()})}</span>`:` <span style="color:var(--verde)">${t("patro_cumples",{p:miPuesto()})}</span>`}</div>${(s.primas&&s.primas.length)?`<div class="d">${t("patro_primas")} ${s.primas.map(pr=>`${(s.primasCobradas&&s.primasCobradas[pr[0]])?"✔":"○"} ${pr[1]} <b style="color:var(--lima)">+${pr[2]}€</b>`).join(" · ")}</div>`:""}`;
+    d.innerHTML=`<b>${t("patro_contrato",{marca:s.marca})}</b> ${s.tier?`<span class="pill" style="color:${s.tier===4?"var(--oro)":s.tier===3?"#9B59D0":s.tier===2?"#4FA3D8":"var(--gris)"}">${tierTxt(s.tier)}</span>`:""}${s.sec?`<div class="d" style="font-style:italic">${t(s.sec)}</div>`:""}<div class="d">${t("patro_detalle",{sem:s.sem,bonus:s.bonus,obj:s.objetivo,n:s.tRest})}${miPuesto()>s.objetivo?` <span style="color:var(--rojo)">${t("patro_no_cumples",{p:miPuesto()})}</span>`:` <span style="color:var(--verde)">${t("patro_cumples",{p:miPuesto()})}</span>`}</div>${(s.primas&&s.primas.length)?`<div class="d">${t("patro_primas")} ${s.primas.map(pr=>`${(s.primasCobradas&&s.primasCobradas[pr[0]])?"✔":"○"} ${pr[1]} <b style="color:var(--lima)">+${pr[2]}€</b>`).join(" · ")}</div>`:""}`;
     st.appendChild(d);
   } else {
     const d=document.createElement("div");d.className="foot";d.style.textAlign="left";
@@ -780,7 +780,7 @@ function pintarJugador(){
   }
   (c.ofertasPatro||[]).forEach((of,oi)=>{
     const d=document.createElement("div");d.className="opcion";
-    d.innerHTML=`<b>${t("patro_oferta",{marca:of.marca})}</b> ${of.tier?`<span class="pill" style="color:${of.tier===4?"var(--oro)":of.tier===3?"#9B59D0":of.tier===2?"#4FA3D8":"var(--gris)"}">${tierTxt(of.tier)}</span>`:""}${of._perfil?`<span class="pill" style="color:${of._perfil==="fijo alto"?"var(--lima)":"var(--oro)"}">${t(of._perfil==="fijo alto"?"patro_perfil_fijo":"patro_perfil_obj")}</span>`:""}${of.sec?`<div class="d" style="font-style:italic">${of.sec}</div>`:""}<div class="d">${t("patro_of_detalle",{sem:of.sem,bonus:of.bonus,obj:of.objetivo,n:of.tRest})}${(of.primas&&of.primas.length)?`<br>${t("patro_of_primas")} ${of.primas.map(pr=>`${pr[1]} +${pr[2]}€`).join(" · ")}`:""}</div>`;
+    d.innerHTML=`<b>${t("patro_oferta",{marca:of.marca})}</b> ${of.tier?`<span class="pill" style="color:${of.tier===4?"var(--oro)":of.tier===3?"#9B59D0":of.tier===2?"#4FA3D8":"var(--gris)"}">${tierTxt(of.tier)}</span>`:""}${of._perfil?`<span class="pill" style="color:${of._perfil==="fijo alto"?"var(--lima)":"var(--oro)"}">${t(of._perfil==="fijo alto"?"patro_perfil_fijo":"patro_perfil_obj")}</span>`:""}${of.sec?`<div class="d" style="font-style:italic">${t(of.sec)}</div>`:""}<div class="d">${t("patro_of_detalle",{sem:of.sem,bonus:of.bonus,obj:of.objetivo,n:of.tRest})}${(of.primas&&of.primas.length)?`<br>${t("patro_of_primas")} ${of.primas.map(pr=>`${pr[1]} +${pr[2]}€`).join(" · ")}`:""}</div>`;
     const b=document.createElement("button");b.className="pri";b.style.width="100%";
     b.textContent=c.sponsor?t("patro_firmar_sust",{marca:c.sponsor.marca}):t("patro_firmar");
     b.onclick=()=>{c.sponsor={...of};c.ofertasPatro=[];noticia("contrato",t("patro_not_t",{marca:of.marca,quien:nombreEntidad().replace("★ ","")}),t("patro_not_s",{tier:tierTxt(of.tier),sem:of.sem,obj:of.objetivo}));avisa(t("patro_av_firma",{marca:of.marca,tier:tierTxt(of.tier),sem:of.sem,obj:of.objetivo}));fansAdd(of.tier>=3?300:60,t("fan_patro"));guardar();pintarCarrera();};

@@ -530,7 +530,7 @@ function pintarCmClub(){
   if(cl.sponsorOferta&&(!cl.sponsor||cl.sponsor.marca!==cl.sponsorOferta.marca)){
     const of=cl.sponsorOferta;
     const dS=document.createElement("div");dS.className="opcion";
-    dS.innerHTML=`<b>🏟 ${of.marca}</b> <span class="pill">${tierTxt(of.tier)}</span><div class="d">${t("patro_club_oferta",{sec:of.sec,sem:of.sem})}</div>`;
+    dS.innerHTML=`<b>🏟 ${of.marca}</b> <span class="pill">${tierTxt(of.tier)}</span><div class="d">${t("patro_club_oferta",{sec:t(of.sec),sem:of.sem})}</div>`;
     const b=document.createElement("button");b.className="pri";b.style.width="100%";b.textContent=t("patro_club_firmar");
     b.onclick=()=>{cl.sponsor={...of};cl.sponsorOferta=null;noticia("contrato",t("not_patro_club_t",{marca:of.marca,club:cl.nombre}),t("not_patro_club_s",{tier:tierTxt(of.tier).toLowerCase()}));avisa(t("patro_club_av",{marca:of.marca,sem:of.sem}));fansAdd(200,t("fan_patro_club"));guardar();pintarClubM();};
     dS.appendChild(b);cS.appendChild(dS);

@@ -970,6 +970,29 @@ comprueba("La pareja como personaje: acuerdo, retirada e historia común", () =>
   return `acuerdo ${ok.delta}/${malLejos.delta}; retiro 38→${ret38} 42→${ret42}; etapa de ${et.temps} temporadas`;
 });
 
+comprueba("Idiomas: los catálogos de datos guardan CLAVES, no frases", () => {
+  // los catálogos que se pintan deben referenciar claves i18n existentes en los
+  // 5 idiomas; si alguien mete una frase suelta, esto lo caza
+  const revisa = (nombre, claves) => claves.forEach(k => {
+    exige(typeof k === "string", `${nombre}: entrada que no es clave`);
+    exige(I18N.es[k] !== undefined, `${nombre}: clave inexistente «${k}»`);
+    ["en", "fr", "de", "it"].forEach(l => exige(I18N[l][k], `${nombre}: falta ${k} en ${l}`));
+  });
+  revisa("FRASES_STAFF", Object.values(FRASES_STAFF).flat());
+  revisa("SPOT_TIPOS", SPOT_TIPOS);
+  revisa("LESIONES", LESIONES.map(l => l.k));
+  revisa("HITOS_CARRERA", HITOS_CARRERA.map(h => "hito_ca_" + h.id));
+  revisa("HITOS_CLUB", HITOS_CLUB.map(h => "hito_cl_" + h.id));
+  revisa("REFORMAS", Object.keys(REFORMAS).flatMap(k => ["ref_" + k, "ref_" + k + "_d"]));
+  revisa("ATTR_KEYS", ATTR_KEYS.map(k => "at_" + k));
+  revisa("MARCAS (sectores)", [...new Set(MARCAS.map(m => m.sec))]);
+  revisa("PRIMAS_CAT", [...new Set(Object.values(PRIMAS_CAT).flat().map(p => "prima_" + p[0]))]);
+  revisa("TUTO", TUTO.carrera.concat(TUTO.club).flat());
+  // y ningún sector de marca puede haber quedado como frase en español
+  exige(MARCAS.every(m => /^sec_\d+$/.test(m.sec)), "alguna marca guarda el sector como texto en vez de clave");
+  return `${MARCAS.length} marcas, ${LESIONES.length} lesiones, ${HITOS_CARRERA.length + HITOS_CLUB.length} hitos y el resto de catálogos por clave`;
+});
+
 comprueba("Idiomas: catálogo completo y sin claves huérfanas en los 5 idiomas", () => {
   // toda clave definida en español existe en los otros 4 y no está vacía
   const claves = Object.keys(I18N.es);
