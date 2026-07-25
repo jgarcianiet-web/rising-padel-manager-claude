@@ -42,6 +42,8 @@ CREATE TABLE IF NOT EXISTS norm_sponsor(
   slot TEXT PRIMARY KEY, marca TEXT, sec TEXT, tier INTEGER, sem INTEGER, extras TEXT);
 CREATE TABLE IF NOT EXISTS norm_protagonista(
   clave TEXT PRIMARY KEY, valor TEXT);
+CREATE TABLE IF NOT EXISTS norm_meta(
+  clave TEXT PRIMARY KEY, valor TEXT);
 `;
 
 function dbSqlSchema(db){ db.run(DB_SCHEMA_SQL); }
@@ -269,6 +271,25 @@ function dbSqlLeerProta(db){
   return out;
 }
 
+// Identidad de lo que hay en las tablas (Fase 4d·9): la BD es única por
+// navegador y la comparten las partidas de carrera y club, así que al cargar
+// hay que saber A QUIÉN pertenece el contenido antes de darle autoridad.
+function dbSqlGuardarMeta(db, meta){
+  db.run("BEGIN");
+  try{
+    db.run("DELETE FROM norm_meta;");
+    const st=db.prepare("INSERT INTO norm_meta(clave,valor) VALUES(?,?)");
+    Object.keys(meta||{}).forEach(k=>st.run([k,String(meta[k]==null?"":meta[k])])); st.free();
+    db.run("COMMIT");
+  }catch(e){ try{ db.run("ROLLBACK"); }catch(_){} throw e; }
+}
+function dbSqlLeerMeta(db){
+  const out={};
+  const r=db.exec("SELECT clave,valor FROM norm_meta");
+  if(r&&r[0]) r[0].values.forEach(f=>{ out[f[0]]=f[1]; });
+  return out;
+}
+
 function dbSqlLeerH2h(db){
   const out={};
   const r=db.exec("SELECT rid,v,d,nombre,ult_t,alta FROM norm_h2h");
@@ -332,6 +353,7 @@ function dbSqlSnapshotVivo(){
           G.modo==="carrera" ? (prot.ofertasPatro||[]) : (prot.sponsorOferta?[prot.sponsorOferta]:[]));
         dbSqlGuardarProta(SQLDB, prot);
       }
+      dbSqlGuardarMeta(SQLDB, {modo:G.modo||"", prota:prot?String(prot.nombre||""):""});
     }catch(_){}
     dbSqlPersistir();
   }catch(e){}
@@ -379,6 +401,11 @@ function dbSqlCargarSponsor(){
 function dbSqlCargarProta(){
   if(!SQLDB) return null;
   try{ return dbSqlLeerProta(SQLDB); }catch(e){ return null; }
+}
+// Lee la identidad del contenido de las tablas (Fase 4d·9).
+function dbSqlCargarMeta(){
+  if(!SQLDB) return null;
+  try{ return dbSqlLeerMeta(SQLDB); }catch(e){ return null; }
 }
 
 /* ---------- consultas para la analítica (síncronas, sobre sql.js) ---------- */
@@ -493,6 +520,7 @@ if(typeof module!=="undefined"&&module.exports){
     dbSqlGuardarH2h,dbSqlLeerH2h,dbSqlGuardarStaff,dbSqlLeerStaff,
     dbSqlGuardarFinanzas,dbSqlLeerFinanzas,dbSqlGuardarSponsor,dbSqlLeerSponsor,
     dbSqlGuardarProta,dbSqlLeerProta,DB_CLAVES_DEDICADAS,
+    dbSqlGuardarMeta,dbSqlLeerMeta,
     dbSqlPorEstilo,dbSqlMejoresParejas,dbSqlTopPaises,dbSqlDistribucionNivel,
     dbSqlSnapshotCoincide};
 }

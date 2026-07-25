@@ -69,6 +69,140 @@ function quitarEl(el){
   try{ if(el.parentNode) el.parentNode.removeChild(el); }catch(e){}
   try{ el.style.display="none"; }catch(e){}
 }
+/* ---------- Fase 4d·9: hidratación del estado al continuar ----------
+   VOLTEO DE AUTORIDAD: si la identidad de las tablas (norm_meta: modo +
+   nombre del protagonista) coincide con la partida que se carga, SQLite es la
+   fuente primaria y sus entidades se adoptan con validación DE FORMA (aunque
+   el blob esté desactualizado). Si la identidad no coincide (la BD es única y
+   la comparten carrera y club) o sql.js no está listo, se cae a la ruta
+   antigua: el blob manda y SQLite solo sustituye lo que coincide exactamente.
+   Devuelve "sqlite" o "blob" para diagnóstico (G._fuenteSql). */
+function hidratarDesdeSql(){
+  const prot=G?(G.modo==="carrera"?G.carrera:G.clubG):null;
+  // --- ruta primaria: SQLite manda si la identidad coincide ---
+  try{
+    const meta=(typeof dbSqlCargarMeta==="function")?dbSqlCargarMeta():null;
+    if(meta && G && meta.modo===G.modo && prot && meta.prota===String(prot.nombre||"")){
+      if(typeof dbSqlCargarMundo==="function" && G.world && Array.isArray(G.world.parejas)){
+        const m=dbSqlCargarMundo();
+        if(m && m.length && m.every(p2=>p2 && Array.isArray(p2.jug) && p2.jug.length===2)){ G.world.parejas=m; G._mundoDesdeSql=true; }
+      }
+      if(typeof dbSqlCargarN1==="function" && G.world){
+        const n1=dbSqlCargarN1(); if(Array.isArray(n1)){ G.world.n1hist=n1; G._n1DesdeSql=true; }
+      }
+      const pal=(typeof dbSqlCargarPalmares==="function")?dbSqlCargarPalmares():null;
+      if(Array.isArray(pal)){ prot.palmares=pal; G._palmaresDesdeSql=true; }
+      const dia=(typeof dbSqlCargarDiario==="function")?dbSqlCargarDiario():null;
+      if(Array.isArray(dia)){ prot.diario=dia; G._diarioDesdeSql=true; }
+      const hi=(typeof dbSqlCargarHist==="function")?dbSqlCargarHist():null;
+      if(Array.isArray(hi)){ prot.hist=hi; G._histDesdeSql=true; }
+      const hh=(typeof dbSqlCargarH2h==="function")?dbSqlCargarH2h():null;
+      if(hh && typeof hh==="object"){ prot.h2h=hh; G._h2hDesdeSql=true; }
+      const st=(typeof dbSqlCargarStaff==="function")?dbSqlCargarStaff():null;
+      if(st && typeof st==="object" && prot.staff && typeof prot.staff==="object"){
+        Object.keys(prot.staff).forEach(r=>{ prot.staff[r]=st[r]||null; });
+        G._staffDesdeSql=true;
+      }
+      const fin=(typeof dbSqlCargarFinanzas==="function")?dbSqlCargarFinanzas():null;
+      if(fin && Number.isFinite(fin.dinero)){ prot.dinero=fin.dinero; G._finDesdeSql=true; }
+      const sp=(typeof dbSqlCargarSponsor==="function")?dbSqlCargarSponsor():null;
+      if(sp){
+        prot.sponsor=sp.actual||null;
+        if(G.modo==="carrera") prot.ofertasPatro=sp.ofertas;
+        else prot.sponsorOferta=sp.ofertas[0]||null;
+        G._sponsorDesdeSql=true;
+      }
+      const pr=(typeof dbSqlCargarProta==="function")?dbSqlCargarProta():null;
+      if(pr){ Object.keys(pr).forEach(k=>{ if(k in prot) prot[k]=pr[k]; }); G._protaDesdeSql=true; }
+      return "sqlite";
+    }
+  }catch(e){}
+  // --- salvaguarda: el blob manda; SQLite solo sustituye lo que coincide ---
+  try{
+    if(typeof dbSqlCargarMundo==="function" && G && G.world && Array.isArray(G.world.parejas)){
+      const mundoSql=dbSqlCargarMundo();
+      if(mundoSql && typeof compararMundos==="function" && compararMundos(mundoSql,G.world.parejas).ok){
+        G.world.parejas=mundoSql; G._mundoDesdeSql=true;
+      }
+    }
+  }catch(e){}
+  try{
+    if(typeof dbSqlCargarN1==="function" && G && G.world && Array.isArray(G.world.n1hist)){
+      const n1Sql=dbSqlCargarN1(), blob=G.world.n1hist;
+      if(n1Sql && n1Sql.length===blob.length &&
+         n1Sql.every((h,i)=>h.t===blob[i].t && h.nombre===blob[i].nombre)){
+        G.world.n1hist=n1Sql; G._n1DesdeSql=true;
+      }
+    }
+  }catch(e){}
+  try{
+    const igual=(a,b)=>a && Array.isArray(b) && a.length===b.length && a.every((x,i)=>x===b[i]);
+    if(typeof dbSqlCargarPalmares==="function" && prot && Array.isArray(prot.palmares)){
+      const palSql=dbSqlCargarPalmares();
+      if(igual(palSql,prot.palmares)){ prot.palmares=palSql; G._palmaresDesdeSql=true; }
+    }
+    if(typeof dbSqlCargarDiario==="function" && prot && Array.isArray(prot.diario)){
+      const diaSql=dbSqlCargarDiario();
+      if(igual(diaSql,prot.diario)){ prot.diario=diaSql; G._diarioDesdeSql=true; }
+    }
+    if(typeof dbSqlCargarHist==="function" && prot && Array.isArray(prot.hist)){
+      const hSql=dbSqlCargarHist(), hb=prot.hist;
+      if(hSql && hSql.length===hb.length && hSql.every((h,i)=>h.t===hb[i].t && h.pos===hb[i].pos)){
+        prot.hist=hSql; G._histDesdeSql=true;
+      }
+    }
+    if(typeof dbSqlCargarH2h==="function" && prot && prot.h2h && typeof prot.h2h==="object"){
+      const hhSql=dbSqlCargarH2h(), hhb=prot.h2h;
+      const ks=hhSql?Object.keys(hhSql):null, kb=Object.keys(hhb);
+      if(ks && ks.length===kb.length &&
+         kb.every(k=>hhSql[k] && hhSql[k].v===(hhb[k].v|0) && hhSql[k].d===(hhb[k].d|0))){
+        prot.h2h=hhSql; G._h2hDesdeSql=true;
+      }
+    }
+    if(typeof dbSqlCargarStaff==="function" && prot && prot.staff && typeof prot.staff==="object"){
+      const stSql=dbSqlCargarStaff(), stb=prot.staff;
+      const ocup=Object.keys(stb).filter(r=>stb[r]);
+      if(stSql && Object.keys(stSql).length===ocup.length &&
+         ocup.every(r=>stSql[r] && stSql[r].n===stb[r].n && stSql[r].niv===(stb[r].niv|0) && stSql[r].sal===(stb[r].sal|0))){
+        Object.keys(stb).forEach(r=>{ stb[r]=stSql[r]||null; });
+        G._staffDesdeSql=true;
+      }
+    }
+    if(typeof dbSqlCargarFinanzas==="function" && prot && typeof prot.dinero==="number"){
+      const fin=dbSqlCargarFinanzas();
+      if(fin && fin.dinero===Math.round(prot.dinero)){ prot.dinero=fin.dinero; G._finDesdeSql=true; }
+    }
+    if(typeof dbSqlCargarSponsor==="function" && prot){
+      const sp=dbSqlCargarSponsor();
+      if(sp){
+        const blobOf=G.modo==="carrera" ? (prot.ofertasPatro||[]) : (prot.sponsorOferta?[prot.sponsorOferta]:[]);
+        const okActual=(!sp.actual&&!prot.sponsor) ||
+          (sp.actual&&prot.sponsor&&sp.actual.marca===prot.sponsor.marca&&sp.actual.sem===(prot.sponsor.sem|0));
+        const okOfertas=sp.ofertas.length===blobOf.length&&sp.ofertas.every((o,i)=>o.marca===blobOf[i].marca);
+        if(okActual&&okOfertas){
+          if(prot.sponsor) prot.sponsor=sp.actual;
+          if(G.modo==="carrera"){ if(Array.isArray(prot.ofertasPatro)) prot.ofertasPatro=sp.ofertas; }
+          else if(prot.sponsorOferta) prot.sponsorOferta=sp.ofertas[0]||null;
+          G._sponsorDesdeSql=true;
+        }
+      }
+    }
+    if(typeof dbSqlCargarProta==="function" && prot){
+      const prSql=dbSqlCargarProta();
+      if(prSql){
+        let tot=0,ok=0;
+        Object.keys(prSql).forEach(k=>{
+          if(!(k in prot)) return;
+          tot++;
+          try{ if(JSON.stringify(prot[k])===JSON.stringify(prSql[k])){ prot[k]=prSql[k]; ok++; } }catch(_){}
+        });
+        if(tot>0&&tot===ok) G._protaDesdeSql=true;
+      }
+    }
+  }catch(e){}
+  return "blob";
+}
+
 function abrirModo(modo){
   const s=infoSlot(modo);
   const nueva=()=>{ if(modo==="carrera"){ pintarCrear(); irA("crear"); } else { prepararCrearClub(); irA("crearclub"); } };
@@ -76,105 +210,8 @@ function abrirModo(modo){
     const s2=infoSlot(modo);
     if(!s2){ alert("La partida guardada no se pudo cargar."); lsDel(SLOTS[modo]); pintarMenu(); return; }
     G=s2.d;
-    // Fase 4b: el mundo se carga desde SQLite (autoritativo) si sql.js lo tiene y
-    // coincide estructuralmente con el blob; si no (o no está listo), se usa el blob.
-    try{
-      if(typeof dbSqlCargarMundo==="function" && G && G.world && Array.isArray(G.world.parejas)){
-        const mundoSql=dbSqlCargarMundo();
-        if(mundoSql && typeof compararMundos==="function" && compararMundos(mundoSql,G.world.parejas).ok){
-          G.world.parejas=mundoSql; G._mundoDesdeSql=true;
-        }
-      }
-    }catch(e){}
-    // Fase 4d: el historial de Nº1 también pasa a ser autoritativo desde SQLite si
-    // coincide con el blob (misma longitud y mismas temporadas); si no, se usa el blob.
-    try{
-      if(typeof dbSqlCargarN1==="function" && G && G.world && Array.isArray(G.world.n1hist)){
-        const n1Sql=dbSqlCargarN1(), blob=G.world.n1hist;
-        if(n1Sql && n1Sql.length===blob.length &&
-           n1Sql.every((h,i)=>h.t===blob[i].t && h.nombre===blob[i].nombre)){
-          G.world.n1hist=n1Sql; G._n1DesdeSql=true;
-        }
-      }
-    }catch(e){}
-    // Fase 4d·2/4d·3: palmarés y diario del protagonista, con la misma red de
-    // seguridad — solo se toman de SQLite si coinciden con los del blob.
-    try{
-      const prot=G?(G.modo==="carrera"?G.carrera:G.clubG):null;
-      const igual=(a,b)=>a && Array.isArray(b) && a.length===b.length && a.every((x,i)=>x===b[i]);
-      if(typeof dbSqlCargarPalmares==="function" && prot && Array.isArray(prot.palmares)){
-        const palSql=dbSqlCargarPalmares();
-        if(igual(palSql,prot.palmares)){ prot.palmares=palSql; G._palmaresDesdeSql=true; }
-      }
-      if(typeof dbSqlCargarDiario==="function" && prot && Array.isArray(prot.diario)){
-        const diaSql=dbSqlCargarDiario();
-        if(igual(diaSql,prot.diario)){ prot.diario=diaSql; G._diarioDesdeSql=true; }
-      }
-      // Fase 4d·4: trayectoria por temporada {t,pos,pts,tit} — coincide si cada
-      // fila reproduce la temporada y la posición del blob.
-      if(typeof dbSqlCargarHist==="function" && prot && Array.isArray(prot.hist)){
-        const hSql=dbSqlCargarHist(), hb=prot.hist;
-        if(hSql && hSql.length===hb.length && hSql.every((h,i)=>h.t===hb[i].t && h.pos===hb[i].pos)){
-          prot.hist=hSql; G._histDesdeSql=true;
-        }
-      }
-      // Fase 4d·5: cara a cara contra rivales (mapa id→{v,d,...}) — coincide si
-      // tiene las mismas claves y los mismos marcadores v/d que el blob.
-      if(typeof dbSqlCargarH2h==="function" && prot && prot.h2h && typeof prot.h2h==="object"){
-        const hhSql=dbSqlCargarH2h(), hhb=prot.h2h;
-        const ks=hhSql?Object.keys(hhSql):null, kb=Object.keys(hhb);
-        if(ks && ks.length===kb.length &&
-           kb.every(k=>hhSql[k] && hhSql[k].v===(hhb[k].v|0) && hhSql[k].d===(hhb[k].d|0))){
-          prot.h2h=hhSql; G._h2hDesdeSql=true;
-        }
-      }
-      // Fase 4d·6: equipo de staff — la tabla solo guarda los puestos ocupados;
-      // los `null` de los roles vacíos se conservan del blob. Coincide si los
-      // roles ocupados y su nombre/nivel/salario reproducen el blob.
-      if(typeof dbSqlCargarStaff==="function" && prot && prot.staff && typeof prot.staff==="object"){
-        const stSql=dbSqlCargarStaff(), stb=prot.staff;
-        const ocup=Object.keys(stb).filter(r=>stb[r]);
-        if(stSql && Object.keys(stSql).length===ocup.length &&
-           ocup.every(r=>stSql[r] && stSql[r].n===stb[r].n && stSql[r].niv===(stb[r].niv|0) && stSql[r].sal===(stb[r].sal|0))){
-          Object.keys(stb).forEach(r=>{ stb[r]=stSql[r]||null; });
-          G._staffDesdeSql=true;
-        }
-      }
-      // Fase 4d·7: finanzas (dinero) y patrocinio (contrato vigente + ofertas).
-      if(typeof dbSqlCargarFinanzas==="function" && prot && typeof prot.dinero==="number"){
-        const fin=dbSqlCargarFinanzas();
-        if(fin && fin.dinero===Math.round(prot.dinero)){ prot.dinero=fin.dinero; G._finDesdeSql=true; }
-      }
-      if(typeof dbSqlCargarSponsor==="function" && prot){
-        const sp=dbSqlCargarSponsor();
-        if(sp){
-          const blobOf=G.modo==="carrera" ? (prot.ofertasPatro||[]) : (prot.sponsorOferta?[prot.sponsorOferta]:[]);
-          const okActual=(!sp.actual&&!prot.sponsor) ||
-            (sp.actual&&prot.sponsor&&sp.actual.marca===prot.sponsor.marca&&sp.actual.sem===(prot.sponsor.sem|0));
-          const okOfertas=sp.ofertas.length===blobOf.length&&sp.ofertas.every((o,i)=>o.marca===blobOf[i].marca);
-          if(okActual&&okOfertas){
-            if(prot.sponsor) prot.sponsor=sp.actual;
-            if(G.modo==="carrera"){ if(Array.isArray(prot.ofertasPatro)) prot.ofertasPatro=sp.ofertas; }
-            else if(prot.sponsorOferta) prot.sponsorOferta=sp.ofertas[0]||null;
-            G._sponsorDesdeSql=true;
-          }
-        }
-      }
-      // Fase 4d·8: resto del protagonista (clave/valor JSON). Campo a campo:
-      // solo se adopta un valor si reproduce estructuralmente el del blob.
-      if(typeof dbSqlCargarProta==="function" && prot){
-        const prSql=dbSqlCargarProta();
-        if(prSql){
-          let tot=0,ok=0;
-          Object.keys(prSql).forEach(k=>{
-            if(!(k in prot)) return;
-            tot++;
-            try{ if(JSON.stringify(prot[k])===JSON.stringify(prSql[k])){ prot[k]=prSql[k]; ok++; } }catch(_){}
-          });
-          if(tot>0&&tot===ok) G._protaDesdeSql=true;
-        }
-      }
-    }catch(e){}
+    // Fase 4d·9: hidratación con SQLite como fuente primaria (blob de salvaguarda).
+    G._fuenteSql=hidratarDesdeSql();
     entrarPartida();
   };
   if(!s){ nueva(); return; }   // sin guardado: directo a crear
