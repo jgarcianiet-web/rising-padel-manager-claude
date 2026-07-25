@@ -187,5 +187,25 @@ module.exports = async function ejecutarPruebasSql() {
   db.dbSqlGuardarH2h(d, {});
   chk(Object.keys(db.dbSqlLeerH2h(d)).length === 0, "4d · h2h: mapa vacío deja la tabla vacía");
 
+  // ---------- equipo de staff contratado (Fase 4d·6) ----------
+  // mapa rol → miembro o null (puesto vacío); solo se persisten los ocupados
+  const staff = {
+    entrenador: { rol: "entrenador", n: "Marta Vidal", sexo: "F", edad: 48, niv: 4, sal: 620,
+      esp: ["remate", "vibora", "bandeja"], frase: "Pizarra vieja, ideas nuevas.", equipoDe: "Gabán/Chingorro" },
+    rep: { rol: "rep", n: "Luis Roca", sexo: "M", edad: 55, niv: 3, sal: 300, com: 14, frase: "Negocia al cuerpo." },
+    fisio: null, psico: null, fisico: null,
+  };
+  db.dbSqlGuardarStaff(d, staff);
+  db.dbSqlGuardarStaff(d, staff); // reproyectar: debe REEMPLAZAR, no acumular
+  const stb = db.dbSqlLeerStaff(d);
+  chk(Object.keys(stb).length === 2, "4d · staff: solo persisten los puestos ocupados (2 de 5)", Object.keys(stb).join(","));
+  chk(stb.entrenador.n === "Marta Vidal" && stb.entrenador.niv === 4 && stb.entrenador.sal === 620,
+    "4d · staff: campos modelados reconstruidos");
+  chk(Array.isArray(stb.entrenador.esp) && stb.entrenador.esp[1] === "vibora" && stb.entrenador.equipoDe === "Gabán/Chingorro",
+    "4d · staff: extras (esp[], equipoDe) sobreviven en el JSON", JSON.stringify(stb.entrenador.esp));
+  chk(stb.rep.com === 14 && stb.rep.frase === "Negocia al cuerpo.", "4d · staff: comisión y frase del agente sobreviven");
+  db.dbSqlGuardarStaff(d, { entrenador: null, rep: null });
+  chk(Object.keys(db.dbSqlLeerStaff(d)).length === 0, "4d · staff: equipo vacío deja la tabla vacía");
+
   return res;
 };
