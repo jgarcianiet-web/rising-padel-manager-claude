@@ -507,13 +507,18 @@ function entrarPartida(){
   else {
     const cl=G.clubG;  // compatibilidad
     if(cl.alinB===undefined) cl.alinB=null;
+    // identidad del club: los guardados de antes no la traen y se les asigna una
+    if(!cl.filo) cl.filo="oficio";
+    if(!cl.junta) cl.junta=mkJunta();
+    if(!cl.junta.car) cl.junta.car="paciente";
+    if(!cl.derbi) cl.derbi=mkDerbi();
     if(!cl.staff) cl.staff={fisio:false,psico:false,fisico:false,ojeador:false};
     if(!cl.reformas) cl.reformas={techada:false,gym:false,residencia:false,video:false};
     if(cl._pendB===undefined) cl._pendB=null;
     if(!cl.sexo) cl.sexo="M";
     cl.plantilla.forEach(j=>{if(!j.sexo)j.sexo=cl.sexo; if(j.lado===undefined)j.lado=ladoPorAttrs(j.attrs,j.estilo);});
     repararAlin();
-    if(!cl.junta) cl.junta={objetivo:Math.max(3,Math.round(miPuesto()*.85)),paciencia:2};
+
     if(cl.fans===undefined) cl.fans=300+Math.max(0,(45-miPuesto())*20);
     if(!cl._staffV2){
       cl.staff=cl.staff||{};

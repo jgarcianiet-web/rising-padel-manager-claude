@@ -808,6 +808,8 @@ function finPartido(){
     post("maldicion",{rival:rival.nombre});
   }
   e.vd=e.vd||{v:0,d:0}; e.vd[gane?"v":"d"]++;
+  // el derbi del club: un rival del circuito al que se le tiene ganas desde el día uno
+  if(G.modo==="club"&&typeof anotaDerbi==="function") anotaDerbi(G.clubG,rival,gane);
   if(gane){ e.rachaAct=(e.rachaAct||0)+1; if(e.rachaAct>(e.rachaMax||0)){e.rachaMax=e.rachaAct;if(e.rachaMax===15)avisa(t("aviso_racha15"));} }
   else e.rachaAct=0;
   fansAdd(gane?(torneo&&torneo.premierT?Math.round(R(15,40)):Math.round(R(2,8))):-Math.round(R(1,4)));

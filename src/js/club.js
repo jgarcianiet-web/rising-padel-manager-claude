@@ -43,6 +43,106 @@ function nivelTxt(j){
   return `${Math.max(20,n-5)}-${Math.min(96,n+7)}`;
 }
 function costeFichaje(j){const n=mediaAttrs(j.attrs);return Math.round(n*n*1.1);}
+
+/* ================================================================
+   LA CARA DEL CLUB
+
+   El modo club compartía demasiada pantalla con el de carrera: cambiaba quién
+   jugaba, pero no quién eras. Tres cosas le dan identidad, y las tres se eligen
+   o se sortean al fundar, así que dos partidas de club ya no se parecen:
+
+   - La FILOSOFÍA decide a quién convences. No es un adorno: un jugador que no
+     encaja pide más dinero, y uno que no encaja nada no firma aunque tengas la
+     caja llena. Ficha condicionada, que es lo que hace que un club tenga estilo.
+   - La JUNTA tiene carácter. Cuánta cuerda te da, cuánto aprieta el objetivo,
+     cuánto paga por cumplirlo y en qué se fija (la tacaña mira los sueldos).
+   - El DERBI: un club rival desde el primer día, con su marcador.
+================================================================ */
+const FILOS_CLUB={
+  cantera:{  n:"cfil_cantera_n",  d:"cfil_cantera_d",  lema:"cfil_cantera_l"},
+  estrellas:{n:"cfil_estrellas_n",d:"cfil_estrellas_d",lema:"cfil_estrellas_l"},
+  garra:{    n:"cfil_garra_n",    d:"cfil_garra_d",    lema:"cfil_garra_l"},
+  oficio:{   n:"cfil_oficio_n",   d:"cfil_oficio_d",   lema:"cfil_oficio_l"},
+};
+function filoClub(cl){ return (cl&&cl.filo&&FILOS_CLUB[cl.filo])?cl.filo:"oficio"; }
+function filoNombre(k){ return t((FILOS_CLUB[k]||FILOS_CLUB.oficio).n); }
+function filoDesc(k){ return t((FILOS_CLUB[k]||FILOS_CLUB.oficio).d); }
+function filoLema(k){ return t((FILOS_CLUB[k]||FILOS_CLUB.oficio).lema); }
+
+/* Encaje de un jugador con la filosofía, de -2 a +2. Mira la edad, el estilo y
+   la personalidad, que es lo que el jugador ve en su ficha: la explicación de
+   por qué le sale caro está delante de sus ojos. */
+function afinidadFilo(cl,j){
+  if(!j) return 0;
+  const filo=filoClub(cl), ed=j.edad||24, est=j.estilo||"", per=j.perso||"";
+  const niv=mediaAttrs(j.attrs);
+  let a=0;
+  if(filo==="cantera"){
+    a = ed<=21?2 : ed<=24?1 : ed>=31?-2 : ed>=28?-1 : 0;
+  } else if(filo==="estrellas"){
+    a = niv>=74?2 : niv>=66?1 : niv<=54?-2 : niv<=60?-1 : 0;
+    if(ed<=20&&a>0) a--;                       // el proyecto no es lo suyo
+  } else if(filo==="garra"){
+    a = (per==="valiente"?1:0)+(per==="emocional"?1:0)+(per==="conservador"?-1:0)
+      + (est==="defensivo"||est==="agresivo"?1:0)+(est==="constructor"?-1:0);
+    a = clamp(a,-2,2);
+    if(per==="frio") a=Math.min(a,0);
+  } else {                                      // oficio
+    a = (est==="constructor"||est==="bandejero"?1:0)+(per==="frio"?1:0)
+      + (est==="rematador"?-2:0)+(per==="emocional"?-1:0);
+    a = clamp(a,-2,2);
+  }
+  return a;
+}
+const AFIN_TXT={2:"cfil_enc_2",1:"cfil_enc_1",0:"cfil_enc_0","-1":"cfil_enc_m1","-2":"cfil_enc_m2"};
+function afinidadTxt(a){ return t(AFIN_TXT[a]||"cfil_enc_0"); }
+function afinidadColor(a){ return a>=2?"var(--lima)":a===1?"var(--verde)":a<=-2?"var(--rojo)":a===-1?"var(--oro)":"var(--gris)"; }
+/* El encaje se cobra en la ficha y en el sueldo: quien no te ve claro pide más.
+   A -2 no hay dinero que valga, y por eso el botón se apaga con su motivo. */
+function costeFichajeCl(cl,j){ return Math.round(costeFichaje(j)*(1-afinidadFilo(cl,j)*.12)); }
+function salarioDeCl(cl,j){ return Math.round(salarioDe(j)*(1-afinidadFilo(cl,j)*.09)); }
+function fichable(cl,j){ return afinidadFilo(cl,j)>-2; }
+
+/* Carácter de la junta. `margen` son las temporadas de cuerda; `dureza` cuánto
+   aprieta el objetivo cada año; `prima` lo que paga por cumplirlo. */
+const JUNTAS={
+  paciente:  {n:"cjun_paciente_n",  d:"cjun_paciente_d",  margen:3,dureza:.92,prima:1,   obj0:38},
+  corto:     {n:"cjun_corto_n",     d:"cjun_corto_d",     margen:1,dureza:.80,prima:1.8, obj0:28},
+  tacana:    {n:"cjun_tacana_n",    d:"cjun_tacana_d",    margen:2,dureza:.88,prima:.65, obj0:34,mirasueldos:true},
+  ambiciosa: {n:"cjun_ambiciosa_n", d:"cjun_ambiciosa_d", margen:2,dureza:.78,prima:1.4, obj0:30},
+};
+function juntaClub(cl){ const k=cl&&cl.junta&&cl.junta.car; return JUNTAS[k]?k:"paciente"; }
+function juntaNombre(k){ return t((JUNTAS[k]||JUNTAS.paciente).n); }
+function juntaDesc(k){ return t((JUNTAS[k]||JUNTAS.paciente).d); }
+/* La junta se sortea al fundar: no la eliges, igual que no eliges quién te
+   contrata. Su objetivo de partida y su paciencia salen de su carácter. */
+function mkJunta(){
+  const car=pick(Object.keys(JUNTAS)), J=JUNTAS[car];
+  return {car,objetivo:J.obj0,paciencia:J.margen};
+}
+/* El club rival del primer día. Sale de los clubes del circuito y se queda
+   para siempre: el marcador del derbi es de las pocas cosas que un club
+   arrastra temporada tras temporada. */
+function mkDerbi(){
+  return {club:clubAlAzar(),v:0,d:0};
+}
+function derbiClub(cl){ const d=cl&&cl.derbi; return (d&&CLUBES_NPC[d.club])?CLUBES_NPC[d.club]:null; }
+/* ¿Este rival es el del derbi? Los rivales del circuito llevan su club encima. */
+function esDerbi(cl,rival){
+  return !!(cl&&cl.derbi&&rival&&rival.club!==undefined&&rival.club===cl.derbi.club);
+}
+/* Anota el derbi y lo cuenta. Se llama al cerrar un partido del club. */
+function anotaDerbi(cl,rival,gane){
+  if(!esDerbi(cl,rival)) return false;
+  const nom=derbiClub(cl).n;
+  cl.derbi[gane?"v":"d"]++;
+  if(gane){ fansAdd(Math.round(120+(cl.fans||0)*.05),t("cder_hd")); avisa(t("cder_gana",{rival:nom})); }
+  else { avisa(t("cder_pierde",{rival:nom})); }
+  post("derbi",{rival:nom});
+  noticia(gane?"hito":"circuito",t("cder_not_t",{club:cl.nombre,rival:nom}),t("cder_not_s"));
+  return true;
+}
+
 function mkMercadoLibre(sx){const a=[],seen=new Set();for(let i=0;i<8;i++){let j,g=0;do{j=mkAgente(46,68,sx||"M");}while(seen.has(j.n)&&g++<20);seen.add(j.n);a.push(j);}return a;}
 let mercadoTmp=null,plantillaTmp=[];
 
@@ -61,21 +161,34 @@ function prepararCrearClub(){
   document.getElementById("clubSexoF").onclick=()=>{sexoClubSel="F";mercadoTmp=mkMercadoLibre("F");plantillaTmp=[];prepararCrearClub();};
   if(!mercadoTmp) mercadoTmp=mkMercadoLibre(sexoClubSel);
   plantillaTmp=plantillaTmp.filter(j=>mercadoTmp.includes(j)===false); // conserva selección
+  pintarFilosClub();
   pintarMercadoInicial();
 }
+/* La filosofía se elige antes de fichar, y el mercado de abajo se repinta al
+   cambiarla: se ve en el sitio quién te acepta y quién no. */
+function pintarFilosClub(){
+  const cont=document.getElementById("filosClub"); if(!cont) return;
+  cont.innerHTML=`<div class="difrow difrow-wrap">${Object.keys(FILOS_CLUB).map(k=>
+    `<button type="button" class="difchip${k===filoClubSel?" on":""}" ${ac("setFiloClub",k)} aria-pressed="${k===filoClubSel}">${filoNombre(k)}</button>`
+  ).join("")}</div><div class="difdesc">${filoDesc(filoClubSel)}</div>
+  <div class="foot" style="text-align:left;margin-top:3px">${t("cfil_ayuda")}</div>`;
+}
+function setFiloClub(k){ if(!FILOS_CLUB[k]) return; filoClubSel=k; prepararCrearClub(); }
 const PRESUP_CLUB=12000;
 function pintarMercadoInicial(){
   const el=document.getElementById("mercadoInicial");el.innerHTML="";
-  let gasto=plantillaTmp.reduce((s,j)=>s+costeFichaje(j),0);
+  let gasto=plantillaTmp.reduce((s,j)=>s+costeFichajeCl({filo:filoClubSel},j),0);
   document.getElementById("mercTitulo").textContent=t("clb_caja",{n:(PRESUP_CLUB-gasto).toLocaleString("es")});
+  const clFake={filo:filoClubSel};        // aún no hay club: la filosofía elegida basta
   mercadoTmp.forEach(j=>{
     const dentro=plantillaTmp.includes(j);
-    const coste=costeFichaje(j);
+    const coste=costeFichajeCl(clFake,j);
+    const af=afinidadFilo(clFake,j), ok=fichable(clFake,j);
     const d=document.createElement("div");d.className="opcion"+(dentro?" sel":"");
-    d.innerHTML=`<b>${j.n}</b> <span class="pill">${t("clb_nivel",{n:nivelTxt(j)})}</span> ${ladoChip(j.lado!==undefined?j.lado:ladoPorAttrs(j.attrs,j.estilo))} <span class="pill">${t("clb_anios",{n:j.edad})}</span> <span class="pill">${estiloNombre(j.estilo)}</span> <span class="pill">${persoNombre(j.perso)}</span><div class="d">${t("clb_ficha_linea",{coste,sal:salarioDe(j)})}${(G&&G.clubG&&G.clubG.staff&&G.clubG.staff.ojeador)?"":t("clb_informe_impreciso")}</div>`;
+    d.innerHTML=`<b>${j.n}</b> <span class="pill">${t("clb_nivel",{n:nivelTxt(j)})}</span> ${ladoChip(j.lado!==undefined?j.lado:ladoPorAttrs(j.attrs,j.estilo))} <span class="pill">${t("clb_anios",{n:j.edad})}</span> <span class="pill">${estiloNombre(j.estilo)}</span> <span class="pill">${persoNombre(j.perso)}</span> <span class="pill" style="color:${afinidadColor(af)}">${afinidadTxt(af)}</span><div class="d">${t("clb_ficha_linea",{coste,sal:salarioDeCl(clFake,j)})}${(G&&G.clubG&&G.clubG.staff&&G.clubG.staff.ojeador)?"":t("clb_informe_impreciso")}</div>`;
     const b=document.createElement("button");b.style.width="100%";
-    b.textContent=dentro?t("clb_quitar"):t("clb_fichar",{coste});
-    b.disabled=!dentro&&(plantillaTmp.length>=4||PRESUP_CLUB-gasto<coste);
+    b.textContent=!ok?t("cfil_no_firma"):dentro?t("clb_quitar"):t("clb_fichar",{coste});
+    b.disabled=!ok||(!dentro&&(plantillaTmp.length>=4||PRESUP_CLUB-gasto<coste));
     b.onclick=()=>{
       if(dentro) plantillaTmp=plantillaTmp.filter(x=>x!==j);
       else plantillaTmp.push(j);
@@ -88,7 +201,7 @@ function pintarMercadoInicial(){
   be.textContent=plantillaTmp.length<2?t("clb_necesitas",{n:plantillaTmp.length}):t("clb_comenzar");
   be.onclick=()=>{
     if(plantillaTmp.length<2) return;
-    const gasto2=plantillaTmp.reduce((s,j)=>s+costeFichaje(j),0);
+    const gasto2=plantillaTmp.reduce((s,j)=>s+costeFichajeCl({filo:filoClubSel},j),0);
     const nombre=document.getElementById("inClubNombre").value.trim()||"Rising Pádel Club";
     G={v:1,modo:"club",_slot:slotDestino(),semilla:iniciaSemilla(),dif:difMenu(),world:mkWorld(),carrera:null,clubG:{
       nombre,color:colorClubSel,
@@ -96,7 +209,11 @@ function pintarMercadoInicial(){
       alin:[0,1],alinB:null,quims:{},
       semana:1,pts:0,dinero:PRESUP_CLUB-gasto2,
       sexo:sexoClubSel,wildcards:2,fans:400,social:[],
-      junta:{objetivo:34,paciencia:2},sponsor:null,sponsorOferta:null,
+      filo:filoClubSel,
+      // la junta te toca, no se elige: parte de dirigir es el despacho que te ha caído
+      junta:mkJunta(),
+      derbi:mkDerbi(),
+      sponsor:null,sponsorOferta:null,
       instal:1,academia:false,cantera:[],mercado:mercadoTmp.filter(j=>!plantillaTmp.includes(j)).map(j=>({...j})),
       staff:{entrenador:null,fisio:null,psico:null,fisico:null,ojeador:null},mercadoStaff:null,_staffV2:1,
       reformas:Object.fromEntries(Object.keys(REFORMAS).map(k=>[k,false])),
@@ -314,7 +431,7 @@ function pintarCmSemana(){
     const mer=(!j.lesion&&j.merma)?` <span class="pill" style="color:#E0A030">mermado -${j.merma.pct}% (${j.merma.sem}s)</span>`:"";
     const plan=j.plan||"auto";
     const rasg=chipRasgos(j);
-    d.innerHTML=`<b>${j.n}</b> <span class="pill">nivel ${mediaAttrs(j.attrs)}</span> <span class="pill">EN ${j.energia}</span> <span class="pill">CF ${j.conf}</span> <span class="pill lima">plan: ${plan}</span>${les}${mer}${rasg?`<div style="margin-top:3px">${rasg}</div>`:""}`;
+    d.innerHTML=`<b>${j.n}</b> <span class="pill">${t("clb_nivel_n",{n:mediaAttrs(j.attrs)})}</span> <span class="pill">EN ${j.energia}</span> <span class="pill">CF ${j.conf}</span> <span class="pill lima">${t("clb_plan_de",{p:plan})}</span>${les}${mer}${rasg?`<div style="margin-top:3px">${rasg}</div>`:""}`;
     if(!j.lesion){
       const g=document.createElement("div");g.className="entreno";g.style.marginTop="8px";
       const bAuto=document.createElement("button");
@@ -384,7 +501,7 @@ function pintarCmPlantilla(){
     const enA=cl.alin.includes(idx), enB=cl.alinB&&cl.alinB.includes(idx);
     const nom=document.createElement("div");
     nom.style.flex="2";nom.style.fontSize="12px";nom.style.display="flex";nom.style.alignItems="center";nom.style.gap="6px";
-    nom.innerHTML=`<span>${avatarSVG(j,30)}</span><span>${enA?"🅰 ":enB?"🅱 ":""}${j.n} ${ladoChip(j.lado)} · <span style="color:var(--gris)">nivel ${mediaAttrs(j.attrs)}${j.lesion?" · LESIONADO":""}</span></span>`;
+    nom.innerHTML=`<span>${avatarSVG(j,30)}</span><span>${enA?"🅰 ":enB?"🅱 ":""}${j.n} ${ladoChip(j.lado)} · <span style="color:var(--gris)">${t("clb_nivel_n",{n:mediaAttrs(j.attrs)})}${j.lesion?" · "+t("clb_lesionado"):""}</span></span>`;
     const bA=document.createElement("button");bA.textContent="A";bA.className=enA?"selbtn on":"selbtn";bA.style.flex=".4";
     bA.onclick=()=>{
       if(enA) return;
@@ -425,15 +542,15 @@ function pintarCmPlantilla(){
         <div class="chip">${t("kpi_confianza2")} <b style="color:${colAttr(j.conf)}">${j.conf}</b></div>
         <div class="chip">Moral <b style="color:${colAttr(moralC)}">${moralC}</b></div>
         <div class="chip">Contrato <b>${ct.temporadas||1} temp.</b></div>
-        <div class="chip">Cláusula <b>${(valorClausula(j)).toLocaleString("es")}€</b></div>
-        ${rolJ?`<div class="chip lima">titular ${rolJ}</div>`:""}
+        <div class="chip">${t("clb_clausula")} <b>${(valorClausula(j)).toLocaleString("es")}€</b></div>
+        ${rolJ?`<div class="chip lima">${t("clb_titular",{rol:rolJ})}</div>`:""}
       </div>
       <div class="foot" style="text-align:left;margin-top:6px;color:${est.col<0?"var(--rojo)":est.col>0?"var(--verde)":"var(--gris)"}">${est.clave==="salir"?"🚪":est.clave==="exige"?"😠":est.clave==="dudas"?"🤔":"🙂"} ${est.txt}</div>
       ${chipRasgos(j)?`<div style="margin-top:4px">${chipRasgos(j)}</div>`:""}
       <div class="attrs" style="margin-top:10px">${attrHtml(j.attrs)}</div>`;
     if(cl.plantilla.length>2&&!cl.alin.includes(idx)&&!(cl.alinB&&cl.alinB.includes(idx))){
       const b=document.createElement("button");b.style.width="100%";b.style.marginTop="10px";
-      b.textContent=`Traspasar (+${mediaAttrs(j.attrs)*4}€)`;
+      b.textContent=t("clb_traspasar",{n:mediaAttrs(j.attrs)*4});
       b.onclick=()=>{
         cl.dinero+=mediaAttrs(j.attrs)*4;
         cl.plantilla.splice(idx,1);
@@ -452,15 +569,16 @@ function pintarCmPlantilla(){
     m.innerHTML+=`<div class="foot" style="text-align:left">${t("clb_plantilla_llena")}</div>`;
   } else {
     cl.mercado.forEach((j,mi)=>{
-      const coste=costeFichaje(j);
+      const coste=costeFichajeCl(cl,j), sal=salarioDeCl(cl,j);
+      const af=afinidadFilo(cl,j), ok=fichable(cl,j);
       const d=document.createElement("div");d.className="opcion";
-      d.innerHTML=`<b>${j.n}</b> <span class="pill">nivel ${nivelTxt(j)}</span> <span class="pill">${j.edad} años</span> <span class="pill">${estiloNombre(j.estilo)}</span><div class="d">Fichaje ${coste}€ · salario ${salarioDe(j)}€/sem</div>`;
+      d.innerHTML=`<b>${j.n}</b> <span class="pill">${t("clb_nivel",{n:nivelTxt(j)})}</span> ${ladoChip(j.lado)} <span class="pill">${t("clb_anios",{n:j.edad})}</span> <span class="pill">${estiloNombre(j.estilo)}</span> <span class="pill" style="color:${afinidadColor(af)}">${afinidadTxt(af)}</span><div class="d">${t("clb_merc_ficha",{coste,sal})}</div>`;
       const b=document.createElement("button");b.style.width="100%";
-      b.textContent=cl.dinero<coste?"Caja insuficiente":`Fichar (${coste}€)`;
-      b.disabled=cl.dinero<coste;
+      b.textContent=!ok?t("cfil_no_firma"):cl.dinero<coste?t("clb_sin_caja"):t("clb_ficha_btn",{coste});
+      b.disabled=!ok||cl.dinero<coste;
       b.onclick=()=>{
         cl.dinero-=coste;
-        cl.plantilla.push({...j});
+        cl.plantilla.push({...j,salario:sal});
         cl.mercado.splice(mi,1);
         avisa(t("clb_fichaje",{n:j.n,club:cl.nombre}));
         guardar();pintarClubM();
@@ -474,6 +592,27 @@ function pintarCmPlantilla(){
 function pintarCmClub(){
   const cl=G.clubG,el=document.getElementById("cm-clubpan");el.innerHTML="";
   const pre=prestigioClub(),socios=25+Math.round(pre*1.5);
+  /* Lo primero del panel es quiénes sois: la filosofía que decide a quién
+     convencéis, la junta que os ha tocado y el club al que hay que ganar. */
+  const cId=document.createElement("div");cId.className="card";
+  const der=derbiClub(cl), D=cl.derbi||{v:0,d:0};
+  const filo=filoClub(cl), jun=juntaClub(cl);
+  cId.innerHTML=`<h3>${t("cid_hd")}</h3>
+    <div style="border-left:3px solid ${cl.color};padding-left:9px;margin-bottom:9px">
+      <div style="font-size:calc(13px * var(--esc));font-weight:600">${filoNombre(filo)}</div>
+      <div style="font-size:calc(11px * var(--esc));color:var(--gris);font-style:italic">«${filoLema(filo)}»</div>
+      <div style="font-size:calc(11px * var(--esc));color:var(--gris2);margin-top:4px;line-height:1.45">${filoDesc(filo)}</div>
+    </div>
+    <div style="border-left:3px solid var(--borde2);padding-left:9px;margin-bottom:9px">
+      <div style="font-size:calc(12px * var(--esc));font-weight:600">${juntaNombre(jun)}</div>
+      <div style="font-size:calc(11px * var(--esc));color:var(--gris2);margin-top:3px;line-height:1.45">${juntaDesc(jun)}</div>
+      <div class="foot" style="text-align:left;margin-top:4px">${t("cid_junta_obj",{obj:(cl.junta||{}).objetivo||"—",pac:(cl.junta||{}).paciencia||0})}</div>
+    </div>
+    ${der?`<div style="border-left:3px solid ${der.color};padding-left:9px">
+      <div style="font-size:calc(12px * var(--esc));font-weight:600">${t("cder_hd")} · <span style="color:${der.color}">${der.n}</span></div>
+      <div class="foot" style="text-align:left;margin-top:3px">${(D.v+D.d)?t("cder_marcador",{rival:der.n,v:D.v,d:D.d}):t("cid_derbi_sin")}</div>
+    </div>`:""}`;
+  el.appendChild(cId);
   const c1=document.createElement("div");c1.className="card";
   c1.innerHTML=`<h3>${cl.nombre} · <em>finanzas</em></h3>
     <div class="meta" style="margin-top:0">
@@ -513,12 +652,12 @@ function pintarCmClub(){
   } else {
     cl.cantera.forEach((j,idx)=>{
       const d=document.createElement("div");d.className="opcion";
-      d.innerHTML=`<b>${j.n}</b> <span class="pill">nivel ${nivelTxt(j)}</span> <span class="pill">${j.edad} años</span> <span class="pill">${estiloNombre(j.estilo)}</span><div class="d">${t("clb_promesa_d")}</div>`;
+      d.innerHTML=`<b>${j.n}</b> <span class="pill">${t("clb_nivel",{n:nivelTxt(j)})}</span> <span class="pill">${t("clb_anios_n",{n:j.edad})}</span> <span class="pill">${estiloNombre(j.estilo)}</span><div class="d">${t("clb_promesa_d")}</div>`;
       const f=document.createElement("div");f.className="fila";
       const b1=document.createElement("button");b1.className="pri";b1.textContent="Subir al primer equipo";
       b1.disabled=cl.plantilla.length>=6;
       b1.onclick=()=>{cl.plantilla.push({...j,salario:Math.round(mediaAttrs(j.attrs)*.6),energia:100,conf:55,lesion:null});cl.cantera.splice(idx,1);cl._subidos=(cl._subidos||0)+1;avisa(t("clb_sube",{n:j.n}));guardar();pintarClubM();};
-      const b2=document.createElement("button");b2.textContent=`Traspasar (+${mediaAttrs(j.attrs)*6}€)`;
+      const b2=document.createElement("button");b2.textContent=t("clb_traspasar",{n:mediaAttrs(j.attrs)*6});
       b2.onclick=()=>{cl.dinero+=mediaAttrs(j.attrs)*6;cl.cantera.splice(idx,1);avisa(t("clb_promesa_out",{n:j.n}));guardar();pintarClubM();};
       f.appendChild(b1);f.appendChild(b2);d.appendChild(f);c3.appendChild(d);
     });
@@ -695,15 +834,22 @@ function avanzarSemanaClub(){
     }
     repararAlin();
     // la junta pasa revista
-    const J=cl.junta||{objetivo:34,paciencia:2};
+    const J=cl.junta||{objetivo:34,paciencia:2,car:"paciente"};
+    const CAR=JUNTAS[juntaClub(cl)];
+    // la tacaña se fija en lo que cuesta la plantilla, no en dónde ha quedado
+    if(CAR.mirasueldos){
+      const sal=cl.plantilla.reduce((n,j)=>n+salarioDe(j),0)+staffSalarios();
+      if(sal>Math.max(900,(cl.fans||400)*1.6)) avisa(t("cjun_aviso_sal",{sal}));
+    }
     if(posFin<=J.objetivo){
-      J.paciencia=2;
+      J.paciencia=CAR.margen;
       cl._juntaOk=(cl._juntaOk||0)+1;
-      const bonus=3000+Math.max(0,(J.objetivo-posFin))*200;
+      const bonus=Math.round((3000+Math.max(0,(J.objetivo-posFin))*200)*CAR.prima);
       cl.dinero+=bonus;
       avisa(t("clb_junta_ok",{pos:posFin,obj:J.objetivo,bonus}));
     } else {
       J.paciencia--;
+      if(J.paciencia===1) avisa(t("cjun_ultima"));
       if(J.paciencia<=0){
         noticia("hito",t("not_destituido_t"),t("not_destituido_s",{obj:J.objetivo}));
         avisa(t("clb_destituido",{pos:posFin,obj:J.objetivo}));
@@ -722,7 +868,7 @@ function avanzarSemanaClub(){
         avisa(t("sl_av_llega"));
       }
     }
-    J.objetivo=Math.max(3,Math.round(Math.min(posFin,J.objetivo)*.85));
+    J.objetivo=Math.max(3,Math.round(Math.min(posFin,J.objetivo)*CAR.dureza));
     cl.junta=J;
     avisa(t("clb_junta_nuevo",{obj:J.objetivo}));
     evolucionaMundo();

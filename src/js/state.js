@@ -4,7 +4,7 @@
 let G=null;            // {v, modo:"carrera"|"club", world, carrera?, clubG?}
 let torneo=null,match=null,speed=1.6;
 let tabActiva="semana",cmTab="semana";
-let lado=null,colorSel=COLORES[0],persoSel=null,colorClubSel=COLORES[0],sexoSel="M",sexoClubSel="M";
+let lado=null,colorSel=COLORES[0],persoSel=null,colorClubSel=COLORES[0],sexoSel="M",sexoClubSel="M",filoClubSel="oficio";
 
 const SLOTS={carrera:"rpm_carrera_v1",club:"rpm_club_v1",superliga:"rpm_superliga_v1"};
 function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}

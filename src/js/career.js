@@ -1034,6 +1034,7 @@ const POSTS_FAN={
   rivalidad:["soc_riv_1","soc_riv_2","soc_riv_3","soc_riv_4","soc_riv_5","soc_riv_6","soc_riv_7","soc_riv_8"],
   maldicion:["soc_mal_1","soc_mal_2","soc_mal_3","soc_mal_4","soc_mal_5","soc_mal_6","soc_mal_7","soc_mal_8"],
   campanada:["soc_cam_1","soc_cam_2","soc_cam_3","soc_cam_4","soc_cam_5","soc_cam_6","soc_cam_7","soc_cam_8"],
+  derbi:["soc_der_derbi_1","soc_der_derbi_2","soc_der_derbi_3","soc_der_derbi_4","soc_der_derbi_5","soc_der_derbi_6"],
 };
 function post(tipo,ctx){
   const e=ent(); if(!e) return;

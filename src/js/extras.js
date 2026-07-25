@@ -186,6 +186,7 @@ registraAcciones({
   // torneo y partido
   setTact, setTactPrev,
   aplicarTacticaRec,
+  setFiloClub,
   // Superliga
   accionSuperliga, nuevaTempSuperliga, rechazarInvitacionSL, asignaParejaSL, ficharSLui,
   aceptarInvitSL:()=>{ quitarEl(document.getElementById("slInvitModal")); aceptarInvitacionSL(); },

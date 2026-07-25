@@ -2233,3 +2233,69 @@ comprueba("Narrador: elegir frase no toca el flujo con semilla", () => {
   exige(rndEstado().pos === antes, `la narración movió el flujo: ${antes} → ${rndEstado().pos}`);
   return "50 frases sin gastar una sola tirada con semilla";
 });
+
+/* La cara del club ------------------------------------------------------- */
+comprueba("Club: la filosofía decide a quién convences y a qué precio", () => {
+  const joven = { n: "Chaval", edad: 19, estilo: "agresivo", perso: "valiente", attrs: mkAttrsNivel(60, "agresivo") };
+  const crack = { n: "Estrella", edad: 27, estilo: "rematador", perso: "frio", attrs: mkAttrsNivel(80, "rematador") };
+  const casa = { filo: "cantera" }, estrellas = { filo: "estrellas" };
+  exige(afinidadFilo(casa, joven) > afinidadFilo(estrellas, joven), "la cantera debería querer al chaval más que los nombres propios");
+  exige(afinidadFilo(estrellas, crack) > afinidadFilo(casa, crack), "los nombres propios deberían querer al crack");
+  exige(costeFichajeCl(casa, joven) < costeFichajeCl(estrellas, joven), "al que encaja debería salirle más barato");
+  exige(salarioDeCl(casa, joven) < salarioDe(joven), "el que quiere venir debería pedir menos sueldo");
+  // el veterano no firma en un club de cantera: no es cuestión de dinero
+  const viejo = { n: "Veterano", edad: 33, estilo: "constructor", perso: "frio", attrs: mkAttrsNivel(70, "constructor") };
+  exige(!fichable(casa, viejo), "un club de cantera no debería poder fichar a un jugador de 33");
+  exige(fichable(estrellas, viejo), "un club de nombres propios sí debería poder");
+  Object.keys(FILOS_CLUB).forEach(k => {
+    exige(filoNombre(k) && !/^cfil_/.test(filoNombre(k)), "filosofía sin traducir: " + k);
+    exige(filoLema(k) && !/^cfil_/.test(filoLema(k)), "lema sin traducir: " + k);
+  });
+  return Object.keys(FILOS_CLUB).length + " filosofías con efecto sobre el mercado";
+});
+
+comprueba("Club: la junta tiene carácter y no todas aprietan igual", () => {
+  const cars = Object.keys(JUNTAS);
+  exige(cars.length >= 4, "solo " + cars.length + " caracteres de junta");
+  const corto = JUNTAS.corto, paciente = JUNTAS.paciente;
+  exige(corto.margen < paciente.margen, "la cortoplacista debería dar menos cuerda");
+  exige(corto.prima > paciente.prima, "la cortoplacista debería pagar más por cumplir");
+  exige(JUNTAS.tacana.prima < paciente.prima, "la tacaña debería pagar menos");
+  exige(corto.obj0 < paciente.obj0, "la cortoplacista debería pedir más desde el principio");
+  cars.forEach(k => exige(juntaNombre(k) && !/^cjun_/.test(juntaNombre(k)), "junta sin traducir: " + k));
+  // el sorteo devuelve siempre un carácter válido y su margen
+  for (let i = 0; i < 30; i++) { const J = mkJunta(); exige(JUNTAS[J.car], "mkJunta inventó un carácter: " + J.car); exige(J.paciencia === JUNTAS[J.car].margen, "la paciencia no sale del carácter"); }
+  return cars.length + " juntas con margen, dureza y prima propios";
+});
+
+comprueba("Club: el derbi se anota y solo cuenta contra su rival", () => {
+  const cl = fundarClub();
+  cl.derbi = { club: 3, v: 0, d: 0 };
+  const rivalDerbi = { id: 1, nombre: "A/B", club: 3, jug: cl.plantilla.slice(0, 2) };
+  const otro = { id: 2, nombre: "C/D", club: 7, jug: cl.plantilla.slice(0, 2) };
+  exige(esDerbi(cl, rivalDerbi), "no reconoce al rival del derbi");
+  exige(!esDerbi(cl, otro), "cuenta como derbi a quien no lo es");
+  exige(anotaDerbi(cl, rivalDerbi, true), "no anotó el derbi ganado");
+  exige(cl.derbi.v === 1 && cl.derbi.d === 0, "marcador mal: " + JSON.stringify(cl.derbi));
+  anotaDerbi(cl, rivalDerbi, false);
+  exige(cl.derbi.d === 1, "no anotó la derrota");
+  exige(!anotaDerbi(cl, otro, true), "anotó un partido que no era el derbi");
+  exige(cl.derbi.v === 1, "el marcador se movió con un rival cualquiera");
+  exige(derbiClub(cl) && derbiClub(cl).n, "el club del derbi no tiene nombre");
+  return "marcador " + cl.derbi.v + "-" + cl.derbi.d + " contra " + derbiClub(cl).n;
+});
+
+comprueba("Club: fundar da identidad y las partidas viejas también la reciben", () => {
+  const cl = fundarClub();
+  exige(FILOS_CLUB[cl.filo], "el club nace sin filosofía: " + cl.filo);
+  exige(cl.junta && JUNTAS[cl.junta.car], "el club nace sin carácter de junta");
+  exige(cl.derbi && CLUBES_NPC[cl.derbi.club], "el club nace sin derbi");
+  // guardado antiguo: sin filo, sin carácter, sin derbi
+  delete cl.filo; delete cl.derbi; cl.junta = { objetivo: 30, paciencia: 2 };
+  entrarPartida();
+  exige(FILOS_CLUB[G.clubG.filo], "la migración no puso filosofía");
+  exige(JUNTAS[G.clubG.junta.car], "la migración no puso carácter de junta");
+  exige(G.clubG.junta.objetivo === 30, "la migración pisó el objetivo que traía la partida");
+  exige(G.clubG.derbi && CLUBES_NPC[G.clubG.derbi.club], "la migración no puso derbi");
+  return "identidad al fundar y al abrir una guardada antigua";
+});
