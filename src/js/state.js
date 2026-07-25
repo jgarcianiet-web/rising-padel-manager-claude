@@ -404,6 +404,8 @@ function semanaDeRumores(e,semana){
     if(res.ok){
       const tipoNot=res.rum.tipo==="ruptura"?"ruptura":res.rum.tipo==="fichaje"?"fichaje":"mercado";
       noticia(tipoNot,res.txt,t("rum_pie"),protDe(res.rum));
+      // y lo que se confirma trae conversación: el rumor abre su escena
+      if(res.abre) abreDilema(e,res.abre,semana);
     }
   });
   if(rnd()<.3){

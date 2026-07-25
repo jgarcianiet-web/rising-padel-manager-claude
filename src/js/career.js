@@ -1129,6 +1129,12 @@ const HITOS_CLUB=[
   {id:"top3",txt:"Podio del ranking de clubes",ck:(cl)=>miPuesto()<=3,fans:2000,din:12000},
   {id:"p6",txt:"Plantilla de 6 jugadores",ck:(cl)=>cl.plantilla.length>=6,fans:250,din:0},
   {id:"cantera1",txt:"Subir a un jugador de la academia",ck:(cl)=>(cl._subidos||0)>=1,fans:400,din:1500},
+  // el arco entero de la cantera: no basta con subirlo, hay que ponerlo a jugar
+  {id:"canteraA",txt:"Un canterano en la pareja A",ck:(cl)=>{
+    const al=(cl.alin||[]).map(i=>(cl.plantilla||[])[i]);
+    return al.some(j=>j&&j.dela_casa);
+  },fans:700,din:2500},
+  {id:"cantera3",txt:"Tres canteranos en el primer equipo",ck:(cl)=>(cl.plantilla||[]).filter(j=>j.dela_casa).length>=3,fans:1200,din:5000},
   {id:"reformas4",txt:"Cuatro reformas terminadas",ck:(cl)=>Object.values(cl.reformas||{}).filter(Boolean).length>=4,fans:900,din:4000},
   {id:"fans10k",txt:"Diez mil seguidores",ck:(cl)=>(cl.fans||0)>=10000,fans:1500,din:6000},
   {id:"n1club",txt:"El mejor club del mundo",ck:(cl)=>miPuesto()===1,fans:5000,din:25000},

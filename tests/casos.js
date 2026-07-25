@@ -2401,3 +2401,133 @@ comprueba("Muro: la grada habla de ti, de tu pareja y del torneo", () => {
   exige(html.indexOf("Corona de Madrid") >= 0, "la grada no nombra el torneo");
   return "5 categorías nuevas publicando con nombres reales";
 });
+
+/* Cantera con historia ---------------------------------------------------- */
+comprueba("Cantera: una promesa crece hacia su techo y deja historial", () => {
+  const cl = fundarClub();
+  cl.academia = true;
+  const j = mkAgente(44, 50, cl.sexo);
+  j.edad = 16; j.pot = 78; j.aniosCan = 0; j.ilusion = 78; j.hist = [];
+  cl.cantera = [j];
+  const media0 = mediaAttrs(j.attrs);
+  evolucionaCantera(cl);
+  exige(cl.cantera.length === 1, "la promesa desapareció en su primera temporada");
+  exige(j.edad === 17, "no cumplió años");
+  exige(j.aniosCan === 1, "no cuenta las temporadas en la academia");
+  exige(j.hist.length === 1, "no dejó línea de historial");
+  exige(j.hist[0].b >= j.hist[0].a, "el historial guarda un retroceso");
+  exige(mediaAttrs(j.attrs) > media0, `no creció: ${media0} → ${mediaAttrs(j.attrs)}`);
+  // y crecer se frena al acercarse al techo
+  const lejos = saltoCantera(cl, { attrs: mkAttrsNivel(50, "agresivo"), pot: 85, edad: 17 });
+  const cerca = saltoCantera(cl, { attrs: mkAttrsNivel(80, "agresivo"), pot: 82, edad: 17 });
+  exige(lejos > cerca, `lejos del techo debería crecer más: ${lejos} vs ${cerca}`);
+  exige(saltoCantera(cl, { attrs: mkAttrsNivel(80, "agresivo"), pot: 70, edad: 17 }) === 0, "creció por encima de su techo");
+  return `${media0} → ${mediaAttrs(j.attrs)} con techo ${j.pot}`;
+});
+
+comprueba("Cantera: la escuela y la filosofía se notan en lo que crece", () => {
+  const base = fundarClub(); base.academia = true; base.filo = "oficio"; base.reformas = {};
+  const casa = fundarClub(); casa.academia = true; casa.filo = "cantera"; casa.reformas = { escuela: true };
+  const molde = { attrs: mkAttrsNivel(50, "agresivo"), pot: 85, edad: 17 };
+  let a = 0, b = 0;
+  for (let i = 0; i < 40; i++) { a += saltoCantera(base, molde); b += saltoCantera(casa, molde); }
+  exige(b > a, `la escuela y la filosofía de cantera deberían crecer más: ${a} vs ${b}`);
+  return `${Math.round(a / 40)} frente a ${Math.round(b / 40)} por temporada`;
+});
+
+comprueba("Cantera: quien no debuta pierde la ilusión y acaba yéndose", () => {
+  const cl = fundarClub();
+  cl.academia = true;
+  const j = mkAgente(44, 50, cl.sexo);
+  j.edad = 18; j.pot = 70; j.aniosCan = 0; j.ilusion = 78; j.hist = [];
+  cl.cantera = [j];
+  let temporadas = 0, fuera = [];
+  while (cl.cantera.length && temporadas < 8) { fuera = evolucionaCantera(cl); temporadas++; }
+  exige(!cl.cantera.length, "el chaval sigue ahí después de ocho temporadas");
+  exige(fuera.length === 1 && fuera[0] === j, "no devolvió a quien se marcha");
+  exige(temporadas <= CAN_FUGA, `tardó ${temporadas} temporadas en irse, y el límite es ${CAN_FUGA}`);
+  // y su estado se lee antes de que pase
+  exige(ilusionTxt({ ilusion: 80 }).k === "can_il_alta", "una ilusión alta no se lee como tal");
+  exige(ilusionTxt({ ilusion: 10 }).k === "can_il_fuga", "no avisa de la fuga");
+  return "se marcha a las " + temporadas + " temporadas sin debutar";
+});
+
+comprueba("Cantera: el panel dice el techo, el consejo y el gráfico sin claves crudas", () => {
+  const cl = fundarClub();
+  cl.academia = true; cl.staff = cl.staff || {};
+  const j = mkAgente(44, 50, cl.sexo);
+  j.edad = 17; j.pot = 80; j.aniosCan = 1; j.ilusion = 60;
+  j.hist = [{ t: 1, a: 44, b: 51, foco: "remate" }, { t: 2, a: 51, b: 57, foco: "globo" }];
+  cl.cantera = [j];
+  cl.staff.ojeador = null;
+  const sinOjeador = techoTxt(cl, j);
+  cl.staff.ojeador = mkStaff("ojeador", 3);
+  const conOjeador = techoTxt(cl, j);
+  exige(sinOjeador !== conOjeador, "el ojeador no aprieta la estimación del techo");
+  exige(conOjeador.indexOf("80") >= 0, "con ojeador debería decirse el techo: " + conOjeador);
+  [sinOjeador, conOjeador].forEach(x => exige(!/^can_|\{[a-z]+\}/.test(x), "techo sin traducir: " + x));
+  const cons = consejoSubir(cl, j);
+  exige(t(cons) !== cons, "el consejo no está traducido: " + cons);
+  const g = canteraGrafico(j);
+  exige(g.indexOf("<svg") === 0, "el gráfico no es SVG");
+  exige(g.indexOf("http") < 0, "el gráfico pide algo a la red");
+  exige(canteraGrafico({ hist: [] }).indexOf(t("can_sin_hist")) >= 0, "sin historial debería decirlo");
+  // el consejo cambia según lo que le quede por crecer
+  exige(consejoSubir(cl, { attrs: mkAttrsNivel(76, "agresivo"), pot: 78, aniosCan: 0 }) === "can_subir_ya", "no recomienda subir al que está listo");
+  exige(consejoSubir(cl, { attrs: mkAttrsNivel(50, "agresivo"), pot: 80, aniosCan: 4 }) === "can_subir_tarde", "no avisa de que se pasó el arroz");
+  return "techo estimado, consejo y gráfico de " + j.hist.length + " temporadas";
+});
+
+comprueba("Cantera: subir a un canterano deja marca y desbloquea hitos", () => {
+  const cl = fundarClub();
+  const j = { ...mkAgente(50, 60, cl.sexo), dela_casa: true };
+  cl.plantilla.push(j);
+  cl.alin = [cl.plantilla.length - 1, 0];
+  const hA = HITOS_CLUB.find(h => h.id === "canteraA");
+  exige(hA && hA.ck(cl), "no reconoce a un canterano en la pareja A");
+  cl.alin = [0, 1];
+  exige(!hA.ck(cl), "lo da por bueno con el canterano en el banquillo");
+  const h3 = HITOS_CLUB.find(h => h.id === "cantera3");
+  exige(!h3.ck(cl), "cuenta tres canteranos habiendo uno");
+  cl.plantilla.push({ ...j, n: "B" }, { ...j, n: "C" });
+  exige(h3.ck(cl), "no reconoce los tres canteranos");
+  return "dos hitos que piden ponerlos a jugar, no solo subirlos";
+});
+
+/* Un rumor confirmado abre conversación ----------------------------------- */
+comprueba("Rumores: el confirmado sobre ti abre su dilema", () => {
+  const c = nuevaCarrera();
+  c.dilemaActivo = null; c.dilVistos = {}; c.decis = {};
+  c.rumores = [{ id: "r9", tipo: "tuyo", pid: G.world.parejas[0].id, pareja: "A/B", sem: 3, cierto: true }];
+  const out = resolverRumores(c, 3);
+  exige(out[0].ok, "el rumor no se confirmó");
+  exige(out[0].abre === "rum_oferta", "no señala qué escena abre: " + out[0].abre);
+  abreDilema(c, out[0].abre, 3);
+  exige(c.dilemaActivo && c.dilemaActivo.id === "rum_oferta", "no se abrió el dilema");
+  const d = _dilemaPorId("rum_oferta");
+  exige(d.cadena, "la escena de la oferta debería salir solo por cadena");
+  exige(!dilemasDisponibles(c, 3).some(x => x.id === "rum_oferta"), "la escena de cadena entró en el sorteo");
+  exige(d.texto(c).indexOf("A/B") >= 0, "el dilema no usa la pareja del rumor: " + d.texto(c));
+  return "el rumor de la semana 3 se sienta a hablar contigo";
+});
+
+comprueba("Rumores: cada tipo abre la escena que le toca, y el falso ninguna", () => {
+  const c = nuevaCarrera();
+  const par = G.world.parejas.find(p => (p.sexo || "M") === c.sexo && p.jug && p.jug.length === 2);
+  const casos = [
+    [{ tipo: "pareja", compi: c.compi.n, pareja: "A/B" }, "rum_traicion"],
+    [{ tipo: "ruptura", pid: par.id, pareja: par.nombre, jIdx: 0 }, "rum_suelto"],
+  ];
+  casos.forEach(([base, esperado]) => {
+    c.rumores = [Object.assign({ id: "x", sem: 2, cierto: true }, base)];
+    const out = resolverRumores(c, 2);
+    exige(out[0].abre === esperado, `${base.tipo} debería abrir ${esperado}, abrió ${out[0].abre}`);
+  });
+  // un fichaje de otros no es asunto tuyo, y un desmentido no abre nada
+  c.rumores = [{ id: "y", tipo: "fichaje", pid: par.id, pareja: par.nombre, club: 1, sem: 2, cierto: true }];
+  exige(!resolverRumores(c, 2)[0].abre, "un fichaje ajeno abrió una escena tuya");
+  c.rumores = [{ id: "z", tipo: "pareja", compi: c.compi.n, pareja: "A/B", sem: 2, cierto: false }];
+  const outF = resolverRumores(c, 2);
+  exige(!outF[0].ok && !outF[0].abre, "un desmentido abrió conversación");
+  return "tres escenas encadenadas al rumor que las provoca";
+});

@@ -143,6 +143,25 @@ Tres cosas que se fijan al fundar (`club.js`) y que hay que respetar:
    partido en `tournament.js`. Los guardados antiguos reciben las tres cosas en
    `entrarPartida()`; ojo con no pisar el objetivo de junta que ya traían.
 
+### La cantera se sigue durante años
+
+Una promesa no es una ficha en una lista: cierra temporada como un jugador.
+`evolucionaCantera(cl)` corre en el cierre de temporada del club y hace crecer
+a cada chaval hacia su `pot` con `saltoCantera` —más deprisa cuanto más lejos
+esté del techo, y más con escuela, entrenador y filosofía de cantera—, guarda
+la línea en `j.hist` (temporada, antes, después, en qué golpe mejoró) y le gasta
+`ilusion` por cada año sin debutar.
+
+Dos reglas al tocarlo:
+
+1. **Nadie se va sin aviso.** La curva de ilusión está calculada para que la
+   ficha enseñe «se va a final de temporada» al menos una temporada antes de
+   que se marche. Perder a un canterano tiene que ser culpa del jugador, no una
+   sorpresa. `CAN_FUGA` es solo un tope de seguridad.
+2. **El techo no se enseña, se estima** (`techoTxt`). Con ojeador es un número;
+   sin él, una horquilla. Es la única información del juego por la que merece la
+   pena pagar un sueldo.
+
 ## Rumores: el mercado se cuenta antes de pasar
 
 `mkRumor` / `resolverRumores` (en `engine/world.js`) publican lo que aún no ha
@@ -154,6 +173,9 @@ ocurrido, y **la mitad no ocurre**. Dos reglas:
   jugadores de pareja y renombra las dos, un fichaje cambia `p.club`, y los que
   van de ti o de los tuyos cuestan moral. Si añades un tipo, añade su efecto: un
   rumor que no cambia nada al confirmarse es ruido.
+- **Y abre la conversación que toca.** `RUM_DILEMA` mapea tipo → dilema; los tres
+  que abre (`rum_oferta`, `rum_traicion`, `rum_suelto`) van marcados `cadena` y
+  jamás salen en el sorteo. Solo en carrera: el modal de dilemas es suyo.
 
 El periódico (`renderNoticias`) tiene sección de mercado (`rumoresHTML`) y
 columna de opinión (`columnaHTML`), que **no es azar**: elige el texto según tu

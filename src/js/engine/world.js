@@ -474,6 +474,9 @@ function _rumK(tipo){ return tipo==="ruptura"?"rup":tipo==="fichaje"?"fic":tipo=
 /* Resuelve los rumores cuya semana ha llegado. Los ciertos MUEVEN el mundo;
    los falsos se desmienten y no dejan más rastro que la vergüenza ajena.
    Devuelve la lista de desenlaces ya traducidos, para contarlos. */
+/* Un rumor que se confirma no acaba en un número: abre la conversación que
+   toca tener. Solo en carrera, que es donde vive el modal de dilemas. */
+const RUM_DILEMA={tuyo:"rum_oferta",pareja:"rum_traicion",ruptura:"rum_suelto"};
 function resolverRumores(e,semana){
   const out=[], quedan=[];
   (e.rumores||[]).forEach(rum=>{
@@ -486,13 +489,15 @@ function resolverRumores(e,semana){
       if(rum.tipo==="ruptura"&&par){
         efecto=_rompeParejaMundo(par,rum.jIdx|0);
         p.j=efecto?efecto.suelto:"";
+        if(efecto) e._rumSuelto=efecto.suelto;
       } else if(rum.tipo==="fichaje"&&par&&rum.club!=null){
         par.club=rum.club; efecto=true;
       } else if(rum.tipo==="pareja"){
         e.compiMoral=clamp((e.compiMoral==null?65:e.compiMoral)-18,5,95); efecto=true;
       } else if(rum.tipo==="tuyo"){
         if(typeof mkMercadoParejas==="function"&&G.modo==="carrera") e.mercadoP=mkMercadoParejas();
-        fansAdd(Math.round(120+(e.fans||0)*.03),t("rum_hd")); efecto=true;
+        fansAdd(Math.round(120+(e.fans||0)*.03),t("rum_hd"));
+        e._rumPareja=rum.pareja; efecto=true;
       } else if(rum.tipo==="puja"){
         const j=(e.plantilla||[]).find(x=>x.n===rum.j);
         if(j){ j.moralC=clamp((j.moralC==null?70:j.moralC)-22,0,100); efecto=true; }
@@ -500,7 +505,9 @@ function resolverRumores(e,semana){
     }
     // si el rumor era cierto pero el mundo ya no permite cumplirlo, se desmiente
     const ok=rum.cierto&&!!efecto;
-    out.push({rum,ok,txt:t("rum_"+_rumK(rum.tipo)+(ok?"_si":"_no"),p)});
+    let abre=null;
+    if(ok&&G.modo==="carrera"&&RUM_DILEMA[rum.tipo]) abre=RUM_DILEMA[rum.tipo];
+    out.push({rum,ok,abre,txt:t("rum_"+_rumK(rum.tipo)+(ok?"_si":"_no"),p)});
   });
   e.rumores=quedan;
   return out;
@@ -1129,6 +1136,47 @@ const DILEMAS=[
        dif:{en:6,txt:c=>t("dil_fed_o1c"),ef:{fans:-500,moral:-8}}},
       {txt:c=>t("dil_fed_o2"),desc:c=>t("dil_fed_o2d"),
        inm:{moral:6},dif:null}]},
+
+/* ---- Lote 5: los que abre un rumor ----
+     Un rumor confirmado movía moral y mercado, y ahí se acababa. Estos tres son
+     la escena que falta: la conversación que toca tener cuando lo que se decía
+     resulta ser verdad. Ninguno sale en el sorteo (`cadena`), solo por esa
+     puerta, y por eso no hace falta condición: si se abren, es que ya pasó. */
+  { id:"rum_oferta", cadena:true, unico:true,
+    cond:c=>true,
+    titulo:c=>t("dil_oferta_t"),
+    texto:c=>t("dil_oferta_x",{pareja:c._rumPareja||t("soc_rival_gen")}),
+    ops:[
+      {txt:c=>t("dil_oferta_o1"),desc:c=>t("dil_oferta_o1d"),
+       inm:{fans:400},
+       dif:{en:2,txt:c=>t("dil_oferta_o1c"),ef:{moral:-22}}},
+      {txt:c=>t("dil_oferta_o2"),desc:c=>t("dil_oferta_o2d"),
+       inm:{moral:12,fans:-100},
+       dif:{en:4,txt:c=>t("dil_oferta_o2c"),ef:{moral:10,fans:300}}}]},
+
+  { id:"rum_traicion", cadena:true,
+    cond:c=>!!c.compi,
+    titulo:c=>t("dil_traicion_t",{n:nomCompi(c)}),
+    texto:c=>t("dil_traicion_x"),
+    ops:[
+      {txt:c=>t("dil_traicion_o1"),desc:c=>t("dil_traicion_o1d"),
+       inm:{moral:-6},
+       dif:{en:2,txt:c=>t("dil_traicion_o1c"),ef:{moral:24}}},
+      {txt:c=>t("dil_traicion_o2"),desc:c=>t("dil_traicion_o2d"),
+       inm:{},
+       dif:{en:6,txt:c=>t("dil_traicion_o2c"),ef:{moral:-18,fans:-150}}}]},
+
+  { id:"rum_suelto", cadena:true,
+    cond:c=>true,
+    titulo:c=>t("dil_suelto_t",{j:c._rumSuelto||t("soc_rival_gen")}),
+    texto:c=>t("dil_suelto_x"),
+    ops:[
+      {txt:c=>t("dil_suelto_o1"),desc:c=>t("dil_suelto_o1d"),
+       inm:{},
+       dif:{en:3,txt:c=>t("dil_suelto_o1c"),ef:{moral:-16,fans:200}}},
+      {txt:c=>t("dil_suelto_o2"),desc:c=>t("dil_suelto_o2d"),
+       inm:{moral:10},
+       dif:{en:3,txt:c=>t("dil_suelto_o2c"),ef:{fans:250,moral:6}}}]},
 
   { id:"nemesis_adios", unico:true, peso:2,
     cond:c=>!!c.nemesis && (c.edad||18)>=30,

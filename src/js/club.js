@@ -126,6 +126,120 @@ function mkJunta(){
 function mkDerbi(){
   return {club:clubAlAzar(),v:0,d:0};
 }
+/* ================================================================
+   LA CANTERA, CON HISTORIA
+
+   Antes una promesa aparecía con 17 años, se quedaba quieta en una lista y
+   acababa subida o vendida. No había nada que seguir: ni crecía, ni se
+   frustraba, ni te dejaba en evidencia por tenerla cuatro años en el banquillo.
+
+   Ahora cada promesa cierra temporada como cierra un jugador: crece hacia su
+   techo —más deprisa cuanto más lejos esté y mejor sea la escuela—, guarda en
+   qué golpe mejoró, y va gastando ilusión si cumple años sin debutar. A las
+   cuatro temporadas sin jugar se marcha, y eso sale en el periódico.
+
+   El techo (`pot`) no se enseña: se estima. Con ojeador, la estimación
+   aprieta. Es la única información del juego por la que merece la pena pagar
+   un sueldo, y por eso conviene que siga siendo cara.
+================================================================ */
+const CAN_ILUSION0=78, CAN_FUGA=6;
+/* Cuánto crece una promesa en una temporada. Lejos del techo se crece a
+   zancadas; pegado a él, a centímetros. */
+function saltoCantera(cl,j){
+  const media=mediaAttrs(j.attrs), techo=j.pot||media+6;
+  if(media>=techo) return 0;
+  const margen=techo-media;
+  let f=1;
+  if(cl.reformas&&cl.reformas.escuela) f+=.35;
+  if(cl.staff&&cl.staff.entrenador) f+=.2;
+  if(filoClub(cl)==="cantera") f+=.3;            // la filosofía se nota donde dice notarse
+  f+=(cl.instal||1)*.06;
+  if((j.edad||17)>=21) f*=.55;                    // a los 21 ya casi no se enseña nada
+  return Math.max(0, Math.min(margen, Math.round(margen*.28*f + R(-.6,1.2))));
+}
+/* Cierra la temporada de la academia: crece, se anota en su historial y decide
+   si sigue teniendo ganas. Devuelve los que se marchan. */
+function evolucionaCantera(cl){
+  const fuera=[];
+  (cl.cantera||[]).forEach(j=>{
+    j.edad=(j.edad||17)+1;
+    j.aniosCan=(j.aniosCan|0)+1;
+    if(j.ilusion==null) j.ilusion=CAN_ILUSION0;
+    const antes=mediaAttrs(j.attrs);
+    const salto=saltoCantera(cl,j);
+    let foco=null;
+    if(salto>0){
+      // el salto se reparte, pero se nota más en un golpe: es lo que se cuenta
+      foco=pick(ATTR_KEYS);
+      j.attrs[foco]=clamp((j.attrs[foco]||50)+Math.max(1,Math.round(salto*1.6)),20,99);
+      for(let i=0;i<2;i++){ const k=pick(ATTR_KEYS); j.attrs[k]=clamp((j.attrs[k]||50)+Math.round(salto*.7),20,99); }
+    }
+    const despues=mediaAttrs(j.attrs);
+    (j.hist=j.hist||[]).push({t:Math.max(1,temporada()-1),a:antes,b:despues,foco});
+    j.hist=j.hist.slice(-8);
+    if(despues>antes) avisa(t("can_av_crece",{n:j.n,media:despues,d:"+"+(despues-antes)}),"ok");
+    else if(mediaAttrs(j.attrs)>=(j.pot||0)) avisa(t("can_av_techo",{n:j.n,media:despues}));
+    // la ilusión se gasta con los años sin debutar, no con la edad a secas
+    if(j.aniosCan>=2) j.ilusion-=(j.edad>=21?26:j.edad>=19?18:10);
+    if(j.aniosCan===2||j.aniosCan===3) avisa(t("can_av_pide",{n:j.n,a:j.aniosCan}));
+    /* Se va cuando se le acaba la ilusión, no por calendario. La curva está
+       hecha para que la ficha enseñe «se va a final de temporada» al menos una
+       temporada antes: perder a un canterano tiene que ser culpa tuya, no una
+       sorpresa. `CAN_FUGA` queda como tope por si algo se descuadra. */
+    if(j.ilusion<=0||j.aniosCan>=CAN_FUGA) fuera.push(j);
+  });
+  fuera.forEach(j=>{
+    cl.cantera=cl.cantera.filter(x=>x!==j);
+    avisa(t("can_av_fuga",{n:j.n,a:j.aniosCan|0}));
+    noticia("ruptura",t("can_not_fuga_t",{n:j.n,club:cl.nombre}),t("can_not_fuga_s"));
+  });
+  return fuera;
+}
+/* Cómo se lee su ilusión, que es lo que de verdad decide cuándo subirlo. */
+function ilusionTxt(j){
+  const i=j.ilusion==null?CAN_ILUSION0:j.ilusion;
+  if(i>=65) return {k:"can_il_alta",col:"var(--verde)"};
+  if(i>=40) return {k:"can_il_media",col:"var(--gris)"};
+  if(i>=25) return {k:"can_il_baja",col:"var(--oro)"};
+  return {k:"can_il_fuga",col:"var(--rojo)"};
+}
+/* El techo, estimado. Sin ojeador es una horquilla ancha; con él, una lectura. */
+function techoTxt(cl,j){
+  const pot=j.pot||mediaAttrs(j.attrs)+6;
+  if(cl.staff&&cl.staff.ojeador) return t("can_techo_ojo",{n:pot});
+  return t("can_techo",{a:Math.max(30,pot-7),b:Math.min(99,pot+5)});
+}
+/* Consejo honesto sobre subirlo ya o esperar: mira lo que le queda por crecer. */
+function consejoSubir(cl,j){
+  const media=mediaAttrs(j.attrs), pot=j.pot||media+6;
+  // primero el techo: a quien ya no le queda nada por aprender aquí se le sube,
+  // lleve dos temporadas o cinco. Decir «se te pasó el arroz» de alguien que
+  // todavía crece es un consejo que se contradice a sí mismo.
+  if(pot-media<=4) return "can_subir_ya";
+  if((j.ilusion!=null&&j.ilusion<40)||(j.aniosCan|0)>=4) return "can_subir_tarde";
+  return "can_subir_pronto";
+}
+/* Gráfico de barras de su evolución. Es SVG generado, como todo aquí. */
+function canteraGrafico(j){
+  const h=(j.hist||[]);
+  if(!h.length) return `<div class="foot" style="text-align:left">${t("can_sin_hist")}</div>`;
+  const pot=j.pot||mediaAttrs(j.attrs)+6;
+  const min=Math.min(...h.map(x=>x.a))-3, max=Math.max(pot,...h.map(x=>x.b))+2;
+  const rango=Math.max(1,max-min), H=54;
+  // el lienzo reserva sitio para cuatro temporadas aunque solo haya una: con
+  // una sola barra el gráfico salía del tamaño de un sello
+  const cols=Math.max(4,h.length), paso=Math.floor(160/cols), W=cols*paso+8;
+  const barras=h.map((x,i)=>{
+    const y=H-((x.b-min)/rango)*H, y0=H-((x.a-min)/rango)*H;
+    const w=Math.max(8,paso-10);
+    return `<rect x="${i*paso+6}" y="${y}" width="${w}" height="${Math.max(2,H-y)}" fill="var(--lima)" opacity=".8"/>
+      <rect x="${i*paso+6}" y="${y0}" width="${w}" height="2" fill="var(--gris2)"/>`;
+  }).join("");
+  const yTecho=H-((pot-min)/rango)*H;
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:340px;height:54px;display:block;margin:5px 0">
+    <line x1="0" y1="${yTecho}" x2="${W}" y2="${yTecho}" stroke="var(--oro)" stroke-width="1" stroke-dasharray="3 3" opacity=".7"/>
+    ${barras}</svg>`;
+}
 function derbiClub(cl){ const d=cl&&cl.derbi; return (d&&CLUBES_NPC[d.club])?CLUBES_NPC[d.club]:null; }
 /* ¿Este rival es el del derbi? Los rivales del circuito llevan su club encima. */
 function esDerbi(cl,rival){
@@ -543,6 +657,7 @@ function pintarCmPlantilla(){
         <div class="chip">Moral <b style="color:${colAttr(moralC)}">${moralC}</b></div>
         <div class="chip">Contrato <b>${ct.temporadas||1} temp.</b></div>
         <div class="chip">${t("clb_clausula")} <b>${(valorClausula(j)).toLocaleString("es")}€</b></div>
+        ${j.dela_casa?`<div class="chip lima">${t("can_pill_casa")}</div>`:""}
         ${rolJ?`<div class="chip lima">${t("clb_titular",{rol:rolJ})}</div>`:""}
       </div>
       <div class="foot" style="text-align:left;margin-top:6px;color:${est.col<0?"var(--rojo)":est.col>0?"var(--verde)":"var(--gris)"}">${est.clave==="salir"?"🚪":est.clave==="exige"?"😠":est.clave==="dudas"?"🤔":"🙂"} ${est.txt}</div>
@@ -638,7 +753,7 @@ function pintarCmClub(){
   } else c2.innerHTML+=`<div class="foot" style="text-align:left">${t("clb_car_hecho")}</div>`;
   el.appendChild(c2);
   const c3=document.createElement("div");c3.className="card";
-  c3.innerHTML=`<h3>Academia</h3>`;
+  c3.innerHTML=`<h3>${t("can_hd")}</h3>`;
   if(!cl.academia){
     const d=document.createElement("div");d.className="opcion";
     d.innerHTML=`<b>${t("clb_academia")}</b><div class="d">${t("clb_academia_d")}</div>`;
@@ -652,11 +767,28 @@ function pintarCmClub(){
   } else {
     cl.cantera.forEach((j,idx)=>{
       const d=document.createElement("div");d.className="opcion";
-      d.innerHTML=`<b>${j.n}</b> <span class="pill">${t("clb_nivel",{n:nivelTxt(j)})}</span> <span class="pill">${t("clb_anios_n",{n:j.edad})}</span> <span class="pill">${estiloNombre(j.estilo)}</span><div class="d">${t("clb_promesa_d")}</div>`;
+      const anios=j.aniosCan|0, il=ilusionTxt(j);
+      // el historial: en qué temporada creció, cuánto y en qué golpe
+      const hist=(j.hist||[]).slice(-4).map(x=>x.b>x.a
+        ? t("can_linea",{t:x.t,a:x.a,b:x.b,d:"+"+(x.b-x.a),golpe:atNombre(x.foco||"fondo")})
+        : t("can_estanca",{t:x.t,a:x.a,b:x.b})
+      ).map(l=>`<div style="font-size:calc(10.5px * var(--esc));color:var(--gris2);padding:1px 0">${l}</div>`).join("");
+      d.innerHTML=`<b>${j.n}</b> <span class="pill">${t("clb_nivel_n",{n:mediaAttrs(j.attrs)})}</span> <span class="pill">${t("clb_anios_n",{n:j.edad})}</span> <span class="pill">${estiloNombre(j.estilo)}</span> <span class="pill oro">${techoTxt(cl,j)}</span>
+        <div class="d">${anios<=1?t("can_anio1"):t("can_anios",{n:anios+1})}</div>
+        <div style="color:${il.col};font-size:calc(11px * var(--esc));margin-top:3px">${t(il.k)}</div>
+        ${canteraGrafico(j)}
+        ${hist?`<div style="margin-top:2px"><span class="foot" style="text-align:left">${t("can_evol")}</span>${hist}</div>`:""}
+        <div class="foot" style="text-align:left;margin-top:4px">${t(consejoSubir(cl,j))}</div>`;
       const f=document.createElement("div");f.className="fila";
-      const b1=document.createElement("button");b1.className="pri";b1.textContent="Subir al primer equipo";
+      const b1=document.createElement("button");b1.className="pri";b1.textContent=t("can_subir");
       b1.disabled=cl.plantilla.length>=6;
-      b1.onclick=()=>{cl.plantilla.push({...j,salario:Math.round(mediaAttrs(j.attrs)*.6),energia:100,conf:55,lesion:null});cl.cantera.splice(idx,1);cl._subidos=(cl._subidos||0)+1;avisa(t("clb_sube",{n:j.n}));guardar();pintarClubM();};
+      b1.onclick=()=>{
+        cl.plantilla.push({...j,salario:Math.round(mediaAttrs(j.attrs)*.6),energia:100,conf:55,lesion:null,dela_casa:true,aniosCan:anios});
+        cl.cantera.splice(idx,1);cl._subidos=(cl._subidos||0)+1;
+        avisa(t("clb_sube",{n:j.n}));
+        noticia("fichaje",t("can_not_debut_t",{n:j.n,club:cl.nombre}),t("can_not_debut_s",{a:anios+1}));
+        guardar();pintarClubM();
+      };
       const b2=document.createElement("button");b2.textContent=t("clb_traspasar",{n:mediaAttrs(j.attrs)*6});
       b2.onclick=()=>{cl.dinero+=mediaAttrs(j.attrs)*6;cl.cantera.splice(idx,1);avisa(t("clb_promesa_out",{n:j.n}));guardar();pintarClubM();};
       f.appendChild(b1);f.appendChild(b2);d.appendChild(f);c3.appendChild(d);
@@ -903,12 +1035,15 @@ function avanzarSemanaClub(){
       }
     }
     avisa(`— Cierre de temporada ${temporada()-1}. El ranking arrastra el 55% y llegan nuevos agentes libres${cl.staff.ojeador?t("clb_ojeador_extra"):""}.`);
+    // la academia cierra su temporada: los de casa crecen, se cansan o se van
+    if(cl.academia) evolucionaCantera(cl);
     if(cl.academia&&cl.cantera.length<3){
       // La escuela de tecnificación sube el suelo Y el techo de lo que sale
       const bono=cl.reformas&&cl.reformas.escuela?8:0;
       const j=mkAgente(42+cl.instal*2+bono,50+cl.instal*2+bono,cl.sexo||"M");
-      j.edad=17;
+      j.edad=Math.round(R(15,17));
       if(bono) j.pot=Math.min(95,(j.pot||60)+6);
+      j.aniosCan=0; j.ilusion=CAN_ILUSION0; j.hist=[];
       cl.cantera.push(j);
       avisa(t("clb_academia_presenta",{n:j.n,media:mediaAttrs(j.attrs)}),"ok");
     }

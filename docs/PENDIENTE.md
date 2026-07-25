@@ -47,13 +47,12 @@ Por orden de retorno, según la auditoría:
 2. **Eventos de temporada que no son dilemas**: el sorteo que te cruza con tu
    archirrival en primera ronda, la lesión de tu pareja que te obliga a jugar
    con un suplente, un cambio de normativa.
-3. ~~**Identidad propia del modo club**~~ **Hecho a medias.** Ya hay filosofía
-   que condiciona a quién fichas, junta con carácter (paciente, cortoplacista,
-   tacaña, ambiciosa) y derbi con marcador. **Queda** la cantera con seguimiento
-   de varios años: hoy la promesa aparece y sube o se vende, sin historia.
-4. **Rumores que te salpiquen más.** El sistema existe (nacen, se publican, se
-   confirman o se desmienten, y los confirmados mueven el circuito). Falta que
-   un rumor sobre ti pueda abrir un dilema: hoy solo mueve moral y mercado.
+3. ~~**Identidad propia del modo club**~~ **Hecho.** Filosofía que condiciona a
+   quién fichas, junta con carácter, derbi con marcador y cantera con
+   seguimiento de varios años (crecen hacia su techo, dejan historial y se
+   marchan si los tienes ahí sin debutar).
+4. ~~**Rumores que te salpiquen más**~~ **Hecho.** Un rumor confirmado sobre ti,
+   sobre tu pareja o una ruptura del circuito abre ahora su propio dilema.
 
 ---
 
