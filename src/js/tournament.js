@@ -733,6 +733,8 @@ function finPartido(){
   if(G.modo==="club") clubPalma(-1,`${torneo.nombre} (T${temporada()})`);   // -1 = tu club (se ignora, ya está en e.palmares)
     if(torneo.premierT) e._campPremSem=semanaTemp();
     if(torneo.cat===6){ e.recMajors=(e.recMajors||0)+1; }
+    // los títulos de la etapa actual con tu compañero: la historia es de LOS DOS
+    if(G.modo==="carrera") e._parejaTitulos=(e._parejaTitulos|0)+1;
     if(torneo.cat===7){ e.recFinals=(e.recFinals||0)+1; }
     fansAdd([60,120,250,500,1500,3000,8000,5000][torneo.cat]||60,t("fan_titulo",{torneo:torneo.nombre}));
     post("titulo",{torneo:torneo.nombre});

@@ -943,6 +943,33 @@ comprueba("Superliga: la invitación llega sola a partir del segundo año", () =
   return `T1 imposible; prestigio ${bajo.toFixed(2)}→${alto.toFixed(2)}; club convertido a 3 parejas`;
 });
 
+comprueba("La pareja como personaje: acuerdo, retirada e historia común", () => {
+  // sin acuerdo firmado no hay nada que exigir
+  exige(evaluaAcuerdoCompi({ compi: { n: "X" } }, 10) === null, "sin acuerdo no debería evaluar nada");
+  // cumplirlo sube la moral; incumplirlo la baja, y más cuanto más lejos quedaste
+  const ok = evaluaAcuerdoCompi({ compi: { _acuerdo: { objetivo: 15 } } }, 9);
+  exige(ok.cumplido && ok.delta > 0, "cumplir el acuerdo debería subir la moral");
+  const malRoce = evaluaAcuerdoCompi({ compi: { _acuerdo: { objetivo: 15 } } }, 18);
+  const malLejos = evaluaAcuerdoCompi({ compi: { _acuerdo: { objetivo: 15 } } }, 40);
+  exige(!malRoce.cumplido && malRoce.delta < 0, "incumplir debería bajar la moral");
+  exige(malLejos.delta < malRoce.delta, `quedarse lejos debería doler más (${malLejos.delta} vs ${malRoce.delta})`);
+  exige(malLejos.delta >= -20, "el castigo debe estar acotado");
+  // retirada: imposible antes de los 35, segura a edades altas
+  exige(!compiSeRetira({ edad: 33 }, () => 0), "un compañero de 33 no debería retirarse");
+  exige(compiSeRetira({ edad: 36 }, () => 0), "con rnd favorable a los 36 sí");
+  exige(!compiSeRetira({ edad: 36 }, () => .99), "con rnd desfavorable a los 36 no");
+  let ret38 = 0, ret42 = 0;
+  for (let i = 0; i < 400; i++) { if (compiSeRetira({ edad: 38 })) ret38++; if (compiSeRetira({ edad: 42 })) ret42++; }
+  exige(ret42 > ret38, `la retirada debería ser más probable a los 42 (${ret42} vs ${ret38})`);
+  // etapa de pareja: se cierra con sus años y títulos
+  const et = cierraEtapaPareja({ compi: { n: "Chino" }, _parejaDesde: 2, _parejaTitulos: 3, quimica: 80 }, 5, "ruptura");
+  exige(et.n === "Chino" && et.desde === 2 && et.hasta === 5 && et.temps === 4 && et.titulos === 3, "la etapa no se cierra bien: " + JSON.stringify(et));
+  // la mejor pareja es la que más títulos dio; a igualdad, la más duradera
+  const mejor = mejorPareja([{ n: "A", titulos: 2, temps: 6 }, { n: "B", titulos: 5, temps: 2 }, { n: "C", titulos: 5, temps: 4 }]);
+  exige(mejor.n === "C", "no elige la mejor pareja: " + mejor.n);
+  return `acuerdo ${ok.delta}/${malLejos.delta}; retiro 38→${ret38} 42→${ret42}; etapa de ${et.temps} temporadas`;
+});
+
 comprueba("Idiomas: catálogo completo y sin claves huérfanas en los 5 idiomas", () => {
   // toda clave definida en español existe en los otros 4 y no está vacía
   const claves = Object.keys(I18N.es);

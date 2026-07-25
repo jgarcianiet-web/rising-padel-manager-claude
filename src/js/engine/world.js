@@ -238,6 +238,46 @@ function evaluarRuptura(c,puesto){
   return {crisis:true,motivo,ops};
 }
 /* ================================================================
+   LA PAREJA COMO PERSONAJE: tu compañero deja de ser un conjunto de
+   atributos. Tiene un ACUERDO que firmasteis al fichar y que va a exigir,
+   ENVEJECE hasta retirarse, y lo que ganáis juntos queda registrado como
+   historia de la pareja, no solo como palmarés tuyo. Todo puro y testable.
+================================================================ */
+const EDAD_RETIRO_COMPI=35;
+// ¿Se cumplió lo que le prometiste? Devuelve null si no había acuerdo.
+function evaluaAcuerdoCompi(c,puesto){
+  const ac=c&&c.compi&&c.compi._acuerdo;
+  if(!ac||!ac.objetivo) return null;
+  const p=puesto||99, meta=ac.objetivo;
+  const cumplido=p<=meta;
+  // incumplir duele más cuanto más lejos quedaste de lo pactado
+  const fallo=Math.min(20,Math.round((p-meta)/2)+4);
+  return {cumplido,meta,puesto:p,delta:cumplido?8:-fallo};
+}
+// ¿El compañero cuelga la pala? Probabilidad creciente desde los 35.
+function compiSeRetira(compi,rnd){
+  const e=(compi&&compi.edad)||0;
+  if(e<EDAD_RETIRO_COMPI) return false;
+  const p=Math.min(.9,(e-EDAD_RETIRO_COMPI)*.18+.10);
+  return (rnd||Math.random)()<p;
+}
+// Cierra la etapa con un compañero y la devuelve para el histórico de parejas.
+function cierraEtapaPareja(c,temporada,motivo){
+  const co=c&&c.compi; if(!co) return null;
+  const desde=(c._parejaDesde==null?temporada:c._parejaDesde);
+  const tits=((c.palmares)||[]).filter(x=>x&&x._pareja===co.n).length;
+  return {n:co.n,desde,hasta:temporada,temps:Math.max(1,temporada-desde+1),
+    titulos:(c._parejaTitulos|0),quimica:c.quimica|0,motivo:motivo||"cambio"};
+}
+// Mejor pareja de tu carrera: la que más títulos os dio (desempate por años).
+function mejorPareja(hist){
+  let m=null;
+  (hist||[]).forEach(x=>{
+    if(!m||(x.titulos|0)>(m.titulos|0)||((x.titulos|0)===(m.titulos|0)&&(x.temps|0)>(m.temps|0))) m=x;
+  });
+  return m;
+}
+/* ================================================================
    ARCHIRRIVAL: de las estadísticas al relato. El h2h ya guarda el cara a cara,
    pero un rival de verdad no es el que más veces ves: es el que te ELIMINA.
    Cuando alguien te echa tres veces de un torneo, deja de ser un rival más y

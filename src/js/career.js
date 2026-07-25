@@ -356,6 +356,9 @@ function empezarCarrera(estiloKey){
 // Se rompe la pareja: el compañero se va y Chino/China vuelve al rescate.
 function rompeConCompi(c){
   const ex=c.compi.n;
+  const _et=cierraEtapaPareja(c,temporada(),"ruptura");
+  if(_et){ c.parejasHist=(c.parejasHist||[]); c.parejasHist.push(_et); }
+  c._parejaDesde=temporada(); c._parejaTitulos=0;
   const protRup={jug:[{n:c.nombre,sexo:c.sexo,_ropa:"#C6F53C"},{n:ex,sexo:c.sexo}]};
   c.compi={...compiInicial(c.sexo||"M"),attrs:mkAttrsNivel(CHINO.nivel,CHINO.estilo)};
   c.quimica=CHINO.quim;c.compiMoral=70;c.compiPlan="auto";c._crisisPareja=null;
@@ -498,7 +501,7 @@ function pintarCarrera(){
     const cst=Object.keys(ent().staff||{}).reduce((x,k)=>x+((ent().staff[k]&&ent().staff[k].sal)||0),0);
     document.getElementById("staffCoste").textContent=t("staff_coste",{cst});
   }
-  if(tabActiva==="jugador"){pintarJugador();pintarUltimoBaile();renderHitos(document.getElementById("hitos"));renderRivalidades(document.getElementById("rivalidades"));}
+  if(tabActiva==="jugador"){pintarJugador();pintarUltimoBaile();renderParejas(document.getElementById("parejasHist"));renderHitos(document.getElementById("hitos"));renderRivalidades(document.getElementById("rivalidades"));}
   if(tabActiva==="ranking"){renderRanking(document.getElementById("tablaRk"));renderClubes(document.getElementById("tablaClubes"));renderN1(document.getElementById("n1hist"));renderRecords(document.getElementById("records"));}
   if(tabActiva==="diario"){renderNoticias(document.getElementById("feedNoti"));renderDiario(document.getElementById("diario"),document.getElementById("palmares"));renderSocial(document.getElementById("social"));renderTrayectoria(document.getElementById("trayec"));}
 }
@@ -837,6 +840,9 @@ function ficharPareja(ci,acuerdo){
   post("fichaje");
   fansAdd(cand.origen==="circuito"?200:40,cand.origen==="circuito"?t("fan_bombazo"):null);
   const ac=acuerdo||{};
+  const _etF=cierraEtapaPareja(c,temporada(),"fichaje");
+  if(_etF){ c.parejasHist=(c.parejasHist||[]); c.parejasHist.push(_etF); }
+  c._parejaDesde=temporada(); c._parejaTitulos=0;
   c.compi={id:"m"+Date.now(),n:cand.n,pais:cand.pais,estilo:cand.estilo,perso:cand.perso,attrs:{...cand.attrs},rasgos:(cand.rasgos?cand.rasgos.slice():undefined),
     lado:(ac.suLado===0||ac.suLado===1)?ac.suLado:undefined, _acuerdo:{objetivo:ac.objetivoRanking||null,reparto:ac.reparto||50}};
   if(ac.tuLado===0||ac.tuLado===1) c.lado=ac.tuLado;   // si cediste el lado, te recolocas
@@ -927,6 +933,20 @@ function clasificaRiv(h2){
   if(wr<=.25) return {tag:"BESTIA NEGRA",emo:"😈",col:"#E05656"};
   if(wr>=.75) return {tag:"CLIENTE",emo:"😏",col:"var(--verde)"};
   return null;
+}
+// Historia de tus parejas: con quién jugaste, cuánto y qué ganasteis juntos.
+function renderParejas(el){
+  if(!el) return;
+  const c=G&&G.carrera; if(!c){ el.innerHTML=""; return; }
+  const hist=(c.parejasHist||[]).slice();
+  const actual={n:c.compi?c.compi.n:"—",desde:(c._parejaDesde==null?1:c._parejaDesde),hasta:temporada(),
+    temps:Math.max(1,temporada()-(c._parejaDesde==null?1:c._parejaDesde)+1),titulos:c._parejaTitulos|0,actual:true};
+  const filas=hist.concat([actual]);
+  const mejor=mejorPareja(filas);
+  el.innerHTML=filas.map(x=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid var(--borde);font-size:11.5px">
+      <span>${x.actual?"▸ ":""}<b>${x.n}</b> <span style="color:var(--gris2)">T${x.desde}${x.temps>1?`-${x.hasta}`:""}</span>${mejor&&mejor.n===x.n&&(x.titulos|0)>0?' <span style="color:var(--oro)">★</span>':""}</span>
+      <span style="color:${(x.titulos|0)>0?"var(--oro)":"var(--gris2)"}">${x.titulos|0} 🏆</span>
+    </div>`).join("");
 }
 function renderRivalidades(el){
   const e=ent();
@@ -1316,6 +1336,25 @@ function avanzarSemanaCarrera(){
     c.pts=Math.round(c.pts*.55);
     avisa(t("av_cierre",{t:temporada()-1,pos:posFin,pts:ptsFin,tit:titsT,ok:cumplidos,total:totalObj,edad:c.edad}));
     if(totalObj&&cumplidos<totalObj) c.compiMoral=clamp((c.compiMoral??65)-(totalObj-cumplidos)*3,5,95);
+    // EL ACUERDO: lo que le prometiste al ficharle se cobra al cierre
+    const acu=evaluaAcuerdoCompi(c,posFin);
+    if(acu){
+      c.compiMoral=clamp((c.compiMoral??65)+acu.delta,5,95);
+      avisa(acu.cumplido?t("par_acuerdo_ok",{n:c.compi.n,meta:acu.meta,pos:acu.puesto})
+                        :t("par_acuerdo_no",{n:c.compi.n,meta:acu.meta,pos:acu.puesto}));
+      if(!acu.cumplido) noticia("ruptura",t("not_par_acuerdo_t",{n:c.compi.n}),t("not_par_acuerdo_s",{meta:acu.meta,pos:acu.puesto}));
+    }
+    // LA EDAD: tu compañero también cuelga la pala algún día
+    if(c.compi&&compiSeRetira(c.compi)){
+      const etapa=cierraEtapaPareja(c,temporada()-1,"retirada");
+      if(etapa){ c.parejasHist=(c.parejasHist||[]); c.parejasHist.push(etapa); }
+      const ex=c.compi.n;
+      noticia("retirada",t("not_par_retiro_t",{n:ex}),t("not_par_retiro_s",{edad:c.compi.edad||36,temps:etapa?etapa.temps:1,tits:etapa?etapa.titulos:0}));
+      avisa(t("par_retiro",{n:ex,edad:c.compi.edad||36}));
+      c.compi={...compiInicial(c.sexo||"M"),attrs:mkAttrsNivel(CHINO.nivel,CHINO.estilo)};
+      c.quimica=CHINO.quim; c.compiMoral=70; c.compiPlan="auto";
+      c._parejaDesde=temporada(); c._parejaTitulos=0;
+    }
     c.objetivos=mkObjetivosTemporada(c,miPuesto());   // metas para la nueva temporada
     cierreTemporadaCarrera();
     // ¿se cierra el arco? La temporada anunciada ha terminado, o el cuerpo dice basta.
