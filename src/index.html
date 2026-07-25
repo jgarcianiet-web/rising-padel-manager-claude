@@ -3,7 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- El juego no pide NADA a la red: ni tipografías, ni scripts, ni telemetría.
+     Esta CSP lo hace cumplir en vez de confiar en que nadie añada un <script
+     src="https://..."> por descuido. 'unsafe-inline' aparece solo en style-src
+     porque el juego pinta con atributos style="" y con el.style desde código;
+     script-src no lo lleva, así que una inyección de <script> no se ejecuta.
+     Se permite data: en font-src (fuentes incrustadas), img-src (SVG y una
+     foto en base64) y media-src. connect-src 'none' corta fetch y XHR. -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'none';
+  script-src 'self';
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' data:;
+  font-src 'self' data:;
+  media-src 'self' data:;
+  connect-src 'none';
+  base-uri 'none';
+  form-action 'none'">
 <title>Rising Pádel Manager</title>
+<link rel="stylesheet" href="css/fuentes.css">
 <link rel="stylesheet" href="css/main.css">
 <link rel="stylesheet" href="css/dashboard.css">
 </head>

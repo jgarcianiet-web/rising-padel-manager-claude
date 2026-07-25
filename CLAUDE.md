@@ -51,7 +51,7 @@ tier de patrocinador, tabla de récords). Si necesitas una variable ahí, lláma
 ## Pruebas
 
 - `node tests/smoke.js` — toda la suite (motor, mundo, SQLite con sql.js real,
-  i18n). Debe quedar en verde antes de cualquier commit.
+  i18n y comprobaciones estáticas). Debe quedar en verde antes de cualquier commit.
 - Verificación en navegador con Playwright (`playwright-core`, Chromium en
   `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`): el juego se abre desde
   `file://src/index.html`. Conviene saltar el splash antes de capturar.
@@ -59,7 +59,27 @@ tier de patrocinador, tabla de récords). Si necesitas una variable ahí, lláma
 ## Estructura
 
 Juego de un solo HTML sin dependencias externas ni paso de compilación:
-`src/index.html` carga `src/js/**` en orden. La CSP impide recursos remotos, así
-que **todo se dibuja por código** (los avatares son SVG generado). Persistencia:
-blob JSON en localStorage como copia de seguridad y SQLite (sql.js) como fuente
-primaria — ver `docs/PLAN-FASE-4.md`.
+`src/index.html` carga `src/js/**` en orden. Persistencia: blob JSON en
+localStorage como copia de seguridad y SQLite (sql.js) como fuente primaria —
+ver `docs/PLAN-FASE-4.md`.
+
+### El juego no pide nada a la red, y hay una CSP que lo obliga
+
+`index.html` lleva una `Content-Security-Policy` con `default-src 'none'` y
+`connect-src 'none'`; `tauri.conf.json` lleva la equivalente para el
+empaquetado. Consecuencias prácticas al tocar el código:
+
+- **Todo se dibuja por código.** Los avatares, las fotos del periódico y los
+  escudos son SVG generado. No hay ni puede haber imágenes remotas.
+- **Las tipografías viven incrustadas** en `src/css/fuentes.css` como `data:`
+  URI. Ese fichero está **generado**: no se edita a mano, se regenera con
+  `node tools/fuentes.js src/css/fuentes.css`. Si añades un peso nuevo en el
+  CSS, añádelo también a la lista `FAMILIAS` del generador o no existirá.
+- **`script-src` es solo `'self'`**: nada de `eval`, `new Function` ni
+  manejadores `onclick=""` en el HTML (se enganchan desde JS, como ya se hace).
+- `style-src` sí permite `'unsafe-inline'`, porque el juego pinta con
+  `style=""` y con `el.style` desde código.
+
+`tests/estatico.js` hace cumplir las tres cosas: falla si aparece una URL
+remota en el HTML o el CSS, si la CSP se afloja, o si se incrusta una
+tipografía cuyo aviso de licencia no está en `LICENSE`.
