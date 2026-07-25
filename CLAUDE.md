@@ -48,6 +48,16 @@ tier de patrocinador, tabla de récords). Si necesitas una variable ahí, lláma
   se encontraron el panel de Semana, la pantalla de fundar club y la analítica,
   que los tests de claves no veían.
 
+## Accesibilidad: los tamaños de letra escalan
+
+Todos los `font-size` del CSS son `calc(Npx * var(--esc))`, y el menú tiene un
+selector de tres posiciones que mueve `--esc`. Si escribes un tamaño en px
+pelado, `tests/estatico.js` falla: el público del pádel pasa de los 40 y ese
+ajuste es la diferencia entre jugar cómodo o no jugar.
+
+Al tocar la maquetación, **prueba en «Enorme» y en 420 px de ancho**. Ahí es
+donde aparecen los desbordamientos (ya pasó con la barra superior).
+
 ## El azar de simulación va con semilla
 
 Todo el azar que **decide algo** sale de `rnd()` (`src/js/rng.js`), no de

@@ -99,7 +99,7 @@ function pintarMercadoInicial(){
       junta:{objetivo:34,paciencia:2},sponsor:null,sponsorOferta:null,
       instal:1,academia:false,cantera:[],mercado:mercadoTmp.filter(j=>!plantillaTmp.includes(j)).map(j=>({...j})),
       staff:{entrenador:null,fisio:null,psico:null,fisico:null,ojeador:null},mercadoStaff:null,_staffV2:1,
-      reformas:{techada:false,gym:false,residencia:false,video:false},
+      reformas:Object.fromEntries(Object.keys(REFORMAS).map(k=>[k,false])),
       _pendB:null,
       lesionNota:null,palmares:[],diario:[],h2h:{},_rivalesSemana:[]
     }};
@@ -112,11 +112,21 @@ function pintarMercadoInicial(){
 }
 const STAFF_CLUB={fisio:{n:"Fisioterapeuta",sal:210,desc:"Menos lesiones y recuperaciones más cortas para toda la plantilla."},psico:{n:"Psicólogo deportivo",sal:180,desc:"La confianza de la plantilla se recupera sola cada semana."},fisico:{n:"Preparador físico",sal:210,desc:"+4 de energía semanal extra para todos."},ojeador:{n:"Ojeador",sal:240,desc:"Mercados más grandes y con mejores jugadores."}};
 const STAFF_CARR={rep:{n:"Representante",sal:150,desc:"Se lleva el 15% de tus premios, pero te trae contratos de patrocinio de más nivel."},fisio:{n:"Fisioterapeuta",sal:120,desc:"La mitad de lesiones y una semana menos de baja."},psico:{n:"Psicólogo deportivo",sal:100,desc:"Tu confianza no baja de 40 y la moral de tu pareja no se desgasta sola."},fisico:{n:"Preparador físico",sal:120,desc:"+4 de energía semanal extra."}};
+/* Reformas de las instalaciones. Los campos n y desc son etiquetas muertas: lo
+   que se pinta son las claves t("ref_"+k) y t("ref_"+k+"_d").
+
+   Con cuatro reformas, un club solvente las tenía todas en pocas temporadas y
+   se quedaba sin nada en que gastar. Las cuatro nuevas suben el techo y están
+   escalonadas en precio, para que la última sea una meta de verdad. */
 const REFORMAS={
-  techada:{n:"Pista central techada",coste:12000,desc:"El club gana caché: +150€/sem de socios y +5 de prestigio."},
-  gym:{n:"Gimnasio propio",coste:7500,desc:"+4 de energía semanal para toda la plantilla."},
-  residencia:{n:"Residencia de jugadores",coste:9500,desc:"La confianza de la plantilla sube +1 cada semana."},
   video:{n:"Sala de vídeo",coste:5500,desc:"Los entrenos rinden más (otro +1 frecuente)."},
+  tienda:{n:"Tienda del club",coste:6500,desc:"La afición deja dinero: ingresos extra según los seguidores."},
+  gym:{n:"Gimnasio propio",coste:7500,desc:"+4 de energía semanal para toda la plantilla."},
+  medico:{n:"Sala médica",coste:8500,desc:"Menos lesiones y altas más rápidas para toda la plantilla."},
+  residencia:{n:"Residencia de jugadores",coste:9500,desc:"La confianza de la plantilla sube +1 cada semana."},
+  techada:{n:"Pista central techada",coste:12000,desc:"El club gana caché: +150€/sem de socios y +5 de prestigio."},
+  escuela:{n:"Escuela de tecnificación",coste:14000,desc:"La academia saca promesas bastante mejores."},
+  gradas:{n:"Gradas nuevas",coste:18000,desc:"Se llena: el club gana seguidores mucho más deprisa."},
 };
 function quimKeyP(par){const a=par.slice().sort();return a[0]+"|"+a[1];}
 function quimDe(cl,par){return cl.quims[quimKeyP(par)]??40;}
@@ -502,7 +512,7 @@ function pintarCmClub(){
       const f=document.createElement("div");f.className="fila";
       const b1=document.createElement("button");b1.className="pri";b1.textContent="Subir al primer equipo";
       b1.disabled=cl.plantilla.length>=6;
-      b1.onclick=()=>{cl.plantilla.push({...j,salario:Math.round(mediaAttrs(j.attrs)*.6),energia:100,conf:55,lesion:null});cl.cantera.splice(idx,1);avisa(t("clb_sube",{n:j.n}));guardar();pintarClubM();};
+      b1.onclick=()=>{cl.plantilla.push({...j,salario:Math.round(mediaAttrs(j.attrs)*.6),energia:100,conf:55,lesion:null});cl.cantera.splice(idx,1);cl._subidos=(cl._subidos||0)+1;avisa(t("clb_sube",{n:j.n}));guardar();pintarClubM();};
       const b2=document.createElement("button");b2.textContent=`Traspasar (+${mediaAttrs(j.attrs)*6}€)`;
       b2.onclick=()=>{cl.dinero+=mediaAttrs(j.attrs)*6;cl.cantera.splice(idx,1);avisa(t("clb_promesa_out",{n:j.n}));guardar();pintarClubM();};
       f.appendChild(b1);f.appendChild(b2);d.appendChild(f);c3.appendChild(d);
@@ -625,7 +635,7 @@ function avanzarSemanaClub(){
     j.energia=clamp(j.energia+regen,0,100);
     if(cl.reformas.residencia) j.conf=clamp(j.conf+1,15,95);
     if(cl.staff.psico&&j.conf<50) j.conf=clamp(j.conf+2,15,95);
-    if(cl.staff.fisio&&j.lesion&&rnd()<.3){j.lesion.sem--;if(j.lesion.sem<=0){const s=curarLesion(j);avisa(`El fisio adelanta el alta de ${j.n}.`+(s?` (mermado -${s.pct}%, ${s.sem} sem)`:""));}}
+    if((cl.staff.fisio||cl.reformas.medico)&&j.lesion&&rnd()<(cl.staff.fisio&&cl.reformas.medico?.5:.3)){j.lesion.sem--;if(j.lesion.sem<=0){const s=curarLesion(j);avisa(`El fisio adelanta el alta de ${j.n}.`+(s?` (mermado -${s.pct}%, ${s.sem} sem)`:""));}}
     decaeMerma(j);
     // moral por minutos: el rol (titular A / B / banquillo) sube o quema la moral
     const rol=cl.alin.includes(idx)?"A":(cl.alinB&&cl.alinB.includes(idx))?"B":"banquillo";
@@ -635,8 +645,12 @@ function avanzarSemanaClub(){
     if(est.clave!==antes&&(est.clave==="exige"||est.clave==="salir")) avisa(`${est.clave==="salir"?"🚪":"😠"} ${j.n}: ${est.txt}`);
   });
   const posC_=miPuesto();
-  fansAdd(Math.round((cl.fans||0)*.002)+(posC_<=10?25:posC_<=20?8:1));
-  cl.dinero+=120+Math.round(prestigioClub()*10)+(cl.reformas.techada?150:0)+Math.round((cl.fans||0)*.01);
+  // Las gradas nuevas hacen que la afición crezca mucho más deprisa
+  fansAdd(Math.round((Math.round((cl.fans||0)*.002)+(posC_<=10?25:posC_<=20?8:1))*(cl.reformas.gradas?2.2:1)));
+  // Ingresos semanales. La tienda convierte afición en caja (el doble de lo que
+  // ya rendían los seguidores), así que cuanto más grande es el club más renta.
+  cl.dinero+=120+Math.round(prestigioClub()*10)+(cl.reformas.techada?150:0)
+    +Math.round((cl.fans||0)*(cl.reformas.tienda?.03:.01));
   if(cl.sponsor) cl.dinero+=cl.sponsor.sem;
   // el patrocinador principal aparece/mejora con el prestigio
   if(!cl._sponsorCheck||cl._sponsorCheck<temporada()){
@@ -738,8 +752,11 @@ function avanzarSemanaClub(){
     }
     avisa(`— Cierre de temporada ${temporada()-1}. El ranking arrastra el 55% y llegan nuevos agentes libres${cl.staff.ojeador?" (el ojeador trae joyas extra)":""}.`);
     if(cl.academia&&cl.cantera.length<3){
-      const j=mkAgente(42+cl.instal*2,50+cl.instal*2,cl.sexo||"M");
+      // La escuela de tecnificación sube el suelo Y el techo de lo que sale
+      const bono=cl.reformas&&cl.reformas.escuela?8:0;
+      const j=mkAgente(42+cl.instal*2+bono,50+cl.instal*2+bono,cl.sexo||"M");
       j.edad=17;
+      if(bono) j.pot=Math.min(95,(j.pot||60)+6);
       cl.cantera.push(j);
       avisa(`🎓 La academia presenta a ${j.n} (${mediaAttrs(j.attrs)} de media).`);
     }

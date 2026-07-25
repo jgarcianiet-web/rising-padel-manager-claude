@@ -771,6 +771,75 @@ comprueba("Ranuras: una partida corrupta se muestra y se puede borrar", () => {
   return "visible y recuperable";
 });
 
+comprueba("Contenido: los catálogos tienen volumen para una carrera larga", () => {
+  // Antes: 3 dilemas, 7 lesiones, 4 reformas, 11+9 hitos. Una carrera de diez
+  // temporadas los agotaba y empezaba a repetir de forma visible.
+  exige(DILEMAS.length >= 15, `solo ${DILEMAS.length} dilemas`);
+  exige(LESIONES.length >= 12, `solo ${LESIONES.length} lesiones`);
+  exige(Object.keys(REFORMAS).length >= 8, `solo ${Object.keys(REFORMAS).length} reformas`);
+  exige(HITOS_CARRERA.length >= 16, `solo ${HITOS_CARRERA.length} hitos de carrera`);
+  exige(HITOS_CLUB.length >= 14, `solo ${HITOS_CLUB.length} hitos de club`);
+  // sin ids repetidos, que romperían el seguimiento de hitos y dilemas
+  const dup = (arr) => arr.filter((x, i) => arr.indexOf(x) !== i);
+  exige(!dup(DILEMAS.map(d => d.id)).length, "dilemas con id repetido: " + dup(DILEMAS.map(d => d.id)));
+  exige(!dup(HITOS_CARRERA.map(h => h.id)).length, "hitos de carrera repetidos: " + dup(HITOS_CARRERA.map(h => h.id)));
+  exige(!dup(HITOS_CLUB.map(h => h.id)).length, "hitos de club repetidos: " + dup(HITOS_CLUB.map(h => h.id)));
+  exige(!dup(LESIONES.map(l => l.k)).length, "lesiones repetidas: " + dup(LESIONES.map(l => l.k)));
+  return `${DILEMAS.length} dilemas · ${LESIONES.length} lesiones · ${Object.keys(REFORMAS).length} reformas · ${HITOS_CARRERA.length + HITOS_CLUB.length} hitos`;
+});
+
+comprueba("Contenido: todos los dilemas se pueden pintar y resolver", () => {
+  const c = nuevaCarrera("agresivo");
+  // un protagonista con de todo, para que se cumplan las condiciones
+  c.dinero = 500; c.fans = 3000; c.energia = 80; c.pro = true; c.edad = 31;
+  c.vd = { v: 20, d: 5 }; c.compiMoral = 70;
+  c.sponsor = { marca: "Nébula", sem: 300, tier: 2 };
+  c.staff = c.staff || {}; c.staff.entrenador = { n: "R. Vela", sal: 200, niv: 3 };
+  let pintados = 0;
+  DILEMAS.forEach(d => {
+    // el texto debe resolverse sin lanzar y sin dejar claves crudas a la vista
+    const tit = d.titulo(c), tx = d.texto(c);
+    exige(tit && tx, `${d.id}: título o texto vacío`);
+    exige(!/^dil_/.test(tit), `${d.id}: el título se queda en la clave (${tit})`);
+    exige(!/^dil_/.test(tx), `${d.id}: el texto se queda en la clave`);
+    exige(d.ops.length >= 2, `${d.id}: menos de dos opciones`);
+    d.ops.forEach((o, i) => {
+      const ot = o.txt(c), od = o.desc(c);
+      exige(ot && !/^dil_/.test(ot), `${d.id} op${i}: opción sin traducir (${ot})`);
+      exige(od && !/^dil_/.test(od), `${d.id} op${i}: descripción sin traducir`);
+      if (o.dif) exige(o.dif.txt(c) && !/^dil_/.test(o.dif.txt(c)), `${d.id} op${i}: consecuencia sin traducir`);
+    });
+    pintados++;
+  });
+  exige(pintados === DILEMAS.length, "algún dilema no se pudo pintar");
+
+  // y resolverlos de verdad muta al protagonista sin romper nada
+  DILEMAS.forEach(d => {
+    const antes = { dinero: c.dinero, fans: c.fans };
+    c.dilemaActivo = { id: d.id, sem: 1 };
+    const r = aplicarOpcionDilema(c, 0, 1);
+    exige(r && r.op, `${d.id}: no se pudo resolver`);
+    exige(Number.isFinite(c.dinero) && Number.isFinite(c.fans), `${d.id} deja valores no numéricos`);
+    exige(c.fans >= 0, `${d.id} deja los seguidores en negativo`);
+    c.dinero = antes.dinero; c.fans = antes.fans;
+  });
+  return DILEMAS.length + " dilemas pintados y resueltos";
+});
+
+comprueba("Contenido: las reformas se declaran al fundar y cuestan de menos a más", () => {
+  const cl = fundarClub();
+  Object.keys(REFORMAS).forEach(k => {
+    exige(k in cl.reformas, `el club nace sin declarar la reforma ${k}`);
+    exige(cl.reformas[k] === false, `la reforma ${k} nace ya construida`);
+    exige(REFORMAS[k].coste > 0, `la reforma ${k} no cuesta nada`);
+  });
+  // el catálogo va escalonado: la primera se alcanza pronto y la última es meta
+  const costes = Object.values(REFORMAS).map(r => r.coste);
+  exige(Math.min(...costes) <= 6000, "no hay ninguna reforma asequible de salida");
+  exige(Math.max(...costes) >= 15000, "falta una reforma que sea una meta de verdad");
+  return `${costes.length} reformas de ${Math.min(...costes)}€ a ${Math.max(...costes)}€`;
+});
+
 comprueba("Circuito: 90 parejas por categoría y se debuta por el puesto 91", () => {
   const c = nuevaCarrera("agresivo");
   exige(G.world.parejas.length === WORLD_N, `el circuito tiene ${G.world.parejas.length}, esperaba ${WORLD_N}`);

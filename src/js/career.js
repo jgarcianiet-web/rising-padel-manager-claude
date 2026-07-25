@@ -1069,6 +1069,14 @@ const HITOS_CARRERA=[
   {id:"racha10",txt:"Racha de 10 victorias",ck:(c)=>(c.rachaMax||0)>=10,fans:300,din:1000},
   {id:"major",txt:"Ganar una CORONA",ck:(c)=>(c.recMajors||0)>=1,fans:3000,din:15000},
   {id:"n1",txt:"Cerrar una temporada como Nº1",ck:(c)=>(G.world.n1hist||[]).some(x=>x.yo),fans:5000,din:25000},
+  // Con once hitos, la lista se completaba antes de que la carrera terminara y
+  // el jugador se quedaba sin metas a largo plazo. Estos cinco cubren el tramo
+  // final, que es justo donde ahora hay contenido (declive, retirada, legado).
+  {id:"top5",txt:"Entrar en el top 5",ck:(c)=>miPuesto()<=5,fans:1500,din:7000},
+  {id:"v250",txt:"250 victorias como profesional",ck:(c)=>((c.vd||{}).v||0)>=250,fans:1200,din:6000},
+  {id:"elite10",txt:"Diez títulos de la Serie Élite",ck:(c)=>(c.recTitElite||0)>=10,fans:2500,din:14000},
+  {id:"corona3",txt:"Tres Coronas en las vitrinas",ck:(c)=>(c.recMajors||0)>=3,fans:6000,din:30000},
+  {id:"decada",txt:"Diez temporadas en el circuito",ck:(c)=>temporada()>=10,fans:2000,din:9000},
 ];
 const HITOS_CLUB=[
   {id:"tit1",txt:"Primer título del club",ck:(cl)=>cl.palmares.length>=1,fans:120,din:800},
@@ -1080,6 +1088,11 @@ const HITOS_CLUB=[
   {id:"junta2",txt:"Cumplir el objetivo de la junta dos veces",ck:(cl)=>(cl._juntaOk||0)>=2,fans:400,din:3000},
   {id:"titP",txt:"Título Élite para las vitrinas",ck:(cl)=>tituloElite(cl),fans:1500,din:8000},
   {id:"top3",txt:"Podio del ranking de clubes",ck:(cl)=>miPuesto()<=3,fans:2000,din:12000},
+  {id:"p6",txt:"Plantilla de 6 jugadores",ck:(cl)=>cl.plantilla.length>=6,fans:250,din:0},
+  {id:"cantera1",txt:"Subir a un jugador de la academia",ck:(cl)=>(cl._subidos||0)>=1,fans:400,din:1500},
+  {id:"reformas4",txt:"Cuatro reformas terminadas",ck:(cl)=>Object.values(cl.reformas||{}).filter(Boolean).length>=4,fans:900,din:4000},
+  {id:"fans10k",txt:"Diez mil seguidores",ck:(cl)=>(cl.fans||0)>=10000,fans:1500,din:6000},
+  {id:"n1club",txt:"El mejor club del mundo",ck:(cl)=>miPuesto()===1,fans:5000,din:25000},
 ];
 function chequeaHitos(){
   const e=ent(); if(!e) return;

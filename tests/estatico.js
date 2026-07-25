@@ -109,6 +109,22 @@ module.exports = function pruebasEstaticas() {
     return usadas.length + " acciones, todas registradas";
   });
 
+  /* Una reforma que el club puede comprar pero que no aparece en el código que
+     resuelve la semana es decoración cara: el jugador paga y no pasa nada.
+     Esta prueba lee el fuente porque el efecto vive repartido por club.js. */
+  comprueba("Contenido: cada reforma tiene efecto en el código", () => {
+    const club = leer("src/js/club.js");
+    const cat = /const REFORMAS=\{([\s\S]*?)\n\};/.exec(club);
+    exige(cat, "no se encuentra el catálogo REFORMAS");
+    const claves = [...cat[1].matchAll(/^\s{2}(\w+):\{/gm)].map(m => m[1]);
+    exige(claves.length >= 8, "se esperaban al menos 8 reformas, hay " + claves.length);
+    // el cuerpo del fichero SIN el catálogo: ahí es donde debe usarse cada una
+    const cuerpo = club.replace(cat[0], "");
+    const sinEfecto = claves.filter(k => !new RegExp("reformas(\\.|\\[\")" + k + "\\b").test(cuerpo));
+    exige(!sinEfecto.length, "reformas que se venden pero no hacen nada: " + sinEfecto.join(", "));
+    return claves.length + " reformas con efecto";
+  });
+
   /* Todo el texto del juego escala con --esc, para que quien no vea bien de
      cerca pueda agrandarlo. Un font-size en px pelado se queda fijo y rompe el
      ajuste sin avisar: solo se ve si alguien con la vista cansada lo sufre. */

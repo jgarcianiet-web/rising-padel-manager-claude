@@ -571,6 +571,134 @@ const DILEMAS=[
        inm:{fans:300,dinero:200},
        dif:{en:1,txt:c=>t("dil_exhib_o1c"),ef:{energia:-12}}},
       {txt:c=>t("dil_exhib_o2"),desc:c=>t("dil_exhib_o2d"),inm:{},dif:null}]},
+/* ---- Ampliación del cuaderno de dilemas ----
+     Con 26, una carrera de diez temporadas los agotaba y empezaba a repetirlos
+     de forma visible. Estos doce están repartidos por etapas —el chaval sin
+     dinero, el que ya tiene nombre, el veterano— y cada uno tiene su condición,
+     así que solo aparecen cuando vienen a cuento. Los textos son claves i18n. */
+  { id:"beca",
+    cond:c=>(c.dinero||0)<1500 && !c.sponsor,
+    titulo:c=>t("dil_beca_t"), texto:c=>t("dil_beca_x"),
+    ops:[
+      {txt:c=>t("dil_beca_o1"),desc:c=>t("dil_beca_o1d"),
+       inm:{dinero:600},
+       dif:{en:3,txt:c=>t("dil_beca_o1c"),ef:{fans:-120}}},
+      {txt:c=>t("dil_beca_o2"),desc:c=>t("dil_beca_o2d"),
+       inm:{moral:4},dif:null}]},
+
+  { id:"prensa",
+    cond:c=>((c.vd||{}).d||0)>=3,
+    titulo:c=>t("dil_prensa_t"), texto:c=>t("dil_prensa_x"),
+    ops:[
+      {txt:c=>t("dil_prensa_o1"),desc:c=>t("dil_prensa_o1d"),
+       inm:{fans:250},
+       dif:{en:2,txt:c=>t("dil_prensa_o1c"),ef:{moral:-10}}},
+      {txt:c=>t("dil_prensa_o2"),desc:c=>t("dil_prensa_o2d"),
+       inm:{fans:-40,moral:5},dif:null}]},
+
+  { id:"clinic",
+    cond:c=>(c.fans||0)>=800 && (c.energia==null?100:c.energia)>50,
+    titulo:c=>t("dil_clinic_t"), texto:c=>t("dil_clinic_x"),
+    ops:[
+      {txt:c=>t("dil_clinic_o1"),desc:c=>t("dil_clinic_o1d"),
+       inm:{fans:600,energia:-12},
+       dif:{en:2,txt:c=>t("dil_clinic_o1c"),ef:{dinero:400}}},
+      {txt:c=>t("dil_clinic_o2"),desc:c=>t("dil_clinic_o2d"),
+       inm:{energia:8,fans:-80},dif:null}]},
+
+  { id:"antidoping",
+    cond:c=>!!c.pro,
+    titulo:c=>t("dil_dop_t"), texto:c=>t("dil_dop_x"),
+    ops:[
+      {txt:c=>t("dil_dop_o1"),desc:c=>t("dil_dop_o1d"),
+       inm:{energia:-10},dif:null},
+      {txt:c=>t("dil_dop_o2"),desc:c=>t("dil_dop_o2d"),
+       inm:{},
+       dif:{en:1,txt:c=>t("dil_dop_o2c"),ef:{fans:-500,dinero:-800}}}]},
+
+  { id:"pala",
+    cond:c=>!!c.sponsor,
+    titulo:c=>t("dil_pala_t",{marca:c.sponsor.marca}),
+    texto:c=>t("dil_pala_x",{marca:c.sponsor.marca}),
+    ops:[
+      {txt:c=>t("dil_pala_o1"),desc:c=>t("dil_pala_o1d"),
+       inm:{dinero:c=>(c.sponsor?c.sponsor.sem*3:400)},
+       dif:{en:2,txt:c=>t("dil_pala_o1c"),ef:{moral:-8}}},
+      {txt:c=>t("dil_pala_o2"),desc:c=>t("dil_pala_o2d"),
+       inm:{},
+       dif:{en:3,txt:c=>t("dil_pala_o2c"),ef:{dinero:c=>-(c.sponsor?Math.round(c.sponsor.sem*1.5):200)}}}]},
+
+  { id:"familia",
+    cond:c=>true,
+    titulo:c=>t("dil_fam_t"), texto:c=>t("dil_fam_x"),
+    ops:[
+      {txt:c=>t("dil_fam_o1"),desc:c=>t("dil_fam_o1d"),
+       inm:{energia:20,moral:8},
+       dif:{en:1,txt:c=>t("dil_fam_o1c"),ef:{fans:-150}}},
+      {txt:c=>t("dil_fam_o2"),desc:c=>t("dil_fam_o2d"),
+       inm:{energia:-14,moral:-6},dif:null}]},
+
+  { id:"inversor",
+    cond:c=>(c.fans||0)>=2000,
+    titulo:c=>t("dil_inv_t"), texto:c=>t("dil_inv_x"),
+    ops:[
+      {txt:c=>t("dil_inv_o1"),desc:c=>t("dil_inv_o1d"),
+       inm:{dinero:9000},
+       dif:{en:6,txt:c=>t("dil_inv_o1c"),ef:{dinero:-14000}}},
+      {txt:c=>t("dil_inv_o2"),desc:c=>t("dil_inv_o2d"),
+       inm:{moral:3},dif:null}]},
+
+  { id:"viral",
+    cond:c=>(c.fans||0)>=1200,
+    titulo:c=>t("dil_viral_t"), texto:c=>t("dil_viral_x"),
+    ops:[
+      {txt:c=>t("dil_viral_o1"),desc:c=>t("dil_viral_o1d"),
+       inm:{fans:900},
+       dif:{en:2,txt:c=>t("dil_viral_o1c"),ef:{dinero:-1200,moral:-6}}},
+      {txt:c=>t("dil_viral_o2"),desc:c=>t("dil_viral_o2d"),
+       inm:{fans:-200,moral:6},dif:null}]},
+
+  { id:"tecnico",
+    cond:c=>!!(c.staff&&c.staff.entrenador),
+    titulo:c=>t("dil_tec_t",{n:c.staff.entrenador.n}),
+    texto:c=>t("dil_tec_x",{n:c.staff.entrenador.n}),
+    ops:[
+      {txt:c=>t("dil_tec_o1"),desc:c=>t("dil_tec_o1d"),
+       inm:{dinero:c=>-Math.round((c.staff&&c.staff.entrenador?c.staff.entrenador.sal:150)*8)},
+       dif:{en:4,txt:c=>t("dil_tec_o1c"),ef:{moral:10}}},
+      {txt:c=>t("dil_tec_o2"),desc:c=>t("dil_tec_o2d"),
+       inm:{moral:-8},dif:null}]},
+
+  { id:"compi_lesion",
+    cond:c=>!!c.compi && (c.compiMoral==null?65:c.compiMoral)>40,
+    titulo:c=>t("dil_cle_t",{n:c.compi.n}),
+    texto:c=>t("dil_cle_x",{n:c.compi.n}),
+    ops:[
+      {txt:c=>t("dil_cle_o1"),desc:c=>t("dil_cle_o1d"),
+       inm:{moral:12},
+       dif:{en:2,txt:c=>t("dil_cle_o1c"),ef:{moral:-20}}},
+      {txt:c=>t("dil_cle_o2"),desc:c=>t("dil_cle_o2d"),
+       inm:{moral:-10,fans:-100},dif:null}]},
+
+  { id:"entrenador_jugador",
+    cond:c=>(c.edad||18)>=30,
+    titulo:c=>t("dil_ej_t"), texto:c=>t("dil_ej_x"),
+    ops:[
+      {txt:c=>t("dil_ej_o1"),desc:c=>t("dil_ej_o1d"),
+       inm:{dinero:5000},
+       dif:{en:3,txt:c=>t("dil_ej_o1c"),ef:{energia:-20}}},
+      {txt:c=>t("dil_ej_o2"),desc:c=>t("dil_ej_o2d"),
+       inm:{moral:6},dif:null}]},
+
+  { id:"cantera_visita",
+    cond:c=>(c.fans||0)>=400,
+    titulo:c=>t("dil_can_t"), texto:c=>t("dil_can_x"),
+    ops:[
+      {txt:c=>t("dil_can_o1"),desc:c=>t("dil_can_o1d"),
+       inm:{fans:350,energia:-8},dif:null},
+      {txt:c=>t("dil_can_o2"),desc:c=>t("dil_can_o2d"),
+       inm:{dinero:900},
+       dif:{en:2,txt:c=>t("dil_can_o2c"),ef:{fans:-250}}}]},
 ];
 function _efVal(v,c){ return typeof v==="function"?v(c):v; }
 function _aplicaEf(c,e){
@@ -690,6 +818,15 @@ const LESIONES=[
   {n:"epicondilitis (codo de pádel)",k:"les_codo",sem:3,grav:2},
   {n:"esguince grave de tobillo",k:"les_tobillo",sem:5,grav:3},
   {n:"rotura del tendón de Aquiles",k:"les_aquiles",sem:8,grav:3},
+  // Ampliación del parte médico: con siete lesiones, una carrera larga repetía
+  // siempre las mismas cuatro. Las nuevas rellenan sobre todo el tramo de uno a
+  // cuatro semanas, que es donde más se juega la temporada.
+  {n:"sobrecarga lumbar",k:"les_lumbar",sem:1,grav:1},
+  {n:"contractura cervical",k:"les_cervical",sem:1,grav:1},
+  {n:"tendinitis de muñeca",k:"les_muneca",sem:2,grav:1},
+  {n:"elongación del aductor",k:"les_aductor",sem:3,grav:2},
+  {n:"rotura de isquiotibiales",k:"les_isquios",sem:4,grav:3},
+  {n:"menisco tocado",k:"les_menisco",sem:6,grav:3},
 ];
 // Elige una lesión ponderando por gravedad: las graves son raras y casi solo
 // aparecen cuando el riesgo es alto (energía por los suelos, fragilidad). riesgo 0..1.
