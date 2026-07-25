@@ -125,6 +125,24 @@ module.exports = function pruebasEstaticas() {
     return claves.length + " reformas con efecto";
   });
 
+  /* La interfaz tiene que servir de un móvil de 320 px a un monitor de 2560.
+     Los puntos de ruptura viven repartidos entre main.css y dashboard.css, y es
+     fácil quitar uno sin darse cuenta al reordenar reglas. */
+  comprueba("Resoluciones: la interfaz cubre de móvil a monitor ancho", () => {
+    const css = leer("src/css/main.css") + leer("src/css/dashboard.css");
+    const anchos = [...css.matchAll(/@media\s*\(min-width:\s*(\d+)px\)/g)].map(m => +m[1]).sort((a, b) => a - b);
+    exige(anchos.length >= 4, "solo hay " + anchos.length + " puntos de ruptura por ancho");
+    exige(Math.max(...anchos) >= 1600, "no hay nada previsto por encima de 1600px: los monitores grandes se quedan a medias");
+    // el tope de ancho tiene que crecer, no quedarse clavado
+    const topes = [...css.matchAll(/\.cont\{max-width:(\d+)px\}/g)].map(m => +m[1]);
+    exige(topes.length >= 2, "el ancho máximo del contenido no crece con la pantalla");
+    exige(Math.max(...topes) >= 1500, "el contenido se queda en " + Math.max(...topes) + "px de ancho máximo");
+    // y los extremos raros deben estar contemplados
+    exige(/@media\s*\(pointer:coarse\)/.test(css), "no hay nada específico para pantallas táctiles");
+    exige(/max-height:\s*\d+px\)\s*and\s*\(orientation:landscape/.test(css), "no se contempla el móvil apaisado");
+    return anchos.length + " puntos de ruptura, hasta " + Math.max(...topes) + "px";
+  });
+
   /* Todo el texto del juego escala con --esc, para que quien no vea bien de
      cerca pueda agrandarlo. Un font-size en px pelado se queda fijo y rompe el
      ajuste sin avisar: solo se ve si alguien con la vista cansada lo sufre. */
