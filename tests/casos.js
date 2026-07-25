@@ -771,6 +771,63 @@ comprueba("Ranuras: una partida corrupta se muestra y se puede borrar", () => {
   return "visible y recuperable";
 });
 
+comprueba("Trofeos: la sala reúne la carrera entera sin reventar", () => {
+  const c = nuevaCarrera("agresivo");
+  // una carrera vivida, con de todo
+  c.vd = { v: 120, d: 60 }; c.recMajors = 2; c.fans = 30000; c.edad = 27;
+  c.palmares = ["Corona · París (T4)", "Élite 1 · Madrid (T3)", "Continental Oro (T2)", "Maestros · Barcelona (T5)"];
+  c.hist = [{ t: 1, pos: 70, pts: 100, tit: 0 }, { t: 2, pos: 30, pts: 900, tit: 1 }, { t: 3, pos: 9, pts: 3000, tit: 2 }];
+  c.hitosOk = { v1: 1, tit1: 2, top30: 2, top10: 3 };
+  c.h2h = { 10: { n: "A/B", v: 3, d: 7 }, 11: { n: "C/D", v: 5, d: 2 } };
+  c.nemesis = { id: 10, elim: 3 };
+  c.parejasHist = [{ n: "C. Hinojosa", desde: 1, hasta: 2, temps: 2, titulos: 1, motivo: "ruptura" }];
+  pintarTrofeos();
+  const html = document.getElementById("trofeosCuerpo").innerHTML;
+  exige(html.length > 500, "la sala sale casi vacía: " + html.length + " caracteres");
+  // las secciones importantes tienen que estar
+  ["trf_hd_vitrina", "trf_hd_hitos", "trf_hd_h2h", "trf_hd_parejas"].forEach(k => {
+    exige(html.indexOf(t(k).split("·")[0].trim()) >= 0, "falta la sección " + k);
+  });
+  exige(!/\btrf_[a-z_]+/.test(html), "alguna clave se queda sin traducir en la sala");
+  exige(html.indexOf("120-60") >= 0, "no aparece el balance de partidos");
+  exige(html.indexOf("#9") >= 0, "no aparece el mejor puesto del historial");
+  return "sala completa con " + c.palmares.length + " títulos";
+});
+
+comprueba("Trofeos: el palmarés se agrupa bien, incluidos los nombres viejos", () => {
+  const g = trofeosPorCategoria([
+    "Corona · Roma (T3)", "MAJOR París (T1)",            // nuevo y viejo: los dos son Corona
+    "Maestros · Barcelona (T4)", "Tour Finals (T2)",      // ídem
+    "Élite 1 · Madrid (T3)", "Premier P1 · Doha (T1)",    // ídem
+    "Continental Oro (T2)", "FIP Gold (T1)",              // ídem
+    "Open del barrio (T1)",
+  ]);
+  exige(g.corona.length === 2, "Coronas mal agrupadas: " + g.corona.length);
+  exige(g.maestros.length === 2, "Maestros mal agrupados: " + g.maestros.length);
+  exige(g.elite.length === 2, "Élite mal agrupada: " + g.elite.length);
+  exige(g.continental.length === 2, "Continental mal agrupado: " + g.continental.length);
+  exige(g.otros.length === 1, "lo que no encaja debería ir a otros");
+  return "5 categorías, con guardados nuevos y viejos";
+});
+
+comprueba("Trofeos: la sala también funciona en club y sin datos", () => {
+  // recién empezada: no debe reventar aunque no haya nada que enseñar
+  const c = nuevaCarrera("agresivo");
+  c.hist = []; c.palmares = []; c.h2h = {}; c.hitosOk = {};
+  pintarTrofeos();
+  exige(document.getElementById("trofeosCuerpo").innerHTML.indexOf(t("trf_sin_titulos")) >= 0,
+    "una carrera nueva debería decir que la vitrina está vacía");
+  // el gráfico necesita dos temporadas: con una no se pinta y no pasa nada
+  exige(trofeosGrafico([{ t: 1, pos: 50, pts: 0, tit: 0 }]) === "", "con una sola temporada no debería haber gráfico");
+  exige(trofeosGrafico([]) === "", "sin historial no debería haber gráfico");
+  exige(trofeosGrafico([{ t: 1, pos: 50 }, { t: 2, pos: 20 }]).indexOf("<svg") === 0, "con dos temporadas sí");
+  // y en modo club
+  fundarClub();
+  pintarTrofeos();
+  exige(document.getElementById("trofeosCuerpo").innerHTML.length > 300, "la sala del club sale vacía");
+  return "carrera vacía y club";
+});
+
 comprueba("Cuadro: el torneo tiene un cuadro de 16 con siembra", () => {
   const c = nuevaCarrera("agresivo");
   c.pts = 99999;                       // nº1: te toca ser cabeza de serie

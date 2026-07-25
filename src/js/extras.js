@@ -180,6 +180,8 @@ registraAcciones({
   // carrera
   anunciarUltimoBaile, verClub,
   cerrarLegado:()=>{ quitarEl(document.getElementById("legadoModal")); G=null; irA("menu"); pintarMenu(); },
+  // desde la pantalla de retirada: la sala es justo lo que quieres mirar ahí
+  verTrofeos:()=>abrirTrofeos(),
   cerrarModal:(id)=>quitarEl(document.getElementById(id)),
   // torneo y partido
   setTact, setTactPrev,

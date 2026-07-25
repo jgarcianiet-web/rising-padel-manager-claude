@@ -460,7 +460,8 @@ function retirarse(){
       ${L.rival?fila(t("leg_rival"),`${L.rival.nombre} (${L.rival.v}-${L.rival.d})`):""}
     </div>
     <div class="foot" style="text-align:left;line-height:1.6;margin-bottom:10px">${t("leg_cierre_"+L.rango,{nombre:c.nombre,edad:L.edad})}</div>
-    <button class="pri" style="width:100%" ${ac("cerrarLegado")}>${t("leg_volver")}</button>
+    <button class="pri" style="width:100%" ${ac("verTrofeos")}>🏆 ${t("leg_ver_trofeos")}</button>
+    <button style="width:100%;margin-top:7px" ${ac("cerrarLegado")}>${t("leg_volver")}</button>
   </div>`;
 }
 function pintarObjetivos(){

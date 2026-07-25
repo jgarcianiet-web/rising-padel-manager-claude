@@ -33,6 +33,7 @@
       <div class="mini" id="miniBtns" style="display:none">
         <button id="btnSnd" title="Sonido" data-i18n-title="bar_sonido_title"></button>
         <button id="btnAyuda" title="Tutorial" data-i18n-title="bar_tutorial_title">?</button>
+        <button id="btnTrofeos" title="Sala de trofeos" data-i18n-title="bar_trofeos_title">🏆</button>
         <button id="btnAnalitica" title="Analítica" data-i18n-title="bar_analitica_title">🔬</button>
         <button id="btnExport" title="Exportar partida" data-i18n="bar_exportar" data-i18n-title="bar_export_title">⤓ Exportar</button>
         <button id="btnMenu" data-i18n="bar_menu">Menú</button>
@@ -346,6 +347,15 @@
       <button id="tmBronca" style="width:100%">⚡ «¡Así no! Espabilad ya»</button>
     </div>
   </div>
+  <!-- ============ SALA DE TROFEOS ============ -->
+  <div id="trofeos" class="oculto" style="position:fixed;inset:0;background:rgba(8,11,17,.94);z-index:58;display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow:auto">
+    <div class="card" style="max-width:900px;width:100%;margin:auto">
+      <h3 data-i18n-html="hd_trofeos_full">Sala de trofeos · <em>tu carrera</em></h3>
+      <div id="trofeosCuerpo"></div>
+      <button class="pri" id="trofeosCerrar" style="width:100%;margin-top:12px" data-i18n="btn_cerrar">Cerrar</button>
+    </div>
+  </div>
+
   <div id="analitica" class="oculto" style="position:fixed;inset:0;background:rgba(10,13,19,.9);z-index:57;display:flex;align-items:center;justify-content:center;padding:16px">
     <div class="card" style="max-width:460px;width:100%">
       <h3 data-i18n-html="hd_analitica_full">Analítica · <em>base de datos</em></h3>
@@ -389,6 +399,7 @@
 <script src="js/career.js"></script>
 <script src="js/club.js"></script>
 <script src="js/tournament.js"></script>
+<script src="js/trofeos.js"></script>
 <script src="js/extras.js"></script>
 <script src="js/boot.js"></script>
 </body>
