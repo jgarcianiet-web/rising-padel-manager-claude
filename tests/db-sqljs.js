@@ -207,5 +207,31 @@ module.exports = async function ejecutarPruebasSql() {
   db.dbSqlGuardarStaff(d, { entrenador: null, rep: null });
   chk(Object.keys(db.dbSqlLeerStaff(d)).length === 0, "4d · staff: equipo vacío deja la tabla vacía");
 
+  // ---------- finanzas y patrocinio (Fase 4d·7) ----------
+  db.dbSqlGuardarFinanzas(d, { dinero: 3175 });
+  db.dbSqlGuardarFinanzas(d, { dinero: 3175 }); // reproyectar: reemplaza
+  chk(db.dbSqlLeerFinanzas(d).dinero === 3175, "4d · finanzas: dinero persiste y se reconstruye");
+  db.dbSqlGuardarFinanzas(d, { dinero: -420 });
+  chk(db.dbSqlLeerFinanzas(d).dinero === -420, "4d · finanzas: caja en negativo sobrevive");
+
+  const patro = { marca: "PadelPro", sec: "material", tier: 3, sem: 180, bonus: 900, objetivo: 12,
+    tRest: 40, durTotal: 52, primas: [["top20", "entrar en el top 20", 500]], primasCobradas: { top20: true }, spots: 2 };
+  const ofertas = [
+    { marca: "Ibercaña", sec: "banca", tier: 2, sem: 110, bonus: 400, objetivo: 20 },
+    { marca: "VoleaZero", sec: "ropa", tier: 1, sem: 60, bonus: 150, objetivo: 30 },
+  ];
+  db.dbSqlGuardarSponsor(d, patro, ofertas);
+  db.dbSqlGuardarSponsor(d, patro, ofertas); // reproyectar: reemplaza
+  const spb = db.dbSqlLeerSponsor(d);
+  chk(spb.actual && spb.actual.marca === "PadelPro" && spb.actual.tier === 3 && spb.actual.sem === 180,
+    "4d · sponsor: contrato vigente reconstruido");
+  chk(spb.actual.primas.length === 1 && spb.actual.primas[0][2] === 500 && spb.actual.primasCobradas.top20 === true && spb.actual.tRest === 40,
+    "4d · sponsor: primas, cobradas y semanas restantes sobreviven en extras", JSON.stringify(spb.actual.primas));
+  chk(spb.ofertas.length === 2 && spb.ofertas[0].marca === "Ibercaña" && spb.ofertas[1].sem === 60,
+    "4d · sponsor: ofertas sobre la mesa en orden (reemplaza, no acumula)");
+  db.dbSqlGuardarSponsor(d, null, []);
+  const spv = db.dbSqlLeerSponsor(d);
+  chk(spv.actual === null && spv.ofertas.length === 0, "4d · sponsor: sin contrato ni ofertas deja la tabla vacía");
+
   return res;
 };
