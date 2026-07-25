@@ -315,15 +315,15 @@ function evolucionaMundo(){
   const filasG=rankingFilas();
   const yoFila=filasG.find(f=>f.yo);
   const galaPremios=[];
-  galaPremios.push(`🏆 Pareja del Año: ${n1.nombre}`);
+  galaPremios.push(t("gala_pareja",{n:n1.nombre}));
   const joven=w.parejas.filter(p2=>(p2.sexo||"M")===miSexo()&&p2.edad<=21&&!p2.retiraT).sort((a,b)=>b.pts-a.pts)[0];
-  if(joven) galaPremios.push(`🌱 Revelación: ${joven.nombre} (${joven.edad} años)`);
+  if(joven) galaPremios.push(t("gala_revelacion",{n:joven.nombre,edad:joven.edad}));
   const e2=ent();
-  if(n1.yo){ e2.palmares.push(`Pareja del Año (T${temporada()-1})`); fansAdd(2000,"Pareja del Año"); post("gala"); }
-  if(e2.rachaMax>=12) galaPremios.push(`🔥 Mejor racha del año: ${nombreEntidad().replace("★ ","")} (${e2.rachaMax} victorias)`);
-  avisa(`🎪 GALA DEL CIRCUITO — ${galaPremios.join(" · ")}.`);
+  if(n1.yo){ const premio=t("gala_palmares",{t:temporada()-1}); e2.palmares.push(premio); fansAdd(2000,premio); post("gala"); }
+  if(e2.rachaMax>=12) galaPremios.push(t("gala_racha",{n:nombreEntidad().replace("★ ",""),m:e2.rachaMax}));
+  avisa(t("gala_hd",{lista:galaPremios.join(" · ")}));
   if(n1.yo) noticia("titulo",t("not_pareja_anio_t"),t("not_pareja_anio_s"),miParejaProt());
-  if(n1.yo){ noticias.push(`👑 Cerráis la temporada como Nº1 DEL MUNDO. Historia del pádel.`); noticia("n1",t("not_n1_t"),t("not_n1_s")); }
+  if(n1.yo){ noticias.push(t("gala_n1_feed")); noticia("n1",t("not_n1_t"),t("not_n1_s")); }
   // 1) envejecimiento: los jóvenes crecen, los veteranos declinan (fuerte a partir de 33)
   w.parejas.forEach(p=>{
     p.edad++;

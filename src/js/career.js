@@ -205,7 +205,7 @@ const MARCAS=[
   {n:"Rolox",tier:4,sec:"lujo de alta gama"},
   {n:"Emiratos Fly",tier:4,sec:"aerolínea de bandera"},
 ];
-const SPOT_TIPOS=["un spot de televisión","una campaña de vallas","un contenido para redes","una sesión de fotos de catálogo","un evento con aficionados","un anuncio de radio"];
+const SPOT_TIPOS=["spot_1","spot_2","spot_3","spot_4","spot_5","spot_6"];   // claves i18n; los guardados antiguos llevan el texto literal (t() lo devuelve tal cual)
 /* catálogo de primas por objetivos (se cobran una vez al lograrse, mientras dure el contrato) */
 const PRIMAS_CAT={
   2:[["titP","Primer título Premier",1200],["racha10","Racha de 10 victorias",800],["top20","Cerrar en el top 20",900]],
@@ -349,7 +349,7 @@ function rompeConCompi(c){
   c.compi={...compiInicial(c.sexo||"M"),attrs:mkAttrsNivel(CHINO.nivel,CHINO.estilo)};
   c.quimica=CHINO.quim;c.compiMoral=70;c.compiPlan="auto";c._crisisPareja=null;
   noticia("ruptura",t("not_ruptura_t",{ex}),t("not_ruptura_s",{compi:c.sexo==="F"?"China":"Chino"}),protRup);
-  avisa(`💥 ${ex} rompe la pareja. ${c.sexo==="F"?"China":"Chino"} vuelve a echarte el cable de siempre.`);
+  avisa(t("rup_av_rompe",{ex,compi:c.sexo==="F"?"China":"Chino"}));
 }
 // Evento de ruptura VISIBLE: el compañero expone su motivo y tú eliges cómo
 // reconducirlo (o dejarlo ir). Sustituye a la vieja ruptura por umbral en seco.
@@ -358,9 +358,9 @@ function mostrarRuptura(c){
   const ov=document.getElementById("ruptModal")||(()=>{const d=document.createElement("div");d.id="ruptModal";d.style.cssText="position:fixed;inset:0;background:rgba(10,13,19,.93);z-index:82;display:flex;align-items:center;justify-content:center;padding:16px";document.body.appendChild(d);return d;})();
   const botones=ev.ops.map(o=>`<button class="${o.id==="dejar"?"":"pri"}" style="width:100%;text-align:left;margin-top:7px;line-height:1.35" data-op="${o.id}"><b>${o.txt}</b><div style="font-size:11px;color:${o.id==="dejar"?"var(--gris)":"rgba(0,0,0,.7)"};font-weight:400;margin-top:2px">${o.desc}</div></button>`).join("");
   ov.innerHTML=`<div class="card" style="max-width:440px;width:100%">
-    <h3 style="margin-top:0">💔 ${c.compi.n} quiere hablar</h3>
+    <h3 style="margin-top:0">${t("rup_titulo",{n:c.compi.n})}</h3>
     <div style="font-size:12.5px;color:var(--gris);line-height:1.5;margin-bottom:4px">${ev.motivo.txt}</div>
-    <div class="foot" style="text-align:left;margin-bottom:6px">Moral de la pareja: ${c.compiMoral}. ¿Cómo lo gestionas?</div>
+    <div class="foot" style="text-align:left;margin-bottom:6px">${t("rup_moral",{m:c.compiMoral})}</div>
     ${botones}</div>`;
   ov.querySelectorAll("button[data-op]").forEach(b=>b.onclick=()=>{
     const res=aplicarOpcionRuptura(c,b.getAttribute("data-op"),ev.motivo);
@@ -553,8 +553,8 @@ function pintarSemana(){
       c.dinero+=sp.pago;
       if(c.sponsor) c.sponsor.spots=(c.sponsor.spots||0)+1;
       fansAdd(sp.fans||Math.round(R(80,220)),`salir en ${sp.tipo||"el anuncio"}`);
-      noticia("contrato",t("not_anuncio_t",{marca:sp.marca,tipo:sp.tipo||t("not_anuncio_default")}),t("not_anuncio_s",{entidad:nombreEntidad().replace("★ ","")}));
-      avisa(`🎬 ${sp.tipo||"Rodaje"} para ${sp.marca}: +${sp.pago}€ y nuevos seguidores.`);
+      noticia("contrato",t("not_anuncio_t",{marca:sp.marca,tipo:sp.tipo?t(sp.tipo):t("not_anuncio_default")}),t("not_anuncio_s",{entidad:nombreEntidad().replace("★ ","")}));
+      avisa(t("spot_av_hecho",{tipo:sp.tipo?t(sp.tipo):t("spot_rodaje"),marca:sp.marca,pago:sp.pago}));
       post("picante");
       avanzarDia();
     };
@@ -712,7 +712,7 @@ function pintarJugador(){
   }
   (c.ofertasPatro||[]).forEach((of,oi)=>{
     const d=document.createElement("div");d.className="opcion";
-    d.innerHTML=`<b>${t("patro_oferta",{marca:of.marca})}</b> ${of.tier?`<span class="pill" style="color:${of.tier===4?"var(--oro)":of.tier===3?"#9B59D0":of.tier===2?"#4FA3D8":"var(--gris)"}">${tierTxt(of.tier)}</span>`:""}${of._perfil?`<span class="pill" style="color:${of._perfil==="fijo alto"?"var(--lima)":"var(--oro)"}">${of._perfil}</span>`:""}${of.sec?`<div class="d" style="font-style:italic">${of.sec}</div>`:""}<div class="d">${t("patro_of_detalle",{sem:of.sem,bonus:of.bonus,obj:of.objetivo,n:of.tRest})}${(of.primas&&of.primas.length)?`<br>${t("patro_of_primas")} ${of.primas.map(pr=>`${pr[1]} +${pr[2]}€`).join(" · ")}`:""}</div>`;
+    d.innerHTML=`<b>${t("patro_oferta",{marca:of.marca})}</b> ${of.tier?`<span class="pill" style="color:${of.tier===4?"var(--oro)":of.tier===3?"#9B59D0":of.tier===2?"#4FA3D8":"var(--gris)"}">${tierTxt(of.tier)}</span>`:""}${of._perfil?`<span class="pill" style="color:${of._perfil==="fijo alto"?"var(--lima)":"var(--oro)"}">${t(of._perfil==="fijo alto"?"patro_perfil_fijo":"patro_perfil_obj")}</span>`:""}${of.sec?`<div class="d" style="font-style:italic">${of.sec}</div>`:""}<div class="d">${t("patro_of_detalle",{sem:of.sem,bonus:of.bonus,obj:of.objetivo,n:of.tRest})}${(of.primas&&of.primas.length)?`<br>${t("patro_of_primas")} ${of.primas.map(pr=>`${pr[1]} +${pr[2]}€`).join(" · ")}`:""}</div>`;
     const b=document.createElement("button");b.className="pri";b.style.width="100%";
     b.textContent=c.sponsor?t("patro_firmar_sust",{marca:c.sponsor.marca}):t("patro_firmar");
     b.onclick=()=>{c.sponsor={...of};c.ofertasPatro=[];noticia("contrato",t("patro_not_t",{marca:of.marca,quien:nombreEntidad().replace("★ ","")}),t("patro_not_s",{tier:tierTxt(of.tier),sem:of.sem,obj:of.objetivo}));avisa(t("patro_av_firma",{marca:of.marca,tier:tierTxt(of.tier),sem:of.sem,obj:of.objetivo}));fansAdd(of.tier>=3?300:60,"nuevo patrocinador");guardar();pintarCarrera();};
@@ -1172,16 +1172,16 @@ function avanzarSemanaCarrera(){
     const pago=Math.round(c.sponsor.sem*(c.sponsor.tier>=4?4:c.sponsor.tier===3?3:c.sponsor.tier===2?2.2:1.6));
     const fansB=[0,120,400,1200,3500][c.sponsor.tier]||0;
     c._spot={marca:c.sponsor.marca,pago,fans:fansB,tipo:pick(SPOT_TIPOS),caduca:semanaTemp()+3};
-    avisa(`🎬 ${c.sponsor.marca} quiere rodar ${c._spot.tipo} contigo: ${pago}€ y ~${fansB} seguidores por un día de rodaje (acción del día, unas semanas para decidir).`);
+    avisa(t("spot_av_oferta",{marca:c.sponsor.marca,tipo:t(c._spot.tipo),pago,fans:fansB}));
   }
   c.semana++;
   if(c.lesion){
     c.lesion.sem--;
     if(c.lesion.sem<=0){
-      const nom=c.lesion.n, sec=curarLesion(c);
-      avisa(`Alta médica de la ${nom}.`+(sec?` Volverás algo mermado: -${sec.pct}% de rendimiento durante ${sec.sem} sem.`:""));
+      const nom=lesNombre(c.lesion), sec=curarLesion(c);
+      avisa(t("les_alta",{n:nom})+(sec?t("les_merma",{pct:sec.pct,sem:sec.sem}):""));
     }
-    else avisa(`Recuperándote: ${c.lesion.n} (${c.lesion.sem} sem. restantes).`);
+    else avisa(t("les_recup",{n:lesNombre(c.lesion),sem:c.lesion.sem}));
   }
   decaeMerma(c);   // la secuela de la última lesión se va disipando
   let regen=12+(staffNiv("fisico")?2+staffNiv("fisico"):0);
@@ -1425,8 +1425,8 @@ function entrenoSemanalCarrera(factor){
   res.push("tú: "+sesion(c,c.planJug,c.edad));
   res.push(`${c.compi.n}: `+sesion(c.compi,c.compiPlan));
   if(factor>=.8&&it==="intensa"&&Math.random()<.06&&!c.lesion){
-    c.lesion={n:"sobrecarga por exceso de entrenamiento",sem:1};
-    res.push("⚠ sobrecarga (1 sem)");
+    c.lesion={n:"sobrecarga por exceso de entrenamiento",k:"les_sobre",sem:1};
+    res.push(t("les_sobre_log"));
   }
   return res.join(" · ");
 }

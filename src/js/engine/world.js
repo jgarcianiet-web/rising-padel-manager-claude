@@ -209,11 +209,11 @@ function _comoJugador(c){ return {estilo:c.estilo,perso:c.perso,lado:c.lado,rasg
 function motivoDescontento(c,puesto){
   const compi=c.compi||{}, rc=rasgosDe(compi), racha=c.racha||[];
   const derr=racha.slice(-5).filter(x=>x==="D").length, jugados=Math.min(5,racha.length);
-  if(derr>=3) return {clave:"resultados",txt:`No traga tantas derrotas: ${derr} de los últimos ${jugados} partidos.`,grave:derr>=4};
-  if(rc.indexOf("ambicioso")>=0 && (puesto||99)>25) return {clave:"ambicion",txt:`Es ambicioso y os ve estancados (nº ${puesto}): quiere pelear por cosas más grandes.`,grave:(puesto||99)>40};
+  if(derr>=3) return {clave:"resultados",txt:t("rup_m_result",{d:derr,j:jugados}),grave:derr>=4};
+  if(rc.indexOf("ambicioso")>=0 && (puesto||99)>25) return {clave:"ambicion",txt:t("rup_m_ambicion",{p:puesto}),grave:(puesto||99)>40};
   const af=afinidadPareja(_comoJugador(c),compi);
-  if(rc.indexOf("conflictivo")>=0||af<45) return {clave:"encaje",txt:`Vuestro juego y vuestro carácter no terminan de encajar (afinidad ${af}).`,grave:af<35};
-  return {clave:"desgaste",txt:"Ha perdido la ilusión; necesita un cambio de aires.",grave:false};
+  if(rc.indexOf("conflictivo")>=0||af<45) return {clave:"encaje",txt:t("rup_m_encaje",{af}),grave:af<35};
+  return {clave:"desgaste",txt:t("rup_m_desgaste"),grave:false};
 }
 // Probabilidad (0..1) de que una opción de reconducción funcione, según el compañero.
 function probReconduccion(c,id,motivo){
@@ -230,11 +230,11 @@ function probReconduccion(c,id,motivo){
 function evaluarRuptura(c,puesto){
   if((c.compiMoral??65)>=35) return {crisis:false};
   const motivo=motivoDescontento(c,puesto);
-  const ops=[{id:"hablar",txt:"Charla sincera",desc:"Le escuchas y limpiáis el ambiente."}];
-  if(motivo.clave==="ambicion") ops.push({id:"promesa",txt:"Prometer un gran torneo",desc:"Te comprometes a ir a por un Premier."});
-  if(motivo.clave==="encaje") ops.push({id:"lado",txt:"Reajustar la pista",desc:"Le cedes el lado y las posiciones que pide."});
-  if(motivo.clave==="resultados") ops.push({id:"foco",txt:"Plan para la racha",desc:"Prometes cambios y curro para revertirla."});
-  ops.push({id:"dejar",txt:"Aceptar la ruptura",desc:"Cada uno por su lado."});
+  const ops=[{id:"hablar",txt:t("rup_o_hablar"),desc:t("rup_o_hablar_d")}];
+  if(motivo.clave==="ambicion") ops.push({id:"promesa",txt:t("rup_o_promesa"),desc:t("rup_o_promesa_d")});
+  if(motivo.clave==="encaje") ops.push({id:"lado",txt:t("rup_o_lado"),desc:t("rup_o_lado_d")});
+  if(motivo.clave==="resultados") ops.push({id:"foco",txt:t("rup_o_foco"),desc:t("rup_o_foco_d")});
+  ops.push({id:"dejar",txt:t("rup_o_dejar"),desc:t("rup_o_dejar_d")});
   return {crisis:true,motivo,ops};
 }
 /* ================================================================
@@ -436,12 +436,12 @@ function resolverPendientes(c,semana){
 
 // Aplica la opción elegida (muta c.compiMoral). Devuelve {rompio, txt}.
 function aplicarOpcionRuptura(c,id,motivo){
-  if(id==="dejar") return {rompio:true,txt:"Rotura confirmada: cada uno busca su camino."};
+  if(id==="dejar") return {rompio:true,txt:t("rup_r_rota")};
   const leal=tieneRasgo(c.compi||{},"leal");
   const ok=Math.random()<probReconduccion(c,id,motivo);
-  if(ok){ c.compiMoral=clamp((c.compiMoral??65)+(leal?32:24),5,95); return {rompio:false,txt:"Funciona: la moral remonta y sigue a tu lado."}; }
+  if(ok){ c.compiMoral=clamp((c.compiMoral??65)+(leal?32:24),5,95); return {rompio:false,txt:t("rup_r_funciona")}; }
   c.compiMoral=clamp((c.compiMoral??65)+6,5,95);
-  return {rompio:(c.compiMoral??65)<35,txt:"No termina de calar: tendrás que demostrarlo en la pista."};
+  return {rompio:(c.compiMoral??65)<35,txt:t("rup_r_nocala")};
 }
 
 // Informe de ojeo del rival: lee sus atributos, estilo y personalidad y produce
@@ -504,13 +504,13 @@ function informeRival(par, miNivel){
 // Lesiones con gravedad (grav 1 leve … 3 grave). Las graves tiran más semanas
 // y, sobre todo, dejan secuela al volver.
 const LESIONES=[
-  {n:"sobrecarga en el gemelo",sem:1,grav:1},
-  {n:"fascitis plantar",sem:2,grav:1},
-  {n:"tendinitis en el hombro",sem:2,grav:2},
-  {n:"rotura fibrilar en el sóleo",sem:3,grav:2},
-  {n:"epicondilitis (codo de pádel)",sem:3,grav:2},
-  {n:"esguince grave de tobillo",sem:5,grav:3},
-  {n:"rotura del tendón de Aquiles",sem:8,grav:3},
+  {n:"sobrecarga en el gemelo",k:"les_gemelo",sem:1,grav:1},
+  {n:"fascitis plantar",k:"les_fascitis",sem:2,grav:1},
+  {n:"tendinitis en el hombro",k:"les_hombro",sem:2,grav:2},
+  {n:"rotura fibrilar en el sóleo",k:"les_soleo",sem:3,grav:2},
+  {n:"epicondilitis (codo de pádel)",k:"les_codo",sem:3,grav:2},
+  {n:"esguince grave de tobillo",k:"les_tobillo",sem:5,grav:3},
+  {n:"rotura del tendón de Aquiles",k:"les_aquiles",sem:8,grav:3},
 ];
 // Elige una lesión ponderando por gravedad: las graves son raras y casi solo
 // aparecen cuando el riesgo es alto (energía por los suelos, fragilidad). riesgo 0..1.

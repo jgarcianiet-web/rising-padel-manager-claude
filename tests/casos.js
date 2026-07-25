@@ -852,6 +852,27 @@ comprueba("Idiomas: t() traduce y cae con red de seguridad", () => {
   return "traduce, fallback de idioma y de clave";
 });
 
+comprueba("Idiomas: ruptura, lesiones, gala y prensa en el idioma activo", () => {
+  try {
+    localStorage.setItem("rpm_idioma", "en");
+    // crisis de pareja: motivo y opciones traducidos
+    const ev = evaluarRuptura({ compiMoral: 20, compi: { n: "Chino" }, racha: ["D", "D", "D", "D"] }, 30);
+    exige(ev.crisis && /can't stomach/.test(ev.motivo.txt), "el motivo de la crisis no sale en inglés: " + ev.motivo.txt);
+    exige(ev.ops[0].txt === "Honest talk" && ev.ops[ev.ops.length - 1].txt === "Accept the breakup", "las opciones no salen en inglés");
+    // lesiones: nombre por clave con fallback para guardados antiguos
+    exige(lesNombre({ k: "les_aquiles", n: "rotura del tendón de Aquiles" }) === "Achilles tendon rupture", "lesNombre no traduce por clave");
+    exige(lesNombre({ n: "lesión antigua sin clave" }) === "lesión antigua sin clave", "lesNombre no respeta el fallback");
+    exige(LESIONES.every(l => l.k && I18N.en[l.k]), "alguna lesión del catálogo no tiene clave i18n");
+    localStorage.setItem("rpm_idioma", "es");
+    exige(evaluarRuptura({ compiMoral: 20, compi: { n: "X" }, racha: [] }, 30).ops[0].txt === "Charla sincera", "las opciones no vuelven al español");
+    const claves = Object.keys(I18N.es).filter(k => /^(rup_|les_|gala_|pr_|spot_)/.test(k));
+    exige(claves.length >= 61, "faltan claves de ruptura/lesiones/gala/prensa: " + claves.length);
+    ["en", "fr", "de", "it"].forEach(l => claves.forEach(k => exige(typeof I18N[l][k] === "string" && I18N[l][k].length > 0, `falta ${k} en ${l}`)));
+    SPOT_TIPOS.forEach(k => exige(I18N.es[k] && I18N.de[k], "SPOT_TIPOS referencia una clave inexistente: " + k));
+  } finally { localStorage.removeItem("rpm_idioma"); }
+  return "crisis, catálogo de lesiones, gala, prensa y spots en 5 idiomas";
+});
+
 comprueba("Idiomas: tutorial y panel de mando en el idioma activo", () => {
   try {
     localStorage.setItem("rpm_idioma", "de");

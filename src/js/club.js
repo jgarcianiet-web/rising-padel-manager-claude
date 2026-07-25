@@ -578,7 +578,7 @@ function entrenaUnoClub(j,factor){
   j.attrs[k]=clamp(v+g,20,Math.min(96,(j.pot||96)+4));
   if(factor===1) j.energia=clamp(j.energia-(it==="suave"?10:it==="intensa"?26:17),0,100);
   if(factor===1&&it==="intensa"&&Math.random()<.05&&!j.lesion){
-    j.lesion={n:"sobrecarga por exceso de entrenamiento",sem:1};
+    j.lesion={n:"sobrecarga por exceso de entrenamiento",k:"les_sobre",sem:1};
     return `${j.n} ${k}+${g}⚠`;
   }
   return g>0?`${j.n} ${k}+${g}`:null;
@@ -591,7 +591,7 @@ document.getElementById("cmBtnDescanso").onclick=()=>{
   G.clubG._accion="descanso";
   G.clubG.plantilla.forEach(j=>{
     j.energia=clamp(j.energia+23,0,100);
-    if(j.lesion){j.lesion.sem--;if(j.lesion.sem<=0){const s=curarLesion(j);avisa(`Alta médica de ${j.n}.`+(s?` Vuelve mermado (-${s.pct}%, ${s.sem} sem).`:""));}}
+    if(j.lesion){j.lesion.sem--;if(j.lesion.sem<=0){const s=curarLesion(j);avisa(t("les_alta_club",{n:j.n})+(s?t("les_merma_club",{pct:s.pct,sem:s.sem}):""));}}
     decaeMerma(j);
   });
   avisa("Semana de descanso y viajes del equipo.");
