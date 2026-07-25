@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS norm_jugador(
 CREATE TABLE IF NOT EXISTS norm_atributo(
   jid TEXT, clave TEXT, valor INTEGER, PRIMARY KEY(jid, clave));
 CREATE INDEX IF NOT EXISTS idx_njp ON norm_jugador(pareja_pid);
+CREATE TABLE IF NOT EXISTS norm_n1(
+  ord INTEGER PRIMARY KEY AUTOINCREMENT, temporada INTEGER, nombre TEXT, pts INTEGER, yo INTEGER, sexo TEXT);
 `;
 
 function dbSqlSchema(db){ db.run(DB_SCHEMA_SQL); }
@@ -54,6 +56,25 @@ function dbSqlLeerSnapshot(db){
     v=>out.jugadores.push({jid:v[0],pareja_pid:v[1],nombre:v[2],sexo:v[3],lado:v[4],estilo:v[5],perso:v[6],conf:v[7],pais:v[8],extras:v[9]}));
   q("SELECT jid,clave,valor FROM norm_atributo",
     v=>out.atributos.push({jid:v[0],clave:v[1],valor:v[2]}));
+  return out;
+}
+
+// Historial de Nº1 (n1hist): cada temporada apunta quién acabó de número uno.
+// Es una lista ORDENADA (una fila por temporada); se guarda entera y se lee en
+// orden de inserción. Puras (reciben el handle) para probarlas con sql.js real.
+function dbSqlGuardarN1(db, lista){
+  db.run("BEGIN");
+  try{
+    db.run("DELETE FROM norm_n1;");
+    const st=db.prepare("INSERT INTO norm_n1(temporada,nombre,pts,yo,sexo) VALUES(?,?,?,?,?)");
+    (lista||[]).forEach(h=>st.run([h.t|0,h.nombre||"",h.pts|0,h.yo?1:0,h.sexo||"M"])); st.free();
+    db.run("COMMIT");
+  }catch(e){ try{ db.run("ROLLBACK"); }catch(_){} throw e; }
+}
+function dbSqlLeerN1(db){
+  const out=[];
+  const r=db.exec("SELECT temporada,nombre,pts,yo,sexo FROM norm_n1 ORDER BY ord");
+  if(r&&r[0]) r[0].values.forEach(v=>out.push({t:v[0],nombre:v[1],pts:v[2],yo:!!v[3],sexo:v[4]}));
   return out;
 }
 
@@ -91,7 +112,16 @@ function dbSqlPersistir(){
 // Write-through: vuelca el estado vivo a sql.js (si está disponible).
 function dbSqlSnapshotVivo(){
   if(!SQLDB||typeof normalizar!=="function") return;
-  try{ dbSqlGuardarSnapshot(SQLDB, normalizar()); dbSqlPersistir(); }catch(e){}
+  try{
+    dbSqlGuardarSnapshot(SQLDB, normalizar());
+    try{ if(typeof G!=="undefined"&&G&&G.world) dbSqlGuardarN1(SQLDB, G.world.n1hist||[]); }catch(_){}
+    dbSqlPersistir();
+  }catch(e){}
+}
+// Reconstruye el historial de Nº1 desde sql.js. Base de la Fase 4d (n1hist).
+function dbSqlCargarN1(){
+  if(!SQLDB) return null;
+  try{ return dbSqlLeerN1(SQLDB); }catch(e){ return null; }
 }
 
 /* ---------- consultas para la analítica (síncronas, sobre sql.js) ---------- */
@@ -201,6 +231,7 @@ function dbSqlDistribucionNivel(db){
 // En Node (pruebas) exportamos las funciones puras; en el navegador quedan como globales.
 if(typeof module!=="undefined"&&module.exports){
   module.exports={DB_SCHEMA_SQL,dbSqlSchema,dbSqlGuardarSnapshot,dbSqlLeerSnapshot,
+    dbSqlGuardarN1,dbSqlLeerN1,
     dbSqlPorEstilo,dbSqlMejoresParejas,dbSqlTopPaises,dbSqlDistribucionNivel,
     dbSqlSnapshotCoincide};
 }
