@@ -377,13 +377,13 @@ function pintarObjetivos(){
   if(!c.objetivos) c.objetivos=mkObjetivosTemporada(c,miPuesto());
   box.innerHTML=`<div class="foot" style="text-align:left;margin:-2px 0 8px" title="${difDesc(difId())}">${t("dif_label")}: <b style="color:var(--lima)">${dif().emoji} ${difNombre(difId())}</b></div>`+c.objetivos.map(o=>{
     const pr=progresoObjetivo(c,o,miPuesto());
-    const rec=o.rec?[o.rec.dinero?`+${o.rec.dinero}€`:"",o.rec.fans?`+${o.rec.fans} seg.`:"",o.rec.moral?`+${o.rec.moral} moral`:""].filter(Boolean).join(" · "):"";
+    const rec=o.rec?[o.rec.dinero?`+${o.rec.dinero}€`:"",o.rec.fans?t("obj_seg",{n:o.rec.fans}):"",o.rec.moral?t("obj_moral_rec",{n:o.rec.moral}):""].filter(Boolean).join(" · "):"";
     return `<div class="opcion" style="margin-bottom:6px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
         <b style="font-size:12px">${o.hecho?"✅":"○"} ${o.txt}</b>
         <span class="pill" style="color:${o.hecho?"var(--verde)":"var(--gris)"}">${pr.txt}</span>
       </div>
-      ${rec?`<div class="foot" style="text-align:left;margin-top:2px">Recompensa: ${rec}</div>`:""}
+      ${rec?`<div class="foot" style="text-align:left;margin-top:2px">${t("obj_recompensa",{rec})}</div>`:""}
     </div>`;
   }).join("");
 }
@@ -660,33 +660,33 @@ function pintarJugador(){
   const moral=c.compiMoral??65;
   const afin=afinidadPareja(_comoJugador(c),c.compi);
   document.getElementById("compMeta").innerHTML=`
-    <div class="chip">Media <b>${mediaAttrs(c.compi.attrs)}</b></div>
+    <div class="chip">${t("comp_media")} <b>${mediaAttrs(c.compi.attrs)}</b></div>
     <div class="chip">${estiloNombre(c.compi.estilo)}</div>
     <div class="chip">${persoNombre(c.compi.perso)}</div>
-    <div class="chip">Moral <b style="color:${colAttr(moral)}">${moral}</b></div>
-    <div class="chip">Afinidad <b style="color:${colAttr(afin)}">${afin}</b></div>
+    <div class="chip">${t("comp_moral")} <b style="color:${colAttr(moral)}">${moral}</b></div>
+    <div class="chip">${t("comp_afinidad")} <b style="color:${colAttr(afin)}">${afin}</b></div>
     ${(()=>{const r=chipRasgos(c.compi);return r?`<div style="width:100%;margin-top:3px">${r}</div>`:"";})()}`;
   const mk=document.getElementById("mercado");mk.innerHTML="";
   const morAviso=document.createElement("div");
   morAviso.className="foot";morAviso.style.textAlign="left";morAviso.style.marginBottom="7px";
-  morAviso.textContent=moral<35?`⚠ ${c.compi.n} está muy quemado: si no remontáis, te dejará a final de temporada.`
-    :moral<50?`${c.compi.n} tiene dudas. Los resultados mandan.`
-    :`${c.compi.n} está a gusto jugando contigo.`;
+  morAviso.textContent=moral<35?t("comp_moral_baja",{n:c.compi.n})
+    :moral<50?t("comp_moral_media",{n:c.compi.n})
+    :t("comp_moral_ok",{n:c.compi.n});
   mk.appendChild(morAviso);
   const tit=document.createElement("div");tit.className="foot";tit.style.textAlign="left";tit.style.marginBottom="4px";
-  tit.textContent="Mercado de parejas (se renueva cada temporada):";
+  tit.textContent=t("mkt_titulo");
   mk.appendChild(tit);
   (c.mercadoP||[]).forEach((cand,ci)=>{
     const prima=primaFichaje(cand);
     const d=document.createElement("div");d.className="opcion";
     const origen=cand.origen==="circuito"
-      ?`Juega en ${cand.parejaNombre} (#${cand.parejaPos})`
-      :"Agente libre";
+      ?t("mkt_origen_circuito",{pareja:cand.parejaNombre,pos:cand.parejaPos})
+      :t("mkt_origen_libre");
     const exPrev=exigenciasCompi(cand), prest=prestigioJugador(miPuesto(),c.fans,c.pro);
     const prestOk=prest>=exPrev.prestigioMin;
-    d.innerHTML=`<b>${cand.pais||""} ${cand.n}</b> <span class="pill">nivel ${mediaAttrs(cand.attrs)}</span> <span class="pill">${estiloNombre(cand.estilo)}</span> <span class="pill">${persoNombre(cand.perso)}</span>${chipRasgos(cand)}<div class="d">${origen} · prima ${prima}€ · exige prestigio <b style="color:${prestOk?"var(--verde)":"var(--rojo)"}">${exPrev.prestigioMin}</b> (tienes ${prest})</div>`;
+    d.innerHTML=`<b>${cand.pais||""} ${cand.n}</b> <span class="pill">${t("mkt_nivel",{n:mediaAttrs(cand.attrs)})}</span> <span class="pill">${estiloNombre(cand.estilo)}</span> <span class="pill">${persoNombre(cand.perso)}</span>${chipRasgos(cand)}<div class="d">${origen} · ${t("mkt_prima",{prima})} · ${t("mkt_exige_prest")} <b style="color:${prestOk?"var(--verde)":"var(--rojo)"}">${exPrev.prestigioMin}</b> ${t("mkt_tienes",{p:prest})}</div>`;
     const b=document.createElement("button");b.style.width="100%";
-    b.textContent=c.dinero<prima?"Caja insuficiente":`Negociar (${prima}€)`;
+    b.textContent=c.dinero<prima?t("mkt_caja"):t("mkt_negociar",{prima});
     b.disabled=c.dinero<prima;
     b.onclick=()=>negociarPareja(ci);
     d.appendChild(b);mk.appendChild(d);
@@ -730,23 +730,23 @@ function negociarPareja(ci){
     const yo={estilo:c.estilo,perso:c.perso,lado:(c.lado===0||c.lado===1)?c.lado:0,rasgos:c.rasgos,n:c.nombre};
     const prest=prestigioJugador(miPuesto(),c.fans,c.pro);
     const r=evaluaOfertaCompi(yo,cand,oferta,prest);
-    const ex=r.ex, ladoTxt=l=>l===0?"drive":"revés";
+    const ex=r.ex, ladoTxt=l=>l===0?t("mkt_lado_drive"):t("mkt_lado_reves");
     const fila=(ok,txt)=>`<div style="font-size:11.5px;color:${ok?"var(--verde)":"var(--rojo)"};padding:1px 0">${ok?"✓":"✗"} ${txt}</div>`;
     const puedePagar=c.dinero>=prima;
     ov.innerHTML=`<div class="card" style="max-width:460px;width:100%">
-      <h3 style="margin-top:0">🤝 Negociación · ${cand.n}</h3>
-      <div class="foot" style="text-align:left;margin-bottom:6px">Nivel ${ex.niv} · ${estiloNombre(cand.estilo)} · ${persoNombre(cand.perso)} · prima ${prima}€</div>
+      <h3 style="margin-top:0">${t("mkt_neg_titulo",{n:cand.n})}</h3>
+      <div class="foot" style="text-align:left;margin-bottom:6px">${t("mkt_neg_sub",{niv:ex.niv,estilo:estiloNombre(cand.estilo),perso:persoNombre(cand.perso),prima})}</div>
       <div style="margin-bottom:8px">
-        ${fila(prest>=ex.prestigioMin,`Prestigio: pide ${ex.prestigioMin}, tienes ${prest}.`)}
-        ${fila(!ex.exigeEntrenador||oferta.tieneEntrenador,ex.exigeEntrenador?`Exige entrenador en tu equipo${oferta.tieneEntrenador?" — lo tienes":" — te falta"}.`:"No exige entrenador.")}
-        ${fila(!r.colision||r.cede,`Quiere jugar al ${ladoTxt(ex.ladoQuiere)}.${r.colision?(r.cede?" Le cedes tu lado (te mueves al "+ladoTxt(1-ex.ladoQuiere)+").":" Coincide con el tuyo: jugaría forzado y a disgusto."):" Encaja con tu lado."}`)}
-        ${ex.objetivoRanking?fila(true,`Ambicioso: espera pelear por el top ${ex.objetivoRanking}.`):""}
+        ${fila(prest>=ex.prestigioMin,t("mkt_f_prestigio",{min:ex.prestigioMin,p:prest}))}
+        ${fila(!ex.exigeEntrenador||oferta.tieneEntrenador,ex.exigeEntrenador?(oferta.tieneEntrenador?t("mkt_f_ent_si"):t("mkt_f_ent_no")):t("mkt_f_ent_noexige"))}
+        ${fila(!r.colision||r.cede,t("mkt_f_lado",{lado:ladoTxt(ex.ladoQuiere)})+(r.colision?(r.cede?t("mkt_f_lado_cedes",{otro:ladoTxt(1-ex.ladoQuiere)}):t("mkt_f_lado_choca")):t("mkt_f_lado_ok")))}
+        ${ex.objetivoRanking?fila(true,t("mkt_f_ambicioso",{n:ex.objetivoRanking})):""}
       </div>
-      ${r.colision?`<label style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:8px;cursor:pointer"><input type="checkbox" id="negCede" style="width:auto" ${oferta.cederLado?"checked":""}> Cederle mi lado (${ladoTxt(ex.ladoQuiere)}) y jugar yo al ${ladoTxt(1-ex.ladoQuiere)}</label>`:""}
-      <div class="scout" style="margin:0 0 10px"><div class="scoutHd">Afinidad prevista</div><div style="font-size:22px;font-weight:700;color:${colAttr(r.afinidad)};font-family:'Chakra Petch',sans-serif">${r.afinidad}<span style="font-size:11px;color:var(--gris);font-weight:400"> / 95</span></div></div>
-      ${r.faltan.length?`<div class="foot" style="text-align:left;color:var(--rojo);margin-bottom:8px">No firma: ${r.faltan.join(" ")}</div>`:""}
-      <button class="pri" id="negFirmar" style="width:100%" ${(!r.acepta||!puedePagar)?"disabled":""}>${!puedePagar?"Caja insuficiente":r.acepta?`Firmar (${prima}€)`:"No acepta tu oferta"}</button>
-      <button id="negCancel" style="width:100%;margin-top:7px;background:none;color:var(--gris)">Cancelar</button>
+      ${r.colision?`<label style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:8px;cursor:pointer"><input type="checkbox" id="negCede" style="width:auto" ${oferta.cederLado?"checked":""}> ${t("mkt_ceder",{lado:ladoTxt(ex.ladoQuiere),otro:ladoTxt(1-ex.ladoQuiere)})}</label>`:""}
+      <div class="scout" style="margin:0 0 10px"><div class="scoutHd">${t("mkt_afinidad")}</div><div style="font-size:22px;font-weight:700;color:${colAttr(r.afinidad)};font-family:'Chakra Petch',sans-serif">${r.afinidad}<span style="font-size:11px;color:var(--gris);font-weight:400"> / 95</span></div></div>
+      ${r.faltan.length?`<div class="foot" style="text-align:left;color:var(--rojo);margin-bottom:8px">${t("mkt_no_firma")} ${r.faltan.join(" ")}</div>`:""}
+      <button class="pri" id="negFirmar" style="width:100%" ${(!r.acepta||!puedePagar)?"disabled":""}>${!puedePagar?t("mkt_caja"):r.acepta?t("mkt_firmar",{prima}):t("mkt_no_acepta")}</button>
+      <button id="negCancel" style="width:100%;margin-top:7px;background:none;color:var(--gris)">${t("mkt_cancelar")}</button>
     </div>`;
     const cb=document.getElementById("negCede"); if(cb) cb.onchange=()=>{ oferta.cederLado=cb.checked; pintar(); };
     document.getElementById("negCancel").onclick=()=>quitarEl(ov);
@@ -766,7 +766,7 @@ function ficharPareja(ci,acuerdo){
       j.attrs=mkAttrsNivel(Math.max(44,mediaAttrs(cand.attrs)-6),j._est);
       p.jug[cand.jugIdx]=j;
       p.nombre=`${p.jug[0].n}/${p.jug[1].n}`;
-      avisa(`💥 Bombazo: te llevas a ${cand.n} de ${cand.parejaNombre.split("/")[cand.jugIdx===0?1:0]||"su pareja"}. ${j.n} le sustituye.`);
+      avisa(t("mkt_av_bombazo",{n:cand.n,ex:cand.parejaNombre.split("/")[cand.jugIdx===0?1:0]||t("obj_tu_pareja"),nuevo:j.n}));
     }
   }
   post("fichaje");
@@ -778,7 +778,7 @@ function ficharPareja(ci,acuerdo){
   c.quimica=35; c.compiMoral=70; c.compiPlan="auto";
   c.mercadoP.splice(ci,1);
   noticia("fichaje",t("not_fichaje_t",{n:cand.n}),cand.origen==="circuito"?t("not_fichaje_s_circuito",{pareja:cand.parejaNombre}):t("not_fichaje_s_libre"));
-  avisa(`Nueva pareja: ${cand.n}. Habrá que rodarla (química 35).`);
+  avisa(t("mkt_av_nueva",{n:cand.n}));
   guardar();pintarCarrera();
 }
 function renderRanking(el){
