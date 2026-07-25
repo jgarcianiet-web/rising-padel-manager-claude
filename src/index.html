@@ -93,6 +93,12 @@
       <div class="foot" id="persoDesc" style="text-align:left;min-height:14px"></div>
       <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)" data-i18n="crea_color">Color</label>
       <div class="fila" id="colores" style="margin:5px 0"></div>
+      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris);display:block;margin-top:12px" data-i18n="crea_semilla">Semilla</label>
+      <div class="fila" style="margin:5px 0">
+        <input id="inSemilla" style="flex:3" spellcheck="false">
+        <button class="selbtn" id="btnSemillaOtra" style="flex:1">🎲</button>
+      </div>
+      <div class="foot" style="text-align:left" data-i18n="crea_semilla_d">Dos partidas con la misma semilla viven exactamente lo mismo. Déjala como está si no te importa.</div>
     </div>
     <div class="card">
       <h3 data-i18n="hd_estilo">Estilo de juego</h3>
@@ -369,6 +375,7 @@
 </div>
 
 <script src="js/vendor/sql-asm.js"></script>
+<script src="js/rng.js"></script>
 <script src="js/engine/match.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/court.js"></script>

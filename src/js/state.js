@@ -213,6 +213,8 @@ function abrirAnalitica(){
     +(ns?t("ana_modelo",{p:ns.parejas,j:ns.jugadores,a:ns.atributos}):t("ana_modelo_no"))
     +`<div style="margin-top:5px">`
     +(v.ok?t("ana_integridad_ok",{n:v.n}):t("ana_integridad_no",{msg:v.msg}))
+    +`</div><div style="margin-top:5px">`
+    +t("ana_semilla",{semilla:semillaTxt(G&&G.semilla)})
     +`</div></div>`;
 }
 document.getElementById("btnAnalitica").onclick=abrirAnalitica;
@@ -230,6 +232,9 @@ function guardar(){
   // Fase 4c: al haber base SQLite, la partida queda marcada como migrada (su
   // modelo vive también en las tablas). La marca viaja en el propio blob.
   if(typeof dbSqlDisponible==="function" && dbSqlDisponible()) G._vSql=1;
+  // La posición del flujo de azar viaja con la partida: continuar la retoma
+  // donde estaba, así que recargar y repetir un punto da el mismo resultado.
+  G._rngS=rndEstado().pos;
   const json=JSON.stringify(G);
   const ok=lsSet(slotKey(G.modo,slotActual()),json);   // se guarda en la ranura que se abrió
   if(typeof dbSqlSnapshotVivo==="function"){
@@ -289,7 +294,7 @@ function mkWorld(){
     const jug=[mk(pr.p),mk(pr.q)];
     asignaLadosPareja(jug);
     const nivel=nivelPareja({jug});
-    parejas.push({id:i,nombre:`${jug[0].n} / ${jug[1].n}`,jug,edad:Math.round(R(22,30)),pro:true,sexo:sx,pts:Math.round((nivel-40)*(nivel-40)*R(3.2,4.2)),club:Math.floor(Math.random()*9),atNet:false});
+    parejas.push({id:i,nombre:`${jug[0].n} / ${jug[1].n}`,jug,edad:Math.round(R(22,30)),pro:true,sexo:sx,pts:Math.round((nivel-40)*(nivel-40)*R(3.2,4.2)),club:Math.floor(rnd()*9),atNet:false});
   });
   const usados=new Set();
   const nom=(sx)=>{let n;do{n=nombrePorSexo(sx)[0]+". "+pick(APELL);}while(usados.has(n));usados.add(n);return n;};
@@ -302,7 +307,7 @@ function mkWorld(){
       {n:nom(sx),estilo:e2,perso:pick(Object.keys(PERSONALIDADES)),attrs:mkAttrsNivel(nivel,e2),conf:55,pais:pickPais(),sexo:sx}
     ];
     asignaLadosPareja(jug);
-    parejas.push({id:PROS.length+PROS_F.length+i,nombre:`${jug[0].n}/${jug[1].n}`,jug,edad:Math.round(R(18,32)),pro:false,sexo:sx,pts:Math.max(0,Math.round((nivel-40)*(nivel-40)*R(2.6,3.6))),club:Math.floor(Math.random()*9),atNet:false});
+    parejas.push({id:PROS.length+PROS_F.length+i,nombre:`${jug[0].n}/${jug[1].n}`,jug,edad:Math.round(R(18,32)),pro:false,sexo:sx,pts:Math.max(0,Math.round((nivel-40)*(nivel-40)*R(2.6,3.6))),club:Math.floor(rnd()*9),atNet:false});
     if(usados.size>110) usados.clear();
   }
   return {parejas,lider:null};
@@ -319,7 +324,7 @@ function simCircuito(excluir){
   });
   // campeón semanal simulado del circuito → palmarés de su club
   const slotAhora=slotSemana(semanaTemp());
-  if(slotAhora&&slotAhora.premier!==undefined&&Math.random()<.9){
+  if(slotAhora&&slotAhora.premier!==undefined&&rnd()<.9){
     const sxs=miSexo();
     const contendientes=[...G.world.parejas].filter(p=>(p.sexo||"M")===sxs&&!p.yo&&!excluir.includes(p.id)).sort((a,b)=>nivelPareja(b)-nivelPareja(a)).slice(0,8);
     if(contendientes.length){
@@ -351,7 +356,7 @@ function accionesDeClub(w,noticias){
     const cl=CLUBES_NPC[ci]; if(!cl) continue;
     const mercado=mercadoDeClub(ci);
     if(mercado==="conservador") continue;
-    if(Math.random()<.45) continue;                 // no todos mueven cada temporada
+    if(rnd()<.45) continue;                 // no todos mueven cada temporada
     const mios=dueños(ci);
     if(mercado==="rico"){
       // ficha una estrella emergente (no consagrada) de otro club
@@ -413,7 +418,7 @@ function evolucionaMundo(){
   w.parejas=w.parejas.filter(p=>!p.retiraT);
   // 3) nuevos anuncios de última temporada
   w.parejas.forEach(p=>{
-    if(!p.retiraT&&(p.edad>=35||(p.edad>=32&&Math.random()<.35))){
+    if(!p.retiraT&&(p.edad>=35||(p.edad>=32&&rnd()<.35))){
       p.retiraT=true;
       noticias.push(`📰 ${p.nombre} anuncian que esta será su última temporada.`);
     }
@@ -421,7 +426,7 @@ function evolucionaMundo(){
   // 4) rupturas: el culebrón de cada pretemporada (1-2 recombinaciones entre parejas de nivel parecido)
   const activos=w.parejas.filter(p=>!p.retiraT);
   for(let k=0;k<2&&activos.length>=4;k++){
-    if(Math.random()<.35) continue;
+    if(rnd()<.35) continue;
     const a=pick(activos);
     const cerca=activos.filter(p=>p!==a&&p.sexo===a.sexo&&Math.abs(nivelPareja(p)-nivelPareja(a))<=8);
     if(!cerca.length) continue;
@@ -435,13 +440,13 @@ function evolucionaMundo(){
   }
   // 5) debuts: jóvenes que entran al circuito hasta reponer el plantel (a veces, una perla)
   while(w.parejas.length<WORLD_N){
-    const perla=Math.random()<.18;
+    const perla=rnd()<.18;
     const nivel=Math.round(perla?R(64,72):R(44,58));
-    const sx=Math.random()<.5?"M":"F";
+    const sx=rnd()<.5?"M":"F";
     const j1=mkJovenNPC(sx), j2=mkJovenNPC(sx);
     j1.attrs=mkAttrsNivel(nivel,j1._est); j2.attrs=mkAttrsNivel(nivel,j2._est);
     const p={id:w.nextId++,nombre:`${j1.n}/${j2.n}`,jug:[j1,j2],edad:Math.round(R(18,21)),pro:perla,sexo:sx,
-      pts:Math.max(0,Math.round((nivel-40)*(nivel-40)*R(.8,1.4))),club:Math.floor(Math.random()*9),atNet:false};
+      pts:Math.max(0,Math.round((nivel-40)*(nivel-40)*R(.8,1.4))),club:Math.floor(rnd()*9),atNet:false};
     w.parejas.push(p);
     noticias.push(perla?`🚀 Debuta ${p.nombre}, la pareja joven de la que todos hablan (${nivel}).`:`🚀 Debut en el circuito: ${p.nombre}.`);
     if(perla) noticia("debut",t("not_perla_t",{nombre:p.nombre}),t("not_perla_s",{nivel}));

@@ -12,8 +12,8 @@ function fuerzasTriples(base){ return [base+7,base,base-7]; }
 // Probabilidad de que A gane un punto (una pareja) frente a B según la diferencia de fuerza.
 function probPunto(fa,fb){ return 1/(1+Math.pow(10,(fb-fa)/16)); }
 // Resuelve un cruce a 3 parejas (mejor de 3). Devuelve {ganador:0|1, gA, gB, puntos:[0|1,...]}.
-function resuelveCruce(baseA,baseB,rnd){
-  const r=rnd||Math.random, fa=fuerzasTriples(baseA), fb=fuerzasTriples(baseB);
+function resuelveCruce(baseA,baseB,azar){
+  const r=azar||rnd, fa=fuerzasTriples(baseA), fb=fuerzasTriples(baseB);
   let gA=0,gB=0; const puntos=[];
   for(let i=0;i<3;i++){ const ganaA=r()<probPunto(fa[i],fb[i]); if(ganaA)gA++; else gB++; puntos.push(ganaA?0:1); }
   return {ganador:gA>gB?0:1,gA,gB,puntos};
@@ -22,8 +22,8 @@ function resuelveCruce(baseA,baseB,rnd){
 // (tu club), o el escalonado desde la fuerza base (clubes NPC).
 function fuerzasDeEquipo(eq){ return (eq.parejas&&eq.parejas.length===3)?eq.parejas.slice():fuerzasTriples(eq.fuerza); }
 // Resuelve un cruce entre dos EQUIPOS (usa sus 3 parejas reales o escalonadas).
-function resuelveCruceEquipos(eqA,eqB,rnd){
-  const r=rnd||Math.random, fa=fuerzasDeEquipo(eqA), fb=fuerzasDeEquipo(eqB);
+function resuelveCruceEquipos(eqA,eqB,azar){
+  const r=azar||rnd, fa=fuerzasDeEquipo(eqA), fb=fuerzasDeEquipo(eqB);
   let gA=0,gB=0; const puntos=[];
   for(let i=0;i<3;i++){ const ganaA=r()<probPunto(fa[i],fb[i]); if(ganaA)gA++; else gB++; puntos.push(ganaA?0:1); }
   return {ganador:gA>gB?0:1,gA,gB,puntos};
@@ -73,8 +73,8 @@ function bonusPlayoffSL(sl,tuIdx){
 function salariosSuperliga(plantilla){ return (plantilla||[]).reduce((s,j)=>s+Math.round(mediaAttrs(j.attrs)*100),0); }
 // Desarrollo de la plantilla entre temporadas: los jóvenes crecen hacia su techo,
 // los veteranos declinan; todos cumplen un año. Devuelve un resumen de cambios.
-function evolucionaPlantillaSL(plantilla,rnd){
-  const r=rnd||Math.random, cambios=[];
+function evolucionaPlantillaSL(plantilla,azar){
+  const r=azar||rnd, cambios=[];
   (plantilla||[]).forEach(j=>{
     j.edad=(j.edad||24)+1;
     const niv=mediaAttrs(j.attrs), pot=j.pot||niv;
@@ -124,11 +124,11 @@ function mkSuperliga(tuNombre,tuFuerza,tuColor){
     caja:40000,objetivo:juntaTop(8),mercado:null};
 }
 // Juega la jornada actual (todos los cruces), actualiza la tabla y avanza. Devuelve los resultados.
-function jugarJornadaLiga(sl,rnd){
+function jugarJornadaLiga(sl,azar){
   if(sl.fase!=="liga"||sl.jornada>=sl.calendario.length) return null;
   const jor=sl.calendario[sl.jornada], res=[];
   jor.forEach(([a,b])=>{
-    const r=resuelveCruceEquipos(sl.equipos[a],sl.equipos[b],rnd), ta=sl.tabla[a],tb=sl.tabla[b];
+    const r=resuelveCruceEquipos(sl.equipos[a],sl.equipos[b],azar), ta=sl.tabla[a],tb=sl.tabla[b];
     ta.pj++;tb.pj++; ta.gf+=r.gA;ta.gc+=r.gB; tb.gf+=r.gB;tb.gc+=r.gA;
     if(r.ganador===0){ ta.pg++;ta.pts+=3;tb.pp++; } else { tb.pg++;tb.pts+=3;ta.pp++; }
     res.push({a,b,gA:r.gA,gB:r.gB});
@@ -151,20 +151,20 @@ function _iniciaPlayoffs(sl){
     semis:null,final:null,campeon:null};
 }
 // Juega la ronda de playoff pendiente (cuartos → semis → final). Devuelve {fase, ...}.
-function jugarPlayoff(sl,rnd){
+function jugarPlayoff(sl,azar){
   const p=sl.playoff; if(!p||sl.fase!=="playoff") return null;
   if(p.ronda==="cuartos"){
-    const g=p.cuartos.map(([a,b])=>resuelveCruceEquipos(sl.equipos[a],sl.equipos[b],rnd).ganador===0?a:b);
+    const g=p.cuartos.map(([a,b])=>resuelveCruceEquipos(sl.equipos[a],sl.equipos[b],azar).ganador===0?a:b);
     p.semis=[[g[0],g[1]],[g[2],g[3]]]; p.ronda="semis";
     return {fase:"cuartos",ganadores:g};
   }
   if(p.ronda==="semis"){
-    const g=p.semis.map(([a,b])=>resuelveCruceEquipos(sl.equipos[a],sl.equipos[b],rnd).ganador===0?a:b);
+    const g=p.semis.map(([a,b])=>resuelveCruceEquipos(sl.equipos[a],sl.equipos[b],azar).ganador===0?a:b);
     p.final=g.slice(); p.ronda="final";
     return {fase:"semis",finalistas:g};
   }
   if(p.ronda==="final"){
-    const [a,b]=p.final, r=resuelveCruceEquipos(sl.equipos[a],sl.equipos[b],rnd);
+    const [a,b]=p.final, r=resuelveCruceEquipos(sl.equipos[a],sl.equipos[b],azar);
     p.campeon=r.ganador===0?a:b; p.ronda="fin"; sl.fase="fin";
     return {fase:"final",campeon:p.campeon};
   }
@@ -189,13 +189,13 @@ function probInvitacionSL(prestigio,temporada,rechazos){
   return Math.min(.85,base+espera+insistencia);
 }
 // ¿Llega la invitación este cierre de temporada? Devuelve null o los datos.
-function evaluaInvitacionSL(cl,temporada,rnd){
+function evaluaInvitacionSL(cl,temporada,azar){
   if(!cl||cl.enSuperliga) return null;
   if((temporada||1)<SL_INVIT_TEMP_MIN) return null;
   if(cl.invitacionSL&&cl.invitacionSL.pendiente) return null;   // ya hay una sobre la mesa
   const prest=(typeof prestigioClub==="function")?prestigioClub():0;
   const p=probInvitacionSL(prest,temporada,(cl.invitSLRechazos||0));
-  if((rnd||Math.random)()>=p) return null;
+  if((azar||rnd)()>=p) return null;
   return {temporada,prestigio:prest,pendiente:true};
 }
 // Convierte TU club en un equipo de Superliga: la plantilla real pasa a ser

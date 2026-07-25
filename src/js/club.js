@@ -3,14 +3,14 @@
 ================================================================ */
 // lado natural: 0 = DRIVE (derecha, construcción/defensa), 1 = REVÉS (izquierda, remate/finalización)
 function ladoPorAttrs(attrs,est){
-  if(!attrs) return Math.random()<.5?0:1;
+  if(!attrs) return rnd()<.5?0:1;
   const fin=(attrs.remate+attrs.vibora+attrs.bandeja+attrs.volea)/4;      // finalización
   const con=(attrs.fondo+attrs.pared+attrs.globo+attrs.dejada+attrs.chiquita)/5; // construcción
   const sesgo=fin-con;
   // estilos rematadores tiran a revés, defensivos a drive
   const bonus=est==="rematador"?3:est==="agresivo"?1.5:est==="defensivo"?-3:est==="constructor"?-2:0;
   const p=clamp(.5+(sesgo+bonus)/14,.12,.88);
-  return Math.random()<p?1:0;
+  return rnd()<p?1:0;
 }
 function ladoTxt(l){ return l===1?"Revés":"Drive"; }
 function ladoChip(l){ if(l!==0&&l!==1) return ""; return `<span class="pill" style="background:${l===1?"#9B59D0":"#4FA3D8"}22;color:${l===1?"#B58BE0":"#6FB8E8"};border-color:${l===1?"#9B59D0":"#4FA3D8"}55">${l===1?"◀ Revés":"Drive ▶"}</span>`; }
@@ -22,9 +22,9 @@ function parejaLadoAviso(j0,j1){
 function mkAgente(nivMin,nivMax,sx){
   const est=pick(Object.keys(ESTILOS));
   const nivel=Math.round(R(nivMin,nivMax));
-  sx=sx||(Math.random()<.5?"M":"F");
-  const apodo=Math.random()<.28?` «${pick(APODOS)}»`:"";
-  const pot=Math.round(clamp(nivel+R(2,24)-(Math.random()<.2?10:0),nivel,93));
+  sx=sx||(rnd()<.5?"M":"F");
+  const apodo=rnd()<.28?` «${pick(APODOS)}»`:"";
+  const pot=Math.round(clamp(nivel+R(2,24)-(rnd()<.2?10:0),nivel,93));
   return {
     n:nombrePorSexo(sx)+apodo+" "+pick(APELL),pais:pickPais(),sexo:sx,pot,edad:Math.round(R(17,31)),
     estilo:est,perso:pick(Object.keys(PERSONALIDADES)),
@@ -89,7 +89,7 @@ function pintarMercadoInicial(){
     if(plantillaTmp.length<2) return;
     const gasto2=plantillaTmp.reduce((s,j)=>s+costeFichaje(j),0);
     const nombre=document.getElementById("inClubNombre").value.trim()||"Rising Pádel Club";
-    G={v:1,modo:"club",_slot:slotDestino(),dif:difMenu(),world:mkWorld(),carrera:null,clubG:{
+    G={v:1,modo:"club",_slot:slotDestino(),semilla:iniciaSemilla(),dif:difMenu(),world:mkWorld(),carrera:null,clubG:{
       nombre,color:colorClubSel,
       plantilla:plantillaTmp.map(j=>({...j})),
       alin:[0,1],alinB:null,quims:{},
@@ -152,7 +152,7 @@ function quickMatch(tA,tB){
   const _cpu=true;
   teams[1].jug.forEach(j=>{j.conf=j.conf??55;});
   stats=[mkStats(),mkStats()];
-  match={p:[0,0],j:[0,0],s:[0,0],hist:[],server:Math.random()<.5?0:1,fin:false,ver:false,cpu:true};
+  match={p:[0,0],j:[0,0],s:[0,0],hist:[],server:rnd()<.5?0:1,fin:false,ver:false,cpu:true};
   while(!match.fin){PRESION=calcPresion();resolverPunto(buildPoint(match.server).ganador);}
   const gane=match.s[0]>match.s[1];
   const marcador=`${match.s[0]}-${match.s[1]}`;
@@ -192,12 +192,12 @@ function simTorneoParejaB(ci){
       resumen.push(`caen en ${faseNombre(fase).toLowerCase()} (${res.marcador}) vs ${rival.nombre}`);
       break;
     }
-    if(res.gane&&Math.random()<.2){const k=pick(ATTR_KEYS);const j=pick(parB);if(j.attrs[k]<88)j.attrs[k]++;}
+    if(res.gane&&rnd()<.2){const k=pick(ATTR_KEYS);const j=pick(parB);if(j.attrs[k]<88)j.attrs[k]++;}
     if(fase===5){ idxPts=0; titulo=true; break; }
     fase++;
     // lesión por fatiga a mitad de torneo
     const cansado=parB.find(j=>j.energia<20&&!j.lesion);
-    if(cansado&&Math.random()<kLesion(cl.staff.fisio?.15:.3)){
+    if(cansado&&rnd()<kLesion(cl.staff.fisio?.15:.3)){
       cansado.lesion=pickLesion(clamp(1-cansado.energia/40,0,1));
       if(cl.staff.fisio) cansado.lesion.sem=Math.max(1,cansado.lesion.sem-1);
       cansado.fragil=(cansado.fragil||0)+1;
@@ -565,21 +565,21 @@ function entrenaUnoClub(j,factor){
   if(j.lesion||factor<=0) return null;
   const k=(j.plan&&j.plan!=="auto")?j.plan:ATTR_KEYS.reduce((a,b)=>j.attrs[a]<=j.attrs[b]?a:b);
   const v=j.attrs[k];
-  let g=v<55?2:v<70?1:(Math.random()<.5?1:0);
-  if(cl.instal>=2&&Math.random()<.4) g+=1;
-  if(cl.instal>=3&&Math.random()<.3) g+=1;
-  if(cl.reformas&&cl.reformas.video&&Math.random()<.35) g+=1;
+  let g=v<55?2:v<70?1:(rnd()<.5?1:0);
+  if(cl.instal>=2&&rnd()<.4) g+=1;
+  if(cl.instal>=3&&rnd()<.3) g+=1;
+  if(cl.reformas&&cl.reformas.video&&rnd()<.35) g+=1;
   const entNiv=(cl.staff&&cl.staff.entrenador&&cl.staff.entrenador.niv)||0;
-  if(entNiv&&Math.random()<.12*entNiv) g+=1;   // buen entrenador jefe = mejor progresión
+  if(entNiv&&rnd()<.12*entNiv) g+=1;   // buen entrenador jefe = mejor progresión
   g=ajustaGanancia(g,it,j.edad);
-  if(v>=58&&g>0&&Math.random()<.5) g--;
-  if(v>=72&&g>0&&Math.random()<.5) g--;
-  if(factor<1&&g>0&&Math.random()>factor) g=Math.max(0,g-1);
-  if(factor<1&&Math.random()>factor+.25) g=0;
-  if(g>0){ const rf=rasgosEntreno(j); if(rf>1&&Math.random()<rf-1) g++; else if(rf<1&&Math.random()<1-rf) g=Math.max(0,g-1); }   // talento / entrena mal
+  if(v>=58&&g>0&&rnd()<.5) g--;
+  if(v>=72&&g>0&&rnd()<.5) g--;
+  if(factor<1&&g>0&&rnd()>factor) g=Math.max(0,g-1);
+  if(factor<1&&rnd()>factor+.25) g=0;
+  if(g>0){ const rf=rasgosEntreno(j); if(rf>1&&rnd()<rf-1) g++; else if(rf<1&&rnd()<1-rf) g=Math.max(0,g-1); }   // talento / entrena mal
   j.attrs[k]=clamp(v+g,20,Math.min(96,(j.pot||96)+4));
   if(factor===1) j.energia=clamp(j.energia-(it==="suave"?10:it==="intensa"?26:17),0,100);
-  if(factor===1&&it==="intensa"&&Math.random()<.05&&!j.lesion){
+  if(factor===1&&it==="intensa"&&rnd()<.05&&!j.lesion){
     j.lesion={n:"sobrecarga por exceso de entrenamiento",k:"les_sobre",sem:1};
     return `${j.n} ${k}+${g}⚠`;
   }
@@ -624,7 +624,7 @@ function avanzarSemanaClub(){
     j.energia=clamp(j.energia+regen,0,100);
     if(cl.reformas.residencia) j.conf=clamp(j.conf+1,15,95);
     if(cl.staff.psico&&j.conf<50) j.conf=clamp(j.conf+2,15,95);
-    if(cl.staff.fisio&&j.lesion&&Math.random()<.3){j.lesion.sem--;if(j.lesion.sem<=0){const s=curarLesion(j);avisa(`El fisio adelanta el alta de ${j.n}.`+(s?` (mermado -${s.pct}%, ${s.sem} sem)`:""));}}
+    if(cl.staff.fisio&&j.lesion&&rnd()<.3){j.lesion.sem--;if(j.lesion.sem<=0){const s=curarLesion(j);avisa(`El fisio adelanta el alta de ${j.n}.`+(s?` (mermado -${s.pct}%, ${s.sem} sem)`:""));}}
     decaeMerma(j);
     // moral por minutos: el rol (titular A / B / banquillo) sube o quema la moral
     const rol=cl.alin.includes(idx)?"A":(cl.alinB&&cl.alinB.includes(idx))?"B":"banquillo";
@@ -643,7 +643,7 @@ function avanzarSemanaClub(){
     const pre=prestigioClub(), tr=pre>=60?4:pre>=35?3:pre>=15?2:1;   // ojo: no llamar `t` (taparía i18n)
     if(!cl.sponsor||cl.sponsor.tier<tr){
       const of=ofertaPatro(tr);
-      cl.sponsorOferta={marca:of.marca,sec:of.sec,tier:tr,sem:Math.round(of.sem*1.4),nombre:`${["","Bar","Deportes","","Grupo"][Math.floor(Math.random()*5)]} ${of.marca}`.trim()};
+      cl.sponsorOferta={marca:of.marca,sec:of.sec,tier:tr,sem:Math.round(of.sem*1.4),nombre:`${["","Bar","Deportes","","Grupo"][Math.floor(rnd()*5)]} ${of.marca}`.trim()};
       avisa(t("patro_club_av_oferta",{marca:cl.sponsorOferta.marca,tier:tierTxt(tr),sem:cl.sponsorOferta.sem}));
     }
   }
@@ -718,18 +718,18 @@ function avanzarSemanaClub(){
     cl.mercado=mkMercadoLibre(cl.sexo||"M");
     if(cl.staff.ojeador){ for(let i=0;i<3;i++) cl.mercado.push(mkAgente(56,72,cl.sexo||"M")); }
     // los clubes rivales también fichan
-    if(cl.mercado.length>4&&Math.random()<.8){
-      const qi=Math.floor(Math.random()*cl.mercado.length);
+    if(cl.mercado.length>4&&rnd()<.8){
+      const qi=Math.floor(rnd()*cl.mercado.length);
       const jj=cl.mercado.splice(qi,1)[0];
       avisa(`📰 ${jj.n} ficha por el ${pick(CLUBES_NPC).n}.`);
     }
     // ...y vienen a por los tuyos (nunca por tu pareja A)
-    if(!cl.ofertaRival&&cl.plantilla.length>2&&Math.random()<.55){
+    if(!cl.ofertaRival&&cl.plantilla.length>2&&rnd()<.55){
       // van antes a por los descontentos (los que piden salir), y ofrecen en torno a la cláusula
       const cands=cl.plantilla.map((j,i)=>i).filter(i=>!cl.alin.includes(i));
       if(cands.length){
         const descon=cands.filter(i=>estadoJugadorClub(cl.plantilla[i]).clave==="salir");
-        const ji=pick(descon.length?descon:cands), cr=Math.floor(Math.random()*9), jj=cl.plantilla[ji];
+        const ji=pick(descon.length?descon:cands), cr=Math.floor(rnd()*9), jj=cl.plantilla[ji];
         const quiereIrse=estadoJugadorClub(jj).clave==="salir";
         cl.ofertaRival={clubIdx:cr,jugIdx:ji,monto:Math.round(valorClausula(jj)*R(quiereIrse?.75:.85,1.1))};
         avisa(`📋 El ${CLUBES_NPC[cr].n} ofrece ${cl.ofertaRival.monto}€ por ${jj.n} (cláusula ${valorClausula(jj).toLocaleString("es")}€).${quiereIrse?` ${jj.n} quiere salir: presiona por marcharse.`:""} Decide en Plantilla.`);

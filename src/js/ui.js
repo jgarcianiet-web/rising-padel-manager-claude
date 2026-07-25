@@ -379,11 +379,16 @@ function repartirClubes(){
   ["M","F"].forEach(sx=>{
     const pares=G.world.parejas.filter(p=>(p.sexo||"M")===sx);
     // clubes barajados; asignación round-robin → reparto parejo (2-3 por club)
-    const orden=CLUBES_NPC.map((_,i)=>i).sort(()=>Math.random()-.5);
+    const orden=CLUBES_NPC.map((_,i)=>i).sort(()=>rnd()-.5);
     pares.forEach((p,i)=>{ p.club=orden[i%orden.length]; });
   });
 }
 function entrarPartida(){
+  /* Retoma el flujo de azar donde lo dejó esta partida. Las partidas anteriores
+     a la semilla no la traen: se les asigna una al vuelo, y a partir de ahí ya
+     son reproducibles como las nuevas. */
+  if(!G.semilla) G.semilla=semillaNueva();
+  rndSemilla(G.semilla,G._rngS);
   if(G.world&&G.world.parejas&&G.world.parejas[0]&&G.world.parejas[0].club===undefined){
     repartirClubes();
   }
@@ -399,7 +404,7 @@ function entrarPartida(){
       const j1=mkJovenNPC(sx), j2=mkJovenNPC(sx);
       j1.attrs=mkAttrsNivel(nivel,j1._est); j2.attrs=mkAttrsNivel(nivel,j2._est);
       G.world.parejas.push({id:G.world.nextId++,nombre:`${j1.n}/${j2.n}`,jug:[j1,j2],edad:Math.round(R(19,30)),pro:false,sexo:sx,
-        pts:Math.max(0,Math.round((nivel-40)*(nivel-40)*R(1.2,2.4))),club:Math.floor(Math.random()*9),atNet:false});
+        pts:Math.max(0,Math.round((nivel-40)*(nivel-40)*R(1.2,2.4))),club:Math.floor(rnd()*9),atNet:false});
     }
     avisa("📰 La federación amplía el circuito: nuevas parejas entran al ranking. Ahora sois 41 por categoría.");
   }

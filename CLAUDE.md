@@ -48,6 +48,31 @@ tier de patrocinador, tabla de récords). Si necesitas una variable ahí, lláma
   se encontraron el panel de Semana, la pantalla de fundar club y la analítica,
   que los tests de claves no veían.
 
+## El azar de simulación va con semilla
+
+Todo el azar que **decide algo** sale de `rnd()` (`src/js/rng.js`), no de
+`Math.random`. La semilla y la posición del flujo viajan dentro de la partida
+(`G.semilla`, `G._rngS`), así que dos partidas con la misma semilla viven lo
+mismo y recargar no cambia el resultado de un punto ya jugado.
+
+Tres cosas que hay que respetar al tocar el código:
+
+1. **`Math.random` solo para lo que se ve o se oye.** El ruido de la grada, las
+   frases del narrador y la barra de la pantalla de carga siguen usándolo, y
+   llevan `// azar-visual` al final de la línea para declararlo. Si el sonido
+   bebiera del flujo de simulación, jugar con el sonido apagado daría resultados
+   distintos que con el sonido puesto.
+2. **Ojo con el shadowing de `rnd`**, el mismo cuento que con `t`. Varias
+   funciones recibían un parámetro llamado `rnd` para inyectar azar en las
+   pruebas; ese parámetro tapaba la función global y su respaldo se quedaba sin
+   semilla. Ahora ese parámetro se llama **`azar`**, y el respaldo es `rnd`.
+3. **El orden importa al crear una partida.** `iniciaSemilla()` va como campo de
+   `G` *antes* de `world:mkWorld()`, porque generar el mundo ya consume azar y
+   las propiedades de un objeto se evalúan de izquierda a derecha.
+
+`tests/estatico.js` lo hace cumplir: falla si aparece un `Math.random` sin
+marcar en un fichero de simulación, o si alguien vuelve a tapar `rnd`.
+
 ## Pruebas
 
 - `node tests/smoke.js` — toda la suite (motor, mundo, SQLite con sql.js real,

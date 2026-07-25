@@ -26,8 +26,8 @@ const FRASES_STAFF={
   ojeador:["fr_ojeador_1","fr_ojeador_2","fr_ojeador_3","fr_ojeador_4"],
 };
 function mkStaff(rol,nivFijo){
-  const niv=nivFijo||Math.min(5,Math.max(1,Math.round(R(1,3.6)+(Math.random()<.18?1:0))));
-  const sx=Math.random()<.5?"M":"F";
+  const niv=nivFijo||Math.min(5,Math.max(1,Math.round(R(1,3.6)+(rnd()<.18?1:0))));
+  const sx=rnd()<.5?"M":"F";
   const nom=`${nombrePorSexo(sx)} ${pick(APELL)}`;
   const st={rol,n:nom,sexo:sx,edad:Math.round(R(30,62)),niv,
     sal:Math.round(ROLES_STAFF[rol].salBase*niv*(1+R(-.12,.15))),
@@ -41,14 +41,14 @@ function mkMercadoStaff(){
   const roles=rolesDeModo();
   const m=[];
   // BOLSA DE EMPLEO: varios agentes libres de cada rol (una lista de verdad, no dos)
-  roles.forEach(r=>{ const n=r==="entrenador"?4:3; for(let i=0;i<n+(Math.random()<.5?1:0);i++) m.push(mkStaff(r)); });
+  roles.forEach(r=>{ const n=r==="entrenador"?4:3; for(let i=0;i<n+(rnd()<.5?1:0);i++) m.push(mkStaff(r)); });
   // Y TODOS los entrenadores que ya trabajan con parejas del circuito: contactables (con rescisión)
   if(roles.includes("entrenador")&&G.world){
     const pares=G.world.parejas.filter(p2=>(p2.sexo||"M")===miSexo()&&!p2.yo);
     pares.forEach(par=>{
       if(!par._entrenador){
         const nivPar=Math.round((mediaAttrs(par.jug[0].attrs)+mediaAttrs(par.jug[1].attrs))/2);
-        const niv=clamp(Math.round(nivPar/18)+(Math.random()<.3?1:0),1,5);
+        const niv=clamp(Math.round(nivPar/18)+(rnd()<.3?1:0),1,5);
         par._entrenador=Object.assign(mkStaff("entrenador",niv),{equipoDe:par.nombre});
       }
       m.push(par._entrenador);
@@ -81,7 +81,7 @@ function aceptaProyecto(st){
   if(salto>margen) return {ok:false,motivo:t("staff_proy_top",{n:st.n,posEl,posYo})};
   // aunque esté en margen, a veces declina (proyecto poco convincente)
   const prob=clamp(.9-salto/(margen*1.6),.25,.97);
-  if(Math.random()>prob) return {ok:false,motivo:t("staff_proy_duda",{n:st.n,equipo:st.equipoDe}),reintento:true};
+  if(rnd()>prob) return {ok:false,motivo:t("staff_proy_duda",{n:st.n,equipo:st.equipoDe}),reintento:true};
   return {ok:true};
 }
 function refrescaMercadoStaff(){
@@ -90,7 +90,7 @@ function refrescaMercadoStaff(){
 }
 function ofertaStaffSemanal(){
   const e=ent(); if(!e||!e.mercadoStaff) return;
-  if(Math.random()>.07) return;
+  if(rnd()>.07) return;
   const calidad=miPuesto()<=10?4:miPuesto()<=20?3:undefined;
   const st=mkStaff(pick(rolesDeModo()),calidad);
   st.seOfrece=true; st.sal=Math.round(st.sal*.82); st.caduca=semanaTemp()+2;
@@ -225,7 +225,7 @@ function ofertaPatro(tier){
   if(cat.length){
     const n=tier>=3?2:1;
     const pool=[...cat];
-    for(let i=0;i<n&&pool.length;i++){ const pr=pool.splice(Math.floor(Math.random()*pool.length),1)[0]; of.primas.push([pr[0],t("prima_"+pr[0]),pr[2]]); }
+    for(let i=0;i<n&&pool.length;i++){ const pr=pool.splice(Math.floor(rnd()*pool.length),1)[0]; of.primas.push([pr[0],t("prima_"+pr[0]),pr[2]]); }
   }
   return of;
 }
@@ -234,7 +234,7 @@ function mkLibre(nivMin,nivMax,sx){
   const est=pick(Object.keys(ESTILOS));
   const nivel=Math.round(R(nivMin,nivMax));
   sx=sx||"M";
-  const apodo=Math.random()<.28?` «${pick(APODOS)}»`:"";
+  const apodo=rnd()<.28?` «${pick(APODOS)}»`:"";
   return {n:nombrePorSexo(sx)+apodo+" "+pick(APELL),pais:pickPais(),sexo:sx,origen:"libre",estilo:est,perso:pick(Object.keys(PERSONALIDADES)),attrs:mkAttrsNivel(nivel,est)};
 }
 function mkMercadoParejas(){
@@ -244,9 +244,9 @@ function mkMercadoParejas(){
   // 2 jugadores de parejas del circuito del MISMO SEXO: solo escuchan si estás mejor o parecido
   const filas=rankingFilas();
   const cand=G.world.parejas.filter(p=>!p.retiraT&&(p.sexo||"M")===miSexo).map(p=>({p,pos:filas.find(f=>f.id===p.id).pos}))
-    .filter(x=>x.pos>pos-4).sort(()=>Math.random()-.5).slice(0,2);
+    .filter(x=>x.pos>pos-4).sort(()=>rnd()-.5).slice(0,2);
   cand.forEach(x=>{
-    const idx=Math.random()<.5?0:1, j=x.p.jug[idx];
+    const idx=rnd()<.5?0:1, j=x.p.jug[idx];
     lista.push({n:j.n,pais:j.pais,origen:"circuito",worldId:x.p.id,jugIdx:idx,estilo:j.estilo,perso:j.perso,attrs:{...j.attrs},parejaNombre:x.p.nombre,parejaPos:x.pos});
   });
   return lista;
@@ -268,13 +268,30 @@ function pintarAvaEditor(){
 }
 function avaAleatorio(){
   const nPein=sexoSel==="F"?3:4;
-  AVA_EDIT={piel:Math.floor(Math.random()*AVA_PIEL.length),pelo:Math.floor(Math.random()*AVA_PELO.length),
-    tipoPelo:Math.floor(Math.random()*nPein),barba:sexoSel==="F"?0:Math.floor(Math.random()*3),
-    compl:Math.random()<.45?Math.floor(Math.random()*AVA_COMPL.length):0};
+  AVA_EDIT={piel:Math.floor(rnd()*AVA_PIEL.length),pelo:Math.floor(rnd()*AVA_PELO.length),
+    tipoPelo:Math.floor(rnd()*nPein),barba:sexoSel==="F"?0:Math.floor(rnd()*3),
+    compl:rnd()<.45?Math.floor(rnd()*AVA_COMPL.length):0};
   pintarAvaEditor();
 }
+/* Campo de semilla de la pantalla de creación. Se ofrece una ya generada para
+   que quien no quiera saber nada del asunto no tenga que tocarla; quien teclee
+   la suya jugará exactamente la misma partida que otro con esa misma semilla. */
+function pintarSemillaCrear(nueva){
+  const inp=document.getElementById("inSemilla"); if(!inp) return;
+  if(nueva||!inp.value) inp.value=semillaTxt(semillaNueva());
+  const b=document.getElementById("btnSemillaOtra");
+  if(b) b.onclick=()=>pintarSemillaCrear(true);
+}
+/* Lee lo tecleado y lo deja preparado para la próxima partida. Si el campo está
+   vacío o es ilegible, se sortea una: nunca se queda sin semilla. */
+function tomaSemillaCrear(){
+  const inp=document.getElementById("inSemilla");
+  SEMILLA_ELEGIDA=inp?semillaDe(inp.value):0;
+}
+
 function pintarCrear(){
   pintarAvaEditor();
+  pintarSemillaCrear();
   const cont=document.getElementById("colores");
   cont.innerHTML="";
   COLORES.forEach(c=>{
@@ -322,8 +339,9 @@ function marcaSexo(){
 function empezarCarrera(estiloKey){
   if(lado===null){lado=0;marcaLado();}
   if(persoSel===null) persoSel="frio";
+  tomaSemillaCrear();          // antes de construir G: mkWorld() ya consume azar
   const nombre=document.getElementById("inNombre").value.trim()||"Jugador";
-  G={v:1,modo:"carrera",_slot:slotDestino(),dif:difMenu(),world:mkWorld(),clubG:null,carrera:{
+  G={v:1,modo:"carrera",_slot:slotDestino(),semilla:iniciaSemilla(),dif:difMenu(),world:mkWorld(),clubG:null,carrera:{
     nombre,estilo:estiloKey,perso:persoSel,lado,color:colorSel,ava:{...AVA_EDIT},_ropa:colorSel,
     attrs:{...ESTILOS[estiloKey].attrs},
     semana:1,edad:16,pts:0,dinero:2500,energia:100,conf:55,
@@ -1278,7 +1296,7 @@ function avanzarSemanaCarrera(){
   }
   simCircuito(c._rivalesSemana);c._rivalesSemana=[];
   prensaSemanal();
-  if(c.sponsor&&!c._spot&&Math.random()<(c.sponsor.tier>=3?.14:.08)){
+  if(c.sponsor&&!c._spot&&rnd()<(c.sponsor.tier>=3?.14:.08)){
     const pago=Math.round(c.sponsor.sem*(c.sponsor.tier>=4?4:c.sponsor.tier===3?3:c.sponsor.tier===2?2.2:1.6));
     const fansB=[0,120,400,1200,3500][c.sponsor.tier]||0;
     c._spot={marca:c.sponsor.marca,pago,fans:fansB,tipo:pick(SPOT_TIPOS),caduca:semanaTemp()+3};
@@ -1327,7 +1345,7 @@ function avanzarSemanaCarrera(){
   // dilemas encadenados: primero llegan las consecuencias de decisiones pasadas...
   resolverPendientes(c,c.semana).forEach(p=>avisa(`⏳ ${p.txt}`));
   // ...y de vez en cuando surge un nuevo dilema (si no hay uno pendiente de decidir)
-  if(!c.dilemaActivo && !c.lesion && Math.random()<.28) eligeDilema(c,c.semana);
+  if(!c.dilemaActivo && !c.lesion && rnd()<.28) eligeDilema(c,c.semana);
   // objetivos de temporada: premia los que se van cumpliendo
   if(!c.objetivos) c.objetivos=mkObjetivosTemporada(c,miPuesto());
   evaluaObjetivos(c,miPuesto()).forEach(o=>{
@@ -1416,7 +1434,7 @@ function cierreTemporadaCarrera(){
       const t2=tiers[c.ofertasPatro.length%tiers.length];
       const of=ofertaPatro(t2);
       if(rep_) of.sem=Math.round(of.sem*1.2);
-      if(Math.random()<.4){ of.sem=Math.round(of.sem*1.3); of.primas=of.primas.slice(0,1); of._perfil="fijo alto"; }
+      if(rnd()<.4){ of.sem=Math.round(of.sem*1.3); of.primas=of.primas.slice(0,1); of._perfil="fijo alto"; }
       else if(of.primas.length){ of.sem=Math.round(of.sem*.8); of._perfil="por objetivos"; }
       if(!c.ofertasPatro.some(x=>x.marca===of.marca)) c.ofertasPatro.push(of);
     }
@@ -1429,7 +1447,7 @@ function cierreTemporadaCarrera(){
   // reconducirla (se resuelve con un evento al volver al panel de carrera).
   const moral=c.compiMoral??65;
   const evPar=evaluarRuptura(c,miPuesto());
-  if(evPar.crisis&&Math.random()<.85){
+  if(evPar.crisis&&rnd()<.85){
     c._crisisPareja=evPar;
     avisa(t("av_tension",{n:c.compi.n}));
   } else if(moral<50){
@@ -1492,11 +1510,11 @@ function anuarioMerito(c,h,prev){
   return `<div style="border-top:1px solid var(--borde);margin-top:8px;padding-top:7px">${frases.map(f=>`<div style="font-size:11.5px;line-height:1.5;color:var(--gris)">${f}</div>`).join("")}</div>`;
 }
 function ajustaGanancia(g,intens,edad){
-  if(intens==="suave"&&g>0&&Math.random()<.4) g--;
-  if(intens==="intensa"&&Math.random()<.5) g++;
+  if(intens==="suave"&&g>0&&rnd()<.4) g--;
+  if(intens==="intensa"&&rnd()<.5) g++;
   if(edad!==undefined){
-    if(edad<20&&Math.random()<.3) g++;
-    if(edad>=29&&g>0&&Math.random()<.4) g--;
+    if(edad<20&&rnd()<.3) g++;
+    if(edad>=29&&g>0&&rnd()<.4) g--;
   }
   return Math.max(0,g);
 }
@@ -1519,12 +1537,12 @@ function prensaSemanal(){
   // 1) crónica del torneo Élite de la semana (si tú no lo ganaste)
   if(sl.premier!==undefined&&e._campPremSem!==semanaTemp()){
     const cands=filas.filter(f=>!f.yo).slice(0,10);
-    const w=cands[Math.floor(Math.random()*Math.min(5,cands.length))];
+    const w=cands[Math.floor(rnd()*Math.min(5,cands.length))];
     if(w){
       const giro=t(pick(["not_cron_giro1","not_cron_giro2","not_cron_giro3","not_cron_giro4","not_cron_giro5"]));
       noticia("circuito",t("not_cron_t",{nombre:w.nombre,cat:catNombre(sl.premier),ciudad:sl.ciudad}),t("not_cron_s",{giro,ciudad:sl.ciudad}));
     }
-  } else if(Math.random()<.55&&G.world.prevPos){
+  } else if(rnd()<.55&&G.world.prevPos){
     // 2) el movimiento de la semana en el ranking
     let mejor=null,salto=0;
     filas.slice(0,28).forEach(f=>{
@@ -1535,9 +1553,9 @@ function prensaSemanal(){
     if(mejor&&salto>=2){
       noticia("mercado",t("not_mercado_t",{nombre:mejor.nombre,verbo:salto>=5?t("not_mercado_verbo_up"):t("not_mercado_verbo"),pos:mejor.pos}),t("not_mercado_s",{salto,frase:t(pick(["not_mercado_v1","not_mercado_v2","not_mercado_v3","not_mercado_v4"]))}));
     }
-  } else if(Math.random()<.3){
+  } else if(rnd()<.3){
     // 3) pieza de color con una estrella parodiada
-    const star=filas.filter(f=>!f.yo&&f.pos<=6)[Math.floor(Math.random()*Math.min(6,filas.length-1))];
+    const star=filas.filter(f=>!f.yo&&f.pos<=6)[Math.floor(rnd()*Math.min(6,filas.length-1))];
     if(star) noticia("circuito",t(pick(["not_circuito_v1","not_circuito_v2","not_circuito_v3","not_circuito_v4"])),t("not_circuito_star_s",{star:star.nombre}));
   }
 }
@@ -1548,20 +1566,20 @@ function entrenoSemanalCarrera(factor){
   const sesion=(atleta,plan,edad)=>{
     const k=golpePlan(atleta,plan,ent_);
     const v=atleta.attrs[k];
-    let g=v<55?2:v<70?1:(Math.random()<.5?1:0);
-    if(ent_.esp.includes(k)&&Math.random()<(.3+.08*(ent_.niv||2))) g+=1;   // el especialista exprime su tema
+    let g=v<55?2:v<70?1:(rnd()<.5?1:0);
+    if(ent_.esp.includes(k)&&rnd()<(.3+.08*(ent_.niv||2))) g+=1;   // el especialista exprime su tema
     g=ajustaGanancia(g,it,edad);
-    if(v>=58&&g>0&&Math.random()<.5) g--;               // los cimientos van rápido...
-    if(v>=72&&g>0&&Math.random()<.5) g--;               // ...y la élite cuesta sudor doble
-    if(factor<1&&g>0&&Math.random()>factor) g=Math.max(0,g-1);
-    if(factor<1&&Math.random()>factor+.25) g=0;         // semana de torneo: poco tiempo de pista de entreno
-    if(g>0){ const rf=rasgosEntreno(atleta); if(rf>1&&Math.random()<rf-1) g++; else if(rf<1&&Math.random()<1-rf) g=Math.max(0,g-1); }   // talento / entrena mal
+    if(v>=58&&g>0&&rnd()<.5) g--;               // los cimientos van rápido...
+    if(v>=72&&g>0&&rnd()<.5) g--;               // ...y la élite cuesta sudor doble
+    if(factor<1&&g>0&&rnd()>factor) g=Math.max(0,g-1);
+    if(factor<1&&rnd()>factor+.25) g=0;         // semana de torneo: poco tiempo de pista de entreno
+    if(g>0){ const rf=rasgosEntreno(atleta); if(rf>1&&rnd()<rf-1) g++; else if(rf<1&&rnd()<1-rf) g=Math.max(0,g-1); }   // talento / entrena mal
     atleta.attrs[k]=clamp(v+g,20,95);
     return `${atNombre(k)} ${g>0?"+"+g:"·"}`;
   };
   res.push(t("ent_tu")+": "+sesion(c,c.planJug,c.edad));
   res.push(`${c.compi.n}: `+sesion(c.compi,c.compiPlan));
-  if(factor>=.8&&it==="intensa"&&Math.random()<.06&&!c.lesion){
+  if(factor>=.8&&it==="intensa"&&rnd()<.06&&!c.lesion){
     c.lesion={n:"sobrecarga por exceso de entrenamiento",k:"les_sobre",sem:1};
     res.push(t("les_sobre_log"));
   }

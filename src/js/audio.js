@@ -25,7 +25,7 @@ function ruido(d,vol,when){
     const t0=a.currentTime+(when||0);
     const buf=a.createBuffer(1,a.sampleRate*d,a.sampleRate);
     const ch=buf.getChannelData(0);
-    for(let i=0;i<ch.length;i++) ch[i]=Math.random()*2-1;
+    for(let i=0;i<ch.length;i++) ch[i]=Math.random()*2-1;   // azar-visual
     const src=a.createBufferSource();src.buffer=buf;
     const g=a.createGain(), fl=a.createBiquadFilter();
     fl.type="lowpass";fl.frequency.value=1400;
@@ -59,7 +59,7 @@ function sfxGrada(int){
     int=Math.max(.2,Math.min(1,int||.5));
     const t0=a.currentTime, d=.5+int*1.1;
     const buf=a.createBuffer(1,Math.floor(a.sampleRate*d),a.sampleRate), ch=buf.getChannelData(0);
-    for(let i=0;i<ch.length;i++) ch[i]=Math.random()*2-1;
+    for(let i=0;i<ch.length;i++) ch[i]=Math.random()*2-1;   // azar-visual
     const src=a.createBufferSource(); src.buffer=buf;
     const bp=a.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=650+int*550; bp.Q.value=.8;
     const g=a.createGain();
@@ -78,7 +78,7 @@ function musicaOn(){
   try{
     const dur=2.5, buf=a.createBuffer(1,Math.floor(a.sampleRate*dur),a.sampleRate), ch=buf.getChannelData(0);
     let last=0;
-    for(let i=0;i<ch.length;i++){ const w=Math.random()*2-1; last=(last+.02*w)/1.02; ch[i]=last*3.2; }
+    for(let i=0;i<ch.length;i++){ const w=Math.random()*2-1; last=(last+.02*w)/1.02; ch[i]=last*3.2; }   // azar-visual
     const src=a.createBufferSource(); src.buffer=buf; src.loop=true;
     const bp=a.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=500; bp.Q.value=.6;
     const g=a.createGain(); g.gain.value=0; g.connect(a.destination);
@@ -153,10 +153,10 @@ function buildPoint(server){
     if(ctx.afterGlass&&!ctx.high) com=`${jug} — salida de pared → ${s.label}`;
     if(shotKey==="bajada") com=`¡${jug} baja la pared con todo!`;
     if(ctx.mia) com=`«¡Mía!» ${com}`;
-    if(PRESION>.6&&Math.random()<.3){
+    if(PRESION>.6&&Math.random()<.3){   // azar-visual
       const p=pl.perso||"frio";
       com+= p==="emocional" ? ((pl.conf??55)>=60?F_PERSO.emocionalAlto:F_PERSO.emocionalBajo) : F_PERSO[p];
-    } else if(s.attr&&pl.attrs[s.attr]>=85&&Math.random()<.35) com+=` (${s.attr} ${pl.attrs[s.attr]})`;
+    } else if(s.attr&&pl.attrs[s.attr]>=85&&Math.random()<.35) com+=` (${s.attr} ${pl.attrs[s.attr]})`;   // azar-visual
 
     if(opp._defQ===undefined) opp._defQ=Math.round((mediaAttrs(opp.jug[0].attrs)+mediaAttrs(opp.jug[1].attrs))/2);
     if(team._quimLado===undefined) team._quimLado=quimicaLado(team);
@@ -197,7 +197,10 @@ function buildPoint(server){
       if(shotKey==="bajada"){team.atNet=true;opp.atNet=false;}
       ev.push({team:t,jug,shotKey,com,from:contact,to:inc.c,vuelo:inc.vuelo,net:[A.atNet,B.atNet],recvIdx:nIdx});
     }
-    teams[1-t]._scr=["dejada","vibora","remate"].includes(shotKey)&&Math.random()<.5;
+    // rnd() y no Math.random: esto decide oppScrambling, que multiplica por 1,7
+    // la probabilidad de winner del siguiente golpe. Es simulación, no adorno,
+    // aunque viva en el mismo fichero que el sonido.
+    teams[1-t]._scr=["dejada","vibora","remate"].includes(shotKey)&&rnd()<.5;
     contact=inc.c;ctx=inc.ctx;t=1-t;hIdx=nIdx;
     if(rally>26){
       stats[t].jug[hIdx].w++;

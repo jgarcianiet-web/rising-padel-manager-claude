@@ -19,6 +19,9 @@ const IDIOMAS=[
 const IDIOMA_DEF="es";
 const I18N={
   es:{
+    crea_semilla:"Semilla",
+    crea_semilla_d:"Dos partidas con la misma semilla viven exactamente lo mismo. Déjala como está si no te importa.",
+    ana_semilla:"Semilla de la partida: <b>{semilla}</b>. Otra partida con esta misma semilla vive lo mismo.",
     menu_partidas:" ·  {n} partidas",
     btn_cancelar:"Cancelar",
     slot_n:"Ranura {n}",
@@ -923,6 +926,9 @@ const I18N={
     ctx_circuito_fip:"circuito Continental",
   },
   en:{
+    crea_semilla:"Seed",
+    crea_semilla_d:"Two games with the same seed live exactly the same story. Leave it be if you don't care.",
+    ana_semilla:"Game seed: <b>{semilla}</b>. Another game with this same seed lives the same story.",
     menu_partidas:" ·  {n} saved",
     btn_cancelar:"Cancel",
     slot_n:"Slot {n}",
@@ -1827,6 +1833,9 @@ const I18N={
     ctx_circuito_fip:"Continental tour",
   },
   fr:{
+    crea_semilla:"Graine",
+    crea_semilla_d:"Deux parties avec la même graine vivent exactement la même chose. Laisse-la telle quelle si ça t'est égal.",
+    ana_semilla:"Graine de la partie : <b>{semilla}</b>. Une autre partie avec cette graine vit la même chose.",
     menu_partidas:" ·  {n} parties",
     btn_cancelar:"Annuler",
     slot_n:"Emplacement {n}",
@@ -2731,6 +2740,9 @@ const I18N={
     ctx_circuito_fip:"circuit Continental",
   },
   de:{
+    crea_semilla:"Startwert",
+    crea_semilla_d:"Zwei Spiele mit demselben Startwert erleben genau dasselbe. Lass ihn stehen, wenn es dir egal ist.",
+    ana_semilla:"Startwert des Spiels: <b>{semilla}</b>. Ein anderes Spiel mit demselben Wert erlebt dasselbe.",
     menu_partidas:" ·  {n} Spielstände",
     btn_cancelar:"Abbrechen",
     slot_n:"Platz {n}",
@@ -3635,6 +3647,9 @@ const I18N={
     ctx_circuito_fip:"Continental-Tour",
   },
   it:{
+    crea_semilla:"Seme",
+    crea_semilla_d:"Due partite con lo stesso seme vivono esattamente la stessa storia. Lascialo com'è se non ti interessa.",
+    ana_semilla:"Seme della partita: <b>{semilla}</b>. Un'altra partita con questo seme vive la stessa storia.",
     menu_partidas:" ·  {n} partite",
     btn_cancelar:"Annulla",
     slot_n:"Slot {n}",

@@ -149,8 +149,8 @@ const _RASGO_IDS=Object.keys(RASGOS);
 const _RASGO_INC={clutch:"fragil",fragil:"clutch",propenso:"hierro",hierro:"propenso",talento:"vago",vago:"talento",leal:"conflictivo",conflictivo:"leal"};
 function _rngStr(s){ let h=Math.abs(hashStr(s||"?"))||1; return ()=>{ h=(h*1103515245+12345)&0x7fffffff; return h/0x7fffffff; }; }
 function _generaRasgos(nom,j){
-  const rnd=_rngStr("rasgo:"+nom);
-  const r0=rnd(), n = r0<.42?0 : r0<.85?1 : 2;    // 42% ninguno · 43% uno · 15% dos
+  const azar=_rngStr("rasgo:"+nom);
+  const r0=azar(), n = r0<.42?0 : r0<.85?1 : 2;    // 42% ninguno · 43% uno · 15% dos
   const est=j&&j.estilo, per=j&&j.perso, bias={};
   if(est==="rematador"||est==="agresivo"){ bias.pegador=3; bias.escenario=1.5; }
   if(est==="defensivo"||est==="constructor") bias.muro=3;
@@ -163,7 +163,7 @@ function _generaRasgos(nom,j){
   while(out.length<n && guard++<20){
     const items=pool.filter(id=>!out.includes(id)&&!(  _RASGO_INC[id]&&out.includes(_RASGO_INC[id])  )).map(id=>({id,w:bias[id]||1}));
     if(!items.length) break;
-    let s=items.reduce((a,i)=>a+i.w,0), r=rnd()*s, sel=items[items.length-1].id;
+    let s=items.reduce((a,i)=>a+i.w,0), r=azar()*s, sel=items[items.length-1].id;
     for(const it of items){ r-=it.w; if(r<=0){ sel=it.id; break; } }
     out.push(sel);
   }
@@ -270,11 +270,11 @@ function evaluaAcuerdoCompi(c,puesto){
   return {cumplido,meta,puesto:p,delta:cumplido?8:-fallo};
 }
 // ¿El compañero cuelga la pala? Probabilidad creciente desde los 35.
-function compiSeRetira(compi,rnd){
+function compiSeRetira(compi,azar){
   const e=(compi&&compi.edad)||0;
   if(e<EDAD_RETIRO_COMPI) return false;
   const p=Math.min(.9,(e-EDAD_RETIRO_COMPI)*.18+.10);
-  return (rnd||Math.random)()<p;
+  return (azar||rnd)()<p;
 }
 // Cierra la etapa con un compañero y la devuelve para el histórico de parejas.
 function cierraEtapaPareja(c,temporada,motivo){
@@ -384,8 +384,8 @@ function evaluaOfertaCompi(yo,cand,oferta,prestigio){
    pidiendo salir. Al vencer el contrato, renuevan o se van libres.
 ================================================================ */
 // Contrato inicial según nivel: duración, salario semanal, cláusula y prima.
-function mkContratoClub(nivel,rnd){
-  const r=rnd||Math.random;
+function mkContratoClub(nivel,azar){
+  const r=azar||rnd;
   return {
     temporadas: nivel>=68?(r()<.5?3:2):(r()<.6?2:1),
     salario:Math.round(nivel*8),
@@ -468,9 +468,9 @@ const EDAD_RETIRO_FORZADO=44; // el cuerpo dice basta
 
 // Cuánto declina un atributo esta temporada. Devuelve el número de puntos a
 // restar (0..3). rnd inyectable para pruebas reproducibles.
-function declivePorEdad(edad,clave,rnd){
+function declivePorEdad(edad,clave,azar){
   if(edad<EDAD_DECLIVE) return 0;
-  const r=rnd||Math.random;
+  const r=azar||rnd;
   const explosivo=ATTR_EXPLOSIVOS.indexOf(clave)>=0;
   const años=edad-EDAD_DECLIVE;
   // el explosivo cae antes y más rápido; el toque aguanta
@@ -480,11 +480,11 @@ function declivePorEdad(edad,clave,rnd){
   return (explosivo&&años>=4&&r()<.35)?2:1;
 }
 // Aplica el declive a un conjunto de atributos. Devuelve el total perdido.
-function aplicaDeclive(attrs,edad,rnd){
+function aplicaDeclive(attrs,edad,azar){
   if(!attrs||edad<EDAD_DECLIVE) return 0;
   let tot=0;
   ATTR_KEYS.forEach(k=>{
-    const d=declivePorEdad(edad,k,rnd);
+    const d=declivePorEdad(edad,k,azar);
     if(d>0){ attrs[k]=clamp((attrs[k]||0)-d,20,96); tot+=d; }
   });
   return tot;
@@ -584,10 +584,10 @@ function _aplicaEf(c,e){
 function dilemasDisponibles(c){ return DILEMAS.filter(d=>{ try{ return d.cond(c); }catch(e){ return false; } }); }
 function _dilemaPorId(id){ return DILEMAS.find(d=>d.id===id); }
 // Elige un dilema disponible y lo activa (sin resolver). Devuelve el dilema o null.
-function eligeDilema(c,semana,rnd){
+function eligeDilema(c,semana,azar){
   if(c.dilemaActivo) return null;
   const disp=dilemasDisponibles(c); if(!disp.length) return null;
-  const d=disp[Math.floor((rnd||Math.random)()*disp.length)];
+  const d=disp[Math.floor((azar||rnd)()*disp.length)];
   c.dilemaActivo={id:d.id,sem:semana};
   return d;
 }
@@ -617,7 +617,7 @@ function resolverPendientes(c,semana){
 function aplicarOpcionRuptura(c,id,motivo){
   if(id==="dejar") return {rompio:true,txt:t("rup_r_rota")};
   const leal=tieneRasgo(c.compi||{},"leal");
-  const ok=Math.random()<probReconduccion(c,id,motivo);
+  const ok=rnd()<probReconduccion(c,id,motivo);
   if(ok){ c.compiMoral=clamp((c.compiMoral??65)+(leal?32:24),5,95); return {rompio:false,txt:t("rup_r_funciona")}; }
   c.compiMoral=clamp((c.compiMoral??65)+6,5,95);
   return {rompio:(c.compiMoral??65)<35,txt:t("rup_r_nocala")};
@@ -701,7 +701,7 @@ function pickLesion(riesgo){
     if(l.grav===1) w*=1.4-riesgo*.7;       // leves: dominan cuando el riesgo es bajo
     return {l,w:Math.max(.04,w)};
   });
-  let s=items.reduce((a,i)=>a+i.w,0), r=Math.random()*s;
+  let s=items.reduce((a,i)=>a+i.w,0), r=rnd()*s;
   for(const i of items){ r-=i.w; if(r<=0) return {...i.l}; }
   return {...LESIONES[0]};
 }
@@ -731,7 +731,7 @@ function riesgoLesionPost(energia,fragil,tieneFisio){
 function intentaLesion(port,tieneFisio){
   const fragilEf=Math.max(0,(port.fragil||0)+rasgosLesionAjuste(port));   // rasgos: propenso/hierro
   const r=kLesion(riesgoLesionPost(port.energia,fragilEf,tieneFisio));    // la dificultad modula el riesgo médico
-  if(Math.random()>=r) return null;
+  if(rnd()>=r) return null;
   const les=pickLesion(clamp(1-(port.energia==null?100:port.energia)/40,0,1));
   if(tieneFisio) les.sem=Math.max(1,les.sem-1);
   port.fragil=(port.fragil||0)+1;
@@ -892,7 +892,7 @@ function parejaAvatares(pareja,tam){
   const js=pareja&&pareja.jug?pareja.jug:[];
   return `<span style="display:inline-flex">${js.map(j=>avatarSVG(j,tam)).join("")}</span>`;
 }
-function pickPais(){let r=Math.random()*100;for(const [f,w] of PAISES){r-=w;if(r<=0)return f;}return "🇪🇸";}
+function pickPais(){let r=rnd()*100;for(const [f,w] of PAISES){r-=w;if(r<=0)return f;}return "🇪🇸";}
 const APODOS=["Muro","Cañón","Víbora","Zurdo","Rayo","Mago","Torre","Pistola","Lobo","Búho","Motor","Fino","Tanque","Chispa","Pulpo"];
 const PROS=[
   {p:["A. Cotelo","frio","rematador",89,"🇪🇸"],q:["A. Tapias","valiente","agresivo",90,"🇦🇷"]},

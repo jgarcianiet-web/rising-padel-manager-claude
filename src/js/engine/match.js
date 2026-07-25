@@ -31,10 +31,10 @@ const PERSONALIDADES={
   emocional:{n:"Emocional",desc:"Con confianza vuela; sin ella, se hunde."},
 };
 const W=10,L=20,NET=10;
-const R=(a,b)=>a+Math.random()*(b-a);
-const pick=a=>a[Math.floor(Math.random()*a.length)];
+const R=(a,b)=>a+rnd()*(b-a);
+const pick=a=>a[Math.floor(rnd()*a.length)];
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-function wchoice(items){let s=items.reduce((x,i)=>x+i.w,0),r=Math.random()*s;for(const i of items){r-=i.w;if(r<=0)return i.k;}return items[items.length-1].k;}
+function wchoice(items){let s=items.reduce((x,i)=>x+i.w,0),r=rnd()*s;for(const i of items){r-=i.w;if(r<=0)return i.k;}return items[items.length-1].k;}
 
 let PRESION=0;
 function calcPresion(){return Math.min(1,calcPresion_base()+(match&&match.rivBoost||0));}
@@ -143,7 +143,7 @@ function resolveShot(pl,shotKey,ctx,rallyLen){
   // fatiga: un jugador cansado falla más y cierra menos puntos
   const fat=ctx.fatiga||0;
   if(fat>0){ err*=1+fat/240; win*=1-Math.min(.4,fat/300); }
-  const r=Math.random();
+  const r=rnd();
   if(r<err) return "error";
   if(r<err+win) return "winner";
   return "sigue";
@@ -153,16 +153,16 @@ function contactPoint(teamIdx,deep,x){
   return {x:x!==undefined?x:R(1.5,8.5),y,z:deep?R(.5,.9):R(.6,1.1)};
 }
 function incomingFor(shotKey,recvIdxTeam,recvTeam){
-  const deepGlass=["vibora","remate","globo"].includes(shotKey)&&Math.random()<(shotKey==="globo"?.55:.7);
+  const deepGlass=["vibora","remate","globo"].includes(shotKey)&&rnd()<(shotKey==="globo"?.55:.7);
   if(shotKey==="chiquita"||((shotKey==="fondo")&&recvTeam.atNet)){
     return {ctx:{atNet:recvTeam.atNet,high:false,afterGlass:false,pressure:shotKey==="chiquita"?.5:.2},c:contactPoint(recvIdxTeam,false),vuelo:"volea"};
   }
   if(shotKey==="globo"||shotKey==="globoRapido"){
-    const glass=shotKey==="globo"&&Math.random()<.5;
+    const glass=shotKey==="globo"&&rnd()<.5;
     return {ctx:{atNet:false,high:false,afterGlass:glass,pressure:.1},c:contactPoint(recvIdxTeam,true),vuelo:glass?"pared":"bote"};
   }
-  const glass=deepGlass||(shotKey==="saque"&&Math.random()<.35);
-  const high=glass&&Math.random()<.18;
+  const glass=deepGlass||(shotKey==="saque"&&rnd()<.35);
+  const high=glass&&rnd()<.18;
   const press={vibora:.5,remate:.6,bandeja:.3,bajada:.5,volea:.3}[shotKey]||.15;
   return {ctx:{atNet:false,high,afterGlass:glass,pressure:press},c:contactPoint(recvIdxTeam,true),vuelo:glass?"pared":"bote"};
 }

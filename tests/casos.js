@@ -402,9 +402,9 @@ comprueba("Relaciones: afinidad, motivo de crisis y ruptura con alternativas", (
   exige(probReconduccion({ compi: j("d", 1, ["leal"]) }, "hablar") > probReconduccion({ compi: j("d", 1, ["conflictivo"]) }, "hablar"), "el leal no es más fácil de reconducir");
   // aplicar: 'dejar' rompe; una charla exitosa (forzando el azar) sube la moral y NO rompe
   exige(aplicarOpcionRuptura(c1, "dejar").rompio === true, "dejar debería romper la pareja");
-  const _r = Math.random; Math.random = () => 0;
+  const _r = rnd, _est = rndEstado(); rnd = () => 0;
   const antes = c1.compiMoral, res = aplicarOpcionRuptura(c1, "hablar", ev.motivo);
-  Math.random = _r;
+  rnd = _r; rndSemilla(_est.semilla, _est.pos);
   exige(res.rompio === false && c1.compiMoral > antes, "una reconducción exitosa debería subir la moral sin romper");
   return `comp ${comp} vs choque ${choque}; motivos ${motivoDescontento(c1, 5).clave}/${motivoDescontento(c2, 45).clave}`;
 });
@@ -1380,6 +1380,8 @@ comprueba("Idiomas: el selector aplica el idioma y repinta el menú traducido", 
    sea ni trivial ni imposible en la dificultad estándar. */
 
 // mulberry32: misma semilla → misma secuencia.
+/* OBSOLETO: el juego ya trae su propio generador con semilla (src/js/rng.js).
+   Se conserva solo por si algún caso viejo lo llama. */
 function rngSemilla(seed) {
   let s = seed >>> 0;
   return () => {
@@ -1393,10 +1395,10 @@ function rngSemilla(seed) {
 // Simula `temporadas` de Superliga con una dificultad y semilla dadas. Devuelve
 // métricas de balance. Determinista: no depende de Math.random del entorno.
 function simulaSuperliga(dificultad, seed, temporadas) {
-  const gPrev = G, randPrev = Math.random;
+  const gPrev = G, estPrev = rndEstado();
   try {
     G = { dif: dificultad };
-    Math.random = rngSemilla(seed);
+    rndSemilla(seed);          // siembra el generador del juego (antes se pisaba Math.random)
     const tuyo = { n: "Test SC", color: "#C6F53C", fuerza: 62 };
     let sl = mkSuperliga(tuyo.n, tuyo.fuerza, tuyo.color);
     sl.plantilla = mkPlantillaSuperliga();
@@ -1420,8 +1422,104 @@ function simulaSuperliga(dificultad, seed, temporadas) {
       sl = nueva;
     }
     return { caja: res.caja, cumplidos, titulos, objetivo: sl.objetivo, temporadas };
-  } finally { Math.random = randPrev; G = gPrev; }
+  } finally { rndSemilla(estPrev.semilla, estPrev.pos); G = gPrev; }
 }
+
+comprueba("Semilla: ida y vuelta del texto que ve el jugador", () => {
+  [1, 12345, 4294967295, 999999999].forEach(s => {
+    exige(semillaDe(semillaTxt(s)) === s, "no sobrevive la ida y vuelta: " + s + " → " + semillaTxt(s));
+  });
+  exige(/^[0-9A-Z]+$/.test(semillaTxt(123456789)), "la semilla debería ser legible: " + semillaTxt(123456789));
+  exige(semillaDe("") === 0, "vacío debería dar 0 (y entonces se sortea una)");
+  exige(semillaDe("  ") === 0, "espacios deberían dar 0");
+  exige(semillaDe("no-existe-esto") >= 0, "un texto raro no debería reventar");
+  exige(semillaNueva() > 0 && semillaNueva() !== semillaNueva(), "semillaNueva debería dar valores distintos");
+  return "base 36 legible y reversible";
+});
+
+comprueba("Semilla: el mismo flujo da la misma secuencia, y otro flujo no", () => {
+  const saca = (s, n) => { rndSemilla(s); return Array.from({ length: n }, () => rnd()); };
+  const a = saca(2024, 40), b = saca(2024, 40), c = saca(2025, 40);
+  exige(a.every((v, i) => v === b[i]), "la misma semilla da secuencias distintas");
+  exige(a.some((v, i) => v !== c[i]), "dos semillas distintas dan lo mismo");
+  exige(a.every(v => v >= 0 && v < 1), "algún valor se sale de [0,1)");
+  // reanudar por posición: retomar a mitad continúa la misma secuencia
+  rndSemilla(2024); for (let i = 0; i < 17; i++) rnd();
+  const pos = rndEstado().pos;
+  const sigue = [rnd(), rnd(), rnd()];
+  rndSemilla(2024, pos);
+  exige([rnd(), rnd(), rnd()].every((v, i) => v === sigue[i]), "retomar por posición no continúa la misma secuencia");
+  return "secuencia estable y reanudable";
+});
+
+/* La prueba que justifica todo el ejercicio: dos carreras con la misma semilla
+   tienen que vivir el mismo torneo, punto por punto. */
+comprueba("Semilla: dos partidas con la misma semilla juegan el mismo torneo", () => {
+  const juega = (semilla) => {
+    G = null; _slotDestino = 1;
+    // se teclea en el campo de la pantalla de creación, que es el camino real:
+    // empezarCarrera() lee de ahí y pisa cualquier SEMILLA_ELEGIDA puesta a mano
+    document.getElementById("inSemilla").value = semillaTxt(semilla);
+    const c = nuevaCarrera("agresivo");
+    abrirTorneo(0);
+    const marcadores = [];
+    let v = 0;
+    while (torneo && v++ < 8) {
+      empezarPartido(false);
+      marcadores.push(document.getElementById("mkSets") ? "" : "");
+      marcadores.push(JSON.stringify(stats && stats.pganados));
+      pulsarFicha();
+    }
+    return { rival: c.h2h, pts: c.pts, dinero: c.dinero, marcadores: marcadores.join("|"),
+             mundo: G.world.parejas.slice(0, 5).map(p => p.nombre + ":" + p.pts).join(",") };
+  };
+  const a = juega(777777), b = juega(777777), c = juega(888888);
+  exige(a.mundo === b.mundo, "el mundo generado difiere con la misma semilla");
+  exige(a.pts === b.pts && a.dinero === b.dinero, `el torneo difiere: ${a.pts}pts/${a.dinero}€ vs ${b.pts}pts/${b.dinero}€`);
+  exige(a.marcadores === b.marcadores, "los partidos se juegan distinto con la misma semilla");
+  exige(a.mundo !== c.mundo || a.pts !== c.pts, "dos semillas distintas dan exactamente lo mismo");
+  limpiaRanuras();
+  return `semilla 777777 → ${a.pts} pts, ${a.dinero}€`;
+});
+
+comprueba("Semilla: la partida la guarda y continuarla retoma el flujo donde iba", () => {
+  limpiaRanuras();
+  G = null; _slotDestino = 1;
+  document.getElementById("inSemilla").value = semillaTxt(4242);
+  nuevaCarrera("agresivo");
+  exige(G.semilla === 4242, "la partida no guarda la semilla elegida: " + G.semilla);
+  for (let i = 0; i < 25; i++) rnd();          // consume flujo, como haría jugar
+  guardar();
+  const posGuardada = G._rngS;
+  exige(posGuardada === rndEstado().pos, "guardar no anota la posición del flujo");
+  const siguientes = [rnd(), rnd(), rnd()];
+
+  // continuar la partida: debe seguir por donde iba, no volver al principio
+  G = null; rndSemilla(1, 1);                  // ensucia el flujo a propósito
+  abrirModo("carrera");
+  document.getElementById("mmCont1").onclick();
+  exige(G.semilla === 4242, "al continuar se pierde la semilla");
+  exige([rnd(), rnd(), rnd()].every((v, i) => v === siguientes[i]),
+        "continuar no retoma el flujo: recargar y repetir daría otro resultado");
+  limpiaRanuras();
+  return "semilla y posición viajan con la partida";
+});
+
+comprueba("Semilla: una partida antigua sin semilla recibe una al abrirse", () => {
+  limpiaRanuras();
+  nuevaCarrera("agresivo"); guardar();
+  // simula un guardado de antes de que existiera la semilla
+  const d = JSON.parse(lsGet(slotKey("carrera", 1)));
+  delete d.semilla; delete d._rngS;
+  lsSet(slotKey("carrera", 1), JSON.stringify(d));
+  G = null;
+  abrirModo("carrera");
+  document.getElementById("mmCont1").onclick();
+  exige(G.semilla > 0, "una partida antigua debería recibir semilla al abrirse");
+  exige(rndEstado().semilla === G.semilla, "el flujo no arranca con la semilla de la partida");
+  limpiaRanuras();
+  return "compatible con guardados de antes";
+});
 
 comprueba("Balance: la simulación es reproducible con la misma semilla", () => {
   const a = simulaSuperliga("manager", 12345, 5);

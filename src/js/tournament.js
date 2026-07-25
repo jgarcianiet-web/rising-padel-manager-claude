@@ -181,7 +181,7 @@ function empezarPartido(ver,coach){
   teams=[miTeam(),rival];
   teams[1].jug.forEach(j=>{j.conf=j.conf??55;});
   stats=[mkStats(),mkStats()];
-  match={p:[0,0],j:[0,0],s:[0,0],hist:[],server:Math.random()<.5?0:1,fin:false,ver,chall:[3,3],revisando:false,momento:{team:-1,run:0,best:[0,0],aviso:null}};
+  match={p:[0,0],j:[0,0],s:[0,0],hist:[],server:rnd()<.5?0:1,fin:false,ver,chall:[3,3],revisando:false,momento:{team:-1,run:0,best:[0,0],aviso:null}};
   match.autoCoach=!!coach;
   if(coach) coachTactica();
   if(ver){
@@ -304,7 +304,7 @@ function pintaChallenges(){
 }
 function fotoHawk(dentro){
   // línea de fondo y bola cerca de ella
-  const bx=150+(Math.random()*30-15), by=dentro?66:80;
+  const bx=150+(rnd()*30-15), by=dentro?66:80;
   return `<svg viewBox="0 0 300 110"><rect width="300" height="110" fill="#0C1017"/>
     <rect x="40" y="20" width="220" height="70" fill="#17466B"/>
     <line x1="40" y1="72" x2="260" y2="72" stroke="#E9F3FB" stroke-width="3"/>
@@ -319,14 +319,14 @@ function ofreceRevision(fin,g){
   const cerrado = fin.end==="out"||fin.end==="glass"||fin.end==="porTres"||fin.end==="winner";
   const importante = match.p[0]>=2||match.p[1]>=2||PRESION>.45;
   const perdedor = fin.end==="out"||fin.end==="glass" ? fin.team : 1-g; // quien puede pedir revisión
-  if(!cerrado||!importante||match.chall[perdedor]<=0||Math.random()<.55) return false;
+  if(!cerrado||!importante||match.chall[perdedor]<=0||rnd()<.55) return false;
   // solo el humano (equipo 0) decide; la IA revisa sola a veces
   if(perdedor===0){
     mostrarRevisionHumano(fin,g);
     return true;
   } else {
     // IA pide revisión ocasionalmente
-    if(Math.random()<.5){ resolverRevision(fin,g,1); return true; }
+    if(rnd()<.5){ resolverRevision(fin,g,1); return true; }
   }
   return false;
 }
@@ -339,7 +339,7 @@ function mostrarRevisionHumano(fin,g){
 }
 function resolverRevision(fin,g,quien){
   // el que pide es "quien"; gana la revisión (la bola era como él dice) con prob según su instinto
-  const acierta=Math.random()<.4;  // la mayoría de revisiones confirman la decisión original
+  const acierta=rnd()<.4;  // la mayoría de revisiones confirman la decisión original
   const dentro = quien===g ? acierta : !acierta; // si acierta, la bola cae a favor del que revisa
   if(!acierta) match.chall[quien]--;   // NORMA: solo pierdes la revisión si te equivocas
   sfxClick();
@@ -377,7 +377,7 @@ function mostrarTiempoMuerto(){
   };
   document.getElementById("tmArenga").onclick=()=>{
     teams[0].jug.forEach(j=>{if(j.perso==="valiente"||j.perso==="emocional")j.conf=clamp((j.conf??55)+8,10,95);else j.conf=clamp((j.conf??55)+3,10,95);});
-    if(c&&Math.random()<.3)c.compiMoral=clamp((c.compiMoral??65)+3,5,95);
+    if(c&&rnd()<.3)c.compiMoral=clamp((c.compiMoral??65)+3,5,95);
     cierra("🔥 Arenga: sangre en los ojos.");
   };
   document.getElementById("tmBronca").onclick=()=>{
@@ -661,7 +661,7 @@ function finPartido(){
   if(gane){ e.rachaAct=(e.rachaAct||0)+1; if(e.rachaAct>(e.rachaMax||0)){e.rachaMax=e.rachaAct;if(e.rachaMax===15)avisa(t("aviso_racha15"));} }
   else e.rachaAct=0;
   fansAdd(gane?(torneo&&torneo.premierT?Math.round(R(15,40)):Math.round(R(2,8))):-Math.round(R(1,4)));
-  if(Math.random()<(torneo&&torneo.premierT?.5:.15)) post(gane?"victoria":"derrota",{rival:rival.nombre,torneo:torneo?torneo.nombre:""});
+  if(rnd()<(torneo&&torneo.premierT?.5:.15)) post(gane?"victoria":"derrota",{rival:rival.nombre,torneo:torneo?torneo.nombre:""});
   if(gane&&(e.rachaAct===5||e.rachaAct===10)) post("forma",{racha:e.rachaAct});
   let seLesiona=false, lesionTxt="";
 
@@ -682,11 +682,11 @@ function finPartido(){
       c.compiMoral=clamp((c.compiMoral??65)-5,5,95);             // y preocupa al compañero
       if(c.lesion.grav>=3) noticia("lesion",t("not_lesion_grave_t"),t("not_lesion_grave_s",{lesion:lesNombre(c.lesion),sem:c.lesion.sem}),miParejaProt());
     }
-    if((gane||misW>=4)&&Math.random()<.45){
+    if((gane||misW>=4)&&rnd()<.45){
       const favor={defensivo:["globo","pared","chiquita","fondo"],agresivo:["remate","vibora","volea","bandeja"],bandejero:["bandeja","vibora","volea"],rematador:["remate","bandeja","volea"],constructor:["chiquita","dejada","fondo","globo"]}[c.estilo];
       const k=pick(favor);
       const freno=c.attrs[k]>=72?.4:1;
-      if(c.attrs[k]<95&&Math.random()<freno) c.attrs[k]++;
+      if(c.attrs[k]<95&&rnd()<freno) c.attrs[k]++;
     }
     avisa(t("aviso_res_carrera",{res:gane?"✔ "+t("res_victoria"):"✗ "+t("res_derrota"),marc:marcadorFinal,rival:rival.nombre,fase:faseNombre(f).toLowerCase(),w:misW,e:stats[0].jug[c.lado].e}));
   } else {
@@ -698,7 +698,7 @@ function finPartido(){
       j.energia=clamp(j.energia-11,0,100);
       j.conf=clamp(j.conf+(gane?4:-5),15,95);
       const w=stats[0].jug[i].w;
-      if((gane&&Math.random()<.25)||w>=6){
+      if((gane&&rnd()<.25)||w>=6){
         const k=pick(ATTR_KEYS);
         if(j.attrs[k]<88) j.attrs[k]++;
       }
@@ -805,7 +805,7 @@ function ruedaDePrensa(gano,fase){
   });
   bA.onclick=()=>fin(t("pr_av_ambicion"),()=>{
     c.conf=clamp(c.conf+4,15,95);
-    if(c.sponsor&&Math.random()<.35){c.dinero+=100;avisa(t("pr_av_prima",{marca:c.sponsor.marca}));}
+    if(c.sponsor&&rnd()<.35){c.dinero+=100;avisa(t("pr_av_prima",{marca:c.sponsor.marca}));}
   });
   bP.onclick=()=>fin(t("pr_av_picante"),()=>{
     if(c.perso==="valiente"||c.perso==="emocional") c.conf=clamp(c.conf+7,15,95);
@@ -825,7 +825,7 @@ function cerrarTorneo(){
   e._ultCamp=false;
   const eraPremier=torneo&&torneo.premierT, faseCaida=torneo?torneo.fase:0, fueCampeon=e._ultCampFlag;
   torneo_ultimo=torneo;
-  if(G.modo==="carrera"&&eraPremier&&(e.calRes[semanaTemp()]==="🏆"||faseCaida>=4)&&Math.random()<.75){
+  if(G.modo==="carrera"&&eraPremier&&(e.calRes[semanaTemp()]==="🏆"||faseCaida>=4)&&rnd()<.75){
     setTimeout(()=>ruedaDePrensa(e.calRes[semanaTemp()]==="🏆",faseCaida),600);
   }
   torneo=null;

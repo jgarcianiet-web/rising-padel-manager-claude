@@ -109,6 +109,49 @@ module.exports = function pruebasEstaticas() {
     return usadas.length + " acciones, todas registradas";
   });
 
+  /* El azar de simulación sale de rnd() (src/js/rng.js), que tiene semilla y se
+     puede reproducir. Math.random solo se admite en lo presentacional: si el
+     sonido bebiera del mismo flujo, jugar con el sonido apagado daría
+     resultados distintos que con el sonido puesto. */
+  comprueba("Azar: la simulación no usa Math.random", () => {
+    const PRESENTACION = ["src/js/rng.js", "src/js/boot.js"];   // semilla y barra de carga
+    const objetivo = [...ficheros("src/js"), ...ficheros("src/js/engine")]
+      .filter(f => f.endsWith(".js") && !f.includes("vendor") && !PRESENTACION.includes(f));
+    const malos = [];
+    let marcadas = 0;
+    for (const f of objetivo) {
+      leer(f).split("\n").forEach((l, i) => {
+        if (!/Math\.random/.test(l)) return;
+        if (/^\s*(\/\/|\*|\/\*)/.test(l)) return;              // un comentario que la nombra
+        // El azar que solo se oye o se lee (ruido de la grada, frases del
+        // narrador) se marca a mano. Obliga a justificar cada excepción en vez
+        // de adivinarla desde aquí con una expresión regular frágil.
+        if (/\/\/\s*azar-visual/.test(l)) { marcadas++; return; }
+        malos.push(f + ":" + (i + 1) + "  " + l.trim().slice(0, 70));
+      });
+    }
+    exige(!malos.length, "Math.random sin marcar en simulación:\n      " + malos.join("\n      "));
+    return objetivo.length + " ficheros · " + marcadas + " excepciones marcadas";
+  });
+
+  /* Mismo cuento que el shadowing de t(): si una función recibe un parámetro
+     llamado rnd, tapa la función global y su respaldo deja de estar sembrado.
+     Ya pasó al convertir el motor: once funciones lo hacían. */
+  comprueba("Azar: nadie tapa rnd() con un parámetro del mismo nombre", () => {
+    const objetivo = [...ficheros("src/js"), ...ficheros("src/js/engine")].filter(f => f.endsWith(".js") && !f.includes("vendor"));
+    const malos = [];
+    for (const f of objetivo) {
+      leer(f).split("\n").forEach((l, i) => {
+        if (/function\s+\w+\s*\([^)]*\brnd\b[^)]*\)/.test(l)) malos.push(f + ":" + (i + 1) + " (parámetro)");
+        // const rnd = … dentro de una función también la tapa
+        if (/^\s*(const|let|var)\s+rnd\s*=/.test(l) && !f.endsWith("rng.js")) malos.push(f + ":" + (i + 1) + " (variable)");
+        if (/\brnd\s*\|\|\s*Math\.random/.test(l)) malos.push(f + ":" + (i + 1) + " (respaldo sin semilla)");
+      });
+    }
+    exige(!malos.length, "rnd tapado en " + malos.join(", ") + " — usa otro nombre (azar)");
+    return objetivo.length + " ficheros sin shadowing";
+  });
+
   /* Las tipografías incrustadas son OFL: se pueden usar y vender, pero hay que
      distribuir el aviso. Y sql.js es MIT, que también lo exige. */
   comprueba("Licencias: se distribuyen los avisos de los terceros", () => {
