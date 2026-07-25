@@ -852,6 +852,27 @@ comprueba("Idiomas: t() traduce y cae con red de seguridad", () => {
   return "traduce, fallback de idioma y de clave";
 });
 
+comprueba("Idiomas: golpes y frases del staff en el idioma activo", () => {
+  try {
+    localStorage.setItem("rpm_idioma", "en");
+    exige(atNombre("fondo") === "baseline" && atNombre("remate") === "smash" && atNombre("pared") === "wall play",
+      "los nombres de golpe no se traducen: " + atNombre("fondo"));
+    exige(atLista(["globo", "volea"]).join("/") === "lob/volley", "atLista no traduce la lista de especialidades");
+    // mkStaff guarda la frase como CLAVE, no como texto
+    const st = mkStaff("fisio", 3);
+    exige(/^fr_fisio_[1-4]$/.test(st.frase), "mkStaff no guarda la frase como clave i18n: " + st.frase);
+    exige(t(st.frase) !== st.frase && /[a-z]/i.test(t(st.frase)), "la frase del staff no resuelve a texto");
+    // fallback: un guardado antiguo con la frase literal sigue mostrándose
+    exige(t("Manos de oro, agenda llena.") === "Manos de oro, agenda llena.", "el fallback de frases antiguas no funciona");
+    localStorage.setItem("rpm_idioma", "es");
+    exige(atNombre("vibora") === "víbora", "los golpes no vuelven al español");
+    // todos los golpes y todas las frases del catálogo tienen clave en los 5 idiomas
+    ATTR_KEYS.forEach(k => ["en", "fr", "de", "it"].forEach(l => exige(I18N[l]["at_" + k], `falta at_${k} en ${l}`)));
+    Object.values(FRASES_STAFF).forEach(arr => arr.forEach(k => exige(I18N.es[k] && I18N.de[k], "frase de staff sin clave: " + k)));
+  } finally { localStorage.removeItem("rpm_idioma"); }
+  return "9 golpes y 24 frases de staff en 5 idiomas";
+});
+
 comprueba("Idiomas: avisos sueltos, hitos, primas y club en el idioma activo", () => {
   try {
     localStorage.setItem("rpm_idioma", "en");

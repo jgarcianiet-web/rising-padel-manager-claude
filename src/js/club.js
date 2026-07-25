@@ -300,14 +300,14 @@ function pintarCmSemana(){
     if(!j.lesion){
       const g=document.createElement("div");g.className="entreno";g.style.marginTop="8px";
       const bAuto=document.createElement("button");
-      bAuto.innerHTML=`auto<br><b>débil</b>`;
+      bAuto.innerHTML=`${t("ent_auto")}<br><b>${t("ent_debil")}</b>`;
       bAuto.className=plan==="auto"?"selbtn on":"selbtn";
       bAuto.onclick=()=>{j.plan="auto";guardar();pintarClubM();};
       g.appendChild(bAuto);
       ATTR_KEYS.forEach(k=>{
         const b=document.createElement("button");
         b.className=plan===k?"selbtn on":"selbtn";
-        b.innerHTML=`${k}<br><b style="color:${plan===k?"var(--tinta)":colAttr(j.attrs[k])}">${j.attrs[k]}</b>`;
+        b.innerHTML=`${atNombre(k)}<br><b style="color:${plan===k?"var(--tinta)":colAttr(j.attrs[k])}">${j.attrs[k]}</b>`;
         b.onclick=()=>{j.plan=k;guardar();pintarClubM();};
         g.appendChild(b);
       });
