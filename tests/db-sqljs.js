@@ -257,5 +257,14 @@ module.exports = async function ejecutarPruebasSql() {
   db.dbSqlGuardarProta(d, {});
   chk(Object.keys(db.dbSqlLeerProta(d)).length === 0, "4d · prota: protagonista vacío deja la tabla vacía");
 
+  // ---------- identidad del contenido (Fase 4d·9) ----------
+  db.dbSqlGuardarMeta(d, { modo: "carrera", prota: "Río Vera" });
+  db.dbSqlGuardarMeta(d, { modo: "carrera", prota: "Río Vera" }); // reemplaza, no acumula
+  const meta = db.dbSqlLeerMeta(d);
+  chk(meta.modo === "carrera" && meta.prota === "Río Vera", "4d·9 · meta: identidad modo+protagonista round-trip", JSON.stringify(meta));
+  db.dbSqlGuardarMeta(d, { modo: "club", prota: "Rising Pádel Club" });
+  const meta2 = db.dbSqlLeerMeta(d);
+  chk(meta2.modo === "club" && Object.keys(meta2).length === 2, "4d·9 · meta: reescribir cambia la identidad sin residuos");
+
   return res;
 };

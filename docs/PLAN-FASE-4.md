@@ -114,10 +114,21 @@ Sea cual sea la ruta, nunca *big-bang*:
 | Resto del protagonista (clave/valor JSON) | `norm_protagonista` | 4d·8 |
 
 Con `norm_protagonista` la cobertura del protagonista queda completa: cada
-campo de `G.carrera`/`G.clubG` vive en una tabla (dedicada o clave/valor) y el
-blob queda como export/salvaguarda para él. Pendiente de futuro: el resto de
-campos sueltos del mundo (`lider_*`, `nextId`...) si algún día se degrada el
-blob también a nivel de mundo.
+campo de `G.carrera`/`G.clubG` vive en una tabla (dedicada o clave/valor).
+
+### Degradación del blob (4d·9) — HECHA
+
+Al continuar partida, `hidratarDesdeSql()` (ui.js) usa **SQLite como fuente
+primaria**: la tabla `norm_meta` guarda la identidad del contenido (modo +
+nombre del protagonista, la BD es única y la comparten carrera y club) y, si
+coincide con la partida que se carga, las entidades se adoptan de las tablas
+con validación de forma — aunque el blob esté desactualizado. Si la identidad
+no coincide o sql.js no está listo, se cae a la ruta de salvaguarda: el blob
+manda y SQLite solo sustituye lo que coincide exactamente. `G._fuenteSql`
+("sqlite"/"blob") deja el diagnóstico.
+
+El blob JSON sigue escribiéndose en cada guardado: es el export/copia de
+seguridad y la red ante corrupción de la BD.
 
 ## 5. El harness de pruebas (crítico)
 
