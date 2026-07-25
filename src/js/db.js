@@ -44,6 +44,8 @@ CREATE TABLE IF NOT EXISTS norm_protagonista(
   clave TEXT PRIMARY KEY, valor TEXT);
 CREATE TABLE IF NOT EXISTS norm_meta(
   clave TEXT PRIMARY KEY, valor TEXT);
+CREATE TABLE IF NOT EXISTS norm_mundo(
+  clave TEXT PRIMARY KEY, valor TEXT);
 `;
 
 function dbSqlSchema(db){ db.run(DB_SCHEMA_SQL); }
@@ -271,6 +273,31 @@ function dbSqlLeerProta(db){
   return out;
 }
 
+// Campos sueltos del mundo (Fase 4d·10): todo lo de G.world que no son las
+// parejas (norm_pareja/…) ni el historial de Nº1 (norm_n1) — lider_M, lider_F,
+// nextId… — como pares clave/valor JSON, igual que norm_protagonista.
+const DB_CLAVES_MUNDO_DEDICADAS=["parejas","n1hist"];
+function dbSqlGuardarMundoKV(db, mundo){
+  db.run("BEGIN");
+  try{
+    db.run("DELETE FROM norm_mundo;");
+    const st=db.prepare("INSERT INTO norm_mundo(clave,valor) VALUES(?,?)");
+    Object.keys(mundo||{}).forEach(k=>{
+      if(DB_CLAVES_MUNDO_DEDICADAS.indexOf(k)>=0) return;
+      let v; try{ v=JSON.stringify(mundo[k]); }catch(_){ return; }
+      if(v===undefined) return;
+      st.run([k,v]);
+    }); st.free();
+    db.run("COMMIT");
+  }catch(e){ try{ db.run("ROLLBACK"); }catch(_){} throw e; }
+}
+function dbSqlLeerMundoKV(db){
+  const out={};
+  const r=db.exec("SELECT clave,valor FROM norm_mundo");
+  if(r&&r[0]) r[0].values.forEach(f=>{ try{ out[f[0]]=JSON.parse(f[1]); }catch(_){} });
+  return out;
+}
+
 // Identidad de lo que hay en las tablas (Fase 4d·9): la BD es única por
 // navegador y la comparten las partidas de carrera y club, así que al cargar
 // hay que saber A QUIÉN pertenece el contenido antes de darle autoridad.
@@ -339,7 +366,7 @@ function dbSqlSnapshotVivo(){
   if(!SQLDB||typeof normalizar!=="function") return;
   try{
     dbSqlGuardarSnapshot(SQLDB, normalizar());
-    try{ if(typeof G!=="undefined"&&G&&G.world) dbSqlGuardarN1(SQLDB, G.world.n1hist||[]); }catch(_){}
+    try{ if(typeof G!=="undefined"&&G&&G.world){ dbSqlGuardarN1(SQLDB, G.world.n1hist||[]); dbSqlGuardarMundoKV(SQLDB, G.world); } }catch(_){}
     try{
       const prot=(typeof G!=="undefined"&&G)?(G.modo==="carrera"?G.carrera:G.clubG):null;
       if(prot){
@@ -401,6 +428,11 @@ function dbSqlCargarSponsor(){
 function dbSqlCargarProta(){
   if(!SQLDB) return null;
   try{ return dbSqlLeerProta(SQLDB); }catch(e){ return null; }
+}
+// Reconstruye los campos sueltos del mundo desde sql.js (Fase 4d·10).
+function dbSqlCargarMundoKV(){
+  if(!SQLDB) return null;
+  try{ return dbSqlLeerMundoKV(SQLDB); }catch(e){ return null; }
 }
 // Lee la identidad del contenido de las tablas (Fase 4d·9).
 function dbSqlCargarMeta(){
@@ -520,7 +552,7 @@ if(typeof module!=="undefined"&&module.exports){
     dbSqlGuardarH2h,dbSqlLeerH2h,dbSqlGuardarStaff,dbSqlLeerStaff,
     dbSqlGuardarFinanzas,dbSqlLeerFinanzas,dbSqlGuardarSponsor,dbSqlLeerSponsor,
     dbSqlGuardarProta,dbSqlLeerProta,DB_CLAVES_DEDICADAS,
-    dbSqlGuardarMeta,dbSqlLeerMeta,
+    dbSqlGuardarMeta,dbSqlLeerMeta,dbSqlGuardarMundoKV,dbSqlLeerMundoKV,DB_CLAVES_MUNDO_DEDICADAS,
     dbSqlPorEstilo,dbSqlMejoresParejas,dbSqlTopPaises,dbSqlDistribucionNivel,
     dbSqlSnapshotCoincide};
 }

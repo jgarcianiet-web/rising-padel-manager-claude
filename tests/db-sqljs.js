@@ -266,5 +266,16 @@ module.exports = async function ejecutarPruebasSql() {
   const meta2 = db.dbSqlLeerMeta(d);
   chk(meta2.modo === "club" && Object.keys(meta2).length === 2, "4d·9 · meta: reescribir cambia la identidad sin residuos");
 
+  // ---------- campos sueltos del mundo (Fase 4d·10) ----------
+  const mundo = { parejas: [{ id: 1 }], n1hist: [{ t: 1 }], lider_M: 7, lider_F: 12, nextId: 104, _extra: { a: [1, 2] } };
+  db.dbSqlGuardarMundoKV(d, mundo);
+  db.dbSqlGuardarMundoKV(d, mundo); // reproyectar: reemplaza, no acumula
+  const kv = db.dbSqlLeerMundoKV(d);
+  chk(!("parejas" in kv) && !("n1hist" in kv), "4d·10 · mundo: las claves con tabla dedicada se excluyen", Object.keys(kv).join(","));
+  chk(kv.lider_M === 7 && kv.lider_F === 12 && kv.nextId === 104, "4d·10 · mundo: líderes y nextId reconstruidos");
+  chk(kv._extra && kv._extra.a[1] === 2, "4d·10 · mundo: valores anidados sobreviven al JSON");
+  db.dbSqlGuardarMundoKV(d, { parejas: [] });
+  chk(Object.keys(db.dbSqlLeerMundoKV(d)).length === 0, "4d·10 · mundo: sin campos sueltos deja la tabla vacía");
+
   return res;
 };

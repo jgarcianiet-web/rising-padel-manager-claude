@@ -90,6 +90,10 @@ function hidratarDesdeSql(){
       if(typeof dbSqlCargarN1==="function" && G.world){
         const n1=dbSqlCargarN1(); if(Array.isArray(n1)){ G.world.n1hist=n1; G._n1DesdeSql=true; }
       }
+      if(typeof dbSqlCargarMundoKV==="function" && G.world){
+        const kv=dbSqlCargarMundoKV();
+        if(kv){ Object.keys(kv).forEach(k=>{ G.world[k]=kv[k]; }); G._mundoKvDesdeSql=true; }
+      }
       const pal=(typeof dbSqlCargarPalmares==="function")?dbSqlCargarPalmares():null;
       if(Array.isArray(pal)){ prot.palmares=pal; G._palmaresDesdeSql=true; }
       const dia=(typeof dbSqlCargarDiario==="function")?dbSqlCargarDiario():null;
@@ -132,6 +136,17 @@ function hidratarDesdeSql(){
       if(n1Sql && n1Sql.length===blob.length &&
          n1Sql.every((h,i)=>h.t===blob[i].t && h.nombre===blob[i].nombre)){
         G.world.n1hist=n1Sql; G._n1DesdeSql=true;
+      }
+    }
+  }catch(e){}
+  try{
+    if(typeof dbSqlCargarMundoKV==="function" && G && G.world){
+      const kv=dbSqlCargarMundoKV();
+      if(kv){
+        Object.keys(kv).forEach(k=>{
+          if(!(k in G.world)) return;
+          try{ if(JSON.stringify(G.world[k])===JSON.stringify(kv[k])) G.world[k]=kv[k]; }catch(_){}
+        });
       }
     }
   }catch(e){}
