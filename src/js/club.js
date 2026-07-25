@@ -209,11 +209,11 @@ function simTorneoParejaB(ci){
   const pts=Math.round((cat.pts[idxPts]||0)*.5), premio=cat.premio[idxPts]||0;  // la pareja B puntúa al 50% para el club
   cl.pts+=pts; cl.dinero+=premio;
   if(titulo){
-    cl.palmares.push(`${cat.n} — pareja B (T${temporada()})`);
-    noticia("titulo",t("not_parejab_t",{cat:cat.n}),t("not_parejab_s",{p1:parB[0].n,p2:parB[1].n,pts,premio}));
-    avisa(t("clb_b_gana",{j1:parB[0].n,j2:parB[1].n,cat:cat.n,premio}));
+    cl.palmares.push(`${catNombre(cat)} — pareja B (T${temporada()})`);
+    noticia("titulo",t("not_parejab_t",{cat:catNombre(cat)}),t("not_parejab_s",{p1:parB[0].n,p2:parB[1].n,pts,premio}));
+    avisa(t("clb_b_gana",{j1:parB[0].n,j2:parB[1].n,cat:catNombre(cat),premio}));
   } else {
-    avisa(t("clb_b_resumen",{cat:cat.n,resumen:resumen.join("; ")||t("clb_b_eliminados"),pts,premio}));
+    avisa(t("clb_b_resumen",{cat:catNombre(cat),resumen:resumen.join("; ")||t("clb_b_eliminados"),pts,premio}));
   }
 }
 
@@ -273,13 +273,13 @@ function pintarCmSemana(){
       const bDisp=[];
       if(slot.premier!==undefined&&entradaEn(slot.premier)!==-1) bDisp.push(slot.premier);
       if(entradaEn(slot.fip)!==-1) bDisp.push(slot.fip);
-      d.innerHTML=`<b>Pareja B</b> <span class="pill">${alB.map(j=>j.n).join(" + ")}</span> <span class="pill">química ${quimDe(cl,cl.alinB)}</span><div class="d">${cl._pendB!==null?`✔ Irá al ${CATS[cl._pendB].n} — se resuelve al avanzar la semana.`:"Puede jugar su propio torneo esta semana (resultado rápido; sus puntos computan al 50% para el club)."}</div>`;
+      d.innerHTML=`<b>${t("clb_pareja_b")}</b> <span class="pill">${alB.map(j=>j.n).join(" + ")}</span> <span class="pill">${t("clb_quimica",{n:quimDe(cl,cl.alinB)})}</span><div class="d">${cl._pendB!==null?t("clb_b_inscrita",{cat:catNombre(cl._pendB)}):t("clb_b_libre")}</div>`;
       if(listosB){
         const f=document.createElement("div");f.className="fila";
         bDisp.forEach(ci=>{
           const b=document.createElement("button");
           b.className=cl._pendB===ci?"pri":"";
-          b.textContent=`B → ${CATS[ci].n}`;
+          b.textContent=`B → ${catNombre(ci)}`;
           b.onclick=()=>{cl._pendB=cl._pendB===ci?null:ci;guardar();pintarClubM();};
           f.appendChild(b);
         });

@@ -211,9 +211,9 @@ const MARCAS=[
 const SPOT_TIPOS=["spot_1","spot_2","spot_3","spot_4","spot_5","spot_6"];   // claves i18n; los guardados antiguos llevan el texto literal (t() lo devuelve tal cual)
 /* catálogo de primas por objetivos (se cobran una vez al lograrse, mientras dure el contrato) */
 const PRIMAS_CAT={
-  2:[["titP","Primer título Premier",1200],["racha10","Racha de 10 victorias",800],["top20","Cerrar en el top 20",900]],
-  3:[["titP","Título Premier",3000],["top10","Entrar en el top 10",4000],["racha10","Racha de 10 victorias",2000],["major","Ganar un Major",8000]],
-  4:[["major","Ganar un Major",20000],["top10","Top 10 mundial",10000],["n1","Cerrar como Nº1",50000],["titP","Título Premier",6000]],
+  2:[["titP","Primer título Élite",1200],["racha10","Racha de 10 victorias",800],["top20","Cerrar en el top 20",900]],
+  3:[["titP","Título Élite",3000],["top10","Entrar en el top 10",4000],["racha10","Racha de 10 victorias",2000],["major","Ganar una Corona",8000]],
+  4:[["major","Ganar una Corona",20000],["top10","Top 10 mundial",10000],["n1","Cerrar como Nº1",50000],["titP","Título Élite",6000]],
 };
 const TIER_TXT={1:"MARCA DE BARRIO",2:"MARCA NACIONAL",3:"GIGANTE DEL DEPORTE",4:"MULTINACIONAL"};
 function ofertaPatro(tier){
@@ -513,23 +513,27 @@ function pintarEventosSemana(td, disponible, motivoNo){
   const pos=miPuesto();
   lista.forEach(ci=>{
     const cat=CATS[ci], ent2=entradaEn(ci);
-    const tag=cat.premier?'<span class="pill oro">PREMIER</span>':'<span class="pill lima">FIP</span>';
+    const tag=cat.premier?`<span class="pill oro">${t("sem_tag_elite")}</span>`:`<span class="pill lima">${t("sem_tag_cont")}</span>`;
     const d=document.createElement("div");d.className="opcion";
     if(ent2===-1){
       const wc=ent().wildcards||0;
-      d.innerHTML=`<b>${cat.n}</b> ${tag}<div class="d">${cat.tf?`Reservado al <b>top 8</b> de la temporada — sois #${pos}. Sin previas ni wildcards: hay que ganárselo.`:`Corte de inscripción: top ${cat.cupoP} del ranking — sois #${pos}. ${cat.premier?`Puedes usar una <b>wildcard</b> para entrar por la previa (te quedan ${wc} este año).`:"Suma puntos en el circuito FIP para entrar."}`}</div>`;
+      // Por qué no entras: los Maestros son cerrados por definición; en el resto
+      // hay corte de ranking, y si es de la Élite todavía te queda la wildcard.
+      const porQue = cat.tf ? t("sem_corte_tf",{pos})
+        : t("sem_corte_top",{cupo:cat.cupoP,pos})+" "+(cat.premier?t("sem_corte_wc",{n:wc}):t("sem_corte_cont"));
+      d.innerHTML=`<b>${catNombre(cat)}</b> ${tag}<div class="d">${porQue}</div>`;
       if(cat.premier&&!cat.tf&&wc>0){
         const b=document.createElement("button");
         b.className="pri";b.style.width="100%";
-        b.textContent=t("sem_wc_usar",{cat:cat.n,n:wc});
+        b.textContent=t("sem_wc_usar",{cat:catNombre(cat),n:wc});
         b.disabled=!disponible||wc<=0;
         if(wc<=0) b.textContent=t("sem_wc_sin");
         b.onclick=()=>{
           if(ent().wildcards<=0){ avisa(t("sem_wc_no_quedan")); return; }
           const viaje=costeViaje(ci);
-          if(ent().dinero<viaje){ avisa(t("av_viaje_no",{cat:cat.n,viaje})); return; }
+          if(ent().dinero<viaje){ avisa(t("av_viaje_no",{cat:catNombre(cat),viaje})); return; }
           ent().wildcards--;
-          avisa(t("av_wildcard",{cat:cat.n,n:ent().wildcards}));
+          avisa(t("av_wildcard",{cat:catNombre(cat),n:ent().wildcards}));
           abrirTorneo(ci,true);
         };
         d.appendChild(b);
@@ -540,11 +544,11 @@ function pintarEventosSemana(td, disponible, motivoNo){
     const slotE=slotSemana(semanaTemp());
     const sede=(cat.premier&&slotE.premier===ci)?`${slotE.ciudad}`:t("sem_sede_nacional");
     const viaje=costeViaje(ci);
-    d.innerHTML=`<b>${cat.n}</b> ${tag} <span class="pill">📍 ${sede}</span> <span class="pill">${t("sem_viaje",{n:viaje})}</span> <span class="pill">${t("sem_campeon",{n:cat.premio[0]})}</span><div class="d">${modo}</div>`;
+    d.innerHTML=`<b>${catNombre(cat)}</b> ${tag} <span class="pill">📍 ${sede}</span> <span class="pill">${t("sem_viaje",{n:viaje})}</span> <span class="pill">${t("sem_campeon",{n:cat.premio[0]})}</span><div class="d">${modo}</div>`;
     const b=document.createElement("button");
     b.className=cat.premier?"pri":"azul";b.style.width="100%";
     const sinCaja=ent().dinero<viaje;
-    b.textContent=sinCaja?t("sem_sin_caja",{viaje}):t("sem_inscribirse",{cat:cat.n,viaje});
+    b.textContent=sinCaja?t("sem_sin_caja",{viaje}):t("sem_inscribirse",{cat:catNombre(cat),viaje});
     b.disabled=!disponible||sinCaja;
     b.onclick=()=>abrirTorneo(ci);
     d.appendChild(b);td.appendChild(d);
@@ -1023,17 +1027,27 @@ function renderTrayectoria(el){
   html+=h.slice(-12).map(x=>`<tr><td class="pos">T${x.t}</td><td>#${x.pos}</td><td class="pts">${x.pts}</td><td class="niv">${x.tit||"·"}</td></tr>`).join("");
   el.innerHTML=html;
 }
+/* ¿Ha ganado ya un torneo de la Serie Élite (Élite 2/1, Corona o Maestros)?
+
+   Se mira el contador, que es lo fiable. Las partidas anteriores al contador no
+   lo tienen, así que se cae a rastrear el palmarés en busca de los nombres
+   viejos del circuito — que es como se comprobaba antes. Es solo compatibilidad
+   hacia atrás: en las partidas nuevas el palmarés ya no contiene esas palabras. */
+function tituloElite(e){
+  if((e.recTitElite||0)>=1) return true;
+  return (e.palmares||[]).some(x=>/Premier|MAJOR|Tour Finals/.test(x));
+}
 const HITOS_CARRERA=[
   {id:"v1",txt:"Primera victoria en el circuito",ck:(c)=>((c.vd||{}).v||0)>=1,fans:30,din:100},
   {id:"tit1",txt:"Primer título (el que nunca se olvida)",ck:(c)=>c.palmares.length>=1,fans:100,din:300},
   {id:"top30",txt:"Entrar en el top 30",ck:(c)=>miPuesto()<=30,fans:150,din:500},
   {id:"top20",txt:"Entrar en el top 20",ck:(c)=>miPuesto()<=20,fans:300,din:1200},
-  {id:"pro",txt:"Debutar en un cuadro Premier",ck:(c)=>!!c.pro,fans:400,din:1500},
-  {id:"titP",txt:"Primer título Premier",ck:(c)=>c.palmares.some(x=>x.includes("Premier")||x.includes("MAJOR")),fans:1000,din:5000},
+  {id:"pro",txt:"Debutar en un cuadro Élite",ck:(c)=>!!c.pro,fans:400,din:1500},
+  {id:"titP",txt:"Primer título Élite",ck:(c)=>tituloElite(c),fans:1000,din:5000},
   {id:"top10",txt:"Entrar en el top 10",ck:(c)=>miPuesto()<=10,fans:800,din:3000},
   {id:"v100",txt:"100 victorias como profesional",ck:(c)=>((c.vd||{}).v||0)>=100,fans:400,din:1500},
   {id:"racha10",txt:"Racha de 10 victorias",ck:(c)=>(c.rachaMax||0)>=10,fans:300,din:1000},
-  {id:"major",txt:"Ganar un MAJOR",ck:(c)=>(c.recMajors||0)>=1,fans:3000,din:15000},
+  {id:"major",txt:"Ganar una CORONA",ck:(c)=>(c.recMajors||0)>=1,fans:3000,din:15000},
   {id:"n1",txt:"Cerrar una temporada como Nº1",ck:(c)=>(G.world.n1hist||[]).some(x=>x.yo),fans:5000,din:25000},
 ];
 const HITOS_CLUB=[
@@ -1044,7 +1058,7 @@ const HITOS_CLUB=[
   {id:"reforma",txt:"Primera reforma terminada",ck:(cl)=>Object.values(cl.reformas||{}).some(Boolean),fans:100,din:0},
   {id:"top10",txt:"Club en el top 10",ck:(cl)=>miPuesto()<=10,fans:800,din:5000},
   {id:"junta2",txt:"Cumplir el objetivo de la junta dos veces",ck:(cl)=>(cl._juntaOk||0)>=2,fans:400,din:3000},
-  {id:"titP",txt:"Título Premier para las vitrinas",ck:(cl)=>cl.palmares.some(x=>x.includes("Premier")||x.includes("MAJOR")),fans:1500,din:8000},
+  {id:"titP",txt:"Título Élite para las vitrinas",ck:(cl)=>tituloElite(cl),fans:1500,din:8000},
   {id:"top3",txt:"Podio del ranking de clubes",ck:(cl)=>miPuesto()<=3,fans:2000,din:12000},
 ];
 function chequeaHitos(){
@@ -1502,13 +1516,13 @@ function prensaSemanal(){
   const e=ent(); if(!e) return;
   const sl=slotSemana(semanaTemp());
   const filas=rankingFilas();
-  // 1) crónica del Premier de la semana (si tú no lo ganaste)
+  // 1) crónica del torneo Élite de la semana (si tú no lo ganaste)
   if(sl.premier!==undefined&&e._campPremSem!==semanaTemp()){
     const cands=filas.filter(f=>!f.yo).slice(0,10);
     const w=cands[Math.floor(Math.random()*Math.min(5,cands.length))];
     if(w){
-      const giro=pick(["exhibición y título","final épica decidida en el tercer set","remontada imposible ante la grada","paliza sin contemplaciones en la final","título tras salvar tres bolas de partido"]);
-      noticia("circuito",`${w.nombre} conquistan ${CATS[sl.premier].n==="Tour Finals"?"las Finals":"el "+CATS[sl.premier].n} de ${sl.ciudad}`,`${giro.charAt(0).toUpperCase()+giro.slice(1)} en ${sl.ciudad}`);
+      const giro=t(pick(["not_cron_giro1","not_cron_giro2","not_cron_giro3","not_cron_giro4","not_cron_giro5"]));
+      noticia("circuito",t("not_cron_t",{nombre:w.nombre,cat:catNombre(sl.premier),ciudad:sl.ciudad}),t("not_cron_s",{giro,ciudad:sl.ciudad}));
     }
   } else if(Math.random()<.55&&G.world.prevPos){
     // 2) el movimiento de la semana en el ranking

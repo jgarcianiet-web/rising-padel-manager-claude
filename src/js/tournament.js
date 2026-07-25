@@ -29,7 +29,7 @@ function abrirTorneo(ci,wildcard){
   for(let f=0;f<6;f++) rivales.push(f<startFase?null:rivalDeFase(cat.base,f,usados));
   const _slot=slotSemana(semanaTemp());
   const _ciudad=(cat.premier&&_slot.premier===ci)?_slot.ciudad:null;
-  torneo={cat:ci,nombre:cat.n+(_ciudad?` · ${_ciudad}`:""),premierT:cat.premier,pts:cat.pts,premio:cat.premio,base:cat.base,fase:startFase,startFase,rivales,wildcard:!!wildcard};
+  torneo={cat:ci,nombre:catNombre(cat)+(_ciudad?` · ${_ciudad}`:""),premierT:cat.premier,pts:cat.pts,premio:cat.premio,base:cat.base,fase:startFase,startFase,rivales,wildcard:!!wildcard};
   if(cat.premier&&startFase===2&&G.modo==="carrera"&&!G.carrera.pro){
     G.carrera.pro=true;
     noticia("hito",t("not_prof_t"),t("not_prof_s"));
@@ -103,7 +103,7 @@ function coachTactica(){
 }
 function pintarTorneo(){
   pintarPlanPartido();
-  document.getElementById("tNombre").innerHTML=`${torneo.premierT?"PREMIER · ":"CIRCUITO FIP · "}${torneo.nombre} · <em>${faseNombre(torneo.fase)}</em>`;
+  document.getElementById("tNombre").innerHTML=`${t(torneo.premierT?"circ_elite":"circ_cont")} · ${torneo.nombre} · <em>${faseNombre(torneo.fase)}</em>`;
   const r=torneo.rivales[torneo.fase];
   const h2=ent().h2h[r.id];
   const h2txt=h2?`Os conocéis: ${h2.v}-${h2.d} a ${h2.v>=h2.d?"vuestro":"su"} favor.`:"Nunca os habéis enfrentado.";
@@ -732,6 +732,11 @@ function finPartido(){
     e.palmares.push(`${torneo.nombre} (T${temporada()})`);
   if(G.modo==="club") clubPalma(-1,`${torneo.nombre} (T${temporada()})`);   // -1 = tu club (se ignora, ya está en e.palmares)
     if(torneo.premierT) e._campPremSem=semanaTemp();
+    // Contador de títulos de la Serie Élite. Antes los hitos miraban si el
+    // palmarés contenía la palabra "Premier", lo cual dejó de funcionar al
+    // renombrar el circuito y además nunca fue de fiar (el palmarés es texto
+    // traducible). Con un contador, el hito no depende de cómo se llame nada.
+    if(torneo.premierT) e.recTitElite=(e.recTitElite||0)+1;
     if(torneo.cat===6){ e.recMajors=(e.recMajors||0)+1; }
     // los títulos de la etapa actual con tu compañero: la historia es de LOS DOS
     if(G.modo==="carrera") e._parejaTitulos=(e._parejaTitulos|0)+1;

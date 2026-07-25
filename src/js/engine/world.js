@@ -53,8 +53,10 @@ function ecoIngreso(x){ return Math.round((x||0)*dif().economia); }
 function kLesion(base){ return clamp((base||0)*dif().lesion,0,0.95); }
 // Objetivo de la junta ajustado por su exigencia (top-N; positivo afloja).
 function juntaTop(base){ return clamp(Math.round((base||8)+dif().junta),1,40); }
-/* Calendario OFICIAL Premier Padel 2026: 25 torneos con sus ciudades y semanas reales
-   (4 Majors, 10 P1, 10 P2 y las Finals de Barcelona), y un torneo FIP cada semana. */
+/* Calendario de la temporada: 25 paradas de la Serie Élite repartidas por el año
+   (4 Coronas, 10 Élite 1, 10 Élite 2 y los Maestros de Barcelona, que cierran),
+   más un torneo del circuito Continental cada semana. Las sedes son ciudades
+   reales porque el pádel se juega donde se juega; las competiciones, no. */
 const TRAVEL={ES:60,EU:180,AF:450,ME:550,AM:750};
 const PREM_CAL=(()=>{
   const c=new Array(52).fill(null);
@@ -70,13 +72,13 @@ const PREM_CAL=(()=>{
   ev.forEach(([w,cat,ciudad,region])=>c[w-1]={cat,ciudad,region});
   return c;
 })();
-const FIP_CAL=(()=>{
+const CONT_CAL=(()=>{
   const pat=[0,1,0,2,1,0,3,1,2,0];
   return new Array(52).fill(0).map((_,i)=>pat[i%pat.length]);
 })();
 function slotSemana(st){
   const p=PREM_CAL[st-1];
-  return {premier:p?p.cat:undefined, ciudad:p?p.ciudad:undefined, region:p?p.region:undefined, tf:p?p.cat===7:false, fip:FIP_CAL[st-1]};
+  return {premier:p?p.cat:undefined, ciudad:p?p.ciudad:undefined, region:p?p.region:undefined, tf:p?p.cat===7:false, fip:CONT_CAL[st-1]};
 }
 function costeViaje(ci){
   const slot=slotSemana(semanaTemp());
@@ -87,19 +89,30 @@ const FASES=["Previa 1","Previa 2","Octavos","Cuartos","Semifinal","FINAL"];
 const DIAS=["lunes","martes","miércoles","jueves","viernes","sábado","domingo"];
 function diaDeFase(f){return f+2;}  // previa mar-mié · octavos jue · cuartos vie · semis sáb · FINAL domingo
 const FASE_OFFSET=[-8,-5,-2,0,3,5];
-/* Modelo real del circuito: Premier (Major/P1/P2, con corte de entrada por ranking)
-   + circuito FIP paralelo (Bronze/Silver/Gold/Platinum, abierto) para sumar puntos */
-/* Premios por PAREJA calcados a la escala real del circuito (FIP modesto, Premier serio) */
+/* Estructura del circuito: la Serie Élite (Élite 2 / Élite 1 / Corona, con corte
+   de entrada por ranking) y, en paralelo, el circuito Continental (Bronce, Plata,
+   Oro y Platino), abierto a cualquiera, donde se hacen los primeros puntos.
+
+   Los nombres son CLAVES de i18n, no texto: se pintan con catNombre(). Las
+   competiciones son inventadas a propósito — el juego no usa denominaciones de
+   circuitos reales. Las escalas de premios sí buscan un orden de magnitud
+   creíble: el Continental da para malvivir y la Élite para vivir. */
 const CATS=[
-  {n:"FIP Bronze",  premier:false,base:44,cupoD:30,        pts:[40,24,14,8,4,2],          premio:[1000,500,260,140,60,20]},
-  {n:"FIP Silver",  premier:false,base:52,cupoD:26,        pts:[80,48,28,16,8,4],         premio:[2000,1000,520,280,120,40]},
-  {n:"FIP Gold",    premier:false,base:60,cupoD:22,        pts:[150,90,55,30,15,8],       premio:[4000,2000,1000,520,240,80]},
-  {n:"FIP Platinum",premier:false,base:67,cupoD:18,        pts:[300,180,105,60,30,15],    premio:[7500,3800,1900,950,420,150]},
-  {n:"Premier P2",  premier:true, base:73,cupoD:20,cupoP:32,pts:[500,300,180,100,50,25],  premio:[9000,4500,2200,1100,500,180]},
-  {n:"Premier P1",  premier:true, base:79,cupoD:16,cupoP:26,pts:[1000,600,360,200,100,50],premio:[17000,8500,4200,2000,900,300]},
-  {n:"MAJOR",       premier:true, base:85,cupoD:12,cupoP:20,pts:[2000,1200,720,400,200,100],premio:[35000,17500,8800,4200,1800,500]},
-  {n:"Tour Finals", premier:true, tf:true, base:87,cupoD:8,cupoP:8,pts:[1500,900,540,330,0,0],premio:[24000,12000,6000,3000,0,0]},
+  {k:"cat_0",premier:false,base:44,cupoD:30,        pts:[40,24,14,8,4,2],          premio:[1000,500,260,140,60,20]},
+  {k:"cat_1",premier:false,base:52,cupoD:26,        pts:[80,48,28,16,8,4],         premio:[2000,1000,520,280,120,40]},
+  {k:"cat_2",premier:false,base:60,cupoD:22,        pts:[150,90,55,30,15,8],       premio:[4000,2000,1000,520,240,80]},
+  {k:"cat_3",premier:false,base:67,cupoD:18,        pts:[300,180,105,60,30,15],    premio:[7500,3800,1900,950,420,150]},
+  {k:"cat_4",premier:true, base:73,cupoD:20,cupoP:32,pts:[500,300,180,100,50,25],  premio:[9000,4500,2200,1100,500,180]},
+  {k:"cat_5",premier:true, base:79,cupoD:16,cupoP:26,pts:[1000,600,360,200,100,50],premio:[17000,8500,4200,2000,900,300]},
+  {k:"cat_6",premier:true, base:85,cupoD:12,cupoP:20,pts:[2000,1200,720,400,200,100],premio:[35000,17500,8800,4200,1800,500]},
+  {k:"cat_7",premier:true, tf:true, base:87,cupoD:8,cupoP:8,pts:[1500,900,540,330,0,0],premio:[24000,12000,6000,3000,0,0]},
 ];
+/* Nombre visible de una categoría, ya traducido. Acepta el índice o la propia
+   categoría. Todo lo que pinte el nombre de un torneo pasa por aquí. */
+function catNombre(c){
+  const cat=(typeof c==="number")?CATS[c]:c;
+  return cat?t(cat.k):"";
+}
 function entradaEn(ci){
   const cat=CATS[ci],pos=miPuesto();
   if(cat.tf) return pos<=8?3:-1;      // Finals: solo top 8, arranca en cuartos
@@ -116,19 +129,21 @@ function entradaEn(ci){
    forma DETERMINISTA a partir del nombre, así el mismo jugador tiene siempre
    los mismos rasgos, sin necesidad de migrar guardados antiguos.
 ================================================================ */
+/* Como el resto de catálogos del juego, guarda CLAVES de i18n, no frases: el
+   nombre y la descripción se pintan con t() (ver chipRasgos en extras.js). */
 const RASGOS={
-  clutch:{n:"Especialista",desc:"En los puntos decisivos, aparece.",bueno:1},
-  fragil:{n:"Cristal frágil",desc:"Bajo presión, tiembla.",bueno:-1},
-  escenario:{n:"De grandes escenarios",desc:"Crece bajo los focos de un Premier.",bueno:1},
-  pegador:{n:"Pura pegada",desc:"Winner o error: no conoce el término medio.",bueno:0},
-  muro:{n:"Muro",desc:"Devuelve una más. Rara vez regala.",bueno:1},
-  propenso:{n:"Propenso a lesiones",desc:"Su físico da sustos.",bueno:-1},
-  hierro:{n:"Físico de hierro",desc:"No se rompe ni a tiros.",bueno:1},
-  talento:{n:"Talento precoz",desc:"Aprende a una velocidad rara.",bueno:1},
-  vago:{n:"Entrena mal, compite bien",desc:"Un desastre entrenando; un jugador el domingo.",bueno:0},
-  leal:{n:"Leal",desc:"Aguanta contigo en las malas.",bueno:1},
-  ambicioso:{n:"Ambicioso",desc:"Quiere ganar ya, y lo exige.",bueno:0},
-  conflictivo:{n:"Conflictivo",desc:"El vestuario le queda pequeño.",bueno:-1},
+  clutch:{n:"rasgo_clutch",desc:"rasgo_clutch_d",bueno:1},
+  fragil:{n:"rasgo_fragil",desc:"rasgo_fragil_d",bueno:-1},
+  escenario:{n:"rasgo_escenario",desc:"rasgo_escenario_d",bueno:1},
+  pegador:{n:"rasgo_pegador",desc:"rasgo_pegador_d",bueno:0},
+  muro:{n:"rasgo_muro",desc:"rasgo_muro_d",bueno:1},
+  propenso:{n:"rasgo_propenso",desc:"rasgo_propenso_d",bueno:-1},
+  hierro:{n:"rasgo_hierro",desc:"rasgo_hierro_d",bueno:1},
+  talento:{n:"rasgo_talento",desc:"rasgo_talento_d",bueno:1},
+  vago:{n:"rasgo_vago",desc:"rasgo_vago_d",bueno:0},
+  leal:{n:"rasgo_leal",desc:"rasgo_leal_d",bueno:1},
+  ambicioso:{n:"rasgo_ambicioso",desc:"rasgo_ambicioso_d",bueno:0},
+  conflictivo:{n:"rasgo_conflictivo",desc:"rasgo_conflictivo_d",bueno:-1},
 };
 const _RASGO_IDS=Object.keys(RASGOS);
 const _RASGO_INC={clutch:"fragil",fragil:"clutch",propenso:"hierro",hierro:"propenso",talento:"vago",vago:"talento",leal:"conflictivo",conflictivo:"leal"};

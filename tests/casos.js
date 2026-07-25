@@ -970,6 +970,61 @@ comprueba("La pareja como personaje: acuerdo, retirada e historia común", () =>
   return `acuerdo ${ok.delta}/${malLejos.delta}; retiro 38→${ret38} 42→${ret42}; etapa de ${et.temps} temporadas`;
 });
 
+comprueba("Circuito: las categorías guardan claves y se traducen", () => {
+  exige(CATS.length === 8, "deberían seguir siendo 8 categorías");
+  CATS.forEach((c, i) => {
+    exige(c.k === "cat_" + i, "la categoría " + i + " no guarda su clave: " + JSON.stringify(c.k));
+    exige(c.n === undefined, "la categoría " + i + " conserva un nombre literal");
+  });
+  // catNombre resuelve por índice y por objeto, y cambia con el idioma
+  exige(catNombre(0) === catNombre(CATS[0]), "catNombre no acepta índice y objeto por igual");
+  const es = CATS.map((_, i) => catNombre(i));
+  try {
+    localStorage.setItem("rpm_idioma", "de");
+    const de = CATS.map((_, i) => catNombre(i));
+    exige(de[6] === "Krone" && de[7] === "Meister", "las categorías no se traducen: " + de.join("/"));
+    exige(de.every(x => x && x.indexOf("cat_") < 0), "alguna categoría se queda en la clave sin traducir");
+  } finally { localStorage.removeItem("rpm_idioma"); }
+  return es.join(" · ");
+});
+
+/* El juego se vende: no puede llevar los nombres reales del circuito ni de
+   otros productos. Esta prueba mira el texto que VE el jugador, en los cinco
+   idiomas, más los literales del código. */
+comprueba("Circuito: no aparecen marcas de terceros en ningún idioma", () => {
+  // Las marcas van siempre en mayúscula inicial, así que la comparación es
+  // sensible a la caja: en francés "premier tableau" es el ordinal y es legítimo.
+  const PROHIBIDAS = [/\bFIP\b/, /\bPremier\b/, /\bMAJOR\b/, /Tour Finals/i, /Football Manager/i, /World Padel/i];
+  const malas = [];
+  for (const idioma of ["es", "en", "fr", "de", "it"]) {
+    const dicc = I18N[idioma];
+    for (const [k, v] of Object.entries(dicc)) {
+      if (typeof v !== "string") continue;
+      // Al principio de frase el francés escribe "Premier titre" con mayúscula
+      // y sigue siendo el ordinal: se descarta si le sigue palabra en minúscula
+      const texto = idioma === "fr" ? v.replace(/\bPremier(?= [a-zà-ÿ])/g, "…") : v;
+      PROHIBIDAS.forEach(re => { if (re.test(texto)) malas.push(idioma + "." + k + ": " + v.slice(0, 60)); });
+    }
+  }
+  exige(!malas.length, malas.slice(0, 6).join(" | "));
+  return Object.keys(I18N.es).length + " claves × 5 idiomas limpias";
+});
+
+comprueba("Circuito: el hito de título Élite usa contador y respeta guardados viejos", () => {
+  const c = nuevaCarrera("agresivo");
+  exige(!tituloElite(c), "de inicio no debería haber título Élite");
+  // partida nueva: manda el contador, no el texto del palmarés
+  c.palmares.push("Continental Oro (T1)");
+  exige(!tituloElite(c), "un título Continental no debería contar como Élite");
+  c.recTitElite = 1;
+  exige(tituloElite(c), "el contador no activa el hito");
+  // partida vieja: no tiene contador, pero su palmarés lleva los nombres de antes
+  const viejo = { recTitElite: 0, palmares: ["Premier P1 · Roma (T3)"] };
+  exige(tituloElite(viejo), "un guardado antiguo con título Premier pierde su hito");
+  exige(!tituloElite({ palmares: ["FIP Gold (T2)"] }), "un FIP antiguo no era título Premier");
+  return "contador + compatibilidad";
+});
+
 comprueba("Idiomas: los catálogos de datos guardan CLAVES, no frases", () => {
   // los catálogos que se pintan deben referenciar claves i18n existentes en los
   // 5 idiomas; si alguien mete una frase suelta, esto lo caza
@@ -986,6 +1041,8 @@ comprueba("Idiomas: los catálogos de datos guardan CLAVES, no frases", () => {
   revisa("REFORMAS", Object.keys(REFORMAS).flatMap(k => ["ref_" + k, "ref_" + k + "_d"]));
   revisa("ATTR_KEYS", ATTR_KEYS.map(k => "at_" + k));
   revisa("MARCAS (sectores)", [...new Set(MARCAS.map(m => m.sec))]);
+  revisa("RASGOS", Object.values(RASGOS).flatMap(r => [r.n, r.desc]));
+  revisa("CATS", CATS.map(c => c.k));
   revisa("PRIMAS_CAT", [...new Set(Object.values(PRIMAS_CAT).flat().map(p => "prima_" + p[0]))]);
   revisa("TUTO", TUTO.carrera.concat(TUTO.club).flat());
   // y ningún sector de marca puede haber quedado como frase en español
@@ -1045,14 +1102,14 @@ comprueba("Idiomas: avisos sueltos, hitos, primas y club en el idioma activo", (
     localStorage.setItem("rpm_idioma", "en");
     exige(t("av_wildcard", { cat: "P1", n: 1 }).includes("Wildcard used"), "el aviso de wildcard no interpola en inglés");
     exige(t("clb_junta_nuevo", { obj: 20 }) === "📋 New board goal: finish the season in the top 20.", "el aviso de la junta no sale en inglés");
-    exige(t("hito_ca_major") === "Win a MAJOR" && t("hito_cl_top3").includes("Podium"), "los hitos no se traducen");
+    exige(t("hito_ca_major") === "Win a CROWN" && t("hito_cl_top3").includes("Podium"), "los hitos no se traducen");
     exige(t("prima_n1") === "Close as No. 1", "las primas no se traducen");
     // los hitos referencian claves existentes en ambos modos
     HITOS_CARRERA.forEach(h => exige(I18N.es["hito_ca_" + h.id] && I18N.en["hito_ca_" + h.id], "hito de carrera sin clave: " + h.id));
     HITOS_CLUB.forEach(h => exige(I18N.es["hito_cl_" + h.id] && I18N.en["hito_cl_" + h.id], "hito de club sin clave: " + h.id));
     Object.keys(REFORMAS).forEach(k => exige(I18N.es["ref_" + k] && I18N.it["ref_" + k + "_d"], "reforma sin clave: " + k));
     localStorage.setItem("rpm_idioma", "es");
-    exige(t("hito_ca_major") === "Ganar un MAJOR", "los hitos no vuelven al español");
+    exige(t("hito_ca_major") === "Ganar una CORONA", "los hitos no vuelven al español");
     const claves = Object.keys(I18N.es).filter(k => /^(av_|ent_|fan_|hito_|prima_|clb_|ref_|rec_)/.test(k));
     exige(claves.length >= 95, "faltan claves de avisos/hitos/club: " + claves.length);
     ["en", "fr", "de", "it"].forEach(l => claves.forEach(k => exige(typeof I18N[l][k] === "string" && I18N[l][k].length > 0, `falta ${k} en ${l}`)));

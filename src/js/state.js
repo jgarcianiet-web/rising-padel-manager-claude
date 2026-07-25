@@ -258,7 +258,7 @@ function simCircuito(excluir){
     if(contendientes.length){
       // el campeón sale entre los mejores con algo de azar
       const camp=contendientes[Math.min(contendientes.length-1,Math.floor(Math.abs(R(0,2.4))))];
-      if(camp&&camp.club!==undefined){ const cid=(PREM_CAL&&PREM_CAL[semanaTemp()-1]&&PREM_CAL[semanaTemp()-1].ciudad)?" "+PREM_CAL[semanaTemp()-1].ciudad:""; clubPalma(camp.club,`${CATS[slotAhora.premier].n}${cid} (T${temporada()})`); camp._titulos=(camp._titulos||0)+1; }
+      if(camp&&camp.club!==undefined){ const cid=(PREM_CAL&&PREM_CAL[semanaTemp()-1]&&PREM_CAL[semanaTemp()-1].ciudad)?" "+PREM_CAL[semanaTemp()-1].ciudad:""; clubPalma(camp.club,`${catNombre(slotAhora.premier)}${cid} (T${temporada()})`); camp._titulos=(camp._titulos||0)+1; }
     }
   }
   const sx=miSexo();
@@ -465,15 +465,15 @@ function calHtml(){
     const col=!pc?"#2A3140":pc.cat===7?"#E6FA50":pc.cat===6?"var(--oro)":pc.cat===5?"#9B59D0":"#4FA3D8";
     const cls="calcel"+(w===st?" hoy":"")+(w<st?" pasada":"");
     const marca=res[w]?(res[w]==="🏆"?"🏆":"•"):"";
-    const nom=pc?`${CATS[pc.cat].n} (${pc.ciudad})`:t("cal_solo_fip");
-    strip+=`<div class="${cls}" style="background:${col}" title="S${w}: ${nom} + ${CATS[FIP_CAL[w-1]].n}">${marca}</div>`;
+    const nom=pc?`${catNombre(pc.cat)} (${pc.ciudad})`:t("cal_solo_fip");
+    strip+=`<div class="${cls}" style="background:${col}" title="S${w}: ${nom} + ${catNombre(CONT_CAL[w-1])}">${marca}</div>`;
   }
   strip+='</div><div class="foot" style="text-align:left;margin-bottom:8px">'+t("cal_leyenda")+'</div>';
   const cal=[];
   for(let s2=st;s2<Math.min(st+8,SEMANAS_TEMP+1);s2++){
     const slot=slotSemana(s2);
-    const prem=slot.premier!==undefined?`<span style="color:var(--oro)">${CATS[slot.premier].n} (${slot.ciudad})</span> + `:"";
-    cal.push(`<div>S${s2} · ${prem}${CATS[slot.fip].n}${s2===st?t("cal_esta_sem"):""}</div>`);
+    const prem=slot.premier!==undefined?`<span style="color:var(--oro)">${catNombre(slot.premier)} (${slot.ciudad})</span> + `:"";
+    cal.push(`<div>S${s2} · ${prem}${catNombre(slot.fip)}${s2===st?t("cal_esta_sem"):""}</div>`);
   }
   const queda=PREM_CAL.slice(st-1).reduce((a,v)=>{if(v&&v.cat>=4&&v.cat<=6)a[v.cat-4]++;return a;},[0,0,0]);
   return strip+cal.join("")+`<div class="foot" style="text-align:left;margin-top:8px">${t("cal_restan",{major:queda[2],p1:queda[1],p2:queda[0]})}</div>`;

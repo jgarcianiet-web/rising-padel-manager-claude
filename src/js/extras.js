@@ -35,7 +35,9 @@ function chipRasgos(j){
   if(!rg||!rg.length) return "";
   return rg.map(id=>{ const r=(typeof RASGOS!=="undefined"&&RASGOS[id])||{n:id,bueno:0,desc:""};
     const col=r.bueno>0?"var(--verde)":r.bueno<0?"var(--rojo)":"var(--oro)";
-    return `<span class="rasgo" title="${r.desc||""}" style="border-color:${col};color:${col}">${r.n}</span>`; }).join("");
+    // n y desc son claves i18n; t() devuelve tal cual lo que no reconoce, así
+    // que los guardados antiguos con el literal dentro siguen pintando bien
+    return `<span class="rasgo" title="${r.desc?t(r.desc):""}" style="border-color:${col};color:${col}">${t(r.n)}</span>`; }).join("");
 }
 
 
@@ -53,8 +55,8 @@ function hudEvento(){
   if(torneo) return hudCaja(t("hud_enjuego"), hudFila(faseNombre(torneo.fase), `<span style="font-size:12px">${torneo.nombre}</span>`));
   let f=""; const sl=slotSemana(semanaTemp());
   if(sl){
-    if(sl.premier!==undefined) f+=hudFila("Premier",`<span style="font-size:12px">${CATS[sl.premier].n}</span>`);
-    if(sl.fip!==undefined) f+=hudFila("FIP",`<span style="font-size:12px">${CATS[sl.fip].n}</span>`);
+    if(sl.premier!==undefined) f+=hudFila(t("sem_tag_elite"),`<span style="font-size:12px">${catNombre(sl.premier)}</span>`);
+    if(sl.fip!==undefined) f+=hudFila(t("sem_tag_cont"),`<span style="font-size:12px">${catNombre(sl.fip)}</span>`);
   }
   return f?hudCaja(t("hud_estasem"),f):"";
 }
