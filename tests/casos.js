@@ -2116,3 +2116,74 @@ comprueba("Club: la pareja B se forma en dos clics (regresión: se borraba sola)
   exige(cl.alinB === null, "un índice que ya no existe debería limpiarse");
   return "pareja B formable y a prueba de bajas";
 });
+
+/* Cuaderno de dilemas: memoria y cadenas ---------------------------------
+   Antes era una bolsa de la que se sacaba al azar: la misma escena volvía tres
+   veces en una temporada y ninguna decisión dejaba rastro. */
+comprueba("Dilemas: una escena no se repite mientras esté fresca", () => {
+  const c = nuevaCarrera();
+  c.dilVistos = { furgoneta: 10 };
+  const ids = dilemasDisponibles(c, 20).map(d => d.id);
+  exige(ids.indexOf("furgoneta") < 0, "repitió una escena de hace 10 semanas");
+  const luego = dilemasDisponibles(c, 10 + DIL_DESCANSO + 1).map(d => d.id);
+  c.dinero = 500; c.pro = false;
+  exige(dilemasDisponibles(c, 10 + DIL_DESCANSO + 1).some(d => d.id === "furgoneta"), "no vuelve nunca, ni pasado el descanso");
+  return "descanso de " + DIL_DESCANSO + " semanas";
+});
+
+comprueba("Dilemas: los marcados como únicos no vuelven jamás", () => {
+  const c = nuevaCarrera();
+  c.edad = 19; c.dilVistos = { universidad: 5 };
+  exige(!dilemasDisponibles(c, 5 + DIL_DESCANSO * 3).some(d => d.id === "universidad"), "un dilema único se repitió");
+  return "los únicos se viven una vez";
+});
+
+comprueba("Dilemas: la decisión queda registrada y abre la escena que la sigue", () => {
+  const c = nuevaCarrera();
+  c.fans = 3000; c.dinero = 1000;
+  c.dilemaActivo = { id: "inversor", sem: 12 };
+  aplicarOpcionDilema(c, 0, 12);                    // firmar el adelanto
+  exige(dilHizo(c, "inversor", 0), "la decisión no quedó registrada");
+  exige(!dilHizo(c, "inversor", 1), "registró una decisión que no se tomó");
+  exige((c.pendientes || []).some(p => p.abre === "cobro_inversor"), "la consecuencia no encadena");
+  exige(!dilemasDisponibles(c, 13).some(d => d.id === "cobro_inversor"), "el cobro salta antes de tiempo");
+  resolverPendientes(c, 18);                        // seis semanas después
+  exige(c.dilemaActivo && c.dilemaActivo.id === "cobro_inversor", "el inversor no vino a cobrar");
+  return "firmar hoy es un dilema dentro de seis semanas";
+});
+
+comprueba("Dilemas: las cadenas por condición solo existen si hiciste aquello", () => {
+  const a = nuevaCarrera(); a.edad = 31; a.fragil = 3;
+  a.decis = { infiltracion: 1 };                     // dijo que no a la infiltración
+  exige(!dilemasDisponibles(a, 60).some(d => d.id === "operacion"), "la operación aparece sin haberse infiltrado");
+  a.decis = { infiltracion: 0 };
+  exige(dilemasDisponibles(a, 60).some(d => d.id === "operacion"), "infiltrarse no abre la operación");
+  return "la resonancia es de quien se infiltró";
+});
+
+comprueba("Dilemas: un texto con nombres sobrevive a una partida sin ellos", () => {
+  const c = nuevaCarrera();
+  c.compi = null; c.nemesis = null;                  // guardado viejo, pareja rota
+  ["nemesis_adios", "compi_oferta", "compi_boda", "hermano_compi"].forEach(id => {
+    const d = _dilemaPorId(id);
+    exige(d, "falta el dilema " + id);
+    const tit = d.titulo(c), tx = d.texto(c);
+    exige(tit && !/undefined/.test(tit), id + ": título roto (" + tit + ")");
+    exige(tx && !/undefined/.test(tx), id + ": texto roto");
+    d.ops.forEach(o => { if (o.dif) exige(!/undefined/.test(o.dif.txt(c)), id + ": consecuencia rota"); });
+  });
+  return "sin pareja y sin némesis, el modal aguanta";
+});
+
+comprueba("Dilemas: hay cuaderno para una carrera larga sin repetirse", () => {
+  const c = nuevaCarrera();
+  c.dinero = 4000; c.fans = 2600; c.pro = true; c.edad = 26; c.energia = 70;
+  c.sponsor = { marca: "Nébula", sem: 300, tier: 2 };
+  c.vd = { v: 30, d: 6 }; c.compiMoral = 60;
+  const disp = dilemasDisponibles(c, 60).length;
+  exige(DILEMAS.length >= 45, "el cuaderno se quedó corto: " + DILEMAS.length);
+  exige(disp >= 12, "para un perfil normal solo hay " + disp + " escenas posibles");
+  const ids = new Set(DILEMAS.map(d => d.id));
+  exige(ids.size === DILEMAS.length, "hay ids de dilema repetidos");
+  return DILEMAS.length + " dilemas, " + disp + " posibles para un profesional de 26";
+});

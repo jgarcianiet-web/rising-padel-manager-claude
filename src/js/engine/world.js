@@ -638,13 +638,14 @@ const DILEMAS=[
       {txt:c=>t("dil_fam_o2"),desc:c=>t("dil_fam_o2d"),
        inm:{energia:-14,moral:-6},dif:null}]},
 
-  { id:"inversor",
+  // se firma una vez en la vida: si volviera, el cobro volvería con él
+  { id:"inversor", unico:true,
     cond:c=>(c.fans||0)>=2000,
     titulo:c=>t("dil_inv_t"), texto:c=>t("dil_inv_x"),
     ops:[
       {txt:c=>t("dil_inv_o1"),desc:c=>t("dil_inv_o1d"),
        inm:{dinero:9000},
-       dif:{en:6,txt:c=>t("dil_inv_o1c"),ef:{dinero:-14000}}},
+       dif:{en:6,txt:c=>t("dil_inv_o1c"),ef:{dinero:-14000},abre:"cobro_inversor"}},
       {txt:c=>t("dil_inv_o2"),desc:c=>t("dil_inv_o2d"),
        inm:{moral:3},dif:null}]},
 
@@ -699,7 +700,343 @@ const DILEMAS=[
       {txt:c=>t("dil_can_o2"),desc:c=>t("dil_can_o2d"),
        inm:{dinero:900},
        dif:{en:2,txt:c=>t("dil_can_o2c"),ef:{fans:-250}}}]},
+
+
+/* ---- Lote 2: la carrera de abajo y el dinero ----
+     Los años de furgoneta, las clases particulares y la primera vez que alguien
+     te ofrece dinero a cambio de algo que no es jugar. Varios se enganchan
+     entre sí: la beca que rechazas vuelve tres temporadas después, y el
+     adelanto del inversor viene a cobrarse solo. */
+  { id:"furgoneta", peso:1.3,
+    cond:c=>(c.dinero||0)<3000 && !c.pro,
+    titulo:c=>t("dil_furgo_t"), texto:c=>t("dil_furgo_x"),
+    ops:[
+      {txt:c=>t("dil_furgo_o1"),desc:c=>t("dil_furgo_o1d"),
+       inm:{dinero:260,moral:4},
+       dif:{en:4,txt:c=>t("dil_furgo_o1c"),ef:{moral:-8}}},
+      {txt:c=>t("dil_furgo_o2"),desc:c=>t("dil_furgo_o2d"),
+       inm:{dinero:-260},dif:null}]},
+
+  { id:"clases",
+    cond:c=>(c.dinero||0)<1800,
+    titulo:c=>t("dil_clases_t"), texto:c=>t("dil_clases_x"),
+    ops:[
+      {txt:c=>t("dil_clases_o1"),desc:c=>t("dil_clases_o1d"),
+       inm:{dinero:700,energia:-14},dif:null},
+      {txt:c=>t("dil_clases_o2"),desc:c=>t("dil_clases_o2d"),
+       inm:{moral:3},
+       dif:{en:2,txt:c=>t("dil_clases_o2c"),ef:{dinero:-300}}}]},
+
+  { id:"club_local", unico:true,
+    cond:c=>(c.semana||1)<=104 && !c.sponsor,
+    titulo:c=>t("dil_local_t"), texto:c=>t("dil_local_x"),
+    ops:[
+      {txt:c=>t("dil_local_o1"),desc:c=>t("dil_local_o1d"),
+       inm:{dinero:400,fans:200},
+       dif:{en:8,txt:c=>t("dil_local_o1c"),ef:{energia:-18}}},
+      {txt:c=>t("dil_local_o2"),desc:c=>t("dil_local_o2d"),
+       inm:{fans:-80},dif:null}]},
+
+  { id:"padre", unico:true, peso:1.4,
+    cond:c=>(c.edad||18)<=21,
+    titulo:c=>t("dil_padre_t"), texto:c=>t("dil_padre_x"),
+    ops:[
+      {txt:c=>t("dil_padre_o1"),desc:c=>t("dil_padre_o1d"),
+       inm:{moral:8},
+       dif:{en:5,txt:c=>t("dil_padre_o1c"),ef:{energia:-10}}},
+      {txt:c=>t("dil_padre_o2"),desc:c=>t("dil_padre_o2d"),
+       inm:{moral:-10,dinero:-400},
+       dif:{en:4,txt:c=>t("dil_padre_o2c"),ef:{fans:120,moral:6}}}]},
+
+  { id:"universidad", unico:true, peso:1.4,
+    cond:c=>(c.edad||18)<=19,
+    titulo:c=>t("dil_univ_t"), texto:c=>t("dil_univ_x"),
+    ops:[
+      {txt:c=>t("dil_univ_o1"),desc:c=>t("dil_univ_o1d"),
+       inm:{dinero:500,energia:-8},
+       dif:{en:6,txt:c=>t("dil_univ_o1c"),ef:{energia:-12}}},
+      {txt:c=>t("dil_univ_o2"),desc:c=>t("dil_univ_o2d"),
+       inm:{moral:6},dif:null}]},
+
+  // cadena: solo existe para quien apostó todo al pádel y no le está saliendo
+  { id:"plan_b", unico:true, peso:2,
+    cond:c=>dilHizo(c,"universidad",1) && (c.semana||1)>104 && miPuesto()>60,
+    titulo:c=>t("dil_planb_t"), texto:c=>t("dil_planb_x"),
+    ops:[
+      {txt:c=>t("dil_planb_o1"),desc:c=>t("dil_planb_o1d"),
+       inm:{moral:8,energia:-10},
+       dif:{en:4,txt:c=>t("dil_planb_o1c"),ef:{fragil:1}}},
+      {txt:c=>t("dil_planb_o2"),desc:c=>t("dil_planb_o2d"),
+       inm:{dinero:1200,energia:-16},dif:null}]},
+
+  { id:"reloj",
+    cond:c=>!!c.sponsor,
+    titulo:c=>t("dil_reloj_t"), texto:c=>t("dil_reloj_x"),
+    ops:[
+      {txt:c=>t("dil_reloj_o1"),desc:c=>t("dil_reloj_o1d"),
+       inm:{dinero:1800},
+       dif:{en:3,txt:c=>t("dil_reloj_o1c"),ef:{dinero:-2200,moral:-4}}},
+      {txt:c=>t("dil_reloj_o2"),desc:c=>t("dil_reloj_o2d"),
+       inm:{},
+       dif:{en:2,txt:c=>t("dil_reloj_o2c"),ef:{dinero:900}}}]},
+
+  { id:"apuestas", unico:true, peso:1.5,
+    cond:c=>(c.fans||0)>=1500,
+    titulo:c=>t("dil_apu_t"), texto:c=>t("dil_apu_x"),
+    ops:[
+      {txt:c=>t("dil_apu_o1"),desc:c=>t("dil_apu_o1d"),
+       inm:{dinero:6000,fans:400},
+       dif:{en:5,txt:c=>t("dil_apu_o1c"),ef:{fans:-1400,moral:-6}}},
+      {txt:c=>t("dil_apu_o2"),desc:c=>t("dil_apu_o2d"),
+       inm:{moral:6},dif:null}]},
+
+  { id:"factura",
+    cond:c=>(c.dinero||0)>=9000,
+    titulo:c=>t("dil_fac_t"), texto:c=>t("dil_fac_x"),
+    ops:[
+      {txt:c=>t("dil_fac_o1"),desc:c=>t("dil_fac_o1d"),
+       inm:{dinero:3200},
+       dif:{en:10,txt:c=>t("dil_fac_o1c"),ef:{dinero:-6500,fans:-600}}},
+      {txt:c=>t("dil_fac_o2"),desc:c=>t("dil_fac_o2d"),
+       inm:{dinero:-1400,moral:4},dif:null}]},
+
+  // cadena: la abre la consecuencia diferida de haber firmado el adelanto
+  /* `cadena`: no sale en el sorteo. Aparece solo cuando la consecuencia diferida
+     del adelanto lo abre, seis semanas después de firmar. */
+  { id:"cobro_inversor", unico:true, cadena:true,
+    cond:c=>dilHizo(c,"inversor",0),
+    titulo:c=>t("dil_cobro_t"), texto:c=>t("dil_cobro_x"),
+    ops:[
+      {txt:c=>t("dil_cobro_o1"),desc:c=>t("dil_cobro_o1d"),
+       inm:{dinero:-5000},
+       dif:{en:2,txt:c=>t("dil_cobro_o1c"),ef:{moral:8}}},
+      {txt:c=>t("dil_cobro_o2"),desc:c=>t("dil_cobro_o2d"),
+       inm:{dinero:-900,moral:-6},
+       dif:{en:6,txt:c=>t("dil_cobro_o2c"),ef:{dinero:-2200,fans:-200}}}]},
+
+
+/* ---- Lote 3: la fama, la prensa y el vestuario ----
+     Cuando ya hay gente que sabe quién eres, las decisiones dejan de ser sobre
+     dinero y empiezan a ser sobre a quién le debes qué. Varias tocan a tu
+     pareja: el juego ya la trata como un personaje, y estas escenas son suyas. */
+  { id:"documental", unico:true, peso:1.4,
+    cond:c=>(c.fans||0)>=3000,
+    titulo:c=>t("dil_doc_t"), texto:c=>t("dil_doc_x"),
+    ops:[
+      {txt:c=>t("dil_doc_o1"),desc:c=>t("dil_doc_o1d"),
+       inm:{dinero:7000,fans:1800},
+       dif:{en:5,txt:c=>t("dil_doc_o1c"),ef:{moral:-10,fans:-400}}},
+      {txt:c=>t("dil_doc_o2"),desc:c=>t("dil_doc_o2d"),
+       inm:{dinero:1500,fans:200},dif:null}]},
+
+  { id:"polemica",
+    cond:c=>(c.fans||0)>=1000,
+    titulo:c=>t("dil_pol_t"), texto:c=>t("dil_pol_x"),
+    ops:[
+      {txt:c=>t("dil_pol_o1"),desc:c=>t("dil_pol_o1d"),
+       inm:{energia:-8,fans:300},
+       dif:{en:3,txt:c=>t("dil_pol_o1c"),ef:{moral:8,fans:250}}},
+      {txt:c=>t("dil_pol_o2"),desc:c=>t("dil_pol_o2d"),
+       inm:{fans:-150},dif:null}]},
+
+  { id:"foto_filtrada",
+    cond:c=>!!c.pro,
+    titulo:c=>t("dil_foto_t"), texto:c=>t("dil_foto_x"),
+    ops:[
+      {txt:c=>t("dil_foto_o1"),desc:c=>t("dil_foto_o1d"),
+       inm:{fans:500},
+       dif:{en:2,txt:c=>t("dil_foto_o1c"),ef:{dinero:c=>-(c.sponsor?Math.round(c.sponsor.sem*2):600)}}},
+      {txt:c=>t("dil_foto_o2"),desc:c=>t("dil_foto_o2d"),
+       inm:{fans:-200,energia:6},dif:null}]},
+
+  { id:"libro", unico:true,
+    cond:c=>(c.edad||18)>=28 && (c.palmares||[]).length>=3,
+    titulo:c=>t("dil_libro_t"), texto:c=>t("dil_libro_x"),
+    ops:[
+      {txt:c=>t("dil_libro_o1"),desc:c=>t("dil_libro_o1d"),
+       inm:{dinero:9000,fans:1500},
+       dif:{en:4,txt:c=>t("dil_libro_o1c"),ef:{moral:-14}}},
+      {txt:c=>t("dil_libro_o2"),desc:c=>t("dil_libro_o2d"),
+       inm:{dinero:2500,fans:300},dif:null}]},
+
+  { id:"programa_tv",
+    cond:c=>(c.fans||0)>=2200,
+    titulo:c=>t("dil_tv_t"), texto:c=>t("dil_tv_x"),
+    ops:[
+      {txt:c=>t("dil_tv_o1"),desc:c=>t("dil_tv_o1d"),
+       inm:{dinero:8000,fans:2200},
+       dif:{en:3,txt:c=>t("dil_tv_o1c"),ef:{energia:-26}}},
+      {txt:c=>t("dil_tv_o2"),desc:c=>t("dil_tv_o2d"),
+       inm:{energia:12,fans:-250},dif:null}]},
+
+  { id:"compi_oferta", peso:1.3,
+    cond:c=>!!c.compi && (c.compiMoral==null?65:c.compiMoral)<72,
+    titulo:c=>t("dil_cofer_t",{n:nomCompi(c)}),
+    texto:c=>t("dil_cofer_x",{n:nomCompi(c)}),
+    ops:[
+      {txt:c=>t("dil_cofer_o1"),desc:c=>t("dil_cofer_o1d"),
+       inm:{dinero:-3000,moral:14},
+       dif:{en:3,txt:c=>t("dil_cofer_o1c"),ef:{moral:8}}},
+      {txt:c=>t("dil_cofer_o2"),desc:c=>t("dil_cofer_o2d"),
+       inm:{moral:-16},dif:null}]},
+
+  { id:"compi_boda",
+    cond:c=>!!c.compi,
+    titulo:c=>t("dil_boda_t"),
+    texto:c=>t("dil_boda_x",{n:nomCompi(c)}),
+    ops:[
+      {txt:c=>t("dil_boda_o1"),desc:c=>t("dil_boda_o1d"),
+       inm:{moral:16,energia:-6},dif:null},
+      {txt:c=>t("dil_boda_o2"),desc:c=>t("dil_boda_o2d"),
+       inm:{},
+       dif:{en:3,txt:c=>t("dil_boda_o2c",{n:nomCompi(c)}),ef:{moral:-14}}}]},
+
+  { id:"hermano_compi",
+    cond:c=>!!c.compi && (c.fans||0)>=600,
+    titulo:c=>t("dil_herm_t"),
+    texto:c=>t("dil_herm_x",{n:nomCompi(c)}),
+    ops:[
+      {txt:c=>t("dil_herm_o1"),desc:c=>t("dil_herm_o1d",{n:nomCompi(c)}),
+       inm:{energia:-10,moral:10},
+       dif:{en:3,txt:c=>t("dil_herm_o1c"),ef:{fans:400}}},
+      {txt:c=>t("dil_herm_o2"),desc:c=>t("dil_herm_o2d"),
+       inm:{moral:-8},dif:null}]},
+
+  { id:"manifiesto", unico:true, peso:1.3,
+    cond:c=>!!c.pro,
+    titulo:c=>t("dil_mani_t"), texto:c=>t("dil_mani_x"),
+    ops:[
+      {txt:c=>t("dil_mani_o1"),desc:c=>t("dil_mani_o1d"),
+       inm:{fans:600,moral:8},
+       dif:{en:6,txt:c=>t("dil_mani_o1c"),ef:{fans:-200}}},
+      {txt:c=>t("dil_mani_o2"),desc:c=>t("dil_mani_o2d"),
+       inm:{fans:-300},
+       dif:{en:5,txt:c=>t("dil_mani_o2c"),ef:{dinero:1200}}}]},
+
+  { id:"capitan", unico:true,
+    cond:c=>(c.fans||0)>=2500 && (c.edad||18)>=25,
+    titulo:c=>t("dil_cap_t"), texto:c=>t("dil_cap_x"),
+    ops:[
+      {txt:c=>t("dil_cap_o1"),desc:c=>t("dil_cap_o1d"),
+       inm:{fans:900,energia:-10},
+       dif:{en:4,txt:c=>t("dil_cap_o1c"),ef:{fans:-350,moral:-6}}},
+      {txt:c=>t("dil_cap_o2"),desc:c=>t("dil_cap_o2d"),
+       inm:{energia:8},dif:null}]},
+
+
+/* ---- Lote 4: el cuerpo, el final y lo que queda después ----
+     La parte que el juego ya tenía a medias: el declive y el legado. Aquí la
+     cadena importante es la del cuerpo —quien se infiltra una final acaba
+     sentado delante de una resonancia— y la que cierra la rivalidad. */
+  { id:"infiltracion", peso:1.2,
+    cond:c=>((c.energia==null?100:c.energia)<45 || !!c.lesion) && !!c.pro,
+    titulo:c=>t("dil_infil_t"), texto:c=>t("dil_infil_x"),
+    ops:[
+      {txt:c=>t("dil_infil_o1"),desc:c=>t("dil_infil_o1d"),
+       inm:{energia:22,fans:200},
+       dif:{en:3,txt:c=>t("dil_infil_o1c"),ef:{fragil:2,energia:-16}}},
+      {txt:c=>t("dil_infil_o2"),desc:c=>t("dil_infil_o2d"),
+       inm:{fans:-150,moral:-6},dif:null}]},
+
+  // cadena: la factura de haberse infiltrado llega en forma de resonancia
+  { id:"operacion", unico:true, peso:1.8,
+    cond:c=>dilHizo(c,"infiltracion",0) && (c.fragil||0)>=2,
+    titulo:c=>t("dil_oper_t"), texto:c=>t("dil_oper_x"),
+    ops:[
+      {txt:c=>t("dil_oper_o1"),desc:c=>t("dil_oper_o1d"),
+       inm:{energia:-30,fans:-300},
+       dif:{en:8,txt:c=>t("dil_oper_o1c"),ef:{fragil:-3,energia:40,moral:8}}},
+      {txt:c=>t("dil_oper_o2"),desc:c=>t("dil_oper_o2d"),
+       inm:{},
+       dif:{en:5,txt:c=>t("dil_oper_o2c"),ef:{fragil:2,energia:-18}}}]},
+
+  { id:"altura",
+    cond:c=>(c.dinero||0)>=2500,
+    titulo:c=>t("dil_alt_t"), texto:c=>t("dil_alt_x"),
+    ops:[
+      {txt:c=>t("dil_alt_o1"),desc:c=>t("dil_alt_o1d"),
+       inm:{dinero:-1400,energia:-10},
+       dif:{en:4,txt:c=>t("dil_alt_o1c"),ef:{energia:30,moral:6}}},
+      {txt:c=>t("dil_alt_o2"),desc:c=>t("dil_alt_o2d"),
+       inm:{},dif:null}]},
+
+  { id:"psico_privado",
+    cond:c=>(c.compiMoral==null?65:c.compiMoral)<50 || (((c.vd||{}).d||0)>=8),
+    titulo:c=>t("dil_psi_t"), texto:c=>t("dil_psi_x"),
+    ops:[
+      {txt:c=>t("dil_psi_o1"),desc:c=>t("dil_psi_o1d"),
+       inm:{dinero:-1600},
+       dif:{en:5,txt:c=>t("dil_psi_o1c"),ef:{moral:18,energia:10}}},
+      {txt:c=>t("dil_psi_o2"),desc:c=>t("dil_psi_o2d"),
+       inm:{moral:-4},dif:null}]},
+
+  { id:"agente_rival",
+    cond:c=>!!(c.staff&&c.staff.rep) && (c.fans||0)>=1200,
+    titulo:c=>t("dil_agen_t"), texto:c=>t("dil_agen_x"),
+    ops:[
+      {txt:c=>t("dil_agen_o1"),desc:c=>t("dil_agen_o1d"),
+       inm:{dinero:-800},
+       dif:{en:4,txt:c=>t("dil_agen_o1c"),ef:{dinero:4500,moral:-8}}},
+      {txt:c=>t("dil_agen_o2"),desc:c=>t("dil_agen_o2d"),
+       inm:{moral:6},dif:null}]},
+
+  { id:"academia_nombre", unico:true,
+    cond:c=>(c.edad||18)>=30 && (c.fans||0)>=4000,
+    titulo:c=>t("dil_acad_t"), texto:c=>t("dil_acad_x"),
+    ops:[
+      {txt:c=>t("dil_acad_o1"),desc:c=>t("dil_acad_o1d"),
+       inm:{dinero:-6000,fans:800},
+       dif:{en:9,txt:c=>t("dil_acad_o1c"),ef:{dinero:12000,fans:1200}}},
+      {txt:c=>t("dil_acad_o2"),desc:c=>t("dil_acad_o2d"),
+       inm:{},dif:null}]},
+
+  { id:"joven_promesa",
+    cond:c=>(c.edad||18)>=29 && (c.fans||0)>=1500,
+    titulo:c=>t("dil_joven_t"), texto:c=>t("dil_joven_x"),
+    ops:[
+      {txt:c=>t("dil_joven_o1"),desc:c=>t("dil_joven_o1d"),
+       inm:{energia:-12,moral:8},
+       dif:{en:7,txt:c=>t("dil_joven_o1c"),ef:{fans:900,moral:8}}},
+      {txt:c=>t("dil_joven_o2"),desc:c=>t("dil_joven_o2d"),
+       inm:{},dif:null}]},
+
+  { id:"despedida", unico:true, peso:1.5,
+    cond:c=>(c.edad||18)>=34,
+    titulo:c=>t("dil_desp_t"), texto:c=>t("dil_desp_x"),
+    ops:[
+      {txt:c=>t("dil_desp_o1"),desc:c=>t("dil_desp_o1d"),
+       inm:{dinero:6000,fans:2500},
+       dif:{en:4,txt:c=>t("dil_desp_o1c"),ef:{moral:-10}}},
+      {txt:c=>t("dil_desp_o2"),desc:c=>t("dil_desp_o2d"),
+       inm:{moral:8},dif:null}]},
+
+  { id:"federacion", unico:true,
+    cond:c=>(c.edad||18)>=32 && (c.fans||0)>=2000,
+    titulo:c=>t("dil_fed_t"), texto:c=>t("dil_fed_x"),
+    ops:[
+      {txt:c=>t("dil_fed_o1"),desc:c=>t("dil_fed_o1d"),
+       inm:{dinero:4000,energia:-14},
+       dif:{en:6,txt:c=>t("dil_fed_o1c"),ef:{fans:-500,moral:-8}}},
+      {txt:c=>t("dil_fed_o2"),desc:c=>t("dil_fed_o2d"),
+       inm:{moral:6},dif:null}]},
+
+  { id:"nemesis_adios", unico:true, peso:2,
+    cond:c=>!!c.nemesis && (c.edad||18)>=30,
+    titulo:c=>t("dil_nem_t",{rival:nomRival(c)}),
+    texto:c=>t("dil_nem_x",{rival:nomRival(c)}),
+    ops:[
+      {txt:c=>t("dil_nem_o1"),desc:c=>t("dil_nem_o1d"),
+       inm:{fans:1200,energia:-10,moral:10},
+       dif:{en:3,txt:c=>t("dil_nem_o1c"),ef:{fans:900}}},
+      {txt:c=>t("dil_nem_o2"),desc:c=>t("dil_nem_o2d"),
+       inm:{},dif:null}]},
 ];
+/* Los nombres que se cuelan en el texto de un dilema salen de la partida, y la
+   partida puede no tenerlos: una guardada vieja sin némesis, una pareja rota
+   entre que el dilema se abre y se pinta. Sin respaldo, el modal reventaría y
+   se llevaría por delante la semana entera. */
+function nomRival(c){ return (c&&c.nemesis&&c.nemesis.nombre)||t("soc_rival_gen"); }
+function nomCompi(c){ return (c&&c.compi&&c.compi.n)||t("dil_compi_gen"); }
 function _efVal(v,c){ return typeof v==="function"?v(c):v; }
 function _aplicaEf(c,e){
   if(!e) return;
@@ -709,14 +1046,53 @@ function _aplicaEf(c,e){
   if(e.moral!=null) c.compiMoral=clamp((c.compiMoral==null?65:c.compiMoral)+_efVal(e.moral,c),5,95);
   if(e.fragil!=null) c.fragil=Math.max(0,(c.fragil||0)+_efVal(e.fragil,c));
 }
-function dilemasDisponibles(c){ return DILEMAS.filter(d=>{ try{ return d.cond(c); }catch(e){ return false; } }); }
+/* ---- Memoria: qué se ha vivido y qué se decidió ----
+
+   Sin memoria, el cuaderno de dilemas es una bolsa de la que se saca al azar y
+   la misma escena vuelve tres veces en una temporada. Con ella pasan dos cosas:
+   un dilema no se repite mientras esté fresco (y los marcados `unico` no vuelven
+   nunca), y una decisión queda registrada, que es lo que permite escribir el
+   dilema que solo tiene sentido si hiciste aquello. */
+const DIL_DESCANSO=40;      // semanas que tarda un dilema en poder repetirse
+function dilVisto(c,id){ return ((c.dilVistos||{})[id])|0; }
+function dilElegido(c,id){ const v=(c.decis||{})[id]; return v===undefined?-1:v; }
+/* ¿Se decidió `id` con la opción `op`? Es el ladrillo de las cadenas: se escribe
+   `cond:c=>dilHizo(c,"inversor",0)` y ese dilema solo existe para quien firmó. */
+function dilHizo(c,id,op){ return dilElegido(c,id)===op; }
+function dilemasDisponibles(c,semana){
+  const sem=semana==null?(c.semana|0):semana;
+  return DILEMAS.filter(d=>{
+    if(d.cadena) return false;        // solo llega abierto por otra decisión, nunca al azar
+    const visto=dilVisto(c,d.id);
+    if(visto){
+      if(d.unico) return false;
+      if(sem-visto<DIL_DESCANSO) return false;
+    }
+    try{ return d.cond(c); }catch(e){ return false; }
+  });
+}
 function _dilemaPorId(id){ return DILEMAS.find(d=>d.id===id); }
-// Elige un dilema disponible y lo activa (sin resolver). Devuelve el dilema o null.
+/* Elige un dilema disponible y lo activa (sin resolver). Devuelve el dilema o
+   null. Los dilemas con `peso` salen más (o menos) que los demás: los de la
+   trama pesan más que los de relleno. */
 function eligeDilema(c,semana,azar){
   if(c.dilemaActivo) return null;
-  const disp=dilemasDisponibles(c); if(!disp.length) return null;
-  const d=disp[Math.floor((azar||rnd)()*disp.length)];
+  const disp=dilemasDisponibles(c,semana); if(!disp.length) return null;
+  const total=disp.reduce((s,d)=>s+(d.peso||1),0);
+  let r=(azar||rnd)()*total, d=disp[disp.length-1];
+  for(const x of disp){ r-=(x.peso||1); if(r<0){ d=x; break; } }
   c.dilemaActivo={id:d.id,sem:semana};
+  return d;
+}
+/* Abre un dilema concreto por su id, cumpla o no su condición: lo usan las
+   cadenas. Lo único que sigue respetando es el `unico`, porque si no una
+   decisión que se puede tomar dos veces trae dos veces la misma escena (y el
+   inversor venía a cobrar cada temporada). */
+function abreDilema(c,id,semana){
+  const d=_dilemaPorId(id);
+  if(c.dilemaActivo||!d) return null;
+  if(d.unico&&dilVisto(c,id)) return null;
+  c.dilemaActivo={id,sem:semana};
   return d;
 }
 // Aplica la opción elegida: efecto inmediato ahora y encola la consecuencia diferida.
@@ -724,20 +1100,26 @@ function aplicarOpcionDilema(c,opIdx,semana){
   const d=_dilemaPorId(c.dilemaActivo&&c.dilemaActivo.id); c.dilemaActivo=null;
   if(!d) return null;
   const op=d.ops[opIdx]; if(!op) return null;
+  (c.dilVistos=c.dilVistos||{})[d.id]=semana||1;
+  (c.decis=c.decis||{})[d.id]=opIdx;
   _aplicaEf(c,op.inm);
   let pend=null;
   if(op.dif){
     pend={sem:semana+(op.dif.en||1),txt:_efVal(op.dif.txt,c),ef:{}};
     const e=op.dif.ef||{}; ["dinero","fans","energia","moral","fragil"].forEach(k=>{ if(e[k]!=null) pend.ef[k]=_efVal(e[k],c); });
+    if(op.dif.abre) pend.abre=op.dif.abre;      // la consecuencia es otra escena
     (c.pendientes=c.pendientes||[]).push(pend);
   }
   return {op,pend};
 }
-// Resuelve (aplica y retira) las consecuencias cuya semana ya ha llegado. Devuelve las resueltas.
+/* Resuelve (aplica y retira) las consecuencias cuya semana ya ha llegado.
+   Devuelve las resueltas. Si una consecuencia abre otro dilema, se abre aquí:
+   así una firma de hace seis semanas se presenta sola en la puerta. */
 function resolverPendientes(c,semana){
   const out=[],keep=[];
   (c.pendientes||[]).forEach(p=>{ if(p.sem<=semana){ _aplicaEf(c,p.ef); out.push(p); } else keep.push(p); });
   c.pendientes=keep;
+  out.forEach(p=>{ if(p.abre) abreDilema(c,p.abre,semana); });
   return out;
 }
 
