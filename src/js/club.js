@@ -103,7 +103,7 @@ function pintarMercadoInicial(){
       lesionNota:null,palmares:[],diario:[],h2h:{},_rivalesSemana:[]
     }};
     mercadoTmp=null;plantillaTmp=[];
-    avisa(`Nace el ${nombre}: ${G.clubG.plantilla.map(j=>j.n).join(", ")}. El circuito os espera.`);
+    avisa(t("clb_nace",{nombre,lista:G.clubG.plantilla.map(j=>j.n).join(", ")}));
   noticia("debut",t("not_club_debut_t",{nombre}),t("not_club_debut_s"));
     entrarPartida();
     verTuto("club");
@@ -211,9 +211,9 @@ function simTorneoParejaB(ci){
   if(titulo){
     cl.palmares.push(`${cat.n} — pareja B (T${temporada()})`);
     noticia("titulo",t("not_parejab_t",{cat:cat.n}),t("not_parejab_s",{p1:parB[0].n,p2:parB[1].n,pts,premio}));
-    avisa(`🏆 ¡La pareja B (${parB[0].n}/${parB[1].n}) gana el ${cat.n}! +${premio}€.`);
+    avisa(t("clb_b_gana",{j1:parB[0].n,j2:parB[1].n,cat:cat.n,premio}));
   } else {
-    avisa(`Pareja B en el ${cat.n}: ${resumen.join("; ")||"eliminados"}. +${pts} pts, +${premio}€.`);
+    avisa(t("clb_b_resumen",{cat:cat.n,resumen:resumen.join("; ")||t("clb_b_eliminados"),pts,premio}));
   }
 }
 
@@ -233,7 +233,7 @@ function pintarClubM(){
   if(G.clubG&&G.clubG._despedido){
     const cl=G.clubG;
     document.getElementById("cmTorneosDisp")&&(document.getElementById("cmTorneosDisp").innerHTML="");
-    alert(`FIN DEL PROYECTO\n\nLa junta del ${cl.nombre} te destituye tras incumplir el objetivo dos temporadas seguidas.\n\nBalance: ${cl.hist.length} temporadas, ${cl.palmares.length} títulos, mejor puesto #${Math.min(...cl.hist.map(h=>h.pos))}.\n\nLa partida queda archivada.`);
+    alert(t("clb_fin",{club:cl.nombre,temps:cl.hist.length,tits:cl.palmares.length,mejor:Math.min(...cl.hist.map(h=>h.pos))}));
     G=null; irA("menu"); pintarMenu(); return;
   }
   const cl=G.clubG;
@@ -340,10 +340,10 @@ function pintarCmPlantilla(){
   if(cl.ofertaRival&&cl.plantilla[cl.ofertaRival.jugIdx]){
     const of=cl.ofertaRival, jOf=cl.plantilla[of.jugIdx];
     const oc=document.createElement("div");oc.className="card";
-    oc.innerHTML=`<h3>Oferta de traspaso · <em>${CLUBES_NPC[of.clubIdx].n}</em></h3>
-      <div style="font-size:12.5px;margin-bottom:9px"><span style="color:${CLUBES_NPC[of.clubIdx].color}">●</span> El ${CLUBES_NPC[of.clubIdx].n} ofrece <b>${of.monto}€</b> por <b>${jOf.n}</b> (nivel ${mediaAttrs(jOf.attrs)}).</div>`;
+    oc.innerHTML=`<h3>${t("clb_of_hd")}<em>${CLUBES_NPC[of.clubIdx].n}</em></h3>
+      <div style="font-size:12.5px;margin-bottom:9px"><span style="color:${CLUBES_NPC[of.clubIdx].color}">●</span> ${t("clb_of_txt",{club:CLUBES_NPC[of.clubIdx].n,monto:of.monto,n:jOf.n,niv:mediaAttrs(jOf.attrs)})}</div>`;
     const fr=document.createElement("div");fr.className="fila";
-    const bA=document.createElement("button");bA.className="pri";bA.textContent=`Aceptar (${of.monto}€)`;
+    const bA=document.createElement("button");bA.className="pri";bA.textContent=t("clb_of_aceptar",{monto:of.monto});
     bA.onclick=()=>{
       cl.dinero+=of.monto;
       const idx=of.jugIdx;
@@ -351,11 +351,11 @@ function pintarCmPlantilla(){
       cl.alin=cl.alin.map(a=>a>idx?a-1:a);
       if(cl.alinB){cl.alinB=cl.alinB.filter(x=>x!==idx).map(a=>a>idx?a-1:a);if(cl.alinB.length<2)cl.alinB=null;}
       noticia("venta",t("not_traspaso_t",{jug:jOf.n}),t("not_traspaso_s",{club:CLUBES_NPC[of.clubIdx].n,monto:of.monto}));
-      avisa(`💥 ${jOf.n} se marcha al ${CLUBES_NPC[of.clubIdx].n} por ${of.monto}€.`);
+      avisa(t("clb_of_marcha",{n:jOf.n,club:CLUBES_NPC[of.clubIdx].n,monto:of.monto}));
       cl.ofertaRival=null;guardar();pintarClubM();
     };
-    const bR=document.createElement("button");bR.textContent="Rechazar";
-    bR.onclick=()=>{avisa(`Rechazada la oferta del ${CLUBES_NPC[of.clubIdx].n} por ${jOf.n}.`);cl.ofertaRival=null;guardar();pintarClubM();};
+    const bR=document.createElement("button");bR.textContent=t("clb_of_rechazar");
+    bR.onclick=()=>{avisa(t("clb_of_rechazada",{club:CLUBES_NPC[of.clubIdx].n,n:jOf.n}));cl.ofertaRival=null;guardar();pintarClubM();};
     fr.appendChild(bA);fr.appendChild(bR);oc.appendChild(fr);
     el.appendChild(oc);
   } else if(cl.ofertaRival){ cl.ofertaRival=null; }
@@ -420,7 +420,7 @@ function pintarCmPlantilla(){
         cl.dinero+=mediaAttrs(j.attrs)*4;
         cl.plantilla.splice(idx,1);
         cl.alin=cl.alin.map(a=>a>idx?a-1:a);
-        avisa(`Traspasado ${j.n}.`);
+        avisa(t("clb_traspasado",{n:j.n}));
         guardar();pintarClubM();
       };
       d.appendChild(b);
@@ -444,7 +444,7 @@ function pintarCmPlantilla(){
         cl.dinero-=coste;
         cl.plantilla.push({...j});
         cl.mercado.splice(mi,1);
-        avisa(`Fichaje: ${j.n} llega al ${cl.nombre}.`);
+        avisa(t("clb_fichaje",{n:j.n,club:cl.nombre}));
         guardar();pintarClubM();
       };
       d.appendChild(b);m.appendChild(d);
@@ -476,7 +476,7 @@ function pintarCmClub(){
     const b=document.createElement("button");b.style.width="100%";
     b.textContent=cl.dinero<coste?"Caja insuficiente":`Mejorar (${coste}€)`;
     b.disabled=cl.dinero<coste;
-    b.onclick=()=>{cl.dinero-=coste;cl.instal++;avisa(`Instalaciones a nivel ${cl.instal}.`);guardar();pintarClubM();};
+    b.onclick=()=>{cl.dinero-=coste;cl.instal++;avisa(t("clb_instal",{n:cl.instal}));guardar();pintarClubM();};
     d.appendChild(b);c2.appendChild(d);
   } else c2.innerHTML+=`<div class="foot" style="text-align:left">Centro de alto rendimiento ✔</div>`;
   el.appendChild(c2);
@@ -499,27 +499,27 @@ function pintarCmClub(){
       const f=document.createElement("div");f.className="fila";
       const b1=document.createElement("button");b1.className="pri";b1.textContent="Subir al primer equipo";
       b1.disabled=cl.plantilla.length>=6;
-      b1.onclick=()=>{cl.plantilla.push({...j,salario:Math.round(mediaAttrs(j.attrs)*.6),energia:100,conf:55,lesion:null});cl.cantera.splice(idx,1);avisa(`${j.n} sube al primer equipo.`);guardar();pintarClubM();};
+      b1.onclick=()=>{cl.plantilla.push({...j,salario:Math.round(mediaAttrs(j.attrs)*.6),energia:100,conf:55,lesion:null});cl.cantera.splice(idx,1);avisa(t("clb_sube",{n:j.n}));guardar();pintarClubM();};
       const b2=document.createElement("button");b2.textContent=`Traspasar (+${mediaAttrs(j.attrs)*6}€)`;
-      b2.onclick=()=>{cl.dinero+=mediaAttrs(j.attrs)*6;cl.cantera.splice(idx,1);avisa(`Traspasada la promesa ${j.n}.`);guardar();pintarClubM();};
+      b2.onclick=()=>{cl.dinero+=mediaAttrs(j.attrs)*6;cl.cantera.splice(idx,1);avisa(t("clb_promesa_out",{n:j.n}));guardar();pintarClubM();};
       f.appendChild(b1);f.appendChild(b2);d.appendChild(f);c3.appendChild(d);
     });
   }
   el.appendChild(c3);
   // reformas
   const c4=document.createElement("div");c4.className="card";
-  c4.innerHTML=`<h3>Reformas del club</h3>`;
+  c4.innerHTML=`<h3>${t("ref_hd")}</h3>`;
   Object.entries(REFORMAS).forEach(([k,r])=>{
     if(cl.reformas[k]){
-      const d=document.createElement("div");d.className="foot";d.style.textAlign="left";d.textContent=`✔ ${r.n}`;c4.appendChild(d);
+      const d=document.createElement("div");d.className="foot";d.style.textAlign="left";d.textContent=`✔ ${t("ref_"+k)}`;c4.appendChild(d);
       return;
     }
     const d=document.createElement("div");d.className="opcion";
-    d.innerHTML=`<b>${r.n}</b><div class="d">${r.desc} · ${r.coste}€</div>`;
+    d.innerHTML=`<b>${t("ref_"+k)}</b><div class="d">${t("ref_"+k+"_d")} · ${r.coste}€</div>`;
     const b=document.createElement("button");b.style.width="100%";
-    b.textContent=cl.dinero<r.coste?"Caja insuficiente":`Construir (${r.coste}€)`;
+    b.textContent=cl.dinero<r.coste?t("mkt_caja"):t("ref_construir",{coste:r.coste});
     b.disabled=cl.dinero<r.coste;
-    b.onclick=()=>{cl.dinero-=r.coste;cl.reformas[k]=true;avisa(`🏗 Reforma terminada: ${r.n}.`);guardar();pintarClubM();};
+    b.onclick=()=>{cl.dinero-=r.coste;cl.reformas[k]=true;avisa(`🏗 ${t("hito_cl_reforma")}: ${t("ref_"+k)}.`);guardar();pintarClubM();};
     d.appendChild(b);c4.appendChild(d);
   });
   el.appendChild(c4);
@@ -530,7 +530,7 @@ function pintarCmClub(){
     const dS=document.createElement("div");dS.className="opcion";
     dS.innerHTML=`<b>🏟 ${of.marca}</b> <span class="pill">${tierTxt(of.tier)}</span><div class="d">${t("patro_club_oferta",{sec:of.sec,sem:of.sem})}</div>`;
     const b=document.createElement("button");b.className="pri";b.style.width="100%";b.textContent=t("patro_club_firmar");
-    b.onclick=()=>{cl.sponsor={...of};cl.sponsorOferta=null;noticia("contrato",t("not_patro_club_t",{marca:of.marca,club:cl.nombre}),t("not_patro_club_s",{tier:tierTxt(of.tier).toLowerCase()}));avisa(t("patro_club_av",{marca:of.marca,sem:of.sem}));fansAdd(200,"patrocinador principal");guardar();pintarClubM();};
+    b.onclick=()=>{cl.sponsor={...of};cl.sponsorOferta=null;noticia("contrato",t("not_patro_club_t",{marca:of.marca,club:cl.nombre}),t("not_patro_club_s",{tier:tierTxt(of.tier).toLowerCase()}));avisa(t("patro_club_av",{marca:of.marca,sem:of.sem}));fansAdd(200,t("fan_patro_club"));guardar();pintarClubM();};
     dS.appendChild(b);cS.appendChild(dS);
   }
   if(cl.sponsor){
@@ -611,7 +611,7 @@ function avanzarSemanaClub(){
   const factor=accion==="entreno"?1:accion==="torneo"?0.5:0;
   if(factor>0){
     const partes=cl.plantilla.map(j=>entrenaUnoClub(j,factor)).filter(Boolean);
-    if(partes.length) avisa(`${factor===1?"Semana de trabajo":"Entreno entre partidos"} — ${partes.join(" · ")}.`);
+    if(partes.length) avisa(`${factor===1?t("clb_semana_trabajo"):t("clb_entreno_partidos")} — ${partes.join(" · ")}.`);
   }
   if(cl._pendB!==null){ const ci=cl._pendB; cl._pendB=null; simTorneoParejaB(ci); }
   simCircuito(cl._rivalesSemana);cl._rivalesSemana=[];
@@ -679,21 +679,21 @@ function avanzarSemanaClub(){
       cl._juntaOk=(cl._juntaOk||0)+1;
       const bonus=3000+Math.max(0,(J.objetivo-posFin))*200;
       cl.dinero+=bonus;
-      avisa(`✔ La junta aplaude la temporada (#${posFin}, objetivo top ${J.objetivo}): presupuesto extra de ${bonus}€.`);
+      avisa(t("clb_junta_ok",{pos:posFin,obj:J.objetivo,bonus}));
     } else {
       J.paciencia--;
       if(J.paciencia<=0){
         noticia("hito",t("not_destituido_t"),t("not_destituido_s",{obj:J.objetivo}));
-        avisa(`💥 DESTITUIDO: la junta pierde la paciencia tras cerrar #${posFin} (objetivo: top ${J.objetivo}).`);
+        avisa(t("clb_destituido",{pos:posFin,obj:J.objetivo}));
         cl._despedido=true;
       } else {
-        avisa(`⚠ La junta, en aviso: objetivo top ${J.objetivo} y habéis cerrado #${posFin}. Una temporada más de margen.`);
+        avisa(t("clb_junta_aviso",{obj:J.objetivo,pos:posFin}));
         post("junta");
       }
     }
     J.objetivo=Math.max(3,Math.round(Math.min(posFin,J.objetivo)*.85));
     cl.junta=J;
-    avisa(`📋 Nuevo objetivo de la junta: cerrar la temporada en el top ${J.objetivo}.`);
+    avisa(t("clb_junta_nuevo",{obj:J.objetivo}));
     evolucionaMundo();
     cl.pts=Math.round(cl.pts*.55);
     cl.plantilla.forEach(j=>{

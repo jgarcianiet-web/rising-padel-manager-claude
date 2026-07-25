@@ -852,6 +852,26 @@ comprueba("Idiomas: t() traduce y cae con red de seguridad", () => {
   return "traduce, fallback de idioma y de clave";
 });
 
+comprueba("Idiomas: avisos sueltos, hitos, primas y club en el idioma activo", () => {
+  try {
+    localStorage.setItem("rpm_idioma", "en");
+    exige(t("av_wildcard", { cat: "P1", n: 1 }).includes("Wildcard used"), "el aviso de wildcard no interpola en inglés");
+    exige(t("clb_junta_nuevo", { obj: 20 }) === "📋 New board goal: finish the season in the top 20.", "el aviso de la junta no sale en inglés");
+    exige(t("hito_ca_major") === "Win a MAJOR" && t("hito_cl_top3").includes("Podium"), "los hitos no se traducen");
+    exige(t("prima_n1") === "Close as No. 1", "las primas no se traducen");
+    // los hitos referencian claves existentes en ambos modos
+    HITOS_CARRERA.forEach(h => exige(I18N.es["hito_ca_" + h.id] && I18N.en["hito_ca_" + h.id], "hito de carrera sin clave: " + h.id));
+    HITOS_CLUB.forEach(h => exige(I18N.es["hito_cl_" + h.id] && I18N.en["hito_cl_" + h.id], "hito de club sin clave: " + h.id));
+    Object.keys(REFORMAS).forEach(k => exige(I18N.es["ref_" + k] && I18N.it["ref_" + k + "_d"], "reforma sin clave: " + k));
+    localStorage.setItem("rpm_idioma", "es");
+    exige(t("hito_ca_major") === "Ganar un MAJOR", "los hitos no vuelven al español");
+    const claves = Object.keys(I18N.es).filter(k => /^(av_|ent_|fan_|hito_|prima_|clb_|ref_|rec_)/.test(k));
+    exige(claves.length >= 95, "faltan claves de avisos/hitos/club: " + claves.length);
+    ["en", "fr", "de", "it"].forEach(l => claves.forEach(k => exige(typeof I18N[l][k] === "string" && I18N[l][k].length > 0, `falta ${k} en ${l}`)));
+  } finally { localStorage.removeItem("rpm_idioma"); }
+  return "avisos, hitos, primas, junta y reformas en 5 idiomas";
+});
+
 comprueba("Idiomas: ruptura, lesiones, gala y prensa en el idioma activo", () => {
   try {
     localStorage.setItem("rpm_idioma", "en");
