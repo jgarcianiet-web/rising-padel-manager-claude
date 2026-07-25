@@ -1102,7 +1102,8 @@ const CLUBES_NPC=[
   {n:"Pretoria Baobab",color:"#A87A3C",sede:"Pretoria",lema:"Raíces hondas",fil:"cantera"},
   {n:"Burdeos Reserva",color:"#8C3C5C",sede:"Burdeos",lema:"Los años nos mejoran",fil:"tactica"},
 ];
-const FILOSOFIAS={garra:"Aprietan cada punto como si fuera el último.",ataque:"Viven del remate y la víbora.",tactica:"Estudian al rival y no regalan nada.",cantera:"Fabrican jugadores, no los compran.",defensa:"Devuelven una bola más. Siempre una más.",humilde:"Sin presupuesto, a base de corazón."};
+/* Filosofías de club: claves i18n, se pintan con t() en la ficha del club. */
+const FILOSOFIAS={garra:"fil_garra",ataque:"fil_ataque",tactica:"fil_tactica",cantera:"fil_cantera",defensa:"fil_defensa",humilde:"fil_humilde"};
 const PROS_F=[
   {p:["D. Brisa","frio","agresivo",89,"🇦🇷"],q:["G. Triana","valiente","rematador",90,"🇪🇸"]},
   {p:["A. Sánchiz","valiente","agresivo",87,"🇪🇸"],q:["A. Ustera","frio","constructor",84,"🇪🇸"]},

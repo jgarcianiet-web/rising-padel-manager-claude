@@ -31,9 +31,9 @@
     <div class="logo">RISING <span>PÁDEL</span> MANAGER</div>
     <div class="topder">
       <div class="mini" id="miniBtns" style="display:none">
-        <button id="btnSnd" title="Sonido"></button>
+        <button id="btnSnd" title="Sonido" data-i18n-title="bar_sonido_title"></button>
         <button id="btnAyuda" title="Tutorial" data-i18n-title="bar_tutorial_title">?</button>
-        <button id="btnAnalitica" title="Analítica (base de datos)">🔬</button>
+        <button id="btnAnalitica" title="Analítica" data-i18n-title="bar_analitica_title">🔬</button>
         <button id="btnExport" title="Exportar partida" data-i18n="bar_exportar" data-i18n-title="bar_export_title">⤓ Exportar</button>
         <button id="btnMenu" data-i18n="bar_menu">Menú</button>
       </div>
@@ -147,7 +147,7 @@
       <div class="kpi"><span class="num" id="kEne">100</span><span class="lbl" data-i18n="kpi_energia">Energía</span></div>
     </div>
     <div class="cont">
-      <div id="proBanner" class="oculto"><div class="banner-pro">CONTRATO PROFESIONAL · Bienvenido al circuito</div></div>
+      <div id="proBanner" class="oculto"><div class="banner-pro" data-i18n="banner_pro">CONTRATO PROFESIONAL · Bienvenido al circuito</div></div>
       <div id="tab-semana">
         <div class="card">
           <h3 id="semTitulo" data-i18n="hd_plan_semana">Plan de la semana</h3>
@@ -229,7 +229,7 @@
     <div class="cont">
       <div id="cm-semana">
         <div class="card">
-          <h3 id="cmSemTitulo">Plan de la semana</h3>
+          <h3 id="cmSemTitulo" data-i18n="hd_plan_semana">Plan de la semana</h3>
           <div id="cmTorneo"></div>
           <div id="cmEntreno"></div>
           <button class="azul" id="cmBtnDescanso" style="width:100%;margin-top:8px" data-i18n="btn_descanso_equipo">Descanso del equipo (+energía)</button>
@@ -279,14 +279,14 @@
   <div id="scr-superliga" class="oculto">
     <div class="cont">
       <div class="card">
-        <h3>🏆 Superliga · <em id="slTit">clasificación</em></h3>
+        <h3 data-i18n-html="hd_superliga_full">🏆 Superliga · <em id="slTit">clasificación</em></h3>
         <div id="slInfo" class="foot" style="text-align:left;margin-bottom:8px"></div>
         <div id="slTabla"></div>
         <div id="slAccion" style="margin-top:12px"></div>
       </div>
       <div id="slCol2">
         <div class="card"><h3 data-i18n-html="hd_equipo_alin_html">Tu equipo · <em>alineación</em></h3><div id="slEquipo"></div></div>
-        <div class="card"><h3>Resultados</h3><div id="slResult" class="log"></div></div>
+        <div class="card"><h3 data-i18n="hd_resultados">Resultados</h3><div id="slResult" class="log"></div></div>
       </div>
     </div>
   </div>
@@ -312,7 +312,7 @@
         </div>
       </div>
       <div class="card broadcast">
-        <h3><span class="onair">● EN DIRECTO</span> Retransmisión</h3>
+        <h3 data-i18n-html="hd_retransmision_full"><span class="onair">● EN DIRECTO</span> Retransmisión</h3>
         <div id="bcScore" class="bcscore"></div>
         <div id="bcStats" class="bcstats"></div>
         <div class="bclabel">JUGADA A JUGADA</div>
@@ -323,14 +323,14 @@
 
   <div id="fichaP" class="oculto" style="position:fixed;inset:0;background:rgba(10,13,19,.9);z-index:56;display:flex;align-items:center;justify-content:center;padding:16px">
     <div class="card" style="max-width:420px;width:100%">
-      <h3>Ficha del partido</h3>
+      <h3 data-i18n="hd_ficha">Ficha del partido</h3>
       <div id="fichaCuerpo"></div>
-      <button class="pri" id="fichaOk" style="width:100%;margin-top:9px">Continuar</button>
+      <button class="pri" id="fichaOk" style="width:100%;margin-top:9px" data-i18n="btn_continuar">Continuar</button>
     </div>
   </div>
   <div id="rueda" class="oculto" style="position:fixed;inset:0;background:rgba(10,13,19,.88);z-index:54;display:flex;align-items:center;justify-content:center;padding:16px">
     <div class="card" style="max-width:400px;width:100%">
-      <h3>Rueda de prensa</h3>
+      <h3 data-i18n="hd_prensa">Rueda de prensa</h3>
       <div class="foot" id="ruedaQ" style="text-align:left;margin-bottom:9px"></div>
       <button id="ruedaHumilde" style="width:100%;margin-bottom:5px"></button>
       <button id="ruedaAmbi" style="width:100%;margin-bottom:5px"></button>
@@ -339,7 +339,7 @@
   </div>
   <div id="tmuerto" class="oculto" style="position:fixed;inset:0;background:rgba(10,13,19,.88);z-index:55;display:flex;align-items:center;justify-content:center;padding:16px">
     <div class="card" style="max-width:380px;width:100%">
-      <h3>Tiempo muerto · <em>fin de set</em></h3>
+      <h3 data-i18n-html="hd_tiempo_muerto_full">Tiempo muerto · <em>fin de set</em></h3>
       <div class="foot" id="tmSit" style="text-align:left;margin-bottom:9px"></div>
       <button id="tmCalma" style="width:100%;margin-bottom:5px">🧊 «Tranquilos, punto a punto»</button>
       <button id="tmArenga" style="width:100%;margin-bottom:5px">🔥 «¡Ahora o nunca, a por ellos!»</button>
@@ -348,14 +348,14 @@
   </div>
   <div id="analitica" class="oculto" style="position:fixed;inset:0;background:rgba(10,13,19,.9);z-index:57;display:flex;align-items:center;justify-content:center;padding:16px">
     <div class="card" style="max-width:460px;width:100%">
-      <h3>Analítica · <em>base de datos</em></h3>
+      <h3 data-i18n-html="hd_analitica_full">Analítica · <em>base de datos</em></h3>
       <div id="analiticaCuerpo"></div>
       <button class="pri" id="analiticaCerrar" style="width:100%;margin-top:10px" data-i18n="btn_cerrar">Cerrar</button>
     </div>
   </div>
   <div id="hawk" class="oculto">
     <div class="box card">
-      <h3>Ojo de Halcón</h3>
+      <h3 data-i18n="hd_ojo_halcon">Ojo de Halcón</h3>
       <div id="hawkSvg"></div>
       <div class="verd" id="hawkVerd"></div>
       <div class="foot" id="hawkTxt" style="text-align:center"></div>

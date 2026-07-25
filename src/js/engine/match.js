@@ -1,21 +1,26 @@
 /* ================================================================
    MOTOR DE PARTIDO
 ================================================================ */
+/* Golpes del pádel. `label` es una CLAVE i18n, no texto: la narración del punto
+   la pinta en cada golpe, así que estaba saliendo en castellano en las cinco
+   versiones del juego. Se resuelve con golpeNombre(). */
 const SHOTS = {
-  saque:{label:"saque",err:.04,win:.02},
-  fondo:{label:"golpe de fondo",err:.09,win:.12,attr:"fondo"},
-  globo:{label:"globo profundo",err:.07,win:.03,attr:"globo"},
-  globoRapido:{label:"globo rápido",err:.11,win:.07,attr:"globo"},
-  chiquita:{label:"chiquita",err:.10,win:.04,attr:"chiquita"},
-  volea:{label:"volea",err:.09,win:.15,attr:"volea"},
-  dejada:{label:"dejada",err:.16,win:.32,attr:"dejada"},
-  bandeja:{label:"bandeja",err:.08,win:.10,attr:"bandeja"},
-  vibora:{label:"víbora",err:.13,win:.18,attr:"vibora"},
-  remate:{label:"remate plano",err:.15,win:.27,attr:"remate"},
-  remate3:{label:"remate por tres",err:.24,win:.48,attr:"remate"},
-  remate4:{label:"remate por cuatro",err:.28,win:.55,attr:"remate"},
-  bajada:{label:"bajada de pared",err:.14,win:.22,attr:"remate"},
+  saque:{label:"sh_saque",err:.04,win:.02},
+  fondo:{label:"sh_fondo",err:.09,win:.12,attr:"fondo"},
+  globo:{label:"sh_globo",err:.07,win:.03,attr:"globo"},
+  globoRapido:{label:"sh_globoRapido",err:.11,win:.07,attr:"globo"},
+  chiquita:{label:"sh_chiquita",err:.10,win:.04,attr:"chiquita"},
+  volea:{label:"sh_volea",err:.09,win:.15,attr:"volea"},
+  dejada:{label:"sh_dejada",err:.16,win:.32,attr:"dejada"},
+  bandeja:{label:"sh_bandeja",err:.08,win:.10,attr:"bandeja"},
+  vibora:{label:"sh_vibora",err:.13,win:.18,attr:"vibora"},
+  remate:{label:"sh_remate",err:.15,win:.27,attr:"remate"},
+  remate3:{label:"sh_remate3",err:.24,win:.48,attr:"remate"},
+  remate4:{label:"sh_remate4",err:.28,win:.55,attr:"remate"},
+  bajada:{label:"sh_bajada",err:.14,win:.22,attr:"remate"},
 };
+/* Nombre visible de un golpe, ya traducido. */
+function golpeNombre(k){ const s=SHOTS[k]; return s?t(s.label):k; }
 const AGRESIVOS=["vibora","remate","remate3","remate4","bajada","dejada"];
 const STYLE_BIAS = {
   defensivo:{globo:2.0,globoRapido:1.3,chiquita:1.5,fondo:1.2,bandeja:1.2,vibora:.4,remate:.3,remate3:.15,remate4:.15,dejada:.7,volea:1,saque:1,bajada:.7},
@@ -166,9 +171,10 @@ function incomingFor(shotKey,recvIdxTeam,recvTeam){
   const press={vibora:.5,remate:.6,bandeja:.3,bajada:.5,volea:.3}[shotKey]||.15;
   return {ctx:{atNet:false,high,afterGlass:glass,pressure:press},c:contactPoint(recvIdxTeam,true),vuelo:glass?"pared":"bote"};
 }
-const F_WIN=["¡No llega nadie a eso!","¡Bola imposible!","¡Qué barbaridad!","¡La pista se queda pequeña!"];
-const F_ERR=["Se le va por poco...","¡A la red! Error no forzado.","La bola muere en el cristal sin botar.","Se precipita y la manda fuera."];
-const F_PERSO={valiente:" — no le tiembla el pulso",conservador:" — a lo seguro",frio:" — hielo en las venas",emocionalAlto:" — está en racha y se nota",emocionalBajo:" — se le nota la tensión"};
+/* Frases del narrador: claves i18n. Se resuelven al construir el comentario. */
+const F_WIN=["nar_win_1","nar_win_2","nar_win_3","nar_win_4"];
+const F_ERR=["nar_err_1","nar_err_2","nar_err_3","nar_err_4"];
+const F_PERSO={valiente:"nar_p_valiente",conservador:"nar_p_conservador",frio:"nar_p_frio",emocionalAlto:"nar_p_emoAlto",emocionalBajo:"nar_p_emoBajo"};
 
 let teams=[],stats;
 function mkStats(){return {jug:[{w:0,e:0},{w:0,e:0}], tiros:0, bp:{jugados:0,ganados:0}, fatiga:[0,0], pganados:0, red:0, wShot:{}, eShot:{}, presion:{jug:0,gan:0}};}

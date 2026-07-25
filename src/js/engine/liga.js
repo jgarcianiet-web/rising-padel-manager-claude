@@ -99,8 +99,8 @@ function costeFichajeSL(j){ return Math.round(mediaAttrs(j.attrs)*mediaAttrs(j.a
 // Ficha un candidato (paga con caja). reemplazoIdx opcional para sustituir a un jugador.
 function ficharSL(sl,cand,reemplazoIdx){
   const coste=costeFichajeSL(cand);
-  if((sl.caja||0)<coste) return {ok:false,txt:"Caja insuficiente."};
-  if(sl.plantilla.length>=8 && (reemplazoIdx==null||reemplazoIdx<0)) return {ok:false,txt:"Plantilla llena (máx 8)."};
+  if((sl.caja||0)<coste) return {ok:false,txt:t("sl_av_sin_caja")};
+  if(sl.plantilla.length>=8 && (reemplazoIdx==null||reemplazoIdx<0)) return {ok:false,txt:t("sl_av_llena")};
   sl.caja-=coste;
   if(reemplazoIdx!=null&&reemplazoIdx>=0) sl.plantilla[reemplazoIdx]=cand; else sl.plantilla.push(cand);
   return {ok:true,txt:`Fichado ${cand.n} por ${coste.toLocaleString("es")}€.`};
@@ -251,7 +251,7 @@ function mostrarInvitacionSL(){
 }
 function crearSuperliga(){
   let nom="Rising SC";
-  try{ if(typeof prompt==="function"){ const x=prompt("Nombre de tu club en la Superliga:","Rising SC"); if(x) nom=x.slice(0,24); } }catch(e){}
+  try{ if(typeof prompt==="function"){ const x=prompt(t("sl_pide_nombre"),"Rising SC"); if(x) nom=x.slice(0,24); } }catch(e){}
   const sl=mkSuperliga(nom,62,"#C6F53C");
   sl.plantilla=mkPlantillaSuperliga();
   sl.alin=[[0,1],[2,3],[4,5]];
@@ -279,33 +279,33 @@ function pintarSuperliga(){
   const sl=G&&G.superliga; if(!sl) return;
   if(!sl.plantilla){ sl.plantilla=mkPlantillaSuperliga(); sl.alin=[[0,1],[2,3],[4,5]]; sincronizaClubSL(sl); }   // guardados anteriores
   if(sl.caja==null) sl.caja=40000; if(!sl.objetivo) sl.objetivo=8; if(!sl.mercado) sl.mercado=mkMercadoSL();
-  document.getElementById("topCtx").innerHTML=`<b>Superliga</b> · Temporada ${sl.temporada} · ${sl.equipos.length} clubes`;
+  document.getElementById("topCtx").innerHTML=t("sl_ctx",{temporada:sl.temporada,n:sl.equipos.length});
   _pintarEquipoSL(sl);
   const cls=clasificacionLiga(sl);
-  const tabla=`<table class="rk"><tr class="hd"><td>#</td><td>Club</td><td>PJ</td><td>G</td><td>P</td><td>Ptos</td><td>Pts</td></tr>${cls.map((f,i)=>_slFilaTabla(sl,f,i+1)).join("")}</table>`;
+  const tabla=`<table class="rk"><tr class="hd"><td>#</td><td>${t("sl_col_club")}</td><td>${t("sl_col_pj")}</td><td>${t("sl_col_g")}</td><td>${t("sl_col_p")}</td><td>${t("sl_col_ptos")}</td><td>${t("sl_col_pts")}</td></tr>${cls.map((f,i)=>_slFilaTabla(sl,f,i+1)).join("")}</table>`;
   const slTabla=document.getElementById("slTabla"); if(slTabla) slTabla.innerHTML=tabla;
   // info + resultados de la última jornada
   const nom=i=>sl.equipos[i].n;
   let info="", accion="";
   if(sl.fase==="liga"){
-    info=`Jornada ${sl.jornada+ (sl.jornada<sl.calendario.length?1:0)} de ${sl.calendario.length} · liga regular. Los 8 primeros pasan a los playoffs.`;
-    accion=`<button class="pri" style="width:100%" ${ac("accionSuperliga")}>▶ Jugar jornada ${sl.jornada+1}</button>`;
+    info=t("sl_info_liga",{j:sl.jornada+(sl.jornada<sl.calendario.length?1:0),total:sl.calendario.length});
+    accion=`<button class="pri" style="width:100%" ${ac("accionSuperliga")}>▶ ${t("sl_btn_jornada",{n:sl.jornada+1})}</button>`;
   } else if(sl.fase==="playoff"){
     const p=sl.playoff;
-    if(p.ronda==="cuartos"){ info=`🏆 PLAYOFFS · Cuartos: ${p.cuartos.map(c=>`${nom(c[0])}–${nom(c[1])}`).join(" · ")}`; accion=`<button class="pri" style="width:100%" ${ac("accionSuperliga")}>▶ Jugar cuartos de final</button>`; }
-    else if(p.ronda==="semis"){ info=`🏆 PLAYOFFS · Semifinales: ${nom(p.semis[0][0])} vs ${nom(p.semis[0][1])} · ${nom(p.semis[1][0])} vs ${nom(p.semis[1][1])}`; accion=`<button class="pri" style="width:100%" ${ac("accionSuperliga")}>▶ Jugar semifinales</button>`; }
-    else { info=`🏆 PLAYOFFS · FINAL: ${nom(p.final[0])} vs ${nom(p.final[1])}`; accion=`<button class="pri" style="width:100%" ${ac("accionSuperliga")}>▶ Jugar la final</button>`; }
+    if(p.ronda==="cuartos"){ info=t("sl_po_cuartos",{cruces:p.cuartos.map(c=>`${nom(c[0])}–${nom(c[1])}`).join(" · ")}); accion=`<button class="pri" style="width:100%" ${ac("accionSuperliga")}>▶ ${t("sl_btn_cuartos")}</button>`; }
+    else if(p.ronda==="semis"){ info=t("sl_po_semis",{a:nom(p.semis[0][0]),b:nom(p.semis[0][1]),c:nom(p.semis[1][0]),d:nom(p.semis[1][1])}); accion=`<button class="pri" style="width:100%" ${ac("accionSuperliga")}>▶ ${t("sl_btn_semis")}</button>`; }
+    else { info=t("sl_po_final",{a:nom(p.final[0]),b:nom(p.final[1])}); accion=`<button class="pri" style="width:100%" ${ac("accionSuperliga")}>▶ ${t("sl_btn_final")}</button>`; }
   } else if(sl.fase==="fin"){
     const camp=sl.playoff.campeon;
-    info=`🏆 CAMPEÓN de la Superliga: <b style="color:${sl.equipos[camp].color}">${nom(camp)}</b>${sl.equipos[camp].tuyo?" — ¡ES EL TUYO!":""}.`;
-    accion=`<button class="pri" style="width:100%" ${ac("nuevaTempSuperliga")}>✦ Nueva temporada</button>`;
+    info=t("sl_campeon",{club:`<b style="color:${sl.equipos[camp].color}">${nom(camp)}</b>`})+(sl.equipos[camp].tuyo?" "+t("sl_es_el_tuyo"):"");
+    accion=`<button class="pri" style="width:100%" ${ac("nuevaTempSuperliga")}>✦ ${t("sl_btn_nueva_temp")}</button>`;
   }
   const slInfo=document.getElementById("slInfo"); if(slInfo) slInfo.innerHTML=info;
   const slAccion=document.getElementById("slAccion"); if(slAccion) slAccion.innerHTML=accion;
   const slRes=document.getElementById("slResult");
   if(slRes){
     if(sl.ultima&&sl.ultima.length){
-      slRes.innerHTML=`<div class="foot" style="text-align:left;margin-bottom:3px">Última jornada:</div>`+sl.ultima.map(m=>`<div style="font-size:11px;padding:1px 0">${nom(m.a)} <b style="color:${m.gA>m.gB?"var(--lima)":"var(--gris)"}">${m.gA}</b>–<b style="color:${m.gB>m.gA?"var(--lima)":"var(--gris)"}">${m.gB}</b> ${nom(m.b)}</div>`).join("");
+      slRes.innerHTML=`<div class="foot" style="text-align:left;margin-bottom:3px">${t("sl_ultima")}</div>`+sl.ultima.map(m=>`<div style="font-size:11px;padding:1px 0">${nom(m.a)} <b style="color:${m.gA>m.gB?"var(--lima)":"var(--gris)"}">${m.gA}</b>–<b style="color:${m.gB>m.gA?"var(--lima)":"var(--gris)"}">${m.gB}</b> ${nom(m.b)}</div>`).join("");
     } else slRes.innerHTML="";
   }
 }
@@ -316,10 +316,10 @@ function _pintarEquipoSL(sl){
   const ladoT=l=>(typeof ladoTxt==="function")?ladoTxt(l):(l===1?"revés":"drive");
   const cls=clasificacionLiga(sl), tuIdx=sl.equipos.findIndex(e=>e.tuyo), pos=cls.findIndex(f=>f.i===tuIdx)+1;
   const objOk=pos>0&&pos<=(sl.objetivo||8);
-  let html=`<div class="meta" style="margin:0 0 8px"><div class="chip">Fuerza <b style="color:var(--lima)">${tu.fuerza}</b></div><div class="chip">Caja <b style="color:${(sl.caja||0)<0?"var(--rojo)":"var(--lima)"}">${(sl.caja||0).toLocaleString("es")}€</b></div><div class="chip">Junta: <b style="color:${objOk?"var(--verde)":"var(--rojo)"}">top ${sl.objetivo||8}</b> ${pos>0?`(vas ${pos}º)`:""}</div><div class="chip" title="${difDesc(difId())}">${dif().emoji} <b>${difNombre(difId())}</b></div></div>
-  <div class="foot" style="text-align:left;margin-bottom:6px">Alinea tus 3 parejas: la química de lados (drive+revés) suma.</div>`;
+  let html=`<div class="meta" style="margin:0 0 8px"><div class="chip">${t("sl_fuerza")} <b style="color:var(--lima)">${tu.fuerza}</b></div><div class="chip">${t("sl_caja")} <b style="color:${(sl.caja||0)<0?"var(--rojo)":"var(--lima)"}">${(sl.caja||0).toLocaleString("es")}€</b></div><div class="chip">${t("sl_junta",{n:sl.objetivo||8})} ${pos>0?t("sl_vas",{pos}):""}</div><div class="chip" title="${difDesc(difId())}">${dif().emoji} <b>${difNombre(difId())}</b></div></div>
+  <div class="foot" style="text-align:left;margin-bottom:6px">${t("sl_alinea")}</div>`;
   sl.alin.forEach((par,pi)=>{
-    html+=`<div class="opcion" style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:11px">Pareja ${pi+1}</b><span class="pill lima">fuerza ${fuerzaParejaSL(sl.plantilla,par)}</span></div>`;
+    html+=`<div class="opcion" style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:11px">${t("sl_pareja_n",{n:pi+1})}</b><span class="pill lima">${t("sl_fuerza_n",{n:fuerzaParejaSL(sl.plantilla,par)})}</span></div>`;
     par.forEach(ji=>{ const j=sl.plantilla[ji];
       html+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;font-size:11px">
         <span>${j.n} <span style="color:var(--gris)">· ${mediaAttrs(j.attrs)} · ${ladoT(j.lado)}</span></span>
@@ -329,12 +329,12 @@ function _pintarEquipoSL(sl){
   });
   // mercado de fichajes
   if(sl.mercado&&sl.mercado.length){
-    html+=`<div class="bclabel" style="margin-top:6px">Mercado de fichajes${sl.plantilla.length>=8?" · plantilla llena (sustituye)":""}</div>`;
+    html+=`<div class="bclabel" style="margin-top:6px">${t("sl_mercado")}${sl.plantilla.length>=8?" · "+t("sl_plantilla_llena"):""}</div>`;
     sl.mercado.forEach((cand,ci)=>{
       const coste=costeFichajeSL(cand), puede=(sl.caja||0)>=coste;
       html+=`<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:2px 0">
         <span>${cand.n} <span style="color:var(--gris)">· ${mediaAttrs(cand.attrs)} · ${ladoT(cand.lado)}</span></span>
-        <button class="selbtn" style="font-size:9px;padding:2px 7px" ${puede?"":"disabled"} ${ac("ficharSLui",ci)}>${puede?`Fichar ${coste.toLocaleString("es")}€`:"Caja insuficiente"}</button></div>`;
+        <button class="selbtn" style="font-size:9px;padding:2px 7px" ${puede?"":"disabled"} ${ac("ficharSLui",ci)}>${puede?t("sl_fichar",{coste:coste.toLocaleString("es")}):t("sl_sin_caja")}</button></div>`;
     });
   }
   slEq.innerHTML=html;
@@ -347,7 +347,7 @@ function ficharSLui(ci){
   if(sl.plantilla.length>=8){
     const enAlin=new Set(sl.alin.flat());
     let peor=-1,peorNiv=999; sl.plantilla.forEach((j,i)=>{ if(!enAlin.has(i)&&mediaAttrs(j.attrs)<peorNiv){ peorNiv=mediaAttrs(j.attrs); peor=i; } });
-    if(peor<0){ avisa("✗ Plantilla llena y todos alineados: no hay a quién sustituir."); return; }
+    if(peor<0){ avisa(t("sl_av_sin_hueco"),"warn"); return; }
     reemplazo=peor;
   }
   const r=ficharSL(sl,cand,reemplazo);
@@ -369,7 +369,7 @@ function nuevaTempSuperliga(){
   nueva.caja=sl.caja; nueva.objetivo=sl.objetivo; nueva.mercado=mkMercadoSL();
   sincronizaClubSL(nueva);
   G.superliga=nueva; guardar(); pintarSuperliga();
-  avisa(`🏁 Cierre de temporada: ${res.pos}º · premios +${res.premio.toLocaleString("es")}€, salarios -${res.sal.toLocaleString("es")}€. ${res.objetivoCumplido?"✔ Objetivo de la junta cumplido.":"✗ Objetivo incumplido: la junta aprieta."}`);
+  avisa(t("sl_cierre",{pos:res.pos,premio:res.premio.toLocaleString("es"),sal:res.sal.toLocaleString("es")})+" "+t(res.objetivoCumplido?"sl_obj_ok":"sl_obj_no"),res.objetivoCumplido?"ok":"bad");
 }
 
 if(typeof module!=="undefined"&&module.exports){ module.exports={}; }

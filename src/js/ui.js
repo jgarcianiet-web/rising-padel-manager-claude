@@ -450,10 +450,10 @@ function entrarPartida(){
   if(!G.calV52){  // migración al calendario real de 52 semanas
     const e=G.modo==="carrera"?G.carrera:G.clubG;
     if(e&&e.semana>1){
-      const t=Math.floor((e.semana-1)/40), s2=(e.semana-1)%40;
-      e.semana=t*52+s2+1;
+      const temp=Math.floor((e.semana-1)/40), s2=(e.semana-1)%40;   // `temp`, no `t`: taparía la traducción
+      e.semana=temp*52+s2+1;
       e.calRes={};
-      avisa("📅 El circuito adopta el calendario real de 52 semanas con las sedes oficiales (Riad, Roma, París, Acapulco... y las Finals de Barcelona). Tu temporada se recoloca.");
+      avisa(t("aviso_calendario_52"));
     }
     G.calV52=1;
   }
@@ -487,7 +487,7 @@ function entrarPartida(){
       c.entrenador=0;
       c.mercadoStaff=mkMercadoStaff();
       c._staffV2=1;
-      avisa("🗂 Se abre el mercado de personal: entrenadores, fisios, psicólogos, preparadores y agentes con nombre y apellidos. Gestiónalo en la pestaña STAFF.");
+      avisa(t("aviso_mercado_staff_ca"));
     }
     if(c.wildcards===undefined) c.wildcards=2;
     if(!c.mercadoP) c.mercadoP=mkMercadoParejas();
@@ -509,7 +509,7 @@ function entrarPartida(){
       ["entrenador","fisio","psico","fisico","ojeador"].forEach(r=>{ if(cl.staff[r]===true) cl.staff[r]=Object.assign(mkStaff(r,2),{n:mkStaff(r).n+" (de la casa)"}); if(cl.staff[r]===undefined) cl.staff[r]=null; });
       cl.mercadoStaff=mkMercadoStaff();
       cl._staffV2=1;
-      avisa("🗂 Mercado de personal abierto: contrata a personas concretas para el club en el panel Club.");
+      avisa(t("aviso_mercado_staff_cl"));
     }
     if(!cl.social) cl.social=[];
     if(cl.wildcards===undefined) cl.wildcards=2;

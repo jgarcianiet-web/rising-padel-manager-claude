@@ -122,6 +122,10 @@ if(typeof document.addEventListener==="function"){
 }
 
 function buildPoint(server){
+  // El índice de equipo se llama `eq` y no `t`: una local llamada t taparía la
+  // función de traducción en TODA la función (zona muerta incluida), y este
+  // bucle necesita traducir. Es el mismo cuento que avisa CLAUDE.md.
+  const TXT_RED=t("com_ganan_red"), TXT_REMATE=t("com_remate_final"), TXT_PELOTEO=t("com_peloteo_eterno");
   const ev=[]; const A=teams[0],B=teams[1];
   A.atNet=false;B.atNet=false;A._scr=false;B._scr=false;
   // dominio de red: quien cierra el punto controlando la red se lleva el crédito
@@ -129,59 +133,59 @@ function buildPoint(server){
   const netCredit=(g)=>{ if(stats&&stats[g]&&teams[g]&&teams[g].atNet) stats[g].red=(stats[g].red||0)+1; };
   // entre punto y punto los cuatro recuperan un poco de fatiga
   if(stats){[0,1].forEach(tt=>{ if(stats[tt]&&stats[tt].fatiga) stats[tt].fatiga=stats[tt].fatiga.map(f=>clamp(f-.8,0,100)); });}
-  let t=server,rally=0;
-  let contact=contactPoint(t,true,t===0?7.6:2.4);
+  let eq=server,rally=0;
+  let contact=contactPoint(eq,true,eq===0?7.6:2.4);
   let ctx={atNet:false,high:false,afterGlass:false,pressure:0};
   let shotKey="saque";
   let hIdx=contact.x<5?0:1;
   while(true){
     rally++;
-    const team=teams[t],opp=teams[1-t];
+    const team=teams[eq],opp=teams[1-eq];
     const pl=team.jug[hIdx];
     if(shotKey!=="saque") shotKey=chooseShot(pl,{...ctx,atNet:team.atNet},opp);
     const jug=pl.n;
     const s=SHOTS[shotKey];
     // tiros y fatiga: cada golpe cuenta y desgasta a quien lo ejecuta
     let _fat=0;
-    if(stats&&stats[t]){
-      stats[t].tiros++;
-      _fat=stats[t].fatiga[hIdx];
+    if(stats&&stats[eq]){
+      stats[eq].tiros++;
+      _fat=stats[eq].fatiga[hIdx];
       const coste=(shotKey==="saque"?.3:.7)+(AGRESIVOS.includes(shotKey)?.4:0)+rally*.04;
-      stats[t].fatiga[hIdx]=clamp(_fat+coste,0,100);
+      stats[eq].fatiga[hIdx]=clamp(_fat+coste,0,100);
     }
-    let com=`${jug} — ${s.label}`;
-    if(ctx.afterGlass&&!ctx.high) com=`${jug} — salida de pared → ${s.label}`;
-    if(shotKey==="bajada") com=`¡${jug} baja la pared con todo!`;
-    if(ctx.mia) com=`«¡Mía!» ${com}`;
+    let com=t("com_golpe",{jug,golpe:golpeNombre(shotKey)});
+    if(ctx.afterGlass&&!ctx.high) com=t("com_pared",{jug,golpe:golpeNombre(shotKey)});
+    if(shotKey==="bajada") com=t("com_bajada",{jug});
+    if(ctx.mia) com=t("com_mia",{com});
     if(PRESION>.6&&Math.random()<.3){   // azar-visual
       const p=pl.perso||"frio";
-      com+= p==="emocional" ? ((pl.conf??55)>=60?F_PERSO.emocionalAlto:F_PERSO.emocionalBajo) : F_PERSO[p];
-    } else if(s.attr&&pl.attrs[s.attr]>=85&&Math.random()<.35) com+=` (${s.attr} ${pl.attrs[s.attr]})`;   // azar-visual
+      com+=t(p==="emocional" ? ((pl.conf??55)>=60?F_PERSO.emocionalAlto:F_PERSO.emocionalBajo) : (F_PERSO[p]||"nar_p_frio"));
+    } else if(s.attr&&pl.attrs[s.attr]>=85&&Math.random()<.35) com+=` (${atNombre(s.attr)} ${pl.attrs[s.attr]})`;   // azar-visual
 
     if(opp._defQ===undefined) opp._defQ=Math.round((mediaAttrs(opp.jug[0].attrs)+mediaAttrs(opp.jug[1].attrs))/2);
     if(team._quimLado===undefined) team._quimLado=quimicaLado(team);
-    const outcome=shotKey==="saque"?"sigue":resolveShot(pl,shotKey,{...ctx,team:t,oppDef:opp._defQ,oppScrambling:opp._scr,_quimLado:team._quimLado,fatiga:_fat},rally);
+    const outcome=shotKey==="saque"?"sigue":resolveShot(pl,shotKey,{...ctx,team:eq,oppDef:opp._defQ,oppScrambling:opp._scr,_quimLado:team._quimLado,fatiga:_fat},rally);
 
     if(outcome==="error"){
-      stats[t].jug[hIdx].e++;
-      stats[t].eShot[shotKey]=(stats[t].eShot[shotKey]||0)+1;   // origen del error (por golpe)
+      stats[eq].jug[hIdx].e++;
+      stats[eq].eShot[shotKey]=(stats[eq].eShot[shotKey]||0)+1;   // origen del error (por golpe)
       pl.conf=clamp((pl.conf??55)-4,10,95);
       const modo=pick(["net","out","glass"]);
-      ev.push({team:t,jug,shotKey,com,from:contact,end:modo,endCom:`✗ ${jug}: ${pick(F_ERR)}`,net:[A.atNet,B.atNet]});
-      netCredit(1-t);
-      return {ev,ganador:1-t};
+      ev.push({team:eq,jug,shotKey,com,from:contact,end:modo,endCom:t("com_error",{jug,frase:t(pick(F_ERR))}),net:[A.atNet,B.atNet]});
+      netCredit(1-eq);
+      return {ev,ganador:1-eq};
     }
     if(outcome==="winner"){
-      stats[t].jug[hIdx].w++;
-      stats[t].wShot[shotKey]=(stats[t].wShot[shotKey]||0)+1;   // arma que cierra el punto (por golpe)
+      stats[eq].jug[hIdx].w++;
+      stats[eq].wShot[shotKey]=(stats[eq].wShot[shotKey]||0)+1;   // arma que cierra el punto (por golpe)
       pl.conf=clamp((pl.conf??55)+3,10,95);
       const lateral=["remate3","remate4"].includes(shotKey);
-      ev.push({team:t,jug,shotKey,com,from:contact,end:lateral?"porTres":"winner",endCom:`★ WINNER de ${jug}. ${pick(F_WIN)}`,net:[A.atNet,B.atNet]});
-      netCredit(t);
-      return {ev,ganador:t};
+      ev.push({team:eq,jug,shotKey,com,from:contact,end:lateral?"porTres":"winner",endCom:t("com_winner",{jug,frase:t(pick(F_WIN))}),net:[A.atNet,B.atNet]});
+      netCredit(eq);
+      return {ev,ganador:eq};
     }
 
-    const inc=incomingFor(shotKey,1-t,opp);
+    const inc=incomingFor(shotKey,1-eq,opp);
     let nIdx=inc.c.x<5?0:1;
     if(inc.ctx.high||Math.abs(inc.c.x-5)<1.7){
       const val=j=>inc.ctx.high?opp.jug[j].attrs.remate+opp.jug[j].attrs.bandeja:opp.jug[j].attrs[opp.atNet?"volea":"fondo"]*2;
@@ -190,24 +194,24 @@ function buildPoint(server){
     }
     if(["globo","globoRapido"].includes(shotKey)&&opp.atNet){
       opp.atNet=false;team.atNet=true;
-      ev.push({team:t,jug,shotKey,com:com+" · ¡y ganan la red!",from:contact,to:inc.c,vuelo:inc.vuelo,net:[A.atNet,B.atNet],recvIdx:nIdx});
+      ev.push({team:eq,jug,shotKey,com:com+" · "+TXT_RED,from:contact,to:inc.c,vuelo:inc.vuelo,net:[A.atNet,B.atNet],recvIdx:nIdx});
     } else {
       if(shotKey==="saque") team.atNet=true;
       if(shotKey==="dejada"&&!opp.atNet){opp.atNet=true;opp._scr=true;}
       if(shotKey==="bajada"){team.atNet=true;opp.atNet=false;}
-      ev.push({team:t,jug,shotKey,com,from:contact,to:inc.c,vuelo:inc.vuelo,net:[A.atNet,B.atNet],recvIdx:nIdx});
+      ev.push({team:eq,jug,shotKey,com,from:contact,to:inc.c,vuelo:inc.vuelo,net:[A.atNet,B.atNet],recvIdx:nIdx});
     }
     // rnd() y no Math.random: esto decide oppScrambling, que multiplica por 1,7
     // la probabilidad de winner del siguiente golpe. Es simulación, no adorno,
     // aunque viva en el mismo fichero que el sonido.
-    teams[1-t]._scr=["dejada","vibora","remate"].includes(shotKey)&&rnd()<.5;
-    contact=inc.c;ctx=inc.ctx;t=1-t;hIdx=nIdx;
+    teams[1-eq]._scr=["dejada","vibora","remate"].includes(shotKey)&&rnd()<.5;
+    contact=inc.c;ctx=inc.ctx;eq=1-eq;hIdx=nIdx;
     if(rally>26){
-      stats[t].jug[hIdx].w++;
-      stats[t].wShot["remate"]=(stats[t].wShot["remate"]||0)+1;
-      ev.push({team:t,jug:teams[t].jug[hIdx].n,shotKey:"remate",com:"remate definitivo",from:contact,end:"winner",endCom:"★ Cae el punto tras un peloteo eterno.",net:[A.atNet,B.atNet]});
-      netCredit(t);
-      return {ev,ganador:t};
+      stats[eq].jug[hIdx].w++;
+      stats[eq].wShot["remate"]=(stats[eq].wShot["remate"]||0)+1;
+      ev.push({team:eq,jug:teams[eq].jug[hIdx].n,shotKey:"remate",com:TXT_REMATE,from:contact,end:"winner",endCom:TXT_PELOTEO,net:[A.atNet,B.atNet]});
+      netCredit(eq);
+      return {ev,ganador:eq};
     }
     shotKey="_";
   }

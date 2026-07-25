@@ -924,7 +924,7 @@ function renderClubes(el){
   G.world.parejas.forEach(p=>{ if(p.club!==undefined&&(p.sexo||"M")===sx){ acc[p.club].pts+=p.pts; acc[p.club].parejas++; } });
   if(G.modo==="club") acc.push({n:"★ "+G.clubG.nombre,color:G.clubG.color,pts:G.clubG.pts,yo:true,tit:(G.clubG.palmares||[]).length,parejas:(G.clubG.plantilla||[]).length});
   acc.sort((a,b)=>b.pts-a.pts);
-  let html=`<tr class="hd"><td>#</td><td>Club</td><td class="pts">🏆</td><td class="pts">Pts</td></tr>`;
+  let html=`<tr class="hd"><td>#</td><td>${t("sl_col_club")}</td><td class="pts">🏆</td><td class="pts">Pts</td></tr>`;
   html+=acc.map((c,i)=>`<tr class="${c.yo?"yo":i<3?"top":""}" ${c.idx!==undefined?`style="cursor:pointer" ${ac("verClub",c.idx)}`:""}><td class="pos">${i+1}</td><td><span style="color:${c.color}">●</span> ${c.n}${c.idx!==undefined?' <span style="color:var(--gris2);font-size:9px">▸</span>':""}</td><td class="pts">${c.tit||0}</td><td class="pts">${c.pts}</td></tr>`).join("");
   el.innerHTML=html;
 }
@@ -938,11 +938,11 @@ function verClub(idx){
   const ov=document.getElementById("clubModal")||(()=>{const d=document.createElement("div");d.id="clubModal";d.style.cssText="position:fixed;inset:0;background:rgba(10,13,19,.9);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px";document.body.appendChild(d);return d;})();
   ov.innerHTML=`<div class="card" style="max-width:440px;width:100%;max-height:86vh;overflow:auto">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><div style="width:14px;height:14px;border-radius:3px;background:${c.color}"></div><h3 style="margin:0">${c.n}</h3></div>
-    <div class="foot" style="text-align:left;margin-bottom:8px">📍 ${c.sede} · <em>«${c.lema}»</em><br>${FILOSOFIAS[c.fil]||""}</div>
+    <div class="foot" style="text-align:left;margin-bottom:8px">📍 ${c.sede} · <em>«${c.lema}»</em><br>${c.fil?t(FILOSOFIAS[c.fil]||c.fil):""}</div>
     <div style="font-size:11px;color:var(--gris);text-transform:uppercase;letter-spacing:1px;margin:8px 0 3px">Plantel (${pares.length})</div>
     <table class="rk">${pares.map(p=>`<tr><td style="font-size:11px"><span style="display:inline-block;vertical-align:middle;margin-right:3px">${avatarSVG(p.jug[0],18)}${avatarSVG(p.jug[1],18)}</span>${p.nombre}</td><td class="pts">#${posDe(p.nombre)}</td><td class="pts">${nivelPareja(p)}</td></tr>`).join("")||'<tr><td class="foot">Sin parejas esta temporada</td></tr>'}</table>
     <div style="font-size:11px;color:var(--gris);text-transform:uppercase;letter-spacing:1px;margin:10px 0 3px">Palmarés reciente (${tit.length})</div>
-    ${tit.length?`<div class="foot" style="text-align:left">${tit.slice(0,8).map(t=>`🏆 ${t}`).join("<br>")}</div>`:'<div class="foot" style="text-align:left">Aún sin títulos. La historia se escribe.</div>'}
+    ${tit.length?`<div class="foot" style="text-align:left">${tit.slice(0,8).map(t=>`🏆 ${t}`).join("<br>")}</div>`:'<div class="foot" style="text-align:left">${t("clb_sin_titulos")}</div>'}
     <button class="pri" style="width:100%;margin-top:10px" ${ac("cerrarModal","clubModal")}>${t("btn_cerrar")}</button>
   </div>`;
   ov.onclick=(e)=>{ if(e.target===ov) quitarEl(ov); };
@@ -1003,27 +1003,37 @@ function fansAdd(n,motivo){
   e.fans=Math.max(0,(e.fans||0)+n);
   if(n>=100&&motivo) avisa(t("av_fans",{n,motivo,total:fmtFans(e.fans)}));
 }
+/* Publicaciones de la afición, por tipo de suceso. Guarda CLAVES i18n, como el
+   resto de catálogos del juego (ver CLAUDE.md). */
+const POSTS_FAN={
+  victoria:["soc_vic_1","soc_vic_2","soc_vic_3"],
+  derrota:["soc_der_1","soc_der_2","soc_der_3"],
+  titulo:["soc_tit_1","soc_tit_2","soc_tit_3"],
+  fichaje:["soc_fic_1","soc_fic_2","soc_fic_3"],
+  picante:["soc_pic_1","soc_pic_2","soc_pic_3"],
+  lesion:["soc_les_1","soc_les_2"],
+  forma:["soc_for_1","soc_for_2"],
+  junta:["soc_jun_1","soc_jun_2"],
+  gala:["soc_gal_1","soc_gal_2"],
+  rivalidad:["soc_riv_1","soc_riv_2","soc_riv_3"],
+  maldicion:["soc_mal_1","soc_mal_2","soc_mal_3"],
+  campanada:["soc_cam_1","soc_cam_2","soc_cam_3"],
+};
 function post(tipo,ctx){
   const e=ent(); if(!e) return;
   ctx=ctx||{};
   const yo=G.modo==="carrera"?G.carrera.nombre:G.clubG.nombre;
-  const T={
-    victoria:[`Vaya nivel hoy de ${yo} 🔥 ese ${ctx.rival||"rival"} no sabía dónde meterse`,`Menudo partido acabo de ver. ${yo} está en modo serio 👏`,`Lo de hoy en ${ctx.torneo||"el torneo"} hay que enmarcarlo. VAMOS ${yo.toUpperCase()}`],
-    derrota:[`Duro palo hoy... pero se sale. Confianza ciega en ${yo} 💪`,`Alguien me explica qué ha pasado en ${ctx.torneo||"el torneo"} porque yo no doy crédito`,`Día malo lo tiene cualquiera. El lunes a seguir, ${yo} ❤`],
-    titulo:[`CAMPEONES 🏆🏆🏆 ${yo} ES OTRA COSA`,`Se me ha caído una lagrimilla con este título, no os voy a engañar 🥹`,`${(ctx.torneo||"título").toUpperCase()} PARA CASA. QUÉ MOMENTO`],
-    fichaje:[`Ojo al movimiento 👀 me gusta MUCHO para ${yo}`,`Bombazo del mercado!! esto cambia la temporada`,`No sé si es el fichaje que necesitábamos pero ilusión hay 🤞`],
-    picante:[`JAJAJA las declaraciones de hoy 🌶 así se habla`,`Se va a liar con lo que ha dicho en prensa... y me encanta`,`Menos titulares y más bandeja, opino 🤷`],
-    lesion:[`No no no la lesión no 😭 recupérate pronto`,`Qué mala suerte de verdad... a cuidarse y volver más fuerte`],
-    forma:[`${ctx.racha||3} victorias seguidas... esto empieza a dar miedito 👀`,`La grada nota algo especial esta temporada. Ojalá no equivocarme`],
-    junta:[`La directiva apretando... confianza en el proyecto o no? Yo ya no sé`,`Si la junta echa al míster me doy de baja de socio, aviso`],
-    gala:[`PAREJA DEL AÑO. Lo demás son opiniones 🏆`,`Qué orgullo de gala, en serio. Historia.`],
-    rivalidad:[`Lo de hoy contra ${ctx.rival||"esos dos"} ya es personal y me ENCANTA 🔥`,`Cada cruce con ${ctx.rival||"ellos"} es una final. Qué rivalidad nos están regalando`,`Necesito ya el próximo capítulo contra ${ctx.rival||"ellos"} 🍿`],
-    maldicion:[`POR FIN cae ${ctx.rival||"la bestia negra"} 😭😭 qué peso fuera`,`Se rompió la maldición!! Sabía que este día llegaba`,`A ${ctx.rival||"esos"} ya no se les teme. Punto de inflexión TOTAL`],
-    campanada:[`NADIE daba un duro y mirad 🏆 CAMPANADA HISTÓRICA`,`Esto es una sorpresa MAYÚSCULA y lo sabéis todos`,`Contra pronóstico y contra el mundo. Qué barbaridad 👏👏`],
-  }[tipo];
+  const T=POSTS_FAN[tipo];
   if(!T) return;
+  // Se guarda la CLAVE y sus parámetros, no el texto ya resuelto: así el muro se
+  // relee traducido si el jugador cambia de idioma a mitad de partida.
+  const params={yo,YO:yo.toUpperCase(),
+    rival:ctx.rival||t("soc_rival_gen"),
+    torneo:ctx.torneo||t("soc_torneo_gen"),
+    TORNEO:(ctx.torneo||t("soc_titulo_gen")).toUpperCase(),
+    racha:ctx.racha||3};
   e.social=(e.social||[]);
-  e.social.unshift({user:pick(SOCIAL_USERS),txt:pick(T),likes:Math.round(R(2,12)+Math.sqrt(e.fans||100)*R(.5,2)),t:temporada(),sem:semanaTemp()});
+  e.social.unshift({user:pick(SOCIAL_USERS),k:pick(T),p:params,likes:Math.round(R(2,12)+Math.sqrt(e.fans||100)*R(.5,2)),t:temporada(),sem:semanaTemp()});
   e.social=e.social.slice(0,18);
 }
 function renderSocial(el){
@@ -1035,7 +1045,7 @@ function renderSocial(el){
       <div class="sava" style="background:${["#4FA3D8","#E06AA0","#3FBF8F","#E0A030","#9B59D0","#5CC8E6"][p2.user.length%6]}">${p2.user[0]}</div>
       <div class="scuerpo">
         <div class="suser">@${p2.user} <span class="stime">T${p2.t}·S${p2.sem}</span></div>
-        <div class="stxt">${p2.txt}</div>
+        <div class="stxt">${p2.txt||t(p2.k,p2.p||{})}</div>
         <div class="slikes">♥ ${p2.likes}</div>
       </div>
     </div>`).join("");
@@ -1142,7 +1152,7 @@ function renderRecords(el){
 function renderN1(el){
   const h=(G.world.n1hist||[]);
   if(!h.length){ el.innerHTML=`<tr><td class="foot" style="border:none;text-align:left">${t("pan_sin_temporadas")}</td></tr>`; return; }
-  let html=`<tr class="hd"><td>T</td><td>Nº1 al cierre</td><td class="pts">Pts</td></tr>`;
+  let html=`<tr class="hd"><td>T</td><td>${t("rk_n1_cierre")}</td><td class="pts">Pts</td></tr>`;
   html+=h.slice(-10).map(x=>`<tr class="${x.yo?"yo":""}"><td class="pos">T${x.t}</td><td>${x.yo?"👑 ":""}${x.nombre}</td><td class="pts">${x.pts}</td></tr>`).join("");
   el.innerHTML=html;
 }
@@ -1216,7 +1226,10 @@ function escenaNoticia(n){
   }
   return `<svg viewBox="0 0 160 90" preserveAspectRatio="xMidYMid slice">${grad}${esc}</svg>`;
 }
-const NOTI_KICK={titulo:"CAMPEONES",n1:"HISTORIA",lesion:"PARTE MÉDICO",fichaje:"MERCADO",venta:"TRASPASO",ruptura:"BOMBAZO",retirada:"ADIÓS A UNA LEYENDA",debut:"PROMESA",contrato:"PATROCINIO",hito:"PROFESIONALES",circuito:"CRÓNICA DEL CIRCUITO",mercado:"RUMORES"};
+/* Antetítulos del periódico. Claves, no texto: salían en castellano en las cinco
+   ediciones del diario. Se resuelven con kickTxt() al maquetar la portada. */
+const NOTI_KICK={titulo:"kick_titulo",n1:"kick_n1",lesion:"kick_lesion",fichaje:"kick_fichaje",venta:"kick_venta",ruptura:"kick_ruptura",retirada:"kick_retirada",debut:"kick_debut",contrato:"kick_contrato",hito:"kick_hito",circuito:"kick_circuito",mercado:"kick_mercado"};
+function kickTxt(tipo){ return t(NOTI_KICK[tipo]||"kick_mercado"); }
 function renderNoticias(el){
   const ns=ent().noticias||[];
   const kcol={titulo:"#8A6A00",n1:"#8A6A00",contrato:"#8A6A00",lesion:"#8A1E1E",ruptura:"#8A1E1E",retirada:"#5A5548",fichaje:"#1E4E8A",venta:"#1E4E8A",debut:"#3E6B1E",hito:"#3E6B1E"};
@@ -1234,14 +1247,14 @@ function renderNoticias(el){
   el.innerHTML=`<div class="paper">${mast}
     <div class="apertura">
       <div class="afoto">${escenaNoticia(a)}</div>
-      <div class="akick" style="color:${kcol[a.tipo]||"#1E4E8A"}">${NOTI_KICK[a.tipo]||"CIRCUITO"} · T${a.t} S${a.sem}</div>
+      <div class="akick" style="color:${kcol[a.tipo]||"#1E4E8A"}">${kickTxt(a.tipo)} · T${a.t} S${a.sem}</div>
       <div class="atit">${a.titular}</div>
       <div class="asub">${a.sub||""}</div>
     </div>
     ${minis.length?`<div class="pgrid">${minis.map(n=>`
       <div class="pmini">
         <div class="mfoto">${escenaNoticia(n)}</div>
-        <div class="mkick" style="color:${kcol[n.tipo]||"#1E4E8A"}">${NOTI_KICK[n.tipo]||"CIRCUITO"}</div>
+        <div class="mkick" style="color:${kcol[n.tipo]||"#1E4E8A"}">${kickTxt(n.tipo)}</div>
         <div class="mtit">${n.titular}</div>
       </div>`).join("")}</div>`:""}
     ${tambien.length?`<div class="tambien"><b>TAMBIÉN EN PORTADA</b>${tambien.map(n=>`<div>· ${n.titular} <span style="color:#7A7462;font-size:9px">T${n.t}S${n.sem}</span></div>`).join("")}</div>`:""}
@@ -1263,8 +1276,8 @@ function renderDiario(elD,elP){
     return `<div class="brief" style="border-left-color:${col||"var(--borde2)"}${col?`;color:${col}`:""}">${x}</div>`;
   }).join("");
   elD.innerHTML=e.diario.length
-    ?`<div class="teletipo"><div class="thead">ÚLTIMA HORA · AGENCIA RPD · CIRCUITO ${miSexo()==="F"?"FEMENINO":"MASCULINO"}</div>${briefs}</div>`
-    :"<div class='foot' style='text-align:left'>Sin novedades.</div>";
+    ?`<div class="teletipo"><div class="thead">${t("tele_head",{circuito:miSexo()==="F"?t("pre_circ_f"):t("pre_circ_m")})}</div>${briefs}</div>`
+    :`<div class="foot" style="text-align:left">${t("tele_sin")}</div>`;
   elP.innerHTML=e.palmares.length?e.palmares.map(x=>`<div style="color:var(--oro)">🏆 ${x}</div>`).join(""):`<div>${t("pan_sin_titulos")}</div>`;
 }
 
@@ -1333,7 +1346,7 @@ function avanzarSemanaCarrera(){
   fansAdd(Math.round((c.fans||0)*.002)+(pos_<=10?25:pos_<=20?8:1));
   if(!c._jugoTorneo&&c.dinero<600){
     c.dinero+=90;
-    if(!c._avisoClases){c._avisoClases=true;avisa("Semana sin competir y caja floja: clases en el club, +90€.");}
+    if(!c._avisoClases){c._avisoClases=true;avisa(t("av_clases_club"));}
   } else if(c.dinero>=600) c._avisoClases=false;
   c._jugoTorneo=false;
   c.dinero+=ingresosSemanaCarrera();
@@ -1428,8 +1441,8 @@ function cierreTemporadaCarrera(){
       if(s.tRest<=0){
         avisa(t("av_renueva",{marca:s.marca}));
         c.sponsor=null;
-        const t=(pos<=8&&(c.fans||0)>=6000)?4:pos<=11?3:pos<=20?2:1;
-        c.ofertasPatro.push({...ofertaPatro(t),sem:Math.round(ofertaPatro(t).sem*1.2)});
+        const tier=(pos<=8&&(c.fans||0)>=6000)?4:pos<=11?3:pos<=20?2:1;   // `tier`, no `t`: taparía la traducción
+        c.ofertasPatro.push({...ofertaPatro(tier),sem:Math.round(ofertaPatro(tier).sem*1.2)});
       } else {
         avisa(t("av_obj_marca",{marca:s.marca,pos,n:s.tRest}));
       }
@@ -1505,9 +1518,9 @@ function mostrarAnuario(){
       <div class="opcion" style="text-align:center"><div style="font-size:18px;font-weight:700;font-family:'Chakra Petch'">${fmtFans(h.fans)}</div><div class="foot">seguidores</div></div>
       <div class="opcion" style="text-align:center"><div style="font-size:16px;font-weight:700;font-family:'Chakra Petch';color:${balDinero>=0?"var(--lima)":"#E05656"}">${balDinero>=0?"+":""}${balDinero.toLocaleString("es")}€</div><div class="foot">balance del año</div></div>
     </div>
-    <div class="foot" style="text-align:left;margin-bottom:3px">Evolución en el ranking</div>
+    <div class="foot" style="text-align:left;margin-bottom:3px">${t("anu_evolucion")}</div>
     ${graf}
-    <div class="foot" style="text-align:left;margin-top:10px">👑 Nº1 del circuito: <b>${h.campeon}</b></div>
+    <div class="foot" style="text-align:left;margin-top:10px">${t("anu_n1_circuito",{n:h.campeon})}</div>
     ${anuarioMerito(c,h,prev)}
     <button class="pri" style="width:100%;margin-top:12px" ${ac("cerrarModal","anuarioModal")}>Empezar nueva temporada</button>
   </div>`;
@@ -1515,12 +1528,12 @@ function mostrarAnuario(){
 }
 function anuarioMerito(c,h,prev){
   const frases=[];
-  if(h.tit>=3) frases.push("🌟 Temporada de época: tres o más títulos.");
+  if(h.tit>=3) frases.push(t("anu_epoca"));
   else if(h.tit>0) frases.push(`✨ ${h.tit} título(s) que quedan para la historia.`);
   if(prev&&prev.pos-h.pos>=8) frases.push(`🚀 Escalada brutal: ${prev.pos-h.pos} puestos de un año a otro.`);
-  if(h.pos===1) frases.push("👑 Cerráis el año como número uno del mundo.");
-  else if(h.pos<=5) frases.push("🏅 Entre los cinco mejores del circuito.");
-  if(prev&&h.pos-prev.pos>=8) frases.push("📉 Año duro: toca recomponerse.");
+  if(h.pos===1) frases.push(t("anu_n1"));
+  else if(h.pos<=5) frases.push(t("anu_top5"));
+  if(prev&&h.pos-prev.pos>=8) frases.push(t("anu_duro"));
   if(!frases.length) frases.push("📈 Un año más de rodaje. La progresión es carrera de fondo.");
   return `<div style="border-top:1px solid var(--borde);margin-top:8px;padding-top:7px">${frases.map(f=>`<div style="font-size:11.5px;line-height:1.5;color:var(--gris)">${f}</div>`).join("")}</div>`;
 }

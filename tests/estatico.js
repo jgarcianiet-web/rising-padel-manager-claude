@@ -171,6 +171,43 @@ module.exports = function pruebasEstaticas() {
     return objetivo.length + " ficheros · " + marcadas + " excepciones marcadas";
   });
 
+  /* EL FALLO QUE MÁS VECES HA VUELTO. Una variable local llamada `t` tapa la
+     función de traducción dentro de toda su función —incluida la zona muerta
+     anterior a su declaración—, y el juego revienta o se queda en blanco sin
+     que ninguna prueba de claves lo note. Ha pasado con la táctica, el tier de
+     patrocinador, la tabla de récords y el bucle del punto.
+
+     La regla: si en una función hay una local `t`, esa función NO puede llamar
+     a t(). Esta prueba mira exactamente eso. */
+  comprueba("Idiomas: nadie tapa t() con una variable local", () => {
+    const objetivo = [...ficheros("src/js"), ...ficheros("src/js/engine")]
+      .filter(f => f.endsWith(".js") && !f.includes("vendor") && !f.endsWith("i18n.js"));
+    const malos = [];
+    for (const f of objetivo) {
+      const txt = leer(f);
+      // se trocea por funciones de primer nivel y se mira cada una por separado
+      const re = /\bfunction\s+(\w+)\s*\(([^)]*)\)\s*\{/g;
+      let m;
+      while ((m = re.exec(txt))) {
+        let prof = 0, i = txt.indexOf("{", m.index), fin = i;
+        while (fin < txt.length) {
+          if (txt[fin] === "{") prof++;
+          else if (txt[fin] === "}") { prof--; if (!prof) break; }
+          fin++;
+        }
+        const cuerpo = txt.slice(i, fin + 1);
+        const declaraT = /\b(const|let|var)\s+t\s*=/.test(cuerpo) || /^\s*t\s*$|(^|[(,])\s*t\s*([,)])/.test(m[2]);
+        const usaT = /\bt\(\s*["'`]/.test(cuerpo);
+        if (declaraT && usaT) {
+          const linea = txt.slice(0, m.index).split("\n").length;
+          malos.push(`${f}:${linea} ${m[1]}()`);
+        }
+      }
+    }
+    exige(!malos.length, "una local llamada t tapa la traducción en: " + malos.join(", ") + " — renombra la variable (ta, eq, tt...)");
+    return objetivo.length + " ficheros sin shadowing de t()";
+  });
+
   /* Mismo cuento que el shadowing de t(): si una función recibe un parámetro
      llamado rnd, tapa la función global y su respaldo deja de estar sembrado.
      Ya pasó al convertir el motor: once funciones lo hacían. */

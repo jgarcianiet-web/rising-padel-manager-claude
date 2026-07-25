@@ -285,13 +285,21 @@ const PTS=["0","15","30","40"];
 function pintaTactica(){
   const row=document.getElementById("tactRow");
   if(!match||match.cpu){row.innerHTML="";return;}
-  const t=ent().tactica; if(!t.red)t.red="normal"; if(!t.clutch)t.clutch="normal";
-  const btn=(grupo,val,txt)=>`<button class="selbtn${t[grupo]===val?" on":""}" style="font-size:10px;padding:4px 6px" ${ac("setTact",grupo,val)}>${txt}</button>`;
-  row.innerHTML=`<div class="chbar"><span>TÁCTICA</span><span style="display:flex;gap:4px;flex-wrap:wrap">${btn("agres","conservadora","Segura")}${btn("agres","normal","Normal")}${btn("agres","agresiva","A degüello")}<span style="color:var(--gris2)">·</span>${btn("diana","repartir","Repartir")}${btn("diana","debil","Al flojo")}</span></div>`
-    +`<div class="chbar" style="margin-top:4px"><span>RED · CALIENTES</span><span style="display:flex;gap:4px;flex-wrap:wrap">${btn("red","aguantar","Aguantar")}${btn("red","normal","Red normal")}${btn("red","subir","Subir")}<span style="color:var(--gris2)">·</span>${btn("clutch","conservar","Conservar")}${btn("clutch","normal","Normal")}${btn("clutch","arriesgar","Arriesgar")}</span></div>`;
+  // `ta`, no `t`: una variable local llamada t taparía la función de traducción
+  // y dejaría el juego en blanco. Ver la advertencia de CLAUDE.md.
+  const ta=ent().tactica; if(!ta.red)ta.red="normal"; if(!ta.clutch)ta.clutch="normal";
+  const btn=(grupo,val,clave)=>`<button class="selbtn${ta[grupo]===val?" on":""}" style="font-size:10px;padding:4px 6px" ${ac("setTact",grupo,val)}>${t(clave)}</button>`;
+  row.innerHTML=`<div class="chbar"><span>${t("tac_hd")}</span><span style="display:flex;gap:4px;flex-wrap:wrap">${btn("agres","conservadora","tac_segura")}${btn("agres","normal","tac_normal")}${btn("agres","agresiva","tac_deguello")}<span style="color:var(--gris2)">·</span>${btn("diana","repartir","tac_repartir")}${btn("diana","debil","tac_al_flojo")}</span></div>`
+    +`<div class="chbar" style="margin-top:4px"><span>${t("tac_hd_red")}</span><span style="display:flex;gap:4px;flex-wrap:wrap">${btn("red","aguantar","tac_aguantar")}${btn("red","normal","tac_red_normal")}${btn("red","subir","tac_subir")}<span style="color:var(--gris2)">·</span>${btn("clutch","conservar","tac_conservar")}${btn("clutch","normal","tac_normal")}${btn("clutch","arriesgar","tac_arriesgar")}</span></div>`;
 }
-const _TACT_TXT={agres:v=>v,diana:v=>"buscar "+(v==="debil"?"al flojo":"a los dos"),red:v=>"red: "+v,clutch:v=>"puntos calientes: "+v};
-function setTact(g,v){ ent().tactica[g]=v; guardar(); pintaTactica(); addCom(`⚙ Cambio táctico: ${(_TACT_TXT[g]||(x=>x))(v)}.`,0); }
+/* Cómo se nombra cada ajuste táctico en el comentario del partido. */
+const _TACT_TXT={
+  agres:v=>t("tac_ag_"+v),
+  diana:v=>t(v==="debil"?"tac_txt_diana_debil":"tac_txt_diana_dos"),
+  red:v=>t("tac_txt_red",{v:t("tac_red_"+v)}),
+  clutch:v=>t("tac_txt_clutch",{v:t("tac_cl_"+v)}),
+};
+function setTact(g,v){ ent().tactica[g]=v; guardar(); pintaTactica(); addCom(t("tac_cambio",{x:(_TACT_TXT[g]||(x=>x))(v)}),0); }
 function pintaChallenges(){
   const row=document.getElementById("challengeRow");
   if(!match){row.innerHTML="";return;}
@@ -333,7 +341,7 @@ function ofreceRevision(fin,g){
 function mostrarRevisionHumano(fin,g){
   match.revisando=true;
   const row=document.getElementById("challengeRow");
-  row.innerHTML=`<div class="chbar"><span>¿PEDIR REVISIÓN DE VÍDEO?</span><span><button id="chSi" style="padding:4px 10px;font-size:11px" class="pri">Ojo de Halcón (${match.chall[0]})</button> <button id="chNo" style="padding:4px 10px;font-size:11px">Seguir</button></span></div>`;
+  row.innerHTML=`<div class="chbar"><span>${t("bc_pedir_revision")}</span><span><button id="chSi" style="padding:4px 10px;font-size:11px" class="pri">${t("bc_ojo_halcon",{n:match.chall[0]})}</button> <button id="chNo" style="padding:4px 10px;font-size:11px">Seguir</button></span></div>`;
   document.getElementById("chSi").onclick=()=>resolverRevision(fin,g,0);
   document.getElementById("chNo").onclick=()=>{ match.revisando=false; row.innerHTML=""; pintaTactica(); continuarTrasPunto(g); };
 }
@@ -367,7 +375,7 @@ function resolverRevision(fin,g,quien){
 function mostrarTiempoMuerto(){
   match.pausaTM=true;
   const ov=document.getElementById("tmuerto");
-  document.getElementById("tmSit").textContent=`Marcador de sets: ${match.s[0]}-${match.s[1]}. ${match.s[0]>match.s[1]?"Vais por delante — administra.":match.s[0]<match.s[1]?"Toca remar. Tu pareja te mira.":"Todo igualado."}`;
+  document.getElementById("tmSit").textContent=t("bc_sets",{a:match.s[0],b:match.s[1]})+" "+t(match.s[0]>match.s[1]?"bc_por_delante":match.s[0]<match.s[1]?"bc_a_remar":"bc_igualado");
   ov.classList.remove("oculto");
   const e=ent(), c=G.modo==="carrera"?G.carrera:null;
   const cierra=(msg)=>{ov.classList.add("oculto");match.pausaTM=false;addCom(msg,0);setTimeout(()=>{if(match&&match.ver&&!match.fin)jugarPuntoAnim();},600);};
@@ -448,7 +456,7 @@ function pintaBroadcast(){
       +`<span class="bcchip">Errores <b style="color:var(--rojo)">${e[0]}</b>-${e[1]}</span>`
       +`<span class="bcchip">Rotura <b>${bp[0].ganados}/${bp[0].jugados}</b>-${bp[1].ganados}/${bp[1].jugados}</span>`
       +`<span class="bcchip">Fatiga <b>${fat[0]}</b>-${fat[1]}</span>`
-      +`<span class="bcchip${parcial?" hot":""}">Táctica: ${TACT.agres}${TACT.diana==="debil"?" · al flojo":""}${TACT.red&&TACT.red!=="normal"?" · red:"+TACT.red:""}${TACT.clutch&&TACT.clutch!=="normal"?" · calientes:"+TACT.clutch:""}</span>`
+      +`<span class="bcchip${parcial?" hot":""}">Táctica: ${TACT.agres}${TACT.diana==="debil"?" · "+t("tac_al_flojo").toLowerCase():""}${TACT.red&&TACT.red!=="normal"?" · red:"+TACT.red:""}${TACT.clutch&&TACT.clutch!=="normal"?" · calientes:"+TACT.clutch:""}</span>`
     +`</div>`;
 }
 function pintaMarcadorP(){
@@ -552,26 +560,26 @@ function resumenPartido(){
   const w=[0,1].map(t=>stats[t].jug.reduce((a,j)=>a+(j.w||0),0));
   const e=[0,1].map(t=>stats[t].jug.reduce((a,j)=>a+(j.e||0),0));
   const L=[];
-  if(gane&&match.s[1]===0&&h.every(x=>{const [a,b]=x.split("-").map(Number);return a-b>=3;})) L.push("Partido serio: dominio de principio a fin, sin dejar respirar.");
-  else if(gane&&remonta) L.push("Remontada de casta: primer set cedido y reacción de campeones.");
-  else if(!gane&&remonta) L.push("Duele: teníais el partido y se escapó en la remontada rival.");
-  else if(tie&&h.length===3) L.push("Al límite absoluto: tres sets y decidido en los detalles del tie-break.");
-  else if(tie) L.push("Igualadísimo: los tie-breaks marcaron el rumbo.");
-  else if(gane) L.push("Trabajado y bien cerrado: cada set con oficio.");
-  else L.push("No fue el día: el rival impuso su ritmo casi siempre.");
-  if(gane&&w[0]<w[1]) L.push(`Victoria con oficio: menos winners que ellos (${w[0]}-${w[1]}) pero muchos menos regalos (${e[0]}-${e[1]}).`);
-  else if(w[0]>w[1]*1.6) L.push(`Vendaval ofensivo: ${w[0]} winners vuestros por ${w[1]} suyos.`);
-  else if(e[0]>e[1]*1.5) L.push(`Ojo al dato: ${e[0]} errores propios. ${gane?"Ganar así es caro.":"Ahí se fue el partido."}`);
-  if(match.autoCoach) L.push(`El míster cerró el partido en modo ${TACT.agres}${TACT.diana==="debil"?", cargando sobre el flojo":""}.`);
+  if(gane&&match.s[1]===0&&h.every(x=>{const [a,b]=x.split("-").map(Number);return a-b>=3;})) L.push(t("res_dominio"));
+  else if(gane&&remonta) L.push(t("res_remontada"));
+  else if(!gane&&remonta) L.push(t("res_remontada_rival"));
+  else if(tie&&h.length===3) L.push(t("res_al_limite"));
+  else if(tie) L.push(t("res_igualado"));
+  else if(gane) L.push(t("res_trabajado"));
+  else L.push(t("res_no_fue"));
+  if(gane&&w[0]<w[1]) L.push(t("res_oficio",{w0:w[0],w1:w[1],e0:e[0],e1:e[1]}));
+  else if(w[0]>w[1]*1.6) L.push(t("res_vendaval",{w0:w[0],w1:w[1]}));
+  else if(e[0]>e[1]*1.5) L.push(t("res_errores",{n:e[0]})+" "+t(gane?"res_caro":"res_ahi_se_fue"));
+  if(match.autoCoach) L.push(t("res_mister",{modo:t("tac_ag_"+TACT.agres)})+(TACT.diana==="debil"?t("res_sobre_flojo"):"")+".");
   const red=[stats[0].red||0,stats[1].red||0];
   if(red[0]+red[1]>=6){
-    if(red[0]>=red[1]*1.6) L.push(`Dueños de la red: ${red[0]} puntos cerrados desde arriba por ${red[1]} del rival. Ahí se ganó.`);
-    else if(red[1]>=red[0]*1.6) L.push(`Os comieron la red: ${red[1]} puntos suyos desde arriba por ${red[0]} vuestros. Hay que subir mejor.`);
+    if(red[0]>=red[1]*1.6) L.push(t("res_red_nuestra",{a:red[0],b:red[1]}));
+    else if(red[1]>=red[0]*1.6) L.push(t("res_red_suya",{a:red[1],b:red[0]}));
   }
   const mo=match.momento;
   if(mo&&Math.max(mo.best[0]||0,mo.best[1]||0)>=5){
     const bt=(mo.best[0]||0)>=(mo.best[1]||0)?0:1;
-    L.push(`Rachas: el mejor parcial fue de ${mo.best[bt]} puntos seguidos ${bt===0?"vuestros":"del rival"}.`);
+    L.push(t(bt===0?"res_racha_nuestra":"res_racha_rival",{n:mo.best[bt]}));
   }
   return L;
 }
@@ -581,20 +589,20 @@ function analisisPartido(){
   if(!stats||!teams) return [];
   const L=[];
   const topKey=(obj)=>{ let bk=null,bv=0; for(const k in (obj||{})){ if(obj[k]>bv){bv=obj[k];bk=k;} } return bk?{k:bk,v:bv}:null; };
-  const lbl=(k)=>(typeof SHOTS!=="undefined"&&SHOTS[k])?SHOTS[k].label:k;
+  const lbl=(k)=>(typeof golpeNombre==="function")?golpeNombre(k):k;
   const arma=topKey(stats[0].wShot);
-  if(arma&&arma.v>=2) L.push(`🗡 Vuestra arma más letal: la ${lbl(arma.k)} (${arma.v} winners).`);
+  if(arma&&arma.v>=2) L.push(t("ana_arma",{golpe:lbl(arma.k),n:arma.v}));
   const fallo=topKey(stats[0].eShot);
-  if(fallo&&fallo.v>=2) L.push(`⚠ Vuestros errores llegaron sobre todo de la ${lbl(fallo.k)} (${fallo.v}).`);
+  if(fallo&&fallo.v>=2) L.push(t("ana_fallo",{golpe:lbl(fallo.k),n:fallo.v}));
   const re=[stats[1].jug[0].e||0, stats[1].jug[1].e||0];
   if(re[0]+re[1]>=3 && Math.abs(re[0]-re[1])>=2){
     const q=re[0]>=re[1]?0:1;
-    L.push(`🎯 Cargasteis con acierto sobre ${teams[1].jug[q].n}: le forzasteis ${re[q]} errores.`);
+    L.push(t("ana_carga",{n:teams[1].jug[q].n,errores:re[q]}));
   }
   const red=stats[0].red||0, pg=stats[0].pganados||0;
-  if(pg>=6){ const pct=Math.round(red/pg*100); L.push(pct>=45?`🥅 Dominasteis la red: el ${pct}% de vuestros puntos se cerraron arriba.`:`↔ Os faltó red: solo el ${pct}% de vuestros puntos se cerraron arriba.`); }
+  if(pg>=6){ const pct=Math.round(red/pg*100); L.push(t(pct>=45?"ana_red_si":"ana_red_no",{pct})); }
   const pr=stats[0].presion||{jug:0,gan:0};
-  if(pr.jug>=4){ const pct=Math.round(pr.gan/pr.jug*100); L.push(`${pct>=55?"💪":"🥵"} Bajo presión ganasteis ${pr.gan} de ${pr.jug} puntos calientes (${pct}%).`); }
+  if(pr.jug>=4){ const pct=Math.round(pr.gan/pr.jug*100); L.push((pct>=55?"💪 ":"🥵 ")+t("ana_presion",{gan:pr.gan,jug:pr.jug,pct})); }
   return L;
 }
 function mostrarFicha(cb){
@@ -607,7 +615,7 @@ function mostrarFicha(cb){
     <table class="rk">${filas.map(f=>{const jj=[...teams[0].jug,...teams[1].jug].find(x=>x.n===f.n);return `<tr${f.n===mvp.n?' style="color:var(--oro)"':""}><td style="font-size:11px"><span style="display:inline-block;vertical-align:middle;margin-right:4px">${avatarSVG(jj,20)}</span>${f.n===mvp.n?"★ ":""}${f.n}</td><td class="pts" style="color:var(--lima)">${f.w}W</td><td class="pts" style="color:#E05656">${f.e}E</td><td class="pts">${f.bal>0?"+":""}${f.bal}</td></tr>`;}).join("")}</table>
     <div class="foot" style="text-align:left;margin-top:7px">★ MVP del partido: <b style="color:var(--oro)">${mvp.n}</b> (${mvp.w} winners, balance ${mvp.bal>0?"+":""}${mvp.bal}).</div>
     <div class="foot" style="text-align:left;margin-top:2px">Tiros ${stats[0].tiros||0}-${stats[1].tiros||0} · Red ${stats[0].red||0}-${stats[1].red||0} · Roturas ${stats[0].bp?stats[0].bp.ganados:0}/${stats[0].bp?stats[0].bp.jugados:0}-${stats[1].bp?stats[1].bp.ganados:0}/${stats[1].bp?stats[1].bp.jugados:0} · Fatiga final ${Math.round(((stats[0].fatiga||[0,0]).reduce((a,f)=>a+f,0))/2)}-${Math.round(((stats[1].fatiga||[0,0]).reduce((a,f)=>a+f,0))/2)}</div>
-    ${(()=>{const an=analisisPartido();return an.length?`<div style="border-top:1px solid var(--borde);margin-top:9px;padding-top:7px"><div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--oro);margin-bottom:4px">🔍 Análisis táctico</div>${an.map(l=>`<div style="font-size:11.5px;line-height:1.5;color:var(--texto);padding:1px 0">${l}</div>`).join("")}</div>`:"";})()}
+    ${(()=>{const an=analisisPartido();return an.length?`<div style="border-top:1px solid var(--borde);margin-top:9px;padding-top:7px"><div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--oro);margin-bottom:4px">${t("ana_hd_tactico")}</div>${an.map(l=>`<div style="font-size:11.5px;line-height:1.5;color:var(--texto);padding:1px 0">${l}</div>`).join("")}</div>`:"";})()}
     ${match.ver?"":`<div style="border-top:1px solid var(--borde);margin-top:8px;padding-top:7px">${resumenPartido().map(l=>`<div style="font-size:11.5px;line-height:1.5;color:var(--gris);padding:1px 0">📋 ${l}</div>`).join("")}</div>`}`;
   const ov=document.getElementById("fichaP");
   ov.classList.remove("oculto");

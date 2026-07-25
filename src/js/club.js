@@ -12,12 +12,12 @@ function ladoPorAttrs(attrs,est){
   const p=clamp(.5+(sesgo+bonus)/14,.12,.88);
   return rnd()<p?1:0;
 }
-function ladoTxt(l){ return l===1?"Revés":"Drive"; }
-function ladoChip(l){ if(l!==0&&l!==1) return ""; return `<span class="pill" style="background:${l===1?"#9B59D0":"#4FA3D8"}22;color:${l===1?"#B58BE0":"#6FB8E8"};border-color:${l===1?"#9B59D0":"#4FA3D8"}55">${l===1?"◀ Revés":"Drive ▶"}</span>`; }
+function ladoTxt(l){ return t(l===1?"lado_reves":"lado_drive"); }
+function ladoChip(l){ if(l!==0&&l!==1) return ""; return `<span class="pill" style="background:${l===1?"#9B59D0":"#4FA3D8"}22;color:${l===1?"#B58BE0":"#6FB8E8"};border-color:${l===1?"#9B59D0":"#4FA3D8"}55">${l===1?"◀ "+t("lado_reves"):t("lado_drive")+" ▶"}</span>`; }
 function parejaLadoAviso(j0,j1){
   if(!j0||!j1||j0.lado===undefined||j1.lado===undefined) return "";
-  if(j0.lado===j1.lado) return `<span style="color:#E0A030;font-size:10px">⚠ Dos ${ladoTxt(j0.lado).toLowerCase()}s: se pisan la pista</span>`;
-  return `<span style="color:var(--lima);font-size:10px">✓ Drive + Revés bien combinados</span>`;
+  if(j0.lado===j1.lado) return `<span style="color:#E0A030;font-size:10px">${t("lado_aviso_mal",{lado:ladoTxt(j0.lado).toLowerCase()})}</span>`;
+  return `<span style="color:var(--lima);font-size:10px">${t("lado_aviso_bien")}</span>`;
 }
 function mkAgente(nivMin,nivMax,sx){
   const est=pick(Object.keys(ESTILOS));
@@ -333,7 +333,7 @@ function pintarCmSemana(){
     const b=document.createElement("button");
     b.className="selbtn"+((cl.intens||"normal")===it?" on":"");
     b.style.fontSize="11px";
-    b.textContent=it==="suave"?"Suave":it==="normal"?"Normal":"Intensa ⚠";
+    b.textContent=t("ent_int_"+it);
     b.onclick=()=>{cl.intens=it;guardar();pintarClubM();};
     fInt.appendChild(b);
   });
@@ -341,7 +341,7 @@ function pintarCmSemana(){
   const btnAll=document.createElement("button");
   btnAll.className="pri";btnAll.style.width="100%";btnAll.style.marginTop="4px";
   const aptos=cl.plantilla.filter(j=>!j.lesion&&j.energia>=25).length;
-  btnAll.textContent=`🏋 Semana de entrenamiento — entrenan ${aptos} jugador${aptos===1?"":"es"} a la vez`;
+  btnAll.textContent=t("clb_semana_entreno",{n:aptos});
   btnAll.disabled=aptos===0;
   btnAll.onclick=entrenarClubTodos;
   en.appendChild(btnAll);
@@ -373,7 +373,7 @@ function pintarCmPlantilla(){
     el.appendChild(oc);
   } else if(cl.ofertaRival){ cl.ofertaRival=null; }
   const alCard=document.createElement("div");alCard.className="card";
-  alCard.innerHTML=`<h3>Alineaciones · <em>pareja A y pareja B</em></h3>`;
+  alCard.innerHTML=`<h3>${t("clb_hd_alin")}</h3>`;
   cl.plantilla.forEach((j,idx)=>{
     const row=document.createElement("div");row.className="fila";row.style.marginBottom="5px";row.style.alignItems="center";
     const enA=cl.alin.includes(idx), enB=cl.alinB&&cl.alinB.includes(idx);
@@ -444,7 +444,7 @@ function pintarCmPlantilla(){
   const m=document.createElement("div");m.className="card";
   m.innerHTML=`<h3>${t("clb_mercado_hd")}</h3>`;
   if(cl.plantilla.length>=6){
-    m.innerHTML+=`<div class="foot" style="text-align:left">Plantilla completa (6). Traspasa antes de fichar.</div>`;
+    m.innerHTML+=`<div class="foot" style="text-align:left">${t("clb_plantilla_llena")}</div>`;
   } else {
     cl.mercado.forEach((j,mi)=>{
       const coste=costeFichaje(j);
@@ -462,7 +462,7 @@ function pintarCmPlantilla(){
       };
       d.appendChild(b);m.appendChild(d);
     });
-    if(!cl.mercado.length) m.innerHTML+=`<div class="foot" style="text-align:left">Mercado vacío. Nuevos agentes libres al cierre de temporada.</div>`;
+    if(!cl.mercado.length) m.innerHTML+=`<div class="foot" style="text-align:left">${t("clb_mercado_vacio")}</div>`;
   }
   el.appendChild(m);
 }
@@ -481,34 +481,34 @@ function pintarCmClub(){
     </div>`;
   el.appendChild(c1);
   const c2=document.createElement("div");c2.className="card";
-  c2.innerHTML=`<h3>Instalaciones</h3>`;
+  c2.innerHTML=`<h3>${t("clb_hd_instal")}</h3>`;
   if(cl.instal<3){
     const coste=cl.instal===1?400:900;
     const d=document.createElement("div");d.className="opcion";
-    d.innerHTML=`<b>Mejorar a nivel ${cl.instal+1}</b><div class="d">${cl.instal===1?"Pistas propias: los entrenos rinden más.":"Centro de alto rendimiento: aún más."} · ${coste}€</div>`;
+    d.innerHTML=`<b>${t("clb_instal_mejorar",{n:cl.instal+1})}</b><div class="d">${t(cl.instal===1?"clb_instal_1_d":"clb_car_desc")} · ${coste}€</div>`;
     const b=document.createElement("button");b.style.width="100%";
-    b.textContent=cl.dinero<coste?"Caja insuficiente":`Mejorar (${coste}€)`;
+    b.textContent=cl.dinero<coste?t("mkt_caja"):t("clb_instal_btn",{coste});
     b.disabled=cl.dinero<coste;
     b.onclick=()=>{cl.dinero-=coste;cl.instal++;avisa(t("clb_instal",{n:cl.instal}));guardar();pintarClubM();};
     d.appendChild(b);c2.appendChild(d);
-  } else c2.innerHTML+=`<div class="foot" style="text-align:left">Centro de alto rendimiento ✔</div>`;
+  } else c2.innerHTML+=`<div class="foot" style="text-align:left">${t("clb_car_hecho")}</div>`;
   el.appendChild(c2);
   const c3=document.createElement("div");c3.className="card";
   c3.innerHTML=`<h3>Academia</h3>`;
   if(!cl.academia){
     const d=document.createElement("div");d.className="opcion";
-    d.innerHTML=`<b>Abrir academia</b><div class="d">Cada temporada forma una joven promesa. · 300€</div>`;
+    d.innerHTML=`<b>${t("clb_academia")}</b><div class="d">${t("clb_academia_d")}</div>`;
     const b=document.createElement("button");b.style.width="100%";
-    b.textContent=cl.dinero<300?"Caja insuficiente":"Abrir academia (300€)";
+    b.textContent=cl.dinero<300?t("mkt_caja"):t("clb_academia_btn");
     b.disabled=cl.dinero<300;
-    b.onclick=()=>{cl.dinero-=300;cl.academia=true;avisa("Academia abierta.");guardar();pintarClubM();};
+    b.onclick=()=>{cl.dinero-=300;cl.academia=true;avisa(t("clb_academia_ok"),"ok");guardar();pintarClubM();};
     d.appendChild(b);c3.appendChild(d);
   } else if(!cl.cantera.length){
-    c3.innerHTML+=`<div class="foot" style="text-align:left">La academia trabaja. Promesas al cierre de temporada.</div>`;
+    c3.innerHTML+=`<div class="foot" style="text-align:left">${t("clb_academia_trabaja")}</div>`;
   } else {
     cl.cantera.forEach((j,idx)=>{
       const d=document.createElement("div");d.className="opcion";
-      d.innerHTML=`<b>${j.n}</b> <span class="pill">nivel ${nivelTxt(j)}</span> <span class="pill">${j.edad} años</span> <span class="pill">${estiloNombre(j.estilo)}</span><div class="d">Promesa de la academia — nadie sabe su techo todavía</div>`;
+      d.innerHTML=`<b>${j.n}</b> <span class="pill">nivel ${nivelTxt(j)}</span> <span class="pill">${j.edad} años</span> <span class="pill">${estiloNombre(j.estilo)}</span><div class="d">${t("clb_promesa_d")}</div>`;
       const f=document.createElement("div");f.className="fila";
       const b1=document.createElement("button");b1.className="pri";b1.textContent="Subir al primer equipo";
       b1.disabled=cl.plantilla.length>=6;
@@ -563,7 +563,7 @@ function pintarCmClub(){
   renderEquipoStaff(c5.querySelector("#cmEquipoStaff"));
   renderMercadoStaff(c5.querySelector("#cmMercadoStaff"));
   const c6=document.createElement("div");c6.className="card";
-  c6.innerHTML=`<h3>Hitos del club</h3><div id="cmHitos"></div>`;
+  c6.innerHTML=`<h3>${t("clb_hd_hitos")}</h3><div id="cmHitos"></div>`;
   el.appendChild(c6);
   renderHitos(c6.querySelector("#cmHitos"));
   const c7=document.createElement("div");c7.className="card";
@@ -607,7 +607,7 @@ document.getElementById("cmBtnDescanso").onclick=()=>{
     if(j.lesion){j.lesion.sem--;if(j.lesion.sem<=0){const s=curarLesion(j);avisa(t("les_alta_club",{n:j.n})+(s?t("les_merma_club",{pct:s.pct,sem:s.sem}):""));}}
     decaeMerma(j);
   });
-  avisa("Semana de descanso y viajes del equipo.");
+  avisa(t("clb_descanso"));
   avanzarSemanaClub();
 };
 // Asegura que cada jugador tiene contrato y moral de plantilla (guardados viejos incluidos).
@@ -750,7 +750,7 @@ function avanzarSemanaClub(){
         avisa(`📋 El ${CLUBES_NPC[cr].n} ofrece ${cl.ofertaRival.monto}€ por ${jj.n} (cláusula ${valorClausula(jj).toLocaleString("es")}€).${quiereIrse?` ${jj.n} quiere salir: presiona por marcharse.`:""} Decide en Plantilla.`);
       }
     }
-    avisa(`— Cierre de temporada ${temporada()-1}. El ranking arrastra el 55% y llegan nuevos agentes libres${cl.staff.ojeador?" (el ojeador trae joyas extra)":""}.`);
+    avisa(`— Cierre de temporada ${temporada()-1}. El ranking arrastra el 55% y llegan nuevos agentes libres${cl.staff.ojeador?t("clb_ojeador_extra"):""}.`);
     if(cl.academia&&cl.cantera.length<3){
       // La escuela de tecnificación sube el suelo Y el techo de lo que sale
       const bono=cl.reformas&&cl.reformas.escuela?8:0;
@@ -758,7 +758,7 @@ function avanzarSemanaClub(){
       j.edad=17;
       if(bono) j.pot=Math.min(95,(j.pot||60)+6);
       cl.cantera.push(j);
-      avisa(`🎓 La academia presenta a ${j.n} (${mediaAttrs(j.attrs)} de media).`);
+      avisa(t("clb_academia_presenta",{n:j.n,media:mediaAttrs(j.attrs)}),"ok");
     }
   }
   ofertaStaffSemanal();

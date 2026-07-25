@@ -169,12 +169,12 @@ function abrirAnalitica(){
   ov.classList.remove("oculto");
   const lista=(typeof dbSqlDisponible==="function")&&dbSqlDisponible();
   if(!lista){
-    cuerpo.innerHTML=`<div class="foot" style="text-align:left;line-height:1.6">La base de datos <b>SQLite</b> aún no está lista. Guarda o juega una partida y vuelve a abrir la analítica.</div>`;
+    cuerpo.innerHTML=`<div class="foot" style="text-align:left;line-height:1.6">${t("ana_sql_no")}</div>`;
     return;
   }
   const top=(typeof dbSqlTopJugadores==="function")?dbSqlTopJugadores(10):[];
   if(!top.length){
-    cuerpo.innerHTML=`<div class="foot" style="text-align:left;line-height:1.6">Aún no hay datos en la base. Guarda o juega una partida y vuelve a abrir la analítica.</div>`;
+    cuerpo.innerHTML=`<div class="foot" style="text-align:left;line-height:1.6">${t("ana_sin_datos")}</div>`;
     return;
   }
   // consultas de analítica (SQL real sobre el modelo normalizado)
