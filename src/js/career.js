@@ -452,11 +452,11 @@ function pintarEventosSemana(td, disponible, motivoNo){
       if(cat.premier&&!cat.tf&&wc>0){
         const b=document.createElement("button");
         b.className="pri";b.style.width="100%";
-        b.textContent=`Usar wildcard → previa del ${cat.n} (${wc} restantes)`;
+        b.textContent=t("sem_wc_usar",{cat:cat.n,n:wc});
         b.disabled=!disponible||wc<=0;
-        if(wc<=0) b.textContent=`Sin wildcards este año`;
+        if(wc<=0) b.textContent=t("sem_wc_sin");
         b.onclick=()=>{
-          if(ent().wildcards<=0){ avisa("No te quedan wildcards esta temporada."); return; }
+          if(ent().wildcards<=0){ avisa(t("sem_wc_no_quedan")); return; }
           const viaje=costeViaje(ci);
           if(ent().dinero<viaje){ avisa(t("av_viaje_no",{cat:cat.n,viaje})); return; }
           ent().wildcards--;
@@ -467,25 +467,21 @@ function pintarEventosSemana(td, disponible, motivoNo){
       }
       td.appendChild(d);return;
     }
-    const modo=cat.tf
-      ?`<b>Solo el top 8</b> de la temporada. Cuadro de maestros: cuartos, semis y final.`
-      :ent2===2
-      ?`Vuestro ranking (#${pos}) os mete <b>directos al cuadro final</b>: 4 partidos hasta el título.`
-      :`Entráis por la <b>previa clasificatoria</b>: hasta 6 partidos.`;
+    const modo=cat.tf ? t("sem_modo_tf") : ent2===2 ? t("sem_modo_directo",{pos}) : t("sem_modo_previa");
     const slotE=slotSemana(semanaTemp());
-    const sede=(cat.premier&&slotE.premier===ci)?`${slotE.ciudad}`:"sede nacional";
+    const sede=(cat.premier&&slotE.premier===ci)?`${slotE.ciudad}`:t("sem_sede_nacional");
     const viaje=costeViaje(ci);
-    d.innerHTML=`<b>${cat.n}</b> ${tag} <span class="pill">📍 ${sede}</span> <span class="pill">viaje ${viaje}€</span> <span class="pill">campeón ${cat.premio[0]}€</span><div class="d">${modo}</div>`;
+    d.innerHTML=`<b>${cat.n}</b> ${tag} <span class="pill">📍 ${sede}</span> <span class="pill">${t("sem_viaje",{n:viaje})}</span> <span class="pill">${t("sem_campeon",{n:cat.premio[0]})}</span><div class="d">${modo}</div>`;
     const b=document.createElement("button");
     b.className=cat.premier?"pri":"azul";b.style.width="100%";
     const sinCaja=ent().dinero<viaje;
-    b.textContent=sinCaja?`Sin caja para el viaje (${viaje}€)`:`Inscribirse: ${cat.n} (${viaje}€ de viaje)`;
+    b.textContent=sinCaja?t("sem_sin_caja",{viaje}):t("sem_inscribirse",{cat:cat.n,viaje});
     b.disabled=!disponible||sinCaja;
     b.onclick=()=>abrirTorneo(ci);
     d.appendChild(b);td.appendChild(d);
   });
   if(!disponible){const p=document.createElement("div");p.className="foot";p.textContent=motivoNo;td.appendChild(p);}
-  const sep=document.createElement("div");sep.className="foot";sep.textContent="— o dedica la semana a entrenar —";sep.style.margin="8px 0";td.appendChild(sep);
+  const sep=document.createElement("div");sep.className="foot";sep.textContent=t("sem_o_entrenar");sep.style.margin="8px 0";td.appendChild(sep);
 }
 function pintarSemana(){
   const c=G.carrera;
@@ -498,7 +494,7 @@ function pintarSemana(){
   for(let d=1;d<=7;d++){
     const cel=document.createElement("div");
     let cls="diacel"+(d===dia?" hoy":"")+(d<dia?" pasado":"");
-    let txt=DIAS[d-1].slice(0,3).toUpperCase();
+    let txt=diaNombre(d-1).slice(0,3).toUpperCase();
     if(torneo&&d>=dia){
       for(let f2=torneo.fase;f2<6;f2++) if(d===diaDeFase(f2)){cls+=" partido";txt=(f2===torneo.fase?"🎾":"·")+txt;break;}
     }
@@ -512,45 +508,45 @@ function pintarSemana(){
     const d=document.createElement("div");d.className="opcion";
     if(dia===dPart){
       const r=torneo.rivales[torneo.fase];
-      d.innerHTML=`<b>HOY: ${faseNombre(torneo.fase)}</b> <span class="pill oro">${torneo.nombre}</span><div class="d">Rival: ${r.nombre} (nivel ${nivelPareja(r)}).</div>`;
+      d.innerHTML=`<b>${t("sem_hoy_fase",{fase:faseNombre(torneo.fase)})}</b> <span class="pill oro">${torneo.nombre}</span><div class="d">${t("sem_rival",{n:r.nombre,niv:nivelPareja(r)})}</div>`;
     } else {
-      d.innerHTML=`<b>En el ${torneo.nombre}</b><div class="d">Próxima ronda: ${faseNombre(torneo.fase).toLowerCase()} el ${DIAS[dPart-1]}. Hasta entonces, cada día decides: entrenar o descansar.</div>`;
+      d.innerHTML=`<b>${t("sem_en_torneo",{torneo:torneo.nombre})}</b><div class="d">${t("sem_prox_ronda",{fase:faseNombre(torneo.fase).toLowerCase(),dia:diaNombre(dPart-1)})}</div>`;
     }
     td.appendChild(d);
   } else if(esT&&dia===1&&!c.lesion){
     const info=document.createElement("div");info.className="foot";info.style.textAlign="left";info.style.marginBottom="6px";
-    info.textContent="LUNES: día de inscripciones. Si lo dejas pasar, la semana es toda tuya.";
+    info.textContent=t("sem_lunes");
     td.appendChild(info);
-    pintarEventosSemana(td, c.energia>=30, "Necesitas 30 de energía para competir.");
+    pintarEventosSemana(td, c.energia>=30, t("sem_energia_min"));
   } else if(!esT||dia>1){
     const info=document.createElement("div");info.className="foot";info.style.textAlign="left";info.style.marginBottom="6px";
-    info.textContent=dia===1?"Semana sin torneo disponible para vosotros.":"Las inscripciones cerraron el lunes. Semana de trabajo en casa.";
+    info.textContent=dia===1?t("sem_sin_torneo"):t("sem_cerradas");
     td.appendChild(info);
   }
   // ===== ACCIONES DEL DÍA (siempre visibles) =====
   const ac=document.getElementById("accionesDia");ac.innerHTML="";
   const tit=document.createElement("div");tit.className="foot";tit.style.textAlign="left";tit.style.margin="4px 0 6px";
-  tit.innerHTML=`¿Qué haces HOY, ${DIAS[dia-1]}? · sesiones de entreno esta semana: <b style="color:var(--lima)">${c._sesEntreno||0}</b>/5`;
+  tit.innerHTML=t("sem_que_haces",{dia:diaNombre(dia-1),n:c._sesEntreno||0});
   ac.appendChild(tit);
   const fila=document.createElement("div");fila.className="fila";
   const esDiaPartido=torneo&&dia===diaDeFase(torneo.fase);
   if(esDiaPartido){
     const bJ=document.createElement("button");bJ.className="pri";bJ.style.flex="1.4";
-    bJ.textContent=`🎾 Jugar: ${faseNombre(torneo.fase)}`;
+    bJ.textContent=t("sem_jugar",{fase:faseNombre(torneo.fase)});
     bJ.onclick=()=>{pintarTorneo();irA("torneo");};
     fila.appendChild(bJ);
   }
   const bE=document.createElement("button");
-  bE.textContent="🏋 Entrenar hoy";
+  bE.textContent=t("sem_entrenar");
   bE.disabled=!!c.lesion||esDiaPartido||c.energia<10;
-  bE.title=c.lesion?"De baja: solo fisioterapia":esDiaPartido?"Hoy toca partido":"Sesión según tu plan (pestaña Entreno)";
+  bE.title=c.lesion?t("sem_t_baja"):esDiaPartido?t("sem_t_partido"):t("sem_t_sesion");
   bE.onclick=()=>entrenarDia();
   fila.appendChild(bE);
   if(c._spot&&(!c._spot.caduca||c._spot.caduca>=semanaTemp())&&!esDiaPartido&&!c.lesion){
     const bSpot=document.createElement("button");
     bSpot.style.flex="1.2";
-    bSpot.textContent=`🎬 Rodar (+${c._spot.pago}€)`;
-    bSpot.title=`${c._spot.tipo||"Rodaje"} para ${c._spot.marca}`;
+    bSpot.textContent=t("sem_rodar",{pago:c._spot.pago});
+    bSpot.title=t("sem_rodar_t",{tipo:c._spot.tipo?t(c._spot.tipo):t("spot_rodaje"),marca:c._spot.marca});
     bSpot.onclick=()=>{
       const sp=c._spot; c._spot=null;
       c.dinero+=sp.pago;
@@ -565,20 +561,20 @@ function pintarSemana(){
   }
   if(c._spot&&c._spot.caduca&&c._spot.caduca<semanaTemp()) c._spot=null;
   const bD=document.createElement("button");bD.className="azul";
-  bD.textContent=c.lesion?"🏥 Fisio hoy":"😴 Descansar hoy";
+  bD.textContent=c.lesion?t("sem_fisio"):t("sem_descansar");
   bD.disabled=esDiaPartido&&!c.lesion;
-  bD.title=esDiaPartido?"Hoy toca partido: el torneo no espera":"";
+  bD.title=esDiaPartido?t("sem_t_no_espera"):"";
   bD.onclick=()=>descansarDia();
   fila.appendChild(bD);
   ac.appendChild(fila);
   if(torneo&&dia<diaDeFase(torneo.fase)){
     const bS=document.createElement("button");bS.style.width="100%";bS.style.marginTop="6px";
-    bS.textContent=`⏩ Saltar al ${DIAS[diaDeFase(torneo.fase)-1]} (descansando)`;
+    bS.textContent=t("sem_saltar",{dia:diaNombre(diaDeFase(torneo.fase)-1)});
     bS.onclick=()=>{while(G.carrera.dia<diaDeFase(torneo.fase)){G.carrera.energia=clamp(G.carrera.energia+5,0,100);G.carrera.dia++;}guardar();pintarCarrera();};
     ac.appendChild(bS);
   }
   const nota=document.createElement("div");nota.className="foot";nota.style.textAlign="left";nota.style.marginTop="6px";
-  nota.textContent="El plan de entrenamiento (golpe, intensidad, entrenador y plan de tu pareja) se ajusta en la pestaña ENTRENO.";
+  nota.textContent=t("sem_nota_plan");
   ac.appendChild(nota);
   document.getElementById("calendario").innerHTML=calHtml();
 }

@@ -184,8 +184,8 @@ function guardar(){
   }
   const st=G.modo==="carrera"?G.carrera.semana:G.modo==="club"?G.clubG.semana:(G.superliga?("J"+G.superliga.jornada):0);
   document.getElementById("footSave").textContent=ok
-    ? `RISING GAMES · v3.0 — ${G.modo} guardada ✓ (${G.modo==="superliga"?st:"semana "+st})`
-    : `RISING GAMES · v2.0 — guardado local no disponible aquí: usa «⤓ Exportar» para no perder la partida`;
+    ? t("pie_guardado",{modo:t("modo_"+G.modo),cuando:G.modo==="superliga"?st:t("pie_semana",{n:st})})
+    : t("pie_nolocal");
 }
 document.getElementById("btnExport").onclick=()=>{
   if(!G) return;
@@ -465,17 +465,17 @@ function calHtml(){
     const col=!pc?"#2A3140":pc.cat===7?"#E6FA50":pc.cat===6?"var(--oro)":pc.cat===5?"#9B59D0":"#4FA3D8";
     const cls="calcel"+(w===st?" hoy":"")+(w<st?" pasada":"");
     const marca=res[w]?(res[w]==="🏆"?"🏆":"•"):"";
-    const nom=pc?`${CATS[pc.cat].n} (${pc.ciudad})`:"solo FIP";
+    const nom=pc?`${CATS[pc.cat].n} (${pc.ciudad})`:t("cal_solo_fip");
     strip+=`<div class="${cls}" style="background:${col}" title="S${w}: ${nom} + ${CATS[FIP_CAL[w-1]].n}">${marca}</div>`;
   }
-  strip+='</div><div class="foot" style="text-align:left;margin-bottom:8px"><span style="color:#E6FA50">■</span> Finals · <span style="color:var(--oro)">■</span> Major · <span style="color:#9B59D0">■</span> P1 · <span style="color:#4FA3D8">■</span> P2 · <span style="color:#5E687A">■</span> solo FIP · • jugado · 🏆 título</div>';
+  strip+='</div><div class="foot" style="text-align:left;margin-bottom:8px">'+t("cal_leyenda")+'</div>';
   const cal=[];
   for(let s2=st;s2<Math.min(st+8,SEMANAS_TEMP+1);s2++){
     const slot=slotSemana(s2);
     const prem=slot.premier!==undefined?`<span style="color:var(--oro)">${CATS[slot.premier].n} (${slot.ciudad})</span> + `:"";
-    cal.push(`<div>S${s2} · ${prem}${CATS[slot.fip].n}${s2===st?"  ← esta semana":""}</div>`);
+    cal.push(`<div>S${s2} · ${prem}${CATS[slot.fip].n}${s2===st?t("cal_esta_sem"):""}</div>`);
   }
   const queda=PREM_CAL.slice(st-1).reduce((a,v)=>{if(v&&v.cat>=4&&v.cat<=6)a[v.cat-4]++;return a;},[0,0,0]);
-  return strip+cal.join("")+`<div class="foot" style="text-align:left;margin-top:8px">Restan: ${queda[2]} Major, ${queda[1]} P1, ${queda[0]} P2 y las Finals de Barcelona (top 8). Viajar cuesta: elige bien tu gira.</div>`;
+  return strip+cal.join("")+`<div class="foot" style="text-align:left;margin-top:8px">${t("cal_restan",{major:queda[2],p1:queda[1],p2:queda[0]})}</div>`;
 }
 
