@@ -142,5 +142,17 @@ module.exports = async function ejecutarPruebasSql() {
   db.dbSqlGuardarPalmares(d, []);
   chk(db.dbSqlLeerPalmares(d).length === 0, "4d · palmarés: lista vacía deja la tabla vacía");
 
+  // ---------- diario del protagonista (Fase 4d·3) ----------
+  // el diario vive con la entrada MÁS RECIENTE primero; el round-trip debe ser identidad
+  const dia = ["📰 Nuevo nº1 del circuito.", "💶 Cobras 300€ del sponsor.", "🎾 Victoria en primera ronda."];
+  db.dbSqlGuardarDiario(d, dia);
+  db.dbSqlGuardarDiario(d, dia); // reproyectar: debe REEMPLAZAR, no acumular
+  const diab = db.dbSqlLeerDiario(d);
+  chk(diab.length === 3, "4d · diario: round-trip conserva 3 entradas (reemplaza, no acumula)", diab.length + " filas");
+  chk(diab[0] === dia[0] && diab[2] === dia[2], "4d · diario: orden (reciente primero) preservado", JSON.stringify(diab));
+  chk(diab[0].includes("📰") && diab[1].includes("€"), "4d · diario: emojis y símbolos sobreviven");
+  db.dbSqlGuardarDiario(d, []);
+  chk(db.dbSqlLeerDiario(d).length === 0, "4d · diario: lista vacía deja la tabla vacía");
+
   return res;
 };

@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS norm_n1(
   ord INTEGER PRIMARY KEY AUTOINCREMENT, temporada INTEGER, nombre TEXT, pts INTEGER, yo INTEGER, sexo TEXT);
 CREATE TABLE IF NOT EXISTS norm_palmares(
   ord INTEGER PRIMARY KEY AUTOINCREMENT, titulo TEXT);
+CREATE TABLE IF NOT EXISTS norm_diario(
+  ord INTEGER PRIMARY KEY AUTOINCREMENT, texto TEXT);
 `;
 
 function dbSqlSchema(db){ db.run(DB_SCHEMA_SQL); }
@@ -98,6 +100,25 @@ function dbSqlLeerPalmares(db){
   return out;
 }
 
+// Diario del protagonista: lista corta (10 entradas, la más reciente primero).
+// Se guarda tal cual está en memoria (índice 0 = más reciente) y se lee en el
+// mismo orden, así el round-trip es identidad.
+function dbSqlGuardarDiario(db, lista){
+  db.run("BEGIN");
+  try{
+    db.run("DELETE FROM norm_diario;");
+    const st=db.prepare("INSERT INTO norm_diario(texto) VALUES(?)");
+    (lista||[]).forEach(x=>st.run([String(x)])); st.free();
+    db.run("COMMIT");
+  }catch(e){ try{ db.run("ROLLBACK"); }catch(_){} throw e; }
+}
+function dbSqlLeerDiario(db){
+  const out=[];
+  const r=db.exec("SELECT texto FROM norm_diario ORDER BY ord");
+  if(r&&r[0]) r[0].values.forEach(v=>out.push(v[0]));
+  return out;
+}
+
 /* ---------- capa de navegador/app: init, persistencia y write-through ---------- */
 let SQLDB=null;
 function _sqlInitFn(){
@@ -137,7 +158,10 @@ function dbSqlSnapshotVivo(){
     try{ if(typeof G!=="undefined"&&G&&G.world) dbSqlGuardarN1(SQLDB, G.world.n1hist||[]); }catch(_){}
     try{
       const prot=(typeof G!=="undefined"&&G)?(G.modo==="carrera"?G.carrera:G.clubG):null;
-      if(prot) dbSqlGuardarPalmares(SQLDB, prot.palmares||[]);
+      if(prot){
+        dbSqlGuardarPalmares(SQLDB, prot.palmares||[]);
+        dbSqlGuardarDiario(SQLDB, prot.diario||[]);
+      }
     }catch(_){}
     dbSqlPersistir();
   }catch(e){}
@@ -151,6 +175,11 @@ function dbSqlCargarN1(){
 function dbSqlCargarPalmares(){
   if(!SQLDB) return null;
   try{ return dbSqlLeerPalmares(SQLDB); }catch(e){ return null; }
+}
+// Reconstruye el diario del protagonista desde sql.js (Fase 4d·3).
+function dbSqlCargarDiario(){
+  if(!SQLDB) return null;
+  try{ return dbSqlLeerDiario(SQLDB); }catch(e){ return null; }
 }
 
 /* ---------- consultas para la analítica (síncronas, sobre sql.js) ---------- */
@@ -261,6 +290,7 @@ function dbSqlDistribucionNivel(db){
 if(typeof module!=="undefined"&&module.exports){
   module.exports={DB_SCHEMA_SQL,dbSqlSchema,dbSqlGuardarSnapshot,dbSqlLeerSnapshot,
     dbSqlGuardarN1,dbSqlLeerN1,dbSqlGuardarPalmares,dbSqlLeerPalmares,
+    dbSqlGuardarDiario,dbSqlLeerDiario,
     dbSqlPorEstilo,dbSqlMejoresParejas,dbSqlTopPaises,dbSqlDistribucionNivel,
     dbSqlSnapshotCoincide};
 }

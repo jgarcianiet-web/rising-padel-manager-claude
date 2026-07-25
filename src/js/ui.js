@@ -97,15 +97,18 @@ function abrirModo(modo){
         }
       }
     }catch(e){}
-    // Fase 4d·2: el palmarés del protagonista, con la misma red de seguridad —
-    // solo se toma de SQLite si coincide con el del blob (longitud y títulos).
+    // Fase 4d·2/4d·3: palmarés y diario del protagonista, con la misma red de
+    // seguridad — solo se toman de SQLite si coinciden con los del blob.
     try{
       const prot=G?(G.modo==="carrera"?G.carrera:G.clubG):null;
+      const igual=(a,b)=>a && Array.isArray(b) && a.length===b.length && a.every((x,i)=>x===b[i]);
       if(typeof dbSqlCargarPalmares==="function" && prot && Array.isArray(prot.palmares)){
-        const palSql=dbSqlCargarPalmares(), blob=prot.palmares;
-        if(palSql && palSql.length===blob.length && palSql.every((x,i)=>x===blob[i])){
-          prot.palmares=palSql; G._palmaresDesdeSql=true;
-        }
+        const palSql=dbSqlCargarPalmares();
+        if(igual(palSql,prot.palmares)){ prot.palmares=palSql; G._palmaresDesdeSql=true; }
+      }
+      if(typeof dbSqlCargarDiario==="function" && prot && Array.isArray(prot.diario)){
+        const diaSql=dbSqlCargarDiario();
+        if(igual(diaSql,prot.diario)){ prot.diario=diaSql; G._diarioDesdeSql=true; }
       }
     }catch(e){}
     entrarPartida();
