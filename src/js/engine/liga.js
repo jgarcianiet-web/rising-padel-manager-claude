@@ -171,10 +171,83 @@ function jugarPlayoff(sl,rnd){
   return null;
 }
 
+/* ================================================================
+   LA INVITACIÓN: la Superliga deja de ser un modo aparte. A partir del
+   SEGUNDO año, un club puede recibir sin previo aviso una invitación para
+   entrar en la competición entre clubes. No se anuncia ni se puede pedir:
+   llega o no llega, y depende de lo que hayas construido.
+   Puro y testable: la interfaz solo pinta lo que decide esto.
+================================================================ */
+const SL_INVIT_TEMP_MIN=2;    // nunca antes del segundo año
+// Probabilidad de que este año llegue la invitación (0..1). Sube con el
+// prestigio del club y con los años que lleva sin ser invitado.
+function probInvitacionSL(prestigio,temporada,rechazos){
+  if((temporada||1)<SL_INVIT_TEMP_MIN) return 0;
+  const base=.18+Math.max(0,Math.min(60,prestigio||0))/60*.42;   // .18 … .60
+  const espera=Math.min(.25,((temporada||2)-SL_INVIT_TEMP_MIN)*.06);
+  const insistencia=Math.min(.2,(rechazos||0)*.1);   // si dijiste que no, vuelven a llamar
+  return Math.min(.85,base+espera+insistencia);
+}
+// ¿Llega la invitación este cierre de temporada? Devuelve null o los datos.
+function evaluaInvitacionSL(cl,temporada,rnd){
+  if(!cl||cl.enSuperliga) return null;
+  if((temporada||1)<SL_INVIT_TEMP_MIN) return null;
+  if(cl.invitacionSL&&cl.invitacionSL.pendiente) return null;   // ya hay una sobre la mesa
+  const prest=(typeof prestigioClub==="function")?prestigioClub():0;
+  const p=probInvitacionSL(prest,temporada,(cl.invitSLRechazos||0));
+  if((rnd||Math.random)()>=p) return null;
+  return {temporada,prestigio:prest,pendiente:true};
+}
+// Convierte TU club en un equipo de Superliga: la plantilla real pasa a ser
+// las tres parejas, y la fuerza sale de su nivel medio.
+function clubASuperliga(cl){
+  const plant=(cl.plantilla||[]).slice(0,6).map(j=>({...j}));
+  while(plant.length<6) plant.push(mkAgente(52,66,cl.sexo||"M"));   // completa si falta gente
+  const fuerza=Math.round(plant.reduce((a,j)=>a+mediaAttrs(j.attrs),0)/plant.length);
+  const sl=mkSuperliga(cl.nombre||"Rising SC",fuerza,cl.color||"#C6F53C");
+  sl.plantilla=plant;
+  sl.alin=[[0,1],[2,3],[4,5]];
+  sl.mercado=mkMercadoSL();
+  sl.caja=Math.max(12000,Math.round(cl.dinero||0));
+  sl.desdeClub={nombre:cl.nombre,temporada:cl.invitacionSL?cl.invitacionSL.temporada:1};
+  sincronizaClubSL(sl);
+  return sl;
+}
 /* ---------------- capa de pantalla (fina) ---------------- */
 function entrarSuperliga(){
   document.body.classList.remove("con-hud"); document.body.classList.remove("en-partido");
   irA("superliga"); pintarSuperliga(); guardar();
+}
+// El club acepta la invitación: se convierte en equipo de Superliga. La partida
+// de club queda guardada en su propio hueco, así que no se pierde.
+function aceptarInvitacionSL(){
+  const cl=G&&G.clubG; if(!cl||!cl.invitacionSL) return;
+  cl.invitacionSL.pendiente=false; cl.invitacionSL.aceptada=true; cl.enSuperliga=true;
+  guardar();                                  // conserva el club tal y como está
+  const sl=clubASuperliga(cl);
+  G={modo:"superliga",dif:difMenu(),superliga:sl};
+  entrarSuperliga();
+  avisa(t("sl_av_aceptada",{club:sl.equipos[0].n}));
+}
+function rechazarInvitacionSL(){
+  const cl=G&&G.clubG; if(!cl||!cl.invitacionSL) return;
+  cl.invitacionSL.pendiente=false;
+  cl.invitSLRechazos=(cl.invitSLRechazos||0)+1;
+  avisa(t("sl_av_rechazada"));
+  quitarEl(document.getElementById("slInvitModal"));
+  guardar(); pintarClubM();
+}
+// Modal de la invitación. Es un evento, no una opción de menú: aparece solo.
+function mostrarInvitacionSL(){
+  const cl=G&&G.clubG; if(!cl||!cl.invitacionSL||!cl.invitacionSL.pendiente) return;
+  const ov=document.getElementById("slInvitModal")||(()=>{const d=document.createElement("div");d.id="slInvitModal";d.style.cssText="position:fixed;inset:0;background:rgba(10,13,19,.94);z-index:84;display:flex;align-items:center;justify-content:center;padding:16px";document.body.appendChild(d);return d;})();
+  ov.innerHTML=`<div class="card" style="max-width:440px;width:100%">
+    <h3 style="margin-top:0;color:var(--oro)">${t("sl_invit_titulo")}</h3>
+    <div style="font-size:12.5px;color:var(--gris);line-height:1.55;margin-bottom:9px">${t("sl_invit_texto",{club:cl.nombre})}</div>
+    <div class="foot" style="text-align:left;margin-bottom:9px">${t("sl_invit_detalle")}</div>
+    <button class="pri" style="width:100%" onclick="quitarEl(document.getElementById('slInvitModal'));aceptarInvitacionSL();">${t("sl_invit_aceptar")}</button>
+    <button style="width:100%;margin-top:7px" onclick="rechazarInvitacionSL()">${t("sl_invit_rechazar")}</button>
+  </div>`;
 }
 function crearSuperliga(){
   let nom="Rising SC";

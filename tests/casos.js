@@ -917,6 +917,32 @@ comprueba("Archirrival: se declara al eliminarte, manda en la presión y cierra 
   return `declarado a las ${NEMESIS_ELIM} eliminaciones; presión ${p4.toFixed(2)}→${p6.toFixed(2)}`;
 });
 
+comprueba("Superliga: la invitación llega sola a partir del segundo año", () => {
+  // el primer año no llega nunca, por muy bueno que seas
+  exige(probInvitacionSL(60, 1, 0) === 0, "no debería haber invitación en la temporada 1");
+  exige(evaluaInvitacionSL({}, 1, () => 0) === null, "la temporada 1 nunca invita");
+  // a partir del segundo, la probabilidad sube con el prestigio
+  const bajo = probInvitacionSL(0, 2, 0), alto = probInvitacionSL(60, 2, 0);
+  exige(alto > bajo && bajo > 0, `el prestigio debería pesar (${bajo} vs ${alto})`);
+  // y con los años de espera, y si ya dijiste que no, insisten
+  exige(probInvitacionSL(30, 6, 0) > probInvitacionSL(30, 2, 0), "esperar años debería subir la probabilidad");
+  exige(probInvitacionSL(30, 3, 2) > probInvitacionSL(30, 3, 0), "tras rechazar deberían insistir más");
+  exige(probInvitacionSL(60, 12, 5) <= .85, "la probabilidad debe estar acotada");
+  // no se invita a quien ya está dentro ni si hay una carta sobre la mesa
+  exige(evaluaInvitacionSL({ enSuperliga: true }, 5, () => 0) === null, "no debería invitar a quien ya juega la Superliga");
+  exige(evaluaInvitacionSL({ invitacionSL: { pendiente: true } }, 5, () => 0) === null, "no debería duplicar la invitación pendiente");
+  // con rnd forzado sí llega, y trae la temporada
+  const inv = evaluaInvitacionSL({}, 4, () => 0);
+  exige(inv && inv.pendiente === true && inv.temporada === 4, "la invitación no llega con rnd favorable");
+  // el club se convierte en equipo: 6 jugadores, 3 parejas y fuerza real
+  const mk = n => ({ n, attrs: { fondo: 70, globo: 70, chiquita: 70, volea: 70, dejada: 70, bandeja: 70, vibora: 70, remate: 70, pared: 70 } });
+  const sl = clubASuperliga({ nombre: "Mi Club", color: "#fff", dinero: 30000, plantilla: [mk("a"), mk("b"), mk("c")] });
+  exige(sl.plantilla.length === 6, "debería completar hasta 6 jugadores: " + sl.plantilla.length);
+  exige(sl.alin.length === 3 && sl.equipos[0].n === "Mi Club" && sl.equipos[0].tuyo === true, "el equipo propio no se monta bien");
+  exige(sl.caja === 30000 && sl.desdeClub && sl.desdeClub.nombre === "Mi Club", "no arrastra caja ni procedencia");
+  return `T1 imposible; prestigio ${bajo.toFixed(2)}→${alto.toFixed(2)}; club convertido a 3 parejas`;
+});
+
 comprueba("Idiomas: catálogo completo y sin claves huérfanas en los 5 idiomas", () => {
   // toda clave definida en español existe en los otros 4 y no está vacía
   const claves = Object.keys(I18N.es);

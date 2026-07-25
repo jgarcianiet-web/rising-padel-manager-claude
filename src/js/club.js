@@ -237,6 +237,8 @@ function pintarClubM(){
     G=null; irA("menu"); pintarMenu(); return;
   }
   const cl=G.clubG;
+  if(cl.invitacionSL&&cl.invitacionSL.pendiente&&typeof document!=="undefined"&&document.body&&!document.getElementById("slInvitModal"))
+    setTimeout(()=>mostrarInvitacionSL(),400);
   document.getElementById("topCtx").innerHTML=`<b>${t("ctx_temporada")} ${temporada()}</b> · S${semanaTemp()}/${SEMANAS_TEMP} · ${cl.sexo==="F"?t("ctx_circuito_f"):t("ctx_circuito_m")}<br>${cl.nombre} · 🎟×${cl.wildcards||0}`;
   document.getElementById("cmSem").textContent="S"+semanaTemp();
   document.getElementById("cmRank").textContent="#"+miPuesto();
@@ -689,6 +691,15 @@ function avanzarSemanaClub(){
       } else {
         avisa(t("clb_junta_aviso",{obj:J.objetivo,pos:posFin}));
         post("junta");
+      }
+    }
+    // LA INVITACIÓN: a partir del segundo año puede llegar sin avisar
+    if(typeof evaluaInvitacionSL==="function"){
+      const inv=evaluaInvitacionSL(cl,temporada(),null);
+      if(inv){
+        cl.invitacionSL=inv;
+        noticia("contrato",t("not_sl_invit_t",{club:cl.nombre}),t("not_sl_invit_s"));
+        avisa(t("sl_av_llega"));
       }
     }
     J.objetivo=Math.max(3,Math.round(Math.min(posFin,J.objetivo)*.85));
