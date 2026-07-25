@@ -170,7 +170,7 @@ function pintarLogos(){
 ================================================================ */
 registraAcciones({
   // menú
-  setDif, setIdioma,
+  setDif, setIdioma, setEscala,
   // staff
   despedirStaff, ficharStaff,
   filtroStaff:(rol)=>{ ent()._staffFiltro=rol; pintarTodo(); },

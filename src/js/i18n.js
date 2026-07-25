@@ -19,6 +19,11 @@ const IDIOMAS=[
 const IDIOMA_DEF="es";
 const I18N={
   es:{
+    esc_label:"Tamaño de la interfaz",
+    esc_normal:"Normal",
+    esc_grande:"Grande",
+    esc_enorme:"Enorme",
+    esc_desc:"Agranda todo el texto del juego. Se recuerda entre partidas.",
     aviso_circuito_amplia:"📰 La federación amplía el circuito: entran parejas nuevas al ranking. Ahora sois {n} por categoría.",
     crea_semilla:"Semilla",
     crea_semilla_d:"Dos partidas con la misma semilla viven exactamente lo mismo. Déjala como está si no te importa.",
@@ -927,6 +932,11 @@ const I18N={
     ctx_circuito_fip:"circuito Continental",
   },
   en:{
+    esc_label:"Interface size",
+    esc_normal:"Normal",
+    esc_grande:"Large",
+    esc_enorme:"Extra large",
+    esc_desc:"Scales up all the game's text. Remembered between games.",
     aviso_circuito_amplia:"📰 The federation expands the tour: new pairs join the ranking. You're now {n} per category.",
     crea_semilla:"Seed",
     crea_semilla_d:"Two games with the same seed live exactly the same story. Leave it be if you don't care.",
@@ -1835,6 +1845,11 @@ const I18N={
     ctx_circuito_fip:"Continental tour",
   },
   fr:{
+    esc_label:"Taille de l'interface",
+    esc_normal:"Normale",
+    esc_grande:"Grande",
+    esc_enorme:"Très grande",
+    esc_desc:"Agrandit tout le texte du jeu. Conservé d'une partie à l'autre.",
     aviso_circuito_amplia:"📰 La fédération élargit le circuit : de nouvelles paires entrent au classement. Vous êtes maintenant {n} par catégorie.",
     crea_semilla:"Graine",
     crea_semilla_d:"Deux parties avec la même graine vivent exactement la même chose. Laisse-la telle quelle si ça t'est égal.",
@@ -2743,6 +2758,11 @@ const I18N={
     ctx_circuito_fip:"circuit Continental",
   },
   de:{
+    esc_label:"Schriftgröße",
+    esc_normal:"Normal",
+    esc_grande:"Groß",
+    esc_enorme:"Sehr groß",
+    esc_desc:"Vergrößert den gesamten Text des Spiels. Bleibt zwischen Spielen erhalten.",
     aviso_circuito_amplia:"📰 Der Verband erweitert die Tour: neue Paare kommen ins Ranking. Ihr seid jetzt {n} pro Kategorie.",
     crea_semilla:"Startwert",
     crea_semilla_d:"Zwei Spiele mit demselben Startwert erleben genau dasselbe. Lass ihn stehen, wenn es dir egal ist.",
@@ -3651,6 +3671,11 @@ const I18N={
     ctx_circuito_fip:"Continental-Tour",
   },
   it:{
+    esc_label:"Dimensione dell'interfaccia",
+    esc_normal:"Normale",
+    esc_grande:"Grande",
+    esc_enorme:"Enorme",
+    esc_desc:"Ingrandisce tutto il testo del gioco. Si ricorda tra una partita e l'altra.",
     aviso_circuito_amplia:"📰 La federazione amplia il circuito: entrano nuove coppie in classifica. Ora siete {n} per categoria.",
     crea_semilla:"Seme",
     crea_semilla_d:"Due partite con lo stesso seme vivono esattamente la stessa storia. Lascialo com'è se non ti interessa.",

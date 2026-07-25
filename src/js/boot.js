@@ -1,4 +1,7 @@
 /* ---------- arranque ---------- */
+// El tamaño de interfaz va lo primero: si se aplicara después de pintar, se
+// vería el menú saltar de tamaño al cargar.
+aplicarEscala();
 irA("menu");
 pintarMenu();
 pintarLogos();

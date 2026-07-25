@@ -109,6 +109,27 @@ module.exports = function pruebasEstaticas() {
     return usadas.length + " acciones, todas registradas";
   });
 
+  /* Todo el texto del juego escala con --esc, para que quien no vea bien de
+     cerca pueda agrandarlo. Un font-size en px pelado se queda fijo y rompe el
+     ajuste sin avisar: solo se ve si alguien con la vista cansada lo sufre. */
+  comprueba("Accesibilidad: los tamaños de letra escalan con --esc", () => {
+    const objetivo = ficheros("src/css").filter(f => f.endsWith(".css") && !f.includes("fuentes"));
+    const malos = [];
+    for (const f of objetivo) {
+      leer(f).split("\n").forEach((l, i) => {
+        // font-size:12px sin calc(); se ignora dentro de calc(...)
+        const sin = l.replace(/calc\([^)]*\)/g, "");
+        if (/font-size:\s*[0-9.]+px/.test(sin)) malos.push(f + ":" + (i + 1) + "  " + l.trim().slice(0, 60));
+      });
+    }
+    exige(!malos.length, "tamaño fijo (no escala):\n      " + malos.join("\n      "));
+    const raiz = leer("src/css/main.css");
+    exige(/--esc:\s*1\s*;/.test(raiz), "falta el valor por defecto de --esc en :root");
+    const n = (raiz.match(/var\(--esc\)/g) || []).length;
+    exige(n >= 60, "solo " + n + " tamaños escalan; deberían ser casi todos");
+    return n + " tamaños escalables";
+  });
+
   /* El azar de simulación sale de rnd() (src/js/rng.js), que tiene semilla y se
      puede reproducir. Math.random solo se admite en lo presentacional: si el
      sonido bebiera del mismo flujo, jugar con el sonido apagado daría

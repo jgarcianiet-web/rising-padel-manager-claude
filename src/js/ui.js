@@ -73,6 +73,7 @@ function pintarMenu(){
   document.getElementById("topCtx").innerHTML="<b>Rising Games</b>";
   pintarSelectorDif();
   pintarSelectorIdioma();
+  pintarSelectorEscala();
 }
 
 /* Selector de dificultad del menú. La elección se guarda como preferencia
@@ -101,6 +102,42 @@ function pintarSelectorIdioma(){
   }).join("");
   cont.innerHTML=`<div class="diflabel">${t("idioma_label")}</div><div class="difrow difrow-wrap">${chips}</div>`;
 }
+/* ---------- tamaño de la interfaz ----------
+
+   El juego se dibujaba con tipografías de 8 a 15 px y ningún ajuste, para un
+   deporte cuyo público está sobre todo por encima de los 40 años. Todos los
+   font-size del CSS son calc(Npx * var(--esc)), así que basta con mover esa
+   variable en :root para escalar el texto entero.
+
+   La preferencia es global (no por partida) y se aplica al arrancar, antes de
+   pintar nada, para que no se vea el salto. */
+const ESCALAS=[["normal",1],["grande",1.15],["enorme",1.32]];
+function escalaActual(){
+  try{ const s=localStorage.getItem("rpm_escala"); if(ESCALAS.some(e=>e[0]===s)) return s; }catch(e){}
+  return "normal";
+}
+function aplicarEscala(){
+  const id=escalaActual();
+  const v=(ESCALAS.find(e=>e[0]===id)||ESCALAS[0])[1];
+  try{ document.documentElement.style.setProperty("--esc",String(v)); }catch(e){}
+}
+function setEscala(id){
+  if(!ESCALAS.some(e=>e[0]===id)) return;
+  try{ localStorage.setItem("rpm_escala",id); }catch(e){}
+  aplicarEscala();
+  pintarSelectorEscala();
+}
+function pintarSelectorEscala(){
+  const cont=document.getElementById("selEscala"); if(!cont) return;
+  const sel=escalaActual();
+  // la muestra de cada opción se pinta a su propio tamaño: se elige viendo
+  // el resultado, no leyendo la palabra "grande"
+  const chips=ESCALAS.map(([id,v])=>
+    `<button type="button" class="difchip${id===sel?" on":""}" ${ac("setEscala",id)} aria-pressed="${id===sel}" style="font-size:${Math.round(11*v)}px">${t("esc_"+id)}</button>`
+  ).join("");
+  cont.innerHTML=`<div class="diflabel">${t("esc_label")}</div><div class="difrow">${chips}</div><div class="difdesc">${t("esc_desc")}</div>`;
+}
+
 // modal de elección: continuar guardada o empezar nueva
 function quitarEl(el){
   if(!el) return;
