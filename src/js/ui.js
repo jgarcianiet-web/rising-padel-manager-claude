@@ -86,6 +86,17 @@ function abrirModo(modo){
         }
       }
     }catch(e){}
+    // Fase 4d: el historial de Nº1 también pasa a ser autoritativo desde SQLite si
+    // coincide con el blob (misma longitud y mismas temporadas); si no, se usa el blob.
+    try{
+      if(typeof dbSqlCargarN1==="function" && G && G.world && Array.isArray(G.world.n1hist)){
+        const n1Sql=dbSqlCargarN1(), blob=G.world.n1hist;
+        if(n1Sql && n1Sql.length===blob.length &&
+           n1Sql.every((h,i)=>h.t===blob[i].t && h.nombre===blob[i].nombre)){
+          G.world.n1hist=n1Sql; G._n1DesdeSql=true;
+        }
+      }
+    }catch(e){}
     entrarPartida();
   };
   if(!s){ nueva(); return; }   // sin guardado: directo a crear

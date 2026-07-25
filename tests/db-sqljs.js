@@ -113,5 +113,22 @@ module.exports = async function ejecutarPruebasSql() {
   chk(db.dbSqlSnapshotCoincide(null, snap).ok === false,
     "4c · guardia: sin base devuelve ok:false, no error");
 
+  // ---------- historial de Nº1 (Fase 4d) ----------
+  const n1 = [
+    { t: 0, nombre: "Ana", pts: 5000, yo: false, sexo: "F" },
+    { t: 1, nombre: "Tú", pts: 6200, yo: true, sexo: "M" },
+    { t: 2, nombre: "Bea", pts: 5800, yo: false, sexo: "F" },
+  ];
+  db.dbSqlGuardarN1(d, n1);
+  db.dbSqlGuardarN1(d, n1); // reproyectar: debe REEMPLAZAR, no acumular
+  const n1b = db.dbSqlLeerN1(d);
+  chk(n1b.length === 3, "4d · n1: round-trip conserva 3 temporadas (reemplaza, no acumula)", n1b.length + " filas");
+  chk(n1b[0].t === 0 && n1b[1].t === 1 && n1b[2].t === 2, "4d · n1: orden por temporada preservado");
+  chk(n1b[1].nombre === "Tú" && n1b[1].yo === true && n1b[1].pts === 6200, "4d · n1: campos y yo:bool reconstruidos");
+  chk(n1b[0].sexo === "F" && n1b[2].sexo === "F", "4d · n1: sexo conservado");
+  // lista vacía: no falla y deja la tabla vacía
+  db.dbSqlGuardarN1(d, []);
+  chk(db.dbSqlLeerN1(d).length === 0, "4d · n1: lista vacía deja la tabla vacía");
+
   return res;
 };
