@@ -524,22 +524,22 @@ function pintarCmClub(){
   });
   el.appendChild(c4);
   // patrocinador principal del club
-  const cS=document.createElement("div");cS.className="card";cS.innerHTML=`<h3>Patrocinador principal</h3>`;
+  const cS=document.createElement("div");cS.className="card";cS.innerHTML=`<h3>${t("patro_club_hd")}</h3>`;
   if(cl.sponsorOferta&&(!cl.sponsor||cl.sponsor.marca!==cl.sponsorOferta.marca)){
     const of=cl.sponsorOferta;
     const dS=document.createElement("div");dS.className="opcion";
-    dS.innerHTML=`<b>🏟 ${of.marca}</b> <span class="pill">${tierTxt(of.tier)}</span><div class="d">${of.sec} quiere dar nombre al club: <b style="color:var(--lima)">+${of.sem}€/sem</b>. Si aceptas, sustituye al patrocinador actual.</div>`;
-    const b=document.createElement("button");b.className="pri";b.style.width="100%";b.textContent="Firmar patrocinio principal";
-    b.onclick=()=>{cl.sponsor={...of};cl.sponsorOferta=null;noticia("contrato",t("not_patro_club_t",{marca:of.marca,club:cl.nombre}),t("not_patro_club_s",{tier:tierTxt(of.tier).toLowerCase()}));avisa(`✍ ${of.marca} es el nuevo patrocinador principal: +${of.sem}€/sem.`);fansAdd(200,"patrocinador principal");guardar();pintarClubM();};
+    dS.innerHTML=`<b>🏟 ${of.marca}</b> <span class="pill">${tierTxt(of.tier)}</span><div class="d">${t("patro_club_oferta",{sec:of.sec,sem:of.sem})}</div>`;
+    const b=document.createElement("button");b.className="pri";b.style.width="100%";b.textContent=t("patro_club_firmar");
+    b.onclick=()=>{cl.sponsor={...of};cl.sponsorOferta=null;noticia("contrato",t("not_patro_club_t",{marca:of.marca,club:cl.nombre}),t("not_patro_club_s",{tier:tierTxt(of.tier).toLowerCase()}));avisa(t("patro_club_av",{marca:of.marca,sem:of.sem}));fansAdd(200,"patrocinador principal");guardar();pintarClubM();};
     dS.appendChild(b);cS.appendChild(dS);
   }
   if(cl.sponsor){
     const dS=document.createElement("div");dS.className="foot";dS.style.textAlign="left";dS.style.marginTop="4px";
-    dS.innerHTML=`Actual: <b>${cl.sponsor.marca}</b> (${tierTxt(cl.sponsor.tier)}) · <b style="color:var(--lima)">+${cl.sponsor.sem}€/sem</b>. Mejora con el prestigio del club.`;
+    dS.innerHTML=t("patro_club_actual",{marca:cl.sponsor.marca,tier:tierTxt(cl.sponsor.tier),sem:cl.sponsor.sem});
     cS.appendChild(dS);
   } else if(!cl.sponsorOferta){
     const dS=document.createElement("div");dS.className="foot";dS.style.textAlign="left";
-    dS.textContent="Sin patrocinador principal. Las marcas llegan cuando el club gana prestigio.";
+    dS.textContent=t("patro_club_sin");
     cS.appendChild(dS);
   }
   el.appendChild(cS);
@@ -638,11 +638,11 @@ function avanzarSemanaClub(){
   // el patrocinador principal aparece/mejora con el prestigio
   if(!cl._sponsorCheck||cl._sponsorCheck<temporada()){
     cl._sponsorCheck=temporada();
-    const pre=prestigioClub(), t=pre>=60?4:pre>=35?3:pre>=15?2:1;
-    if(!cl.sponsor||cl.sponsor.tier<t){
-      const of=ofertaPatro(t);
-      cl.sponsorOferta={marca:of.marca,sec:of.sec,tier:t,sem:Math.round(of.sem*1.4),nombre:`${["","Bar","Deportes","","Grupo"][Math.floor(Math.random()*5)]} ${of.marca}`.trim()};
-      avisa(`🏟 ${cl.sponsorOferta.marca} (${tierTxt(t)}) ofrece ser patrocinador principal del club: +${cl.sponsorOferta.sem}€/sem. Acéptalo en el panel Club.`);
+    const pre=prestigioClub(), tr=pre>=60?4:pre>=35?3:pre>=15?2:1;   // ojo: no llamar `t` (taparía i18n)
+    if(!cl.sponsor||cl.sponsor.tier<tr){
+      const of=ofertaPatro(tr);
+      cl.sponsorOferta={marca:of.marca,sec:of.sec,tier:tr,sem:Math.round(of.sem*1.4),nombre:`${["","Bar","Deportes","","Grupo"][Math.floor(Math.random()*5)]} ${of.marca}`.trim()};
+      avisa(t("patro_club_av_oferta",{marca:cl.sponsorOferta.marca,tier:tierTxt(tr),sem:cl.sponsorOferta.sem}));
     }
   }
   cl.dinero-=salariosSemana();

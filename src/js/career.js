@@ -75,10 +75,10 @@ function aceptaProyecto(st){
   const salto=posYo-posEl;                         // >0 = yo estoy peor clasificado
   // no baja más de cierto margen según su nivel (los top son inflexibles)
   const margen=[99,30,20,12,7,4][st.niv]||15;      // niv5 solo baja 4 puestos; niv1 casi cualquiera
-  if(salto>margen) return {ok:false,motivo:`${st.n} no va a dejar a un top ${posEl} para irse a un proyecto en el puesto ${posYo}. Sube en el ranking y vuelve.`};
+  if(salto>margen) return {ok:false,motivo:t("staff_proy_top",{n:st.n,posEl,posYo})};
   // aunque esté en margen, a veces declina (proyecto poco convincente)
   const prob=clamp(.9-salto/(margen*1.6),.25,.97);
-  if(Math.random()>prob) return {ok:false,motivo:`${st.n} lo ha pensado y prefiere seguir con ${st.equipoDe} por ahora. Quizá más adelante.`,reintento:true};
+  if(Math.random()>prob) return {ok:false,motivo:t("staff_proy_duda",{n:st.n,equipo:st.equipoDe}),reintento:true};
   return {ok:true};
 }
 function refrescaMercadoStaff(){
@@ -105,14 +105,14 @@ function ficharStaff(idx){
     if(!dec.ok){ avisa(`✗ ${dec.motivo}`); if(!dec.reintento){ /* rechazo duro: se queda visible */ } guardar(); pintarTodo(); return; }
   }
   // 2) ¿llega la caja para la cláusula?
-  if(prima&&e.dinero<prima){ avisa(`✗ La cláusula de ${st.n} (técnico del ${st.equipoDe}, puesto ${puestoDePareja(st.equipoDe)}) son ${prima.toLocaleString("es")}€. Tu caja no llega.`); return; }
-  if(e.staff[st.rol]) avisa(`↔ ${e.staff[st.rol].n} deja el equipo: llega ${st.n}.`);
+  if(prima&&e.dinero<prima){ avisa(t("staff_av_clausula",{n:st.n,equipo:st.equipoDe,pos:puestoDePareja(st.equipoDe),prima:prima.toLocaleString("es")})); return; }
+  if(e.staff[st.rol]) avisa(t("staff_av_relevo",{sale:e.staff[st.rol].n,entra:st.n}));
   if(prima){ e.dinero-=prima; noticia("fichaje",t("not_staff_deja_t",{jug:st.n,equipo:st.equipoDe}),t("not_staff_deja_s",{prima:prima.toLocaleString("es")}),);
     if(G.world){ const par=G.world.parejas.find(p2=>p2.nombre===st.equipoDe); if(par) par._entrenador=null; }
     delete st.equipoDe; }
   e.staff[st.rol]=st;
   e.mercadoStaff.splice(idx,1);
-  avisa(`✔ ${ROLES_STAFF[st.rol].ico} ${st.n} (${"★".repeat(st.niv)}) firma como ${ROLES_STAFF[st.rol].n.toLowerCase()}: ${st.sal}€/sem.`);
+  avisa(t("staff_av_firma",{ico:ROLES_STAFF[st.rol].ico,n:st.n,estrellas:"★".repeat(st.niv),rol:t("rol_"+st.rol).toLowerCase(),sal:st.sal}));
   if(st.niv>=4) post("fichaje");
   guardar(); pintarTodo();
 }
@@ -120,7 +120,7 @@ function despedirStaff(rol){
   const e=ent(), st=e.staff[rol];
   if(!st) return;
   e.staff[rol]=null;
-  avisa(`👋 ${st.n} deja el equipo. Se acabaron sus ${st.sal}€/sem.`);
+  avisa(t("staff_av_adios",{n:st.n,sal:st.sal}));
   guardar(); pintarTodo();
 }
 function pintarTodo(){ if(G.modo==="carrera") pintarCarrera(); else pintarClubM(); }
@@ -129,10 +129,10 @@ function renderEquipoStaff(el){
   el.innerHTML=roles.map(r=>{
     const st=e.staff[r];
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--borde)">
-      <div style="font-size:11.5px">${ROLES_STAFF[r].ico} <b>${st?st.n:"—"}</b> <span style="color:var(--gris2)">· ${ROLES_STAFF[r].n}</span>
-        ${st?`<div style="font-size:10px;color:var(--gris)">${"★".repeat(st.niv)}${"☆".repeat(5-st.niv)} · ${st.sal}€/sem${st.rol==="rep"?` · comisión ${st.com}%`:""}${st.esp?` · ${st.esp.join("/")}`:""}<br><em style="color:var(--gris2)">«${st.frase}»</em></div>`:`<div style="font-size:10px;color:var(--gris2)">puesto vacante</div>`}
+      <div style="font-size:11.5px">${ROLES_STAFF[r].ico} <b>${st?st.n:"—"}</b> <span style="color:var(--gris2)">· ${t("rol_"+r)}</span>
+        ${st?`<div style="font-size:10px;color:var(--gris)">${"★".repeat(st.niv)}${"☆".repeat(5-st.niv)} · ${st.sal}€/sem${st.rol==="rep"?` · ${t("staff_comision",{c:st.com})}`:""}${st.esp?` · ${st.esp.join("/")}`:""}<br><em style="color:var(--gris2)">«${st.frase}»</em></div>`:`<div style="font-size:10px;color:var(--gris2)">${t("staff_vacante")}</div>`}
       </div>
-      ${st?`<button style="font-size:10px;padding:3px 7px" onclick="despedirStaff('${r}')">Despedir</button>`:""}
+      ${st?`<button style="font-size:10px;padding:3px 7px" onclick="despedirStaff('${r}')">${t("staff_despedir")}</button>`:""}
     </div>`;}).join("");
 }
 function renderMercadoStaff(el){
@@ -142,15 +142,15 @@ function renderMercadoStaff(el){
   // filtro por rol (bolsa grande → pestañas de rol)
   e._staffFiltro=e._staffFiltro||"todos";
   const roles=rolesDeModo();
-  const filtroBar=`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px">${["todos",...roles].map(r=>`<button class="selbtn${e._staffFiltro===r?" on":""}" style="font-size:9px;padding:4px 6px" onclick="ent()._staffFiltro='${r}';${G.modo==="carrera"?"pintarCarrera":"pintarClubM"}()">${r==="todos"?"Todos":ROLES_STAFF[r].ico+" "+ROLES_STAFF[r].n.split("/")[0]}</button>`).join("")}</div>`;
+  const filtroBar=`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px">${["todos",...roles].map(r=>`<button class="selbtn${e._staffFiltro===r?" on":""}" style="font-size:9px;padding:4px 6px" onclick="ent()._staffFiltro='${r}';${G.modo==="carrera"?"pintarCarrera":"pintarClubM"}()">${r==="todos"?t("staff_todos"):ROLES_STAFF[r].ico+" "+t("rol_"+r).split("/")[0]}</button>`).join("")}</div>`;
   let listaVis=e.mercadoStaff.filter(st=>e._staffFiltro==="todos"||st.rol===e._staffFiltro);
   listaVis=listaVis.slice().sort((a,b)=>(a.equipoDe?1:0)-(b.equipoDe?1:0)||b.niv-a.niv);
-  if(!listaVis.length){ el.innerHTML=filtroBar+`<div class="foot" style="text-align:left">Nadie de ese perfil ahora mismo.</div>`; return; }
-  el.innerHTML=filtroBar+`<div class="foot" style="text-align:left;margin-bottom:6px">${listaVis.length} profesional(es) en la bolsa.</div>`+listaVis.map((st)=>{const i=e.mercadoStaff.indexOf(st);return `
+  if(!listaVis.length){ el.innerHTML=filtroBar+`<div class="foot" style="text-align:left">${t("staff_nadie")}</div>`; return; }
+  el.innerHTML=filtroBar+`<div class="foot" style="text-align:left;margin-bottom:6px">${t("staff_bolsa",{n:listaVis.length})}</div>`+listaVis.map((st)=>{const i=e.mercadoStaff.indexOf(st);return `
     <div class="opcion" style="padding:8px">
-      <div style="font-size:11.5px">${ROLES_STAFF[st.rol].ico} <b>${st.n}</b>, ${st.edad} <span class="pill">${ROLES_STAFF[st.rol].n}</span> ${st.seOfrece?'<span class="pill" style="color:var(--lima)">SE OFRECE</span>':""}${st.equipoDe?`<span class="pill" style="color:var(--oro)">entrena al #${puestoDePareja(st.equipoDe)}: ${st.equipoDe}</span>`:""}</div>
-      <div style="font-size:10px;color:var(--gris);margin:3px 0">${"★".repeat(st.niv)}${"☆".repeat(5-st.niv)} · ${st.sal}€/sem${st.rol==="rep"?` · comisión ${st.com}%`:""}${st.esp?` · especialista en ${st.esp.join(", ")}`:""} · <em>«${st.frase}»</em>${st.equipoDe?(()=>{const cl=clausulaEntrenador(st);const alcanza=miPuesto()-puestoDePareja(st.equipoDe)<=([99,30,20,12,7,4][st.niv]||15);return `<br><span style="color:var(--oro)">Cláusula: ${cl.toLocaleString("es")}€</span>${alcanza?"":' <span style="color:#E05656">· fuera de tu alcance ahora</span>'}`;})():""}</div>
-      ${st.equipoDe?(()=>{const cl=clausulaEntrenador(st);const alcanza=miPuesto()-puestoDePareja(st.equipoDe)<=([99,30,20,12,7,4][st.niv]||15);return `<button style="width:100%;font-size:11px" onclick="ficharStaff(${i})"${(!alcanza||e.dinero<cl)?' disabled':''}>${!alcanza?"No aceptaría tu proyecto":e.dinero<cl?`Cláusula ${cl.toLocaleString("es")}€ (sin caja)`:`Negociar y pagar cláusula (${cl.toLocaleString("es")}€)`}</button>`;})():`<button style="width:100%;font-size:11px" onclick="ficharStaff(${i})">Contratar (${st.sal}€/sem)</button>`}
+      <div style="font-size:11.5px">${ROLES_STAFF[st.rol].ico} <b>${st.n}</b>, ${st.edad} <span class="pill">${t("rol_"+st.rol)}</span> ${st.seOfrece?`<span class="pill" style="color:var(--lima)">${t("staff_se_ofrece")}</span>`:""}${st.equipoDe?`<span class="pill" style="color:var(--oro)">${t("staff_entrena_a",{pos:puestoDePareja(st.equipoDe),equipo:st.equipoDe})}</span>`:""}</div>
+      <div style="font-size:10px;color:var(--gris);margin:3px 0">${"★".repeat(st.niv)}${"☆".repeat(5-st.niv)} · ${st.sal}€/sem${st.rol==="rep"?` · ${t("staff_comision",{c:st.com})}`:""}${st.esp?` · ${t("staff_especialista",{lista:st.esp.join(", ")})}`:""} · <em>«${st.frase}»</em>${st.equipoDe?(()=>{const cl=clausulaEntrenador(st);const alcanza=miPuesto()-puestoDePareja(st.equipoDe)<=([99,30,20,12,7,4][st.niv]||15);return `<br><span style="color:var(--oro)">${t("staff_clausula",{cl:cl.toLocaleString("es")})}</span>${alcanza?"":` <span style="color:#E05656">${t("staff_fuera_alcance")}</span>`}`;})():""}</div>
+      ${st.equipoDe?(()=>{const cl=clausulaEntrenador(st);const alcanza=miPuesto()-puestoDePareja(st.equipoDe)<=([99,30,20,12,7,4][st.niv]||15);return `<button style="width:100%;font-size:11px" onclick="ficharStaff(${i})"${(!alcanza||e.dinero<cl)?' disabled':''}>${!alcanza?t("staff_no_aceptaria"):e.dinero<cl?t("staff_clausula_sin_caja",{cl:cl.toLocaleString("es")}):t("staff_negociar",{cl:cl.toLocaleString("es")})}</button>`;})():`<button style="width:100%;font-size:11px" onclick="ficharStaff(${i})">${t("staff_contratar",{sal:st.sal})}</button>`}
     </div>`;}).join("");
 }
 function entrenadorActual(){
@@ -427,7 +427,7 @@ function pintarCarrera(){
     renderEquipoStaff(document.getElementById("equipoStaff"));
     renderMercadoStaff(document.getElementById("mercadoStaff"));
     const cst=Object.keys(ent().staff||{}).reduce((x,k)=>x+((ent().staff[k]&&ent().staff[k].sal)||0),0);
-    document.getElementById("staffCoste").textContent=`Coste total del equipo: ${cst}€/semana. El representante además se lleva su comisión de los premios.`;
+    document.getElementById("staffCoste").textContent=t("staff_coste",{cst});
   }
   if(tabActiva==="jugador"){pintarJugador();renderHitos(document.getElementById("hitos"));renderRivalidades(document.getElementById("rivalidades"));}
   if(tabActiva==="ranking"){renderRanking(document.getElementById("tablaRk"));renderClubes(document.getElementById("tablaClubes"));renderN1(document.getElementById("n1hist"));renderRecords(document.getElementById("records"));}
@@ -693,29 +693,29 @@ function pintarJugador(){
   });
   const st=document.getElementById("staff");st.innerHTML="";
   const pEnt=entrenadorActual();
-  st.innerHTML=`<div class="foot" style="text-align:left">Entrenador: <b>${pEnt.n}</b>${pEnt.niv?` (${"★".repeat(pEnt.niv)})`:""} — todo tu equipo (fisio, psico, preparador, agente) se contrata en la pestaña <b>STAFF</b>.</div>`;
+  st.innerHTML=`<div class="foot" style="text-align:left">${t("staff_panel_ent",{n:pEnt.niv?pEnt.n:t("staff_sin_ent"),niv:pEnt.niv?` (${"★".repeat(pEnt.niv)})`:""})}</div>`;
   // patrocinio: contrato activo + ofertas
   if(c.sponsor){
     const s=c.sponsor;
     const d=document.createElement("div");d.className="opcion";
-    d.innerHTML=`<b>Contrato: ${s.marca}</b> ${s.tier?`<span class="pill" style="color:${s.tier===4?"var(--oro)":s.tier===3?"#9B59D0":s.tier===2?"#4FA3D8":"var(--gris)"}">${tierTxt(s.tier)}</span>`:""}${s.sec?`<div class="d" style="font-style:italic">${s.sec}</div>`:""}<div class="d">+${s.sem}€/sem · bonus por título +${s.bonus}€ · objetivo: cerrar la temporada en el top ${s.objetivo} · ${s.tRest} temporada${s.tRest===1?"":"s"} restante${s.tRest===1?"":"s"}${miPuesto()>s.objetivo?` <span style="color:var(--rojo)">— ahora mismo NO lo cumples (#${miPuesto()})</span>`:` <span style="color:var(--verde)">— lo cumples (#${miPuesto()})</span>`}</div>${(s.primas&&s.primas.length)?`<div class="d">Primas por objetivos: ${s.primas.map(pr=>`${(s.primasCobradas&&s.primasCobradas[pr[0]])?"✔":"○"} ${pr[1]} <b style="color:var(--lima)">+${pr[2]}€</b>`).join(" · ")}</div>`:""}`;
+    d.innerHTML=`<b>${t("patro_contrato",{marca:s.marca})}</b> ${s.tier?`<span class="pill" style="color:${s.tier===4?"var(--oro)":s.tier===3?"#9B59D0":s.tier===2?"#4FA3D8":"var(--gris)"}">${tierTxt(s.tier)}</span>`:""}${s.sec?`<div class="d" style="font-style:italic">${s.sec}</div>`:""}<div class="d">${t("patro_detalle",{sem:s.sem,bonus:s.bonus,obj:s.objetivo,n:s.tRest})}${miPuesto()>s.objetivo?` <span style="color:var(--rojo)">${t("patro_no_cumples",{p:miPuesto()})}</span>`:` <span style="color:var(--verde)">${t("patro_cumples",{p:miPuesto()})}</span>`}</div>${(s.primas&&s.primas.length)?`<div class="d">${t("patro_primas")} ${s.primas.map(pr=>`${(s.primasCobradas&&s.primasCobradas[pr[0]])?"✔":"○"} ${pr[1]} <b style="color:var(--lima)">+${pr[2]}€</b>`).join(" · ")}</div>`:""}`;
     st.appendChild(d);
   } else {
     const d=document.createElement("div");d.className="foot";d.style.textAlign="left";
-    d.textContent="Sin patrocinador. Las marcas llegan solas cuando subes en el ranking.";
+    d.textContent=t("patro_sin");
     st.appendChild(d);
   }
   if((c.ofertasPatro||[]).length){
     const h=document.createElement("div");h.className="foot";h.style.textAlign="left";h.style.margin="4px 0";
-    h.textContent=c.sponsor?"Ofertas sobre la mesa (sustituirán tu contrato actual):":"Ofertas de patrocinio — elige una:";
+    h.textContent=c.sponsor?t("patro_ofertas_sust"):t("patro_ofertas_elige");
     st.appendChild(h);
   }
   (c.ofertasPatro||[]).forEach((of,oi)=>{
     const d=document.createElement("div");d.className="opcion";
-    d.innerHTML=`<b>Oferta: ${of.marca}</b> ${of.tier?`<span class="pill" style="color:${of.tier===4?"var(--oro)":of.tier===3?"#9B59D0":of.tier===2?"#4FA3D8":"var(--gris)"}">${tierTxt(of.tier)}</span>`:""}${of._perfil?`<span class="pill" style="color:${of._perfil==="fijo alto"?"var(--lima)":"var(--oro)"}">${of._perfil}</span>`:""}${of.sec?`<div class="d" style="font-style:italic">${of.sec}</div>`:""}<div class="d">+${of.sem}€/sem · bonus título +${of.bonus}€ · exige acabar en el top ${of.objetivo} · ${of.tRest} temporada${of.tRest===1?"":"s"}${(of.primas&&of.primas.length)?`<br>Primas: ${of.primas.map(pr=>`${pr[1]} +${pr[2]}€`).join(" · ")}`:""}</div>`;
+    d.innerHTML=`<b>${t("patro_oferta",{marca:of.marca})}</b> ${of.tier?`<span class="pill" style="color:${of.tier===4?"var(--oro)":of.tier===3?"#9B59D0":of.tier===2?"#4FA3D8":"var(--gris)"}">${tierTxt(of.tier)}</span>`:""}${of._perfil?`<span class="pill" style="color:${of._perfil==="fijo alto"?"var(--lima)":"var(--oro)"}">${of._perfil}</span>`:""}${of.sec?`<div class="d" style="font-style:italic">${of.sec}</div>`:""}<div class="d">${t("patro_of_detalle",{sem:of.sem,bonus:of.bonus,obj:of.objetivo,n:of.tRest})}${(of.primas&&of.primas.length)?`<br>${t("patro_of_primas")} ${of.primas.map(pr=>`${pr[1]} +${pr[2]}€`).join(" · ")}`:""}</div>`;
     const b=document.createElement("button");b.className="pri";b.style.width="100%";
-    b.textContent=c.sponsor?`Firmar (sustituye a ${c.sponsor.marca})`:"Firmar contrato";
-    b.onclick=()=>{c.sponsor={...of};c.ofertasPatro=[];noticia("contrato",`${of.marca} ficha a ${nombreEntidad().replace("★ ","")}`,`${tierTxt(of.tier)} · +${of.sem}€/sem · objetivo top ${of.objetivo}`);avisa(`✍ Contrato con ${of.marca} (${tierTxt(of.tier)}): +${of.sem}€/sem, objetivo top ${of.objetivo}.`);fansAdd(of.tier>=3?300:60,"nuevo patrocinador");guardar();pintarCarrera();};
+    b.textContent=c.sponsor?t("patro_firmar_sust",{marca:c.sponsor.marca}):t("patro_firmar");
+    b.onclick=()=>{c.sponsor={...of};c.ofertasPatro=[];noticia("contrato",t("patro_not_t",{marca:of.marca,quien:nombreEntidad().replace("★ ","")}),t("patro_not_s",{tier:tierTxt(of.tier),sem:of.sem,obj:of.objetivo}));avisa(t("patro_av_firma",{marca:of.marca,tier:tierTxt(of.tier),sem:of.sem,obj:of.objetivo}));fansAdd(of.tier>=3?300:60,"nuevo patrocinador");guardar();pintarCarrera();};
     d.appendChild(b);st.appendChild(d);
   });
 }

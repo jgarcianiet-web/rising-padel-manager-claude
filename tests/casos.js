@@ -852,6 +852,23 @@ comprueba("Idiomas: t() traduce y cae con red de seguridad", () => {
   return "traduce, fallback de idioma y de clave";
 });
 
+comprueba("Idiomas: staff y patrocinio traducidos en los 5 idiomas", () => {
+  try {
+    localStorage.setItem("rpm_idioma", "en");
+    exige(t("rol_entrenador") === "Coach" && t("rol_ojeador") === "Scout", "los roles de staff no se traducen");
+    exige(t("staff_av_firma", { ico: "🎾", n: "Ana", estrellas: "★★★", rol: "coach", sal: 300 }).includes("signs as coach"),
+      "el aviso de firma no interpola en inglés");
+    exige(t("patro_detalle", { sem: 100, bonus: 500, obj: 20, n: 2 }).includes("top 20"), "el detalle del contrato no interpola");
+    localStorage.setItem("rpm_idioma", "es");
+    exige(t("rol_entrenador") === "Entrenador", "los roles no vuelven al español");
+    // las claves staff_/rol_/patro_ existen en los 5 idiomas
+    const claves = Object.keys(I18N.es).filter(k => /^(staff_|rol_|patro_)/.test(k));
+    exige(claves.length >= 53, "faltan claves de staff/patrocinio: " + claves.length);
+    ["en", "fr", "de", "it"].forEach(l => claves.forEach(k => exige(typeof I18N[l][k] === "string" && I18N[l][k].length > 0, `falta ${k} en ${l}`)));
+  } finally { localStorage.removeItem("rpm_idioma"); }
+  return "roles, avisos de fichaje y contratos en 5 idiomas";
+});
+
 comprueba("Idiomas: el informe del ojeador y el plan salen en el idioma activo", () => {
   const at = (o) => Object.assign({ fondo: 70, globo: 70, chiquita: 70, volea: 70, dejada: 70, bandeja: 70, vibora: 70, remate: 70, pared: 70 }, o || {});
   const par = { nombre: "X / Y", jug: [
