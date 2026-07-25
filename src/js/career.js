@@ -17,13 +17,15 @@ const ESP_GRUPOS=[["fondo","globo","pared"],["remate","vibora","bandeja"],["vole
 // Cada frase es una CLAVE i18n; se resuelve al pintarla, así el staff ya
 // contratado habla en el idioma activo (los guardados antiguos llevan el texto
 // literal y t() lo devuelve tal cual).
+/* Doce frases por rol. Con cuatro, un mercado de staff de seis candidatos ya
+   enseñaba la misma dos veces en la misma pantalla. */
 const FRASES_STAFF={
-  entrenador:["fr_ent_1","fr_ent_2","fr_ent_3","fr_ent_4"],
-  fisio:["fr_fisio_1","fr_fisio_2","fr_fisio_3","fr_fisio_4"],
-  psico:["fr_psico_1","fr_psico_2","fr_psico_3","fr_psico_4"],
-  fisico:["fr_fisico_1","fr_fisico_2","fr_fisico_3","fr_fisico_4"],
-  rep:["fr_rep_1","fr_rep_2","fr_rep_3","fr_rep_4"],
-  ojeador:["fr_ojeador_1","fr_ojeador_2","fr_ojeador_3","fr_ojeador_4"],
+  entrenador:["fr_ent_1","fr_ent_2","fr_ent_3","fr_ent_4","fr_ent_5","fr_ent_6","fr_ent_7","fr_ent_8","fr_ent_9","fr_ent_10","fr_ent_11","fr_ent_12"],
+  fisio:["fr_fisio_1","fr_fisio_2","fr_fisio_3","fr_fisio_4","fr_fisio_5","fr_fisio_6","fr_fisio_7","fr_fisio_8","fr_fisio_9","fr_fisio_10","fr_fisio_11","fr_fisio_12"],
+  psico:["fr_psico_1","fr_psico_2","fr_psico_3","fr_psico_4","fr_psico_5","fr_psico_6","fr_psico_7","fr_psico_8","fr_psico_9","fr_psico_10","fr_psico_11","fr_psico_12"],
+  fisico:["fr_fisico_1","fr_fisico_2","fr_fisico_3","fr_fisico_4","fr_fisico_5","fr_fisico_6","fr_fisico_7","fr_fisico_8","fr_fisico_9","fr_fisico_10","fr_fisico_11","fr_fisico_12"],
+  rep:["fr_rep_1","fr_rep_2","fr_rep_3","fr_rep_4","fr_rep_5","fr_rep_6","fr_rep_7","fr_rep_8","fr_rep_9","fr_rep_10","fr_rep_11","fr_rep_12"],
+  ojeador:["fr_ojeador_1","fr_ojeador_2","fr_ojeador_3","fr_ojeador_4","fr_ojeador_5","fr_ojeador_6","fr_ojeador_7","fr_ojeador_8","fr_ojeador_9","fr_ojeador_10","fr_ojeador_11","fr_ojeador_12"],
 };
 function mkStaff(rol,nivFijo){
   const niv=nivFijo||Math.min(5,Math.max(1,Math.round(R(1,3.6)+(rnd()<.18?1:0))));
@@ -954,7 +956,11 @@ function verClub(idx){
   ov.onclick=(e)=>{ if(e.target===ov) quitarEl(ov); };
 }
 /* ---------- seguidores y red social ---------- */
-const SOCIAL_USERS=["PadelManiaco_88","LaBandejaDeOro","GrisPistaCentral","TiaDelGlobo","ViboraFan","ElMuroSur","PuntoDeOro_","CholoPadelero","MatchballEterno","RinconDelReves","SmashRonco","La4Paredes","CristaleraLoca","PibeDeLaPala"];
+/* Nombres del muro. Son apodos, no texto traducible: un usuario se llama igual
+   en las cinco versiones. Eran catorce para dieciocho posts en pantalla, así
+   que el mismo tipo comentaba tres veces seguidas. */
+const SOCIAL_USERS=["PadelManiaco_88","LaBandejaDeOro","GrisPistaCentral","TiaDelGlobo","ViboraFan","ElMuroSur","PuntoDeOro_","CholoPadelero","MatchballEterno","RinconDelReves","SmashRonco","La4Paredes","CristaleraLoca","PibeDeLaPala",
+  "DobleParedYa","ElTioDelBanquillo","BolaDeOro_77","NoSubasALaRed","MiPalaEsVieja","Contragolpe_","LaGradaNorte","Set_Y_Medio","ChiquitaMortal","AbueloDePista","PadelDeBarrio","VamosQueSePuede","SaqueDeCristal","TresCuartosDePista","LaDejadaJusta","FondoDePista_x"];
 function clasificaRiv(h2){
   if(!h2) return null;
   const tot=h2.v+h2.d; if(tot<3) return null;
@@ -1011,19 +1017,23 @@ function fansAdd(n,motivo){
 }
 /* Publicaciones de la afición, por tipo de suceso. Guarda CLAVES i18n, como el
    resto de catálogos del juego (ver CLAUDE.md). */
+/* El muro guarda dieciocho posts a la vista. Con dos o tres frases por
+   categoría, una racha de victorias enseñaba tres veces la misma; ahora hay
+   entre seis y nueve de cada, que es lo que hace falta para que el muro
+   parezca gente y no una plantilla. */
 const POSTS_FAN={
-  victoria:["soc_vic_1","soc_vic_2","soc_vic_3"],
-  derrota:["soc_der_1","soc_der_2","soc_der_3"],
-  titulo:["soc_tit_1","soc_tit_2","soc_tit_3"],
-  fichaje:["soc_fic_1","soc_fic_2","soc_fic_3"],
-  picante:["soc_pic_1","soc_pic_2","soc_pic_3"],
-  lesion:["soc_les_1","soc_les_2"],
-  forma:["soc_for_1","soc_for_2"],
-  junta:["soc_jun_1","soc_jun_2"],
-  gala:["soc_gal_1","soc_gal_2"],
-  rivalidad:["soc_riv_1","soc_riv_2","soc_riv_3"],
-  maldicion:["soc_mal_1","soc_mal_2","soc_mal_3"],
-  campanada:["soc_cam_1","soc_cam_2","soc_cam_3"],
+  victoria:["soc_vic_1","soc_vic_2","soc_vic_3","soc_vic_4","soc_vic_5","soc_vic_6","soc_vic_7","soc_vic_8","soc_vic_9"],
+  derrota:["soc_der_1","soc_der_2","soc_der_3","soc_der_4","soc_der_5","soc_der_6","soc_der_7","soc_der_8","soc_der_9"],
+  titulo:["soc_tit_1","soc_tit_2","soc_tit_3","soc_tit_4","soc_tit_5","soc_tit_6","soc_tit_7","soc_tit_8"],
+  fichaje:["soc_fic_1","soc_fic_2","soc_fic_3","soc_fic_4","soc_fic_5","soc_fic_6","soc_fic_7","soc_fic_8"],
+  picante:["soc_pic_1","soc_pic_2","soc_pic_3","soc_pic_4","soc_pic_5","soc_pic_6","soc_pic_7","soc_pic_8"],
+  lesion:["soc_les_1","soc_les_2","soc_les_3","soc_les_4","soc_les_5","soc_les_6"],
+  forma:["soc_for_1","soc_for_2","soc_for_3","soc_for_4","soc_for_5","soc_for_6"],
+  junta:["soc_jun_1","soc_jun_2","soc_jun_3","soc_jun_4","soc_jun_5","soc_jun_6"],
+  gala:["soc_gal_1","soc_gal_2","soc_gal_3","soc_gal_4","soc_gal_5","soc_gal_6"],
+  rivalidad:["soc_riv_1","soc_riv_2","soc_riv_3","soc_riv_4","soc_riv_5","soc_riv_6","soc_riv_7","soc_riv_8"],
+  maldicion:["soc_mal_1","soc_mal_2","soc_mal_3","soc_mal_4","soc_mal_5","soc_mal_6","soc_mal_7","soc_mal_8"],
+  campanada:["soc_cam_1","soc_cam_2","soc_cam_3","soc_cam_4","soc_cam_5","soc_cam_6","soc_cam_7","soc_cam_8"],
 };
 function post(tipo,ctx){
   const e=ent(); if(!e) return;

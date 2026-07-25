@@ -38,10 +38,12 @@ que **empiezas el 91 del mundo y te retiras cuando el cuerpo dice basta**.
 
 Por orden de retorno, según la auditoría:
 
-1. **Triplicar los dilemas (15 → 40-45) y encadenarlos.** Lo importante no es el
-   número, es que una decisión genere el dilema de dos temporadas después:
-   aceptar el adelanto del inversor debería traer el cobro más adelante. Hoy
-   cada dilema es un suceso aislado. Estimación: 2-3 semanas y ~2.000 cadenas.
+1. ~~**Triplicar los dilemas (15 → 40-45) y encadenarlos.**~~ **Hecho.** 45
+   dilemas, memoria de lo vivido y lo decidido, y tres cadenas reales (el cobro
+   del inversor, la operación de quien se infiltró, la conversación de quien
+   rechazó la beca). De paso se triplicaron los otros catálogos que se leen más
+   veces: posts de fans (32 → 98), frases de staff (24 → 72), usuarios del muro
+   (14 → 30) y las frases del narrador (8 → 24, repartidas por final).
 2. **Eventos de temporada que no son dilemas**: el sorteo que te cruza con tu
    archirrival en primera ronda, la lesión de tu pareja que te obliga a jugar
    con un suplente, un cambio de normativa.

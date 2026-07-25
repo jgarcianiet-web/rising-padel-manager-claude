@@ -38,6 +38,12 @@ const PERSONALIDADES={
 const W=10,L=20,NET=10;
 const R=(a,b)=>a+rnd()*(b-a);
 const pick=a=>a[Math.floor(rnd()*a.length)];
+/* Elegir la FRASE que narra un punto no decide nada: el punto ya está jugado.
+   Va por azar visual a propósito. El comentario ya se emite detrás de una
+   moneda visual, así que si la frase bebiera del flujo con semilla, esa moneda
+   acabaría moviendo la simulación: dos partidas con la misma semilla dejarían
+   de coincidir (pasó al ampliar el repertorio del narrador). */
+const pickVis=a=>a[Math.floor(Math.random()*a.length)];   // azar-visual
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 function wchoice(items){let s=items.reduce((x,i)=>x+i.w,0),r=rnd()*s;for(const i of items){r-=i.w;if(r<=0)return i.k;}return items[items.length-1].k;}
 
@@ -172,9 +178,29 @@ function incomingFor(shotKey,recvIdxTeam,recvTeam){
   return {ctx:{atNet:false,high,afterGlass:glass,pressure:press},c:contactPoint(recvIdxTeam,true),vuelo:glass?"pared":"bote"};
 }
 /* Frases del narrador: claves i18n. Se resuelven al construir el comentario. */
-const F_WIN=["nar_win_1","nar_win_2","nar_win_3","nar_win_4"];
-const F_ERR=["nar_err_1","nar_err_2","nar_err_3","nar_err_4"];
-const F_PERSO={valiente:"nar_p_valiente",conservador:"nar_p_conservador",frio:"nar_p_frio",emocionalAlto:"nar_p_emoAlto",emocionalBajo:"nar_p_emoBajo"};
+/* Frases del narrador, por lo que se ve en pantalla. Antes había una sola bolsa
+   de cuatro para todos los errores, así que el narrador decía «¡a la red!»
+   mientras la bola moría en el cristal: el punto contaba una cosa y el texto
+   otra. Ahora cada final tiene su repertorio, y hay tres veces más frases,
+   que es lo que se lee de verdad —una por punto, cien por partido—. */
+const F_WIN={
+  winner:["nar_win_1","nar_win_2","nar_win_3","nar_win_4","nar_win_5","nar_win_6","nar_win_7","nar_win_8"],
+  porTres:["nar_p3_1","nar_p3_2","nar_p3_3","nar_p3_4"],
+};
+const F_ERR={
+  net:["nar_err_2","nar_err_net_2","nar_err_net_3","nar_err_net_4"],
+  out:["nar_err_1","nar_err_4","nar_err_out_3","nar_err_out_4"],
+  glass:["nar_err_3","nar_err_gl_2","nar_err_gl_3","nar_err_gl_4"],
+};
+const F_PERSO={
+  valiente:["nar_p_valiente","nar_p_valiente2"],
+  conservador:["nar_p_conservador","nar_p_conservador2"],
+  frio:["nar_p_frio","nar_p_frio2"],
+  emocionalAlto:["nar_p_emoAlto","nar_p_emoAlto2"],
+  emocionalBajo:["nar_p_emoBajo","nar_p_emoBajo2"],
+};
+// La frase acompaña al final que se pinta: si la bola muere en el cristal, se dice.
+function frasePunto(mapa,modo){ const arr=mapa[modo]||mapa[Object.keys(mapa)[0]]; return pickVis(arr); }
 
 let teams=[],stats;
 function mkStats(){return {jug:[{w:0,e:0},{w:0,e:0}], tiros:0, bp:{jugados:0,ganados:0}, fatiga:[0,0], pganados:0, red:0, wShot:{}, eShot:{}, presion:{jug:0,gan:0}};}

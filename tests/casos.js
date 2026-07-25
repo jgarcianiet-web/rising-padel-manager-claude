@@ -905,7 +905,18 @@ comprueba("Contenido: los catálogos tienen volumen para una carrera larga", () 
   exige(!dup(HITOS_CARRERA.map(h => h.id)).length, "hitos de carrera repetidos: " + dup(HITOS_CARRERA.map(h => h.id)));
   exige(!dup(HITOS_CLUB.map(h => h.id)).length, "hitos de club repetidos: " + dup(HITOS_CLUB.map(h => h.id)));
   exige(!dup(LESIONES.map(l => l.k)).length, "lesiones repetidas: " + dup(LESIONES.map(l => l.k)));
-  return `${DILEMAS.length} dilemas · ${LESIONES.length} lesiones · ${Object.keys(REFORMAS).length} reformas · ${HITOS_CARRERA.length + HITOS_CLUB.length} hitos`;
+  // el muro de fans y el mercado de staff se leen muchas más veces que un dilema:
+  // ahí la repetición canta antes que en ningún otro sitio
+  const nPosts = Object.values(POSTS_FAN).reduce((n, a2) => n + a2.length, 0);
+  const nStaff = Object.values(FRASES_STAFF).reduce((n, a2) => n + a2.length, 0);
+  exige(nPosts >= 90, `solo ${nPosts} posts de fans`);
+  exige(nStaff >= 72, `solo ${nStaff} frases de staff`);
+  exige(SOCIAL_USERS.length >= 30, `solo ${SOCIAL_USERS.length} usuarios en el muro`);
+  Object.entries(POSTS_FAN).forEach(([k, arr]) => exige(arr.length >= 6, `la categoría ${k} solo tiene ${arr.length} posts`));
+  exige(!dup(SOCIAL_USERS).length, "usuarios del muro repetidos: " + dup(SOCIAL_USERS));
+  const todos = Object.values(POSTS_FAN).flat();
+  exige(!dup(todos).length, "posts de fans repetidos entre categorías: " + dup(todos));
+  return `${DILEMAS.length} dilemas · ${nPosts} posts · ${nStaff} frases de staff · ${LESIONES.length} lesiones · ${HITOS_CARRERA.length + HITOS_CLUB.length} hitos`;
 });
 
 comprueba("Contenido: todos los dilemas se pueden pintar y resolver", () => {
@@ -1463,7 +1474,8 @@ comprueba("Idiomas: golpes y frases del staff en el idioma activo", () => {
     exige(atLista(["globo", "volea"]).join("/") === "lob/volley", "atLista no traduce la lista de especialidades");
     // mkStaff guarda la frase como CLAVE, no como texto
     const st = mkStaff("fisio", 3);
-    exige(/^fr_fisio_[1-4]$/.test(st.frase), "mkStaff no guarda la frase como clave i18n: " + st.frase);
+    exige(FRASES_STAFF.fisio.indexOf(st.frase) >= 0, "mkStaff no guarda la frase como clave i18n: " + st.frase);
+    exige(FRASES_STAFF.fisio.length >= 12, "el catálogo de frases se quedó corto: " + FRASES_STAFF.fisio.length);
     exige(t(st.frase) !== st.frase && /[a-z]/i.test(t(st.frase)), "la frase del staff no resuelve a texto");
     // fallback: un guardado antiguo con la frase literal sigue mostrándose
     exige(t("Manos de oro, agenda llena.") === "Manos de oro, agenda llena.", "el fallback de frases antiguas no funciona");
@@ -1473,7 +1485,8 @@ comprueba("Idiomas: golpes y frases del staff en el idioma activo", () => {
     ATTR_KEYS.forEach(k => ["en", "fr", "de", "it"].forEach(l => exige(I18N[l]["at_" + k], `falta at_${k} en ${l}`)));
     Object.values(FRASES_STAFF).forEach(arr => arr.forEach(k => exige(I18N.es[k] && I18N.de[k], "frase de staff sin clave: " + k)));
   } finally { localStorage.removeItem("rpm_idioma"); }
-  return "9 golpes y 24 frases de staff en 5 idiomas";
+  const nFr = Object.values(FRASES_STAFF).reduce((n, a2) => n + a2.length, 0);
+  return "9 golpes y " + nFr + " frases de staff en 5 idiomas";
 });
 
 comprueba("Idiomas: avisos sueltos, hitos, primas y club en el idioma activo", () => {
@@ -2186,4 +2199,37 @@ comprueba("Dilemas: hay cuaderno para una carrera larga sin repetirse", () => {
   const ids = new Set(DILEMAS.map(d => d.id));
   exige(ids.size === DILEMAS.length, "hay ids de dilema repetidos");
   return DILEMAS.length + " dilemas, " + disp + " posibles para un profesional de 26";
+});
+
+comprueba("Narrador: la frase encaja con el final que se pinta", () => {
+  // Antes había una sola bolsa de frases: el narrador decía «a la red» mientras
+  // la bola moría en el cristal.
+  const dentro = (k, pool) => pool.indexOf(k) >= 0;
+  ["net", "out", "glass"].forEach(modo => {
+    for (let i = 0; i < 30; i++) {
+      const k = frasePunto(F_ERR, modo);
+      exige(dentro(k, F_ERR[modo]), `error ${modo}: salió ${k}, de otra bolsa`);
+      exige(I18N.es[k] && I18N.de[k], "frase de narrador sin clave: " + k);
+    }
+  });
+  ["winner", "porTres"].forEach(modo => {
+    for (let i = 0; i < 30; i++) {
+      const k = frasePunto(F_WIN, modo);
+      exige(dentro(k, F_WIN[modo]), `${modo}: salió ${k}, de otra bolsa`);
+    }
+  });
+  const total = Object.values(F_ERR).flat().length + Object.values(F_WIN).flat().length;
+  exige(total >= 24, "el narrador se quedó corto: " + total);
+  exige(Object.values(F_PERSO).every(a => a.length >= 2), "cada personalidad necesita más de una coletilla");
+  return total + " frases de punto repartidas por final";
+});
+
+comprueba("Narrador: elegir frase no toca el flujo con semilla", () => {
+  // La frase es decoración: si consumiera azar de simulación, comentar o no
+  // comentar cambiaría el resultado del partido siguiente.
+  rndSemilla(12345, 0);
+  const antes = rndEstado().pos;
+  for (let i = 0; i < 50; i++) { frasePunto(F_ERR, "net"); frasePunto(F_WIN, "winner"); }
+  exige(rndEstado().pos === antes, `la narración movió el flujo: ${antes} → ${rndEstado().pos}`);
+  return "50 frases sin gastar una sola tirada con semilla";
 });

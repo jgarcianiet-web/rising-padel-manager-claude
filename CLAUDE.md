@@ -99,6 +99,35 @@ Tres cosas que hay que respetar al tocar el código:
 `tests/estatico.js` lo hace cumplir: falla si aparece un `Math.random` sin
 marcar en un fichero de simulación, o si alguien vuelve a tapar `rnd`.
 
+## El cuaderno de dilemas tiene memoria
+
+`DILEMAS` (en `engine/world.js`) son 45 escenas con dos opciones y consecuencia
+diferida. Lo que hay que respetar al añadir una:
+
+1. **La partida recuerda.** `c.dilVistos` guarda cuándo se vivió cada una y
+   `c.decis` qué se eligió. Una escena no se repite antes de `DIL_DESCANSO`
+   semanas, y `unico:true` la deja en una sola vez para siempre.
+2. **Las cadenas se escriben de dos formas.** Por condición,
+   `cond:c=>dilHizo(c,"universidad",1)`, para lo que solo tiene sentido si
+   decidiste aquello; o por apertura, `dif:{abre:"cobro_inversor"}`, cuando la
+   consecuencia *es* la escena siguiente. Lo que se abre por cadena y no debe
+   salir en el sorteo lleva `cadena:true`.
+3. **Los nombres que se interpolan pueden no existir.** Una guardada vieja sin
+   némesis, una pareja rota entre que el dilema se abre y se pinta: usa
+   `nomRival(c)` y `nomCompi(c)`, nunca `c.nemesis.nombre` a pelo, o el modal
+   revienta y se lleva la semana por delante.
+
+`peso` sube o baja la probabilidad de que salga (los de la trama pesan más).
+
+### El narrador es decoración, y por eso va con azar visual
+
+`F_WIN`, `F_ERR` y `F_PERSO` están **repartidos por el final que se pinta**: si
+la bola muere en el cristal, la frase habla del cristal. Se eligen con
+`pickVis`, no con `pick`, porque el comentario ya se emite detrás de una moneda
+visual: si la frase bebiera del flujo con semilla, esa moneda movería la
+simulación y dos partidas con la misma semilla dejarían de coincidir. Pasó al
+ampliar el repertorio, y la prueba de la semilla lo cazó.
+
 ## La guía de las primeras semanas
 
 `guia.js` sustituye al tutorial de fichas por una tira que pide **una cosa cada

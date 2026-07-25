@@ -159,7 +159,7 @@ function buildPoint(server){
     if(ctx.mia) com=t("com_mia",{com});
     if(PRESION>.6&&Math.random()<.3){   // azar-visual
       const p=pl.perso||"frio";
-      com+=t(p==="emocional" ? ((pl.conf??55)>=60?F_PERSO.emocionalAlto:F_PERSO.emocionalBajo) : (F_PERSO[p]||"nar_p_frio"));
+      com+=t(pickVis(p==="emocional" ? ((pl.conf??55)>=60?F_PERSO.emocionalAlto:F_PERSO.emocionalBajo) : (F_PERSO[p]||F_PERSO.frio)));
     } else if(s.attr&&pl.attrs[s.attr]>=85&&Math.random()<.35) com+=` (${atNombre(s.attr)} ${pl.attrs[s.attr]})`;   // azar-visual
 
     if(opp._defQ===undefined) opp._defQ=Math.round((mediaAttrs(opp.jug[0].attrs)+mediaAttrs(opp.jug[1].attrs))/2);
@@ -171,7 +171,7 @@ function buildPoint(server){
       stats[eq].eShot[shotKey]=(stats[eq].eShot[shotKey]||0)+1;   // origen del error (por golpe)
       pl.conf=clamp((pl.conf??55)-4,10,95);
       const modo=pick(["net","out","glass"]);
-      ev.push({team:eq,jug,shotKey,com,from:contact,end:modo,endCom:t("com_error",{jug,frase:t(pick(F_ERR))}),net:[A.atNet,B.atNet]});
+      ev.push({team:eq,jug,shotKey,com,from:contact,end:modo,endCom:t("com_error",{jug,frase:t(frasePunto(F_ERR,modo))}),net:[A.atNet,B.atNet]});
       netCredit(1-eq);
       return {ev,ganador:1-eq};
     }
@@ -180,7 +180,8 @@ function buildPoint(server){
       stats[eq].wShot[shotKey]=(stats[eq].wShot[shotKey]||0)+1;   // arma que cierra el punto (por golpe)
       pl.conf=clamp((pl.conf??55)+3,10,95);
       const lateral=["remate3","remate4"].includes(shotKey);
-      ev.push({team:eq,jug,shotKey,com,from:contact,end:lateral?"porTres":"winner",endCom:t("com_winner",{jug,frase:t(pick(F_WIN))}),net:[A.atNet,B.atNet]});
+      const fin=lateral?"porTres":"winner";
+      ev.push({team:eq,jug,shotKey,com,from:contact,end:fin,endCom:t("com_winner",{jug,frase:t(frasePunto(F_WIN,fin))}),net:[A.atNet,B.atNet]});
       netCredit(eq);
       return {ev,ganador:eq};
     }
