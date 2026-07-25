@@ -253,7 +253,7 @@ function mkMercadoParejas(){
 }
 function primaFichaje(cand){const n=mediaAttrs(cand.attrs);return Math.round(n*n*1.2+(cand.origen==="circuito"?1000:0));}
 
-let AVA_EDIT={piel:0,pelo:0,tipoPelo:0,barba:0,gafas:0};
+let AVA_EDIT={piel:0,pelo:0,tipoPelo:0,barba:0,compl:0};
 function avaJugPreview(){
   return {n:document.getElementById("inNombre")?document.getElementById("inNombre").value:"J",sexo:sexoSel,_ropa:colorSel,ava:{...AVA_EDIT}};
 }
@@ -262,8 +262,16 @@ function pintarAvaEditor(){
   const pv=document.getElementById("avaPreview"); if(!pv) return;
   pv.innerHTML=avatarSVG(avaJugPreview(),72);
   const ctrls=document.getElementById("avaCtrls");
-  const campos=[["piel","Piel",AVA_PIEL.length],["pelo","Pelo",AVA_PELO.length],["tipoPelo","Peinado",5],["gafas","Gafas",2],["barba","Barba",2]];
-  ctrls.innerHTML=campos.map(([c,lbl,mod])=>`<button class="selbtn" style="font-size:10px;padding:5px 4px" onclick="ciclaAva('${c}',1,${mod})">${lbl} ▸</button>`).join("")+`<button class="selbtn" style="font-size:10px;padding:5px 4px" onclick="AVA_EDIT={piel:(hashStr(document.getElementById('inNombre').value+Math.random()))%5,pelo:Math.floor(Math.random()*AVA_PELO.length),tipoPelo:Math.floor(Math.random()*5),gafas:Math.random()<.2?1:0,barba:Math.random()<.25?1:0};pintarAvaEditor();">🎲 Aleatorio</button>`;
+  // el catálogo de peinado tiene 3 opciones en femenino y 4 en masculino
+  const campos=[["piel",t("ava_piel"),AVA_PIEL.length],["pelo",t("ava_pelo"),AVA_PELO.length],["tipoPelo",t("ava_peinado"),sexoSel==="F"?3:4],["barba",t("ava_barba"),sexoSel==="F"?1:3],["compl",t("ava_compl"),AVA_COMPL.length]];
+  ctrls.innerHTML=campos.map(([c,lbl,mod])=>`<button class="selbtn" style="font-size:10px;padding:5px 4px" onclick="ciclaAva('${c}',1,${mod})">${lbl} ▸</button>`).join("")+`<button class="selbtn" style="font-size:10px;padding:5px 4px" onclick="avaAleatorio()">🎲 ${t("ava_aleatorio")}</button>`;
+}
+function avaAleatorio(){
+  const nPein=sexoSel==="F"?3:4;
+  AVA_EDIT={piel:Math.floor(Math.random()*AVA_PIEL.length),pelo:Math.floor(Math.random()*AVA_PELO.length),
+    tipoPelo:Math.floor(Math.random()*nPein),barba:sexoSel==="F"?0:Math.floor(Math.random()*3),
+    compl:Math.random()<.45?Math.floor(Math.random()*AVA_COMPL.length):0};
+  pintarAvaEditor();
 }
 function pintarCrear(){
   pintarAvaEditor();
