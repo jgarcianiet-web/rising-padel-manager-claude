@@ -923,8 +923,8 @@ function renderSocial(el){
 }
 function renderTrayectoria(el){
   const h=ent().hist||[];
-  if(!h.length){ el.innerHTML=`<tr><td class="foot" style="border:none;text-align:left">Tu historia se escribe al cierre de cada temporada.</td></tr>`; return; }
-  let html=`<tr class="hd"><td>T</td><td>Puesto</td><td class="pts">Pts</td><td class="niv">🏆</td></tr>`;
+  if(!h.length){ el.innerHTML=`<tr><td class="foot" style="border:none;text-align:left">${t("tray_vacia")}</td></tr>`; return; }
+  let html=`<tr class="hd"><td>T</td><td>${t("tray_puesto")}</td><td class="pts">Pts</td><td class="niv">🏆</td></tr>`;
   html+=h.slice(-12).map(x=>`<tr><td class="pos">T${x.t}</td><td>#${x.pos}</td><td class="pts">${x.pts}</td><td class="niv">${x.tit||"·"}</td></tr>`).join("");
   el.innerHTML=html;
 }

@@ -852,6 +852,24 @@ comprueba("Idiomas: t() traduce y cae con red de seguridad", () => {
   return "traduce, fallback de idioma y de clave";
 });
 
+comprueba("Idiomas: tutorial y panel de mando en el idioma activo", () => {
+  try {
+    localStorage.setItem("rpm_idioma", "de");
+    exige(t("tuto_ca_1_t") === "Deine Karriere", "el primer paso del tutorial no sale en alemán");
+    exige(t("tuto_paso", { i: 2, n: 6 }) === "SCHRITT 2 / 6", "el contador de pasos no interpola");
+    exige(t("hud_temporada", { t: 3 }) === "Saison 3" && t("hud_caja") === "Kasse", "el HUD no se traduce");
+    localStorage.setItem("rpm_idioma", "es");
+    exige(t("tuto_ca_1_t") === "Tu carrera", "el tutorial no vuelve al español");
+    // TUTO referencia pares de claves y todas existen en los 5 idiomas
+    exige(TUTO.carrera.length === 6 && TUTO.club.length === 6, "TUTO no tiene 6+6 pasos");
+    const claves = Object.keys(I18N.es).filter(k => /^(tuto_|hud_|tray_)/.test(k));
+    exige(claves.length >= 43, "faltan claves de tutorial/HUD: " + claves.length);
+    ["en", "fr", "de", "it"].forEach(l => claves.forEach(k => exige(typeof I18N[l][k] === "string" && I18N[l][k].length > 0, `falta ${k} en ${l}`)));
+    TUTO.carrera.concat(TUTO.club).forEach(p => exige(I18N.es[p[0]] && I18N.es[p[1]], "TUTO referencia una clave inexistente: " + p[0]));
+  } finally { localStorage.removeItem("rpm_idioma"); }
+  return "12 fichas del tutorial + HUD en 5 idiomas";
+});
+
 comprueba("Idiomas: mercado de parejas y objetivos en el idioma activo", () => {
   try {
     localStorage.setItem("rpm_idioma", "en");
