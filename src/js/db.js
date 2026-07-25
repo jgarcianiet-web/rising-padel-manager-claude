@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS norm_hist(
   ord INTEGER PRIMARY KEY AUTOINCREMENT, temporada INTEGER, pos INTEGER, pts INTEGER, tit INTEGER);
 CREATE TABLE IF NOT EXISTS norm_h2h(
   rid TEXT PRIMARY KEY, v INTEGER, d INTEGER, nombre TEXT, ult_t INTEGER, alta INTEGER);
+CREATE TABLE IF NOT EXISTS norm_staff(
+  rol TEXT PRIMARY KEY, nombre TEXT, sexo TEXT, edad INTEGER, niv INTEGER, sal INTEGER, extras TEXT);
 `;
 
 function dbSqlSchema(db){ db.run(DB_SCHEMA_SQL); }
@@ -157,6 +159,34 @@ function dbSqlGuardarH2h(db, mapa){
     db.run("COMMIT");
   }catch(e){ try{ db.run("ROLLBACK"); }catch(_){} throw e; }
 }
+// Equipo de staff contratado: mapa rol → miembro ({rol, n, sexo, edad, niv,
+// sal, ...}) o null si el puesto está vacío. Solo se persisten los puestos
+// ocupados; los campos no modelados (frase, esp, com, equipoDe...) van al JSON
+// de extras, como en norm_pareja.
+const _MODELADO_STAFF=["rol","n","sexo","edad","niv","sal"];
+function dbSqlGuardarStaff(db, staff){
+  db.run("BEGIN");
+  try{
+    db.run("DELETE FROM norm_staff;");
+    const st=db.prepare("INSERT INTO norm_staff(rol,nombre,sexo,edad,niv,sal,extras) VALUES(?,?,?,?,?,?,?)");
+    Object.keys(staff||{}).forEach(rol=>{
+      const m=staff[rol]; if(!m) return;
+      const ex={}; Object.keys(m).forEach(k=>{ if(_MODELADO_STAFF.indexOf(k)<0) ex[k]=m[k]; });
+      st.run([String(rol),m.n||"",m.sexo||"M",m.edad|0,m.niv|0,m.sal|0,JSON.stringify(ex)]);
+    }); st.free();
+    db.run("COMMIT");
+  }catch(e){ try{ db.run("ROLLBACK"); }catch(_){} throw e; }
+}
+function dbSqlLeerStaff(db){
+  const out={};
+  const r=db.exec("SELECT rol,nombre,sexo,edad,niv,sal,extras FROM norm_staff");
+  if(r&&r[0]) r[0].values.forEach(f=>{
+    let ex={}; try{ ex=JSON.parse(f[6]||"{}"); }catch(_){}
+    out[f[0]]=Object.assign(ex,{rol:f[0],n:f[1],sexo:f[2],edad:f[3],niv:f[4],sal:f[5]});
+  });
+  return out;
+}
+
 function dbSqlLeerH2h(db){
   const out={};
   const r=db.exec("SELECT rid,v,d,nombre,ult_t,alta FROM norm_h2h");
@@ -214,6 +244,7 @@ function dbSqlSnapshotVivo(){
         dbSqlGuardarDiario(SQLDB, prot.diario||[]);
         dbSqlGuardarHist(SQLDB, prot.hist||[]);
         dbSqlGuardarH2h(SQLDB, prot.h2h||{});
+        dbSqlGuardarStaff(SQLDB, prot.staff||{});
       }
     }catch(_){}
     dbSqlPersistir();
@@ -243,6 +274,11 @@ function dbSqlCargarHist(){
 function dbSqlCargarH2h(){
   if(!SQLDB) return null;
   try{ return dbSqlLeerH2h(SQLDB); }catch(e){ return null; }
+}
+// Reconstruye el equipo de staff contratado desde sql.js (Fase 4d·6).
+function dbSqlCargarStaff(){
+  if(!SQLDB) return null;
+  try{ return dbSqlLeerStaff(SQLDB); }catch(e){ return null; }
 }
 
 /* ---------- consultas para la analítica (síncronas, sobre sql.js) ---------- */
@@ -354,7 +390,7 @@ if(typeof module!=="undefined"&&module.exports){
   module.exports={DB_SCHEMA_SQL,dbSqlSchema,dbSqlGuardarSnapshot,dbSqlLeerSnapshot,
     dbSqlGuardarN1,dbSqlLeerN1,dbSqlGuardarPalmares,dbSqlLeerPalmares,
     dbSqlGuardarDiario,dbSqlLeerDiario,dbSqlGuardarHist,dbSqlLeerHist,
-    dbSqlGuardarH2h,dbSqlLeerH2h,
+    dbSqlGuardarH2h,dbSqlLeerH2h,dbSqlGuardarStaff,dbSqlLeerStaff,
     dbSqlPorEstilo,dbSqlMejoresParejas,dbSqlTopPaises,dbSqlDistribucionNivel,
     dbSqlSnapshotCoincide};
 }

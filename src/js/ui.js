@@ -128,6 +128,18 @@ function abrirModo(modo){
           prot.h2h=hhSql; G._h2hDesdeSql=true;
         }
       }
+      // Fase 4d·6: equipo de staff — la tabla solo guarda los puestos ocupados;
+      // los `null` de los roles vacíos se conservan del blob. Coincide si los
+      // roles ocupados y su nombre/nivel/salario reproducen el blob.
+      if(typeof dbSqlCargarStaff==="function" && prot && prot.staff && typeof prot.staff==="object"){
+        const stSql=dbSqlCargarStaff(), stb=prot.staff;
+        const ocup=Object.keys(stb).filter(r=>stb[r]);
+        if(stSql && Object.keys(stSql).length===ocup.length &&
+           ocup.every(r=>stSql[r] && stSql[r].n===stb[r].n && stSql[r].niv===(stb[r].niv|0) && stSql[r].sal===(stb[r].sal|0))){
+          Object.keys(stb).forEach(r=>{ stb[r]=stSql[r]||null; });
+          G._staffDesdeSql=true;
+        }
+      }
     }catch(e){}
     entrarPartida();
   };
