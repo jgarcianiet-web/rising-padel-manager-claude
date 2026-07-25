@@ -40,6 +40,8 @@ CREATE TABLE IF NOT EXISTS norm_finanzas(
   clave TEXT PRIMARY KEY, valor INTEGER);
 CREATE TABLE IF NOT EXISTS norm_sponsor(
   slot TEXT PRIMARY KEY, marca TEXT, sec TEXT, tier INTEGER, sem INTEGER, extras TEXT);
+CREATE TABLE IF NOT EXISTS norm_protagonista(
+  clave TEXT PRIMARY KEY, valor TEXT);
 `;
 
 function dbSqlSchema(db){ db.run(DB_SCHEMA_SQL); }
@@ -240,6 +242,33 @@ function dbSqlLeerSponsor(db){
   return out;
 }
 
+// Resto del protagonista (Fase 4d·8, cierre de la cobertura): todos los campos
+// de G.carrera/G.clubG que NO tienen ya tabla propia, como pares clave/valor
+// con el valor serializado a JSON (números, strings, booleanos y objetos
+// anidados —compi, ava, objetivos...— viajan igual). Con esto las tablas
+// cubren el protagonista completo y el blob queda como export/salvaguarda.
+const DB_CLAVES_DEDICADAS=["palmares","diario","hist","h2h","staff","dinero","sponsor","ofertasPatro","sponsorOferta"];
+function dbSqlGuardarProta(db, prot){
+  db.run("BEGIN");
+  try{
+    db.run("DELETE FROM norm_protagonista;");
+    const st=db.prepare("INSERT INTO norm_protagonista(clave,valor) VALUES(?,?)");
+    Object.keys(prot||{}).forEach(k=>{
+      if(DB_CLAVES_DEDICADAS.indexOf(k)>=0) return;
+      let v; try{ v=JSON.stringify(prot[k]); }catch(_){ return; }
+      if(v===undefined) return;                 // funciones/undefined no se serializan
+      st.run([k,v]);
+    }); st.free();
+    db.run("COMMIT");
+  }catch(e){ try{ db.run("ROLLBACK"); }catch(_){} throw e; }
+}
+function dbSqlLeerProta(db){
+  const out={};
+  const r=db.exec("SELECT clave,valor FROM norm_protagonista");
+  if(r&&r[0]) r[0].values.forEach(f=>{ try{ out[f[0]]=JSON.parse(f[1]); }catch(_){} });
+  return out;
+}
+
 function dbSqlLeerH2h(db){
   const out={};
   const r=db.exec("SELECT rid,v,d,nombre,ult_t,alta FROM norm_h2h");
@@ -301,6 +330,7 @@ function dbSqlSnapshotVivo(){
         dbSqlGuardarFinanzas(SQLDB, {dinero:prot.dinero});
         dbSqlGuardarSponsor(SQLDB, prot.sponsor||null,
           G.modo==="carrera" ? (prot.ofertasPatro||[]) : (prot.sponsorOferta?[prot.sponsorOferta]:[]));
+        dbSqlGuardarProta(SQLDB, prot);
       }
     }catch(_){}
     dbSqlPersistir();
@@ -344,6 +374,11 @@ function dbSqlCargarFinanzas(){
 function dbSqlCargarSponsor(){
   if(!SQLDB) return null;
   try{ return dbSqlLeerSponsor(SQLDB); }catch(e){ return null; }
+}
+// Reconstruye el resto del protagonista desde sql.js (Fase 4d·8).
+function dbSqlCargarProta(){
+  if(!SQLDB) return null;
+  try{ return dbSqlLeerProta(SQLDB); }catch(e){ return null; }
 }
 
 /* ---------- consultas para la analítica (síncronas, sobre sql.js) ---------- */
@@ -457,6 +492,7 @@ if(typeof module!=="undefined"&&module.exports){
     dbSqlGuardarDiario,dbSqlLeerDiario,dbSqlGuardarHist,dbSqlLeerHist,
     dbSqlGuardarH2h,dbSqlLeerH2h,dbSqlGuardarStaff,dbSqlLeerStaff,
     dbSqlGuardarFinanzas,dbSqlLeerFinanzas,dbSqlGuardarSponsor,dbSqlLeerSponsor,
+    dbSqlGuardarProta,dbSqlLeerProta,DB_CLAVES_DEDICADAS,
     dbSqlPorEstilo,dbSqlMejoresParejas,dbSqlTopPaises,dbSqlDistribucionNivel,
     dbSqlSnapshotCoincide};
 }

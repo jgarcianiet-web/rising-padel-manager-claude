@@ -233,5 +233,29 @@ module.exports = async function ejecutarPruebasSql() {
   const spv = db.dbSqlLeerSponsor(d);
   chk(spv.actual === null && spv.ofertas.length === 0, "4d · sponsor: sin contrato ni ofertas deja la tabla vacía");
 
+  // ---------- resto del protagonista (Fase 4d·8, cierre) ----------
+  // clave/valor JSON: números, strings, booleanos, null y objetos anidados;
+  // las claves con tabla dedicada (palmares, staff, dinero...) se excluyen
+  const prota = {
+    nombre: "Río Vera", semana: 17, edad: 19, pts: 2450, energia: 82.5, conf: 61, pro: false,
+    lesion: null, racha: [1, 1, 0, 1],
+    compi: { n: "Chino", quim: 74, attrs: { saque: 55, remate: 61 } },
+    objetivos: [{ id: "top30", done: false }],
+    palmares: ["NO debe persistir aquí"], dinero: 9999, staff: { entrenador: null },
+  };
+  db.dbSqlGuardarProta(d, prota);
+  db.dbSqlGuardarProta(d, prota); // reproyectar: debe REEMPLAZAR, no acumular
+  const prb = db.dbSqlLeerProta(d);
+  chk(!("palmares" in prb) && !("dinero" in prb) && !("staff" in prb),
+    "4d · prota: las claves con tabla dedicada se excluyen", Object.keys(prb).join(","));
+  chk(prb.nombre === "Río Vera" && prb.semana === 17 && prb.energia === 82.5 && prb.pro === false && prb.lesion === null,
+    "4d · prota: escalares (número, string, booleano, null) reconstruidos");
+  chk(prb.compi.attrs.remate === 61 && prb.racha.length === 4 && prb.objetivos[0].id === "top30",
+    "4d · prota: objetos anidados (compi.attrs, racha, objetivos) sobreviven");
+  chk(Object.keys(prb).length === Object.keys(prota).length - 3,
+    "4d · prota: cobertura completa del resto de claves (reemplaza, no acumula)");
+  db.dbSqlGuardarProta(d, {});
+  chk(Object.keys(db.dbSqlLeerProta(d)).length === 0, "4d · prota: protagonista vacío deja la tabla vacía");
+
   return res;
 };

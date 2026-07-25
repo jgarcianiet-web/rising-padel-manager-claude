@@ -100,6 +100,25 @@ Sea cual sea la ruta, nunca *big-bang*:
   introducir una capa de acceso con doble implementación (Tauri en la app; en
   memoria/sql.js en pruebas) para cubrir la ruta de BD.
 
+### Estado de la 4d (entidad a entidad)
+
+| Entidad | Tabla | PR |
+|---|---|---|
+| Historial de Nº1 (`n1hist`) | `norm_n1` | #51 |
+| Palmarés del protagonista | `norm_palmares` | #52 |
+| Diario del protagonista | `norm_diario` | #53 |
+| Trayectoria por temporada (`hist`) | `norm_hist` | #54 |
+| Cara a cara (`h2h`) | `norm_h2h` | #55 |
+| Equipo de staff | `norm_staff` | #56 |
+| Finanzas y patrocinio | `norm_finanzas`, `norm_sponsor` | #57 |
+| Resto del protagonista (clave/valor JSON) | `norm_protagonista` | 4d·8 |
+
+Con `norm_protagonista` la cobertura del protagonista queda completa: cada
+campo de `G.carrera`/`G.clubG` vive en una tabla (dedicada o clave/valor) y el
+blob queda como export/salvaguarda para él. Pendiente de futuro: el resto de
+campos sueltos del mundo (`lider_*`, `nextId`...) si algún día se degrada el
+blob también a nivel de mundo.
+
 ## 5. El harness de pruebas (crítico)
 
 Hoy las pruebas corren en un `vm` de Node con un `localStorage` falso. Si SQLite
