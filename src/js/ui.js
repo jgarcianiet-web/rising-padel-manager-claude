@@ -140,6 +140,26 @@ function abrirModo(modo){
           G._staffDesdeSql=true;
         }
       }
+      // Fase 4d·7: finanzas (dinero) y patrocinio (contrato vigente + ofertas).
+      if(typeof dbSqlCargarFinanzas==="function" && prot && typeof prot.dinero==="number"){
+        const fin=dbSqlCargarFinanzas();
+        if(fin && fin.dinero===Math.round(prot.dinero)){ prot.dinero=fin.dinero; G._finDesdeSql=true; }
+      }
+      if(typeof dbSqlCargarSponsor==="function" && prot){
+        const sp=dbSqlCargarSponsor();
+        if(sp){
+          const blobOf=G.modo==="carrera" ? (prot.ofertasPatro||[]) : (prot.sponsorOferta?[prot.sponsorOferta]:[]);
+          const okActual=(!sp.actual&&!prot.sponsor) ||
+            (sp.actual&&prot.sponsor&&sp.actual.marca===prot.sponsor.marca&&sp.actual.sem===(prot.sponsor.sem|0));
+          const okOfertas=sp.ofertas.length===blobOf.length&&sp.ofertas.every((o,i)=>o.marca===blobOf[i].marca);
+          if(okActual&&okOfertas){
+            if(prot.sponsor) prot.sponsor=sp.actual;
+            if(G.modo==="carrera"){ if(Array.isArray(prot.ofertasPatro)) prot.ofertasPatro=sp.ofertas; }
+            else if(prot.sponsorOferta) prot.sponsorOferta=sp.ofertas[0]||null;
+            G._sponsorDesdeSql=true;
+          }
+        }
+      }
     }catch(e){}
     entrarPartida();
   };

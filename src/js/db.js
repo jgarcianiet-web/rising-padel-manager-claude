@@ -36,6 +36,10 @@ CREATE TABLE IF NOT EXISTS norm_h2h(
   rid TEXT PRIMARY KEY, v INTEGER, d INTEGER, nombre TEXT, ult_t INTEGER, alta INTEGER);
 CREATE TABLE IF NOT EXISTS norm_staff(
   rol TEXT PRIMARY KEY, nombre TEXT, sexo TEXT, edad INTEGER, niv INTEGER, sal INTEGER, extras TEXT);
+CREATE TABLE IF NOT EXISTS norm_finanzas(
+  clave TEXT PRIMARY KEY, valor INTEGER);
+CREATE TABLE IF NOT EXISTS norm_sponsor(
+  slot TEXT PRIMARY KEY, marca TEXT, sec TEXT, tier INTEGER, sem INTEGER, extras TEXT);
 `;
 
 function dbSqlSchema(db){ db.run(DB_SCHEMA_SQL); }
@@ -187,6 +191,55 @@ function dbSqlLeerStaff(db){
   return out;
 }
 
+// Finanzas del protagonista: escalares con nombre (hoy solo `dinero`; el
+// esquema clave/valor deja sitio a más sin migrar).
+function dbSqlGuardarFinanzas(db, fin){
+  db.run("BEGIN");
+  try{
+    db.run("DELETE FROM norm_finanzas;");
+    const st=db.prepare("INSERT INTO norm_finanzas(clave,valor) VALUES(?,?)");
+    Object.keys(fin||{}).forEach(k=>{ if(Number.isFinite(fin[k])) st.run([k,Math.round(fin[k])]); }); st.free();
+    db.run("COMMIT");
+  }catch(e){ try{ db.run("ROLLBACK"); }catch(_){} throw e; }
+}
+function dbSqlLeerFinanzas(db){
+  const out={};
+  const r=db.exec("SELECT clave,valor FROM norm_finanzas");
+  if(r&&r[0]) r[0].values.forEach(f=>{ out[f[0]]=f[1]; });
+  return out;
+}
+
+// Patrocinio: el contrato vigente (slot "actual") y las ofertas sobre la mesa
+// (slots "oferta:0", "oferta:1"...). Los campos no modelados (bonus, objetivo,
+// tRest, durTotal, primas, primasCobradas, spots, nombre del club...) van al
+// JSON de extras, como en norm_pareja y norm_staff.
+const _MODELADO_SPONSOR=["marca","sec","tier","sem"];
+function _filaSponsor(st, slot, s){
+  const ex={}; Object.keys(s).forEach(k=>{ if(_MODELADO_SPONSOR.indexOf(k)<0) ex[k]=s[k]; });
+  st.run([slot,s.marca||"",s.sec||"",s.tier|0,s.sem|0,JSON.stringify(ex)]);
+}
+function dbSqlGuardarSponsor(db, actual, ofertas){
+  db.run("BEGIN");
+  try{
+    db.run("DELETE FROM norm_sponsor;");
+    const st=db.prepare("INSERT INTO norm_sponsor(slot,marca,sec,tier,sem,extras) VALUES(?,?,?,?,?,?)");
+    if(actual) _filaSponsor(st,"actual",actual);
+    (ofertas||[]).forEach((of,i)=>{ if(of) _filaSponsor(st,"oferta:"+i,of); });
+    st.free();
+    db.run("COMMIT");
+  }catch(e){ try{ db.run("ROLLBACK"); }catch(_){} throw e; }
+}
+function dbSqlLeerSponsor(db){
+  const out={actual:null,ofertas:[]};
+  const r=db.exec("SELECT slot,marca,sec,tier,sem,extras FROM norm_sponsor ORDER BY slot");
+  if(r&&r[0]) r[0].values.forEach(f=>{
+    let ex={}; try{ ex=JSON.parse(f[5]||"{}"); }catch(_){}
+    const s=Object.assign(ex,{marca:f[1],sec:f[2],tier:f[3],sem:f[4]});
+    if(f[0]==="actual") out.actual=s; else out.ofertas.push(s);
+  });
+  return out;
+}
+
 function dbSqlLeerH2h(db){
   const out={};
   const r=db.exec("SELECT rid,v,d,nombre,ult_t,alta FROM norm_h2h");
@@ -245,6 +298,9 @@ function dbSqlSnapshotVivo(){
         dbSqlGuardarHist(SQLDB, prot.hist||[]);
         dbSqlGuardarH2h(SQLDB, prot.h2h||{});
         dbSqlGuardarStaff(SQLDB, prot.staff||{});
+        dbSqlGuardarFinanzas(SQLDB, {dinero:prot.dinero});
+        dbSqlGuardarSponsor(SQLDB, prot.sponsor||null,
+          G.modo==="carrera" ? (prot.ofertasPatro||[]) : (prot.sponsorOferta?[prot.sponsorOferta]:[]));
       }
     }catch(_){}
     dbSqlPersistir();
@@ -279,6 +335,15 @@ function dbSqlCargarH2h(){
 function dbSqlCargarStaff(){
   if(!SQLDB) return null;
   try{ return dbSqlLeerStaff(SQLDB); }catch(e){ return null; }
+}
+// Reconstruye las finanzas y el patrocinio desde sql.js (Fase 4d·7).
+function dbSqlCargarFinanzas(){
+  if(!SQLDB) return null;
+  try{ return dbSqlLeerFinanzas(SQLDB); }catch(e){ return null; }
+}
+function dbSqlCargarSponsor(){
+  if(!SQLDB) return null;
+  try{ return dbSqlLeerSponsor(SQLDB); }catch(e){ return null; }
 }
 
 /* ---------- consultas para la analítica (síncronas, sobre sql.js) ---------- */
@@ -391,6 +456,7 @@ if(typeof module!=="undefined"&&module.exports){
     dbSqlGuardarN1,dbSqlLeerN1,dbSqlGuardarPalmares,dbSqlLeerPalmares,
     dbSqlGuardarDiario,dbSqlLeerDiario,dbSqlGuardarHist,dbSqlLeerHist,
     dbSqlGuardarH2h,dbSqlLeerH2h,dbSqlGuardarStaff,dbSqlLeerStaff,
+    dbSqlGuardarFinanzas,dbSqlLeerFinanzas,dbSqlGuardarSponsor,dbSqlLeerSponsor,
     dbSqlPorEstilo,dbSqlMejoresParejas,dbSqlTopPaises,dbSqlDistribucionNivel,
     dbSqlSnapshotCoincide};
 }
