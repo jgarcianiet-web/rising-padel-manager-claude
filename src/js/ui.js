@@ -56,23 +56,18 @@ function irA(s){
   if(typeof aplicarI18n==="function") aplicarI18n();   // traduce el texto estático de cada pantalla
   if(s==="partido"){resize();draw();}
 }
-function infoSlot(modo){
-  const raw=lsGet(SLOTS[modo]);
-  if(!raw) return null;
-  try{
-    const d=JSON.parse(raw);
-    const e=modo==="carrera"?d.carrera:d.clubG;
-    const t=Math.floor((e.semana-1)/SEMANAS_TEMP)+1, s=((e.semana-1)%SEMANAS_TEMP)+1;
-    const quien=modo==="carrera"?e.nombre:e.nombre;
-    return {d,txt:`${quien} · T${t} S${s}`};
-  }catch(e){ return null; }
+/* Cuántas ranuras de un modo tienen algo dentro (para el rótulo del menú). */
+function slotsOcupados(modo){
+  let n=0;
+  for(let i=1;i<=N_RANURAS;i++) if(slotInfo(modo,i)) n++;
+  return n;
 }
 function pintarMenu(){
-  const sc=infoSlot("carrera"), scl=infoSlot("club");
+  const sc=slotsOcupados("carrera"), scl=slotsOcupados("club");
   const bC=document.getElementById("btnCarrera"), bCl=document.getElementById("btnClub");
   const btnSl=document.getElementById("btnSuperliga");
-  bC.textContent  = t("btn_carrera")+(sc?t("menu_continuar"):"");
-  bCl.textContent = t("btn_club")+(scl?t("menu_continuar"):"");
+  bC.textContent  = t("btn_carrera")+(sc?t("menu_partidas",{n:sc}):"");
+  bCl.textContent = t("btn_club")+(scl?t("menu_partidas",{n:scl}):"");
   if(btnSl) btnSl.textContent = t("btn_superliga");
   document.getElementById("menuInfo").textContent = (sc||scl) ? t("menu_info_partida") : t("menu_info_guardado");
   document.getElementById("topCtx").innerHTML="<b>Rising Games</b>";
@@ -262,38 +257,111 @@ function hidratarDesdeSql(){
   return "blob";
 }
 
+/* ---------- selector de ranuras ----------
+
+   Antes había una sola partida por modo y un modal de "continuar o empezar de
+   cero" que, además, estaba escrito en castellano dentro del código: salía en
+   español jugaras en el idioma que jugaras.
+
+   Ahora cada modo tiene N_RANURAS partidas y esta pantalla las enseña todas con
+   quién eres, por dónde vas y cuántos títulos llevas. La ranura elegida se
+   recuerda en G._slot, así que guardar sobrescribe esa y no otra. */
+let _slotDestino=1;
+function slotDestino(){ return _slotDestino; }
+
 function abrirModo(modo){
-  const s=infoSlot(modo);
-  const nueva=()=>{ if(modo==="carrera"){ pintarCrear(); irA("crear"); } else { prepararCrearClub(); irA("crearclub"); } };
-  const continuar=()=>{
-    const s2=infoSlot(modo);
-    if(!s2){ alert("La partida guardada no se pudo cargar."); lsDel(SLOTS[modo]); pintarMenu(); return; }
-    G=s2.d;
+  const ov=document.getElementById("modoModal")||(()=>{
+    const d=document.createElement("div");d.id="modoModal";
+    d.style.cssText="position:fixed;inset:0;background:rgba(10,13,19,.92);z-index:80;display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto";
+    document.body.appendChild(d);return d;
+  })();
+
+  const nueva=(n)=>{ _slotDestino=n; quitarEl(ov); if(modo==="carrera"){ pintarCrear(); irA("crear"); } else { prepararCrearClub(); irA("crearclub"); } };
+  const continuar=(n)=>{
+    const raw=lsGet(slotKey(modo,n));
+    let d=null; try{ d=raw?JSON.parse(raw):null; }catch(e){}
+    if(!d){ avisa(t("slot_ilegible"),"bad"); pintar(); return; }
+    quitarEl(ov);
+    G=d; G._slot=n;
     // Fase 4d·9: hidratación con SQLite como fuente primaria (blob de salvaguarda).
     G._fuenteSql=hidratarDesdeSql();
     entrarPartida();
   };
-  if(!s){ nueva(); return; }   // sin guardado: directo a crear
-  // hay guardado → ventana de elección
-  const ov=document.getElementById("modoModal")||(()=>{const d=document.createElement("div");d.id="modoModal";d.style.cssText="position:fixed;inset:0;background:rgba(10,13,19,.92);z-index:80;display:flex;align-items:center;justify-content:center;padding:16px";document.body.appendChild(d);return d;})();
-  const etq=modo==="carrera"?"carrera":"club";
-  ov.innerHTML=`<div class="card" style="max-width:400px;width:100%">
-    <h3 style="margin-top:0">${modo==="carrera"?"🎾 Carrera de jugador":"🏟 Modo club"}</h3>
-    <div class="opcion" style="margin-bottom:8px">
-      <b>Partida guardada</b>
-      <div class="d">${s.txt}</div>
-      <button class="pri" style="width:100%;margin-top:6px" id="mmCont">▸ Continuar esta partida</button>
-    </div>
-    <div class="opcion">
-      <b>Empezar de cero</b>
-      <div class="d">Crea una ${etq} nueva. ${modo==="carrera"?"Tu carrera":"Tu club"} guardada se conservará hasta que confirmes la nueva al terminar de crearla.</div>
-      <button style="width:100%;margin-top:6px" id="mmNueva">✦ Nueva ${etq}</button>
-    </div>
-    <button style="width:100%;margin-top:10px;background:none;color:var(--gris)" id="mmCerrar">Cancelar</button>
-  </div>`;
-  document.getElementById("mmCont").onclick=()=>{ quitarEl(ov); continuar(); };
-  document.getElementById("mmNueva").onclick=()=>{ quitarEl(ov); nueva(); };
-  document.getElementById("mmCerrar").onclick=()=>quitarEl(ov);
+  const borrar=(n)=>{
+    const inf=slotInfo(modo,n);
+    const quien=inf&&!inf.roto?inf.nombre:t("slot_ilegible_corta");
+    if(!confirm(t("slot_borrar_seguro",{quien}))) return;
+    borrarSlot(modo,n); pintar(); pintarMenu();
+  };
+
+  function pintar(){
+    const filas=[];
+    for(let n=1;n<=N_RANURAS;n++){
+      const inf=slotInfo(modo,n);
+      let cuerpo,botones;
+      // Cada botón lleva id propio (mmCont2, mmNueva3…) y se engancha por
+      // getElementById más abajo. No es capricho: el arnés de pruebas simula el
+      // DOM por id, así que así los casos pueden pulsarlos igual que un jugador.
+      if(!inf){
+        cuerpo=`<div class="d">${t("slot_vacia_d")}</div>`;
+        botones=`<button class="pri" style="width:100%" id="mmNueva${n}">✦ ${t("slot_nueva")}</button>`;
+      }else if(inf.roto){
+        cuerpo=`<div class="d" style="color:var(--rojo)">${t("slot_ilegible_d",{kb:Math.max(1,Math.round(inf.bytes/1024))})}</div>`;
+        botones=`<button style="width:100%" id="mmBorrar${n}">🗑 ${t("slot_borrar")}</button>`;
+      }else{
+        cuerpo=`<div class="d">${t("slot_resumen",{temporada:inf.temporada,semana:inf.semana,titulos:inf.titulos})}`
+          +(inf.dif?` · ${difNombre(inf.dif)}`:"")+`</div>`;
+        botones=`<button class="pri" style="width:100%" id="mmCont${n}">▸ ${t("slot_continuar")}</button>`
+          +`<button style="width:100%;margin-top:5px;font-size:11px" id="mmBorrar${n}">🗑 ${t("slot_borrar")}</button>`;
+      }
+      const titulo=inf&&!inf.roto?inf.nombre:t("slot_n",{n});
+      filas.push(`<div class="opcion" style="margin-bottom:8px">
+        <b>${inf&&!inf.roto?`<span style="color:var(--gris2);font-size:10px">${t("slot_n",{n})}</span> `:""}${titulo}</b>
+        ${cuerpo}<div style="margin-top:7px">${botones}</div></div>`);
+    }
+    ov.innerHTML=`<div class="card" style="max-width:430px;width:100%">
+      <h3 style="margin-top:0">${modo==="carrera"?"🎾 "+t("btn_carrera"):"🏟 "+t("btn_club")}</h3>
+      ${filas.join("")}
+      <div style="display:flex;gap:6px;margin-top:4px">
+        <button style="flex:1;font-size:11.5px" id="mmImportar">⤒ ${t("slot_importar")}</button>
+        <button style="flex:1;font-size:11.5px;background:none;color:var(--gris)" id="mmCerrar">${t("btn_cancelar")}</button>
+      </div>
+      <input type="file" id="mmFichero" accept="application/json,.json" style="display:none">
+      <div class="foot" style="text-align:left;margin-top:8px">${t("slot_pie")}</div>
+    </div>`;
+    // Los manejadores se enganchan desde código (nada de onclick en el marcado:
+    // la CSP no ejecuta código escrito dentro del HTML).
+    for(let n=1;n<=N_RANURAS;n++){
+      const bc=document.getElementById("mmCont"+n);   if(bc) bc.onclick=()=>continuar(n);
+      const bn=document.getElementById("mmNueva"+n);  if(bn) bn.onclick=()=>nueva(n);
+      const bb=document.getElementById("mmBorrar"+n); if(bb) bb.onclick=()=>borrar(n);
+    }
+    document.getElementById("mmCerrar").onclick=()=>quitarEl(ov);
+    const fich=document.getElementById("mmFichero");
+    document.getElementById("mmImportar").onclick=()=>fich.click();
+    fich.onchange=()=>{
+      const f=fich.files&&fich.files[0]; if(!f) return;
+      const lector=new FileReader();
+      lector.onload=()=>{
+        // se importa a la primera ranura libre; si están todas ocupadas, se pide destino
+        let destino=0;
+        for(let n=1;n<=N_RANURAS;n++) if(!slotInfo(modo,n)){ destino=n; break; }
+        if(!destino){
+          const r=prompt(t("imp_pide_ranura",{max:N_RANURAS}),"1");
+          destino=Math.min(N_RANURAS,Math.max(1,parseInt(r,10)||0));
+          if(!destino||!confirm(t("imp_sobrescribir",{n:destino}))) return;
+        }
+        const err=importarPartida(String(lector.result||""),modo,destino);
+        if(err){ avisa(t(err),"bad"); return; }
+        avisa(t("imp_ok",{n:destino}),"ok");
+        pintar(); pintarMenu();
+      };
+      lector.onerror=()=>avisa(t("imp_err_lectura"),"bad");
+      lector.readAsText(f);
+    };
+  }
+
+  pintar();
   ov.onclick=(e)=>{ if(e.target===ov) quitarEl(ov); };
 }
 document.getElementById("btnCarrera").onclick=()=>abrirModo("carrera");

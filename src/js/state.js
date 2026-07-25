@@ -11,6 +11,63 @@ function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
 function lsSet(k,v){try{localStorage.setItem(k,v);return true;}catch(e){return false;}}
 function lsDel(k){try{localStorage.removeItem(k);}catch(e){}}
 
+/* ---------- ranuras de guardado ----------
+
+   Cada modo tiene N_RANURAS partidas independientes. La clave de la primera es
+   la de siempre ("rpm_carrera_v1"), sin sufijo, para que las partidas ya
+   empezadas aparezcan como ranura 1 sin migrar nada; las demás llevan "_s2",
+   "_s3". La ranura activa viaja en G._slot, así que guardar sobrescribe la que
+   se abrió y no otra. */
+const N_RANURAS=3;
+function slotKey(modo,n){
+  const base=SLOTS[modo]; if(!base) return null;
+  return (!n||n<=1)?base:base+"_s"+n;
+}
+function slotActual(){ return (G&&G._slot)|0||1; }
+/* Resumen de lo que hay en una ranura, para pintarla en el selector. Devuelve
+   null si está vacía, y un objeto con roto:true si hay algo que no se entiende
+   (así el jugador ve que la ranura está ocupada por basura y puede borrarla). */
+function slotInfo(modo,n){
+  const raw=lsGet(slotKey(modo,n));
+  if(!raw) return null;
+  try{
+    const d=JSON.parse(raw);
+    const e=modo==="carrera"?d.carrera:d.clubG;
+    if(!e||!e.nombre) return {roto:true,bytes:raw.length};
+    return {
+      nombre:String(e.nombre),
+      temporada:Math.floor((e.semana-1)/SEMANAS_TEMP)+1,
+      semana:((e.semana-1)%SEMANAS_TEMP)+1,
+      titulos:(e.palmares||[]).length,
+      dif:d.dif||null,
+      bytes:raw.length,
+    };
+  }catch(err){ return {roto:true,bytes:raw.length}; }
+}
+function borrarSlot(modo,n){ lsDel(slotKey(modo,n)); }
+
+/* ---------- importación de una partida exportada ----------
+
+   El botón Exportar generaba un JSON que no había forma de volver a meter en el
+   juego: una copia de seguridad que no lo era. Esto valida el fichero antes de
+   escribirlo, para que un JSON cualquiera no deje una ranura inservible. */
+function validaPartida(d,modo){
+  // Array.isArray: un JSON válido puede ser una lista, y typeof la da por objeto
+  if(!d||typeof d!=="object"||Array.isArray(d)||!d.modo) return "imp_err_formato";
+  if(d.modo!==modo) return "imp_err_modo";
+  const e=modo==="carrera"?d.carrera:d.clubG;
+  if(!e||typeof e!=="object"||!e.nombre) return "imp_err_incompleta";
+  if(!Number.isFinite(e.semana)||e.semana<1) return "imp_err_incompleta";
+  if(!d.world||!Array.isArray(d.world.parejas)||!d.world.parejas.length) return "imp_err_mundo";
+  return null;
+}
+function importarPartida(texto,modo,n){
+  let d; try{ d=JSON.parse(texto); }catch(e){ return "imp_err_formato"; }
+  const err=validaPartida(d,modo);
+  if(err) return err;
+  return lsSet(slotKey(modo,n),JSON.stringify(d))?null:"imp_err_espacio";
+}
+
 // ---------- SQLite (Ruta B): la persistencia vive en db.js con sql.js ----------
 // localStorage sigue siendo la fuente de verdad síncrona del guardado; sql.js
 // mantiene el modelo relacional (poblado en cada guardar). Aquí quedan solo las
@@ -174,7 +231,7 @@ function guardar(){
   // modelo vive también en las tablas). La marca viaja en el propio blob.
   if(typeof dbSqlDisponible==="function" && dbSqlDisponible()) G._vSql=1;
   const json=JSON.stringify(G);
-  const ok=lsSet(SLOTS[G.modo],json);
+  const ok=lsSet(slotKey(G.modo,slotActual()),json);   // se guarda en la ranura que se abrió
   if(typeof dbSqlSnapshotVivo==="function"){
     dbSqlSnapshotVivo();  // write-through del modelo a sql.js
     // guardia de consistencia: ¿las tablas reconstruyen el estado vivo? (flag de sesión)
@@ -189,11 +246,18 @@ function guardar(){
 }
 document.getElementById("btnExport").onclick=()=>{
   if(!G) return;
+  guardar();   // que el fichero refleje lo último jugado, no lo último guardado
   const blob=new Blob([JSON.stringify(G)],{type:"application/json"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
-  a.download=`rpm-${G.modo}.json`;
+  // el nombre lleva protagonista y temporada: si guardas varias copias, se
+  // distinguen sin abrirlas
+  const e=G.modo==="carrera"?G.carrera:G.clubG;
+  const quien=String((e&&e.nombre)||G.modo).replace(/[^\w\-]+/g,"_").slice(0,24);
+  const temp=e&&e.semana?"-T"+(Math.floor((e.semana-1)/SEMANAS_TEMP)+1):"";
+  a.download=`rpm-${G.modo}-${quien}${temp}.json`;
   a.click();
+  if(typeof avisa==="function") avisa(t("imp_exportada"),"ok");
 };
 document.getElementById("btnMenu").onclick=()=>{ guardar(); G=null; irA("menu"); pintarMenu(); };
 function pintaSnd(){ document.getElementById("btnSnd").textContent=SND?"🔊":"🔇"; }
@@ -243,7 +307,10 @@ function mkWorld(){
   }
   return {parejas,lider:null};
 }
-function ent(){ return G.modo==="carrera"?G.carrera:G.clubG; }  // entidad protagonista
+// Entidad protagonista. Devuelve null sin partida abierta: se llama desde sitios
+// que también existen en el menú (avisos, selector de ranuras) y antes reventaba
+// con "Cannot read properties of null" en cuanto alguno se usaba desde ahí.
+function ent(){ return G?(G.modo==="carrera"?G.carrera:G.clubG):null; }
 function simCircuito(excluir){
   G.world.parejas.forEach(p=>{
     if(excluir.includes(p.id)) return;
@@ -439,8 +506,8 @@ function mostrarAviso(m,tipo){
   try{ sfxAviso(tipo); }catch(e){}
 }
 function avisa(m,tipo){
-  const e=ent();
-  if(e){ e.diario.unshift(m); e.diario=e.diario.slice(0,10); }
+  const e=ent();                       // null en el menú: entonces solo se muestra
+  if(e&&e.diario){ e.diario.unshift(m); e.diario=e.diario.slice(0,10); }
   mostrarAviso(m,tipo||tipoAviso(m));
 }
 // Color por valor (0..99) para dar jerarquía de un vistazo. Antes todo lo <55

@@ -323,7 +323,7 @@ function empezarCarrera(estiloKey){
   if(lado===null){lado=0;marcaLado();}
   if(persoSel===null) persoSel="frio";
   const nombre=document.getElementById("inNombre").value.trim()||"Jugador";
-  G={v:1,modo:"carrera",dif:difMenu(),world:mkWorld(),clubG:null,carrera:{
+  G={v:1,modo:"carrera",_slot:slotDestino(),dif:difMenu(),world:mkWorld(),clubG:null,carrera:{
     nombre,estilo:estiloKey,perso:persoSel,lado,color:colorSel,ava:{...AVA_EDIT},_ropa:colorSel,
     attrs:{...ESTILOS[estiloKey].attrs},
     semana:1,edad:16,pts:0,dinero:2500,energia:100,conf:55,

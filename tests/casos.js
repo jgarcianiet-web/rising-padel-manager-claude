@@ -634,30 +634,141 @@ comprueba("Club: una alineación imposible se repara sola (regresión)", () => {
   return "reparada en los dos casos";
 });
 
+/* Limpia las ranuras y devuelve la ranura de destino a la 1. Sin esto último,
+   un caso que abra la ranura 3 deja apuntando ahí al siguiente, y la partida
+   nueva del caso de al lado se guarda donde no toca. */
+function limpiaRanuras(modo) {
+  for (let n = 1; n <= N_RANURAS; n++) borrarSlot(modo || "carrera", n);
+  if (!modo) for (let n = 1; n <= N_RANURAS; n++) borrarSlot("club", n);
+  _slotDestino = 1;
+}
+
 comprueba("Guardado: con partida empezada se puede elegir 'nueva' (regresión WebView)", () => {
+  limpiaRanuras();
   nuevaCarrera("agresivo");
   guardar();
-  exige(infoSlot("carrera"), "la partida no se guardó");
+  exige(slotInfo("carrera", 1), "la partida no se guardó");
   G = null;
   abrirModo("carrera");
-  const btn = document.getElementById("mmNueva");
-  exige(btn && btn.onclick, "el modal no ofrece empezar una partida nueva");
+  // la ranura 1 está ocupada, así que la 2 debe ofrecer empezar de cero
+  const btn = document.getElementById("mmNueva2");
+  exige(btn && btn.onclick, "el selector no ofrece empezar una partida nueva");
   btn.onclick();                  // aquí es donde antes reventaba por .remove()
-  exige(infoSlot("carrera"), "empezar una nueva borró la partida guardada antes de tiempo");
-  return "modal correcto y guardado intacto";
+  exige(slotInfo("carrera", 1), "empezar una nueva borró la partida guardada antes de tiempo");
+  return "selector correcto y guardado intacto";
 });
 
 comprueba("Guardado: 'continuar' recupera la partida", () => {
+  limpiaRanuras();
   const c = nuevaCarrera("agresivo");
   const nombre = c.nombre;
   guardar();
   G = null;
   abrirModo("carrera");
-  const btn = document.getElementById("mmCont");
-  exige(btn && btn.onclick, "el modal no ofrece continuar");
+  const btn = document.getElementById("mmCont1");
+  exige(btn && btn.onclick, "el selector no ofrece continuar");
   btn.onclick();
   exige(G && G.carrera && G.carrera.nombre === nombre, "no se recuperó la partida");
   return "partida recuperada";
+});
+
+comprueba("Ranuras: tres partidas por modo, independientes entre sí", () => {
+  limpiaRanuras();
+  const nombres = [];
+  for (let n = 1; n <= N_RANURAS; n++) {
+    G = null; _slotDestino = n;
+    const c = nuevaCarrera("agresivo");
+    nombres.push(c.nombre);
+    guardar();
+    exige(G._slot === n, "la partida no recuerda su ranura: " + G._slot);
+  }
+  // las tres existen y cada una guarda a quien le toca
+  for (let n = 1; n <= N_RANURAS; n++) {
+    const inf = slotInfo("carrera", n);
+    exige(inf && !inf.roto, "la ranura " + n + " no se guardó");
+    exige(inf.nombre === nombres[n - 1], "la ranura " + n + " tiene el nombre de otra: " + inf.nombre);
+  }
+  // avanzar en una NO toca a las demás
+  G = null; abrirModo("carrera");
+  document.getElementById("mmCont2").onclick();
+  G.carrera.semana += 4; guardar();
+  exige(slotInfo("carrera", 2).semana === 5, "la ranura 2 no avanzó");
+  exige(slotInfo("carrera", 1).semana === 1, "avanzar en la 2 movió la 1");
+  exige(slotInfo("carrera", 3).semana === 1, "avanzar en la 2 movió la 3");
+  // borrar una deja las otras
+  borrarSlot("carrera", 2);
+  exige(!slotInfo("carrera", 2), "borrar no vació la ranura");
+  exige(slotInfo("carrera", 1) && slotInfo("carrera", 3), "borrar una se llevó las demás");
+  limpiaRanuras();
+  return N_RANURAS + " ranuras independientes";
+});
+
+comprueba("Ranuras: la primera es la clave de siempre (guardados antiguos)", () => {
+  // Una partida guardada antes de que existieran las ranuras vive en
+  // "rpm_carrera_v1" sin sufijo; tiene que aparecer como ranura 1 sin migrar nada.
+  limpiaRanuras();
+  exige(slotKey("carrera", 1) === SLOTS.carrera, "la ranura 1 cambió de clave: " + slotKey("carrera", 1));
+  exige(slotKey("carrera") === SLOTS.carrera, "sin número debería ser la ranura 1");
+  exige(slotKey("carrera", 2) !== SLOTS.carrera, "la ranura 2 pisa la clave antigua");
+  nuevaCarrera("agresivo");
+  const viejo = JSON.stringify(G); const nombre = G.carrera.nombre;
+  G = null; limpiaRanuras();
+  lsSet(SLOTS.carrera, viejo);                     // simula el guardado antiguo
+  const inf = slotInfo("carrera", 1);
+  exige(inf && inf.nombre === nombre, "el guardado antiguo no aparece como ranura 1");
+  limpiaRanuras();
+  return "compatible sin migración";
+});
+
+comprueba("Importar: valida el fichero antes de tocar la ranura", () => {
+  limpiaRanuras();
+  const c = nuevaCarrera("agresivo"); guardar();
+  const bueno = JSON.stringify(G); const nombre = c.nombre;
+  G = null; limpiaRanuras();
+
+  // lo que NO debe entrar
+  exige(importarPartida("esto no es json", "carrera", 1) === "imp_err_formato", "acepta texto que no es JSON");
+  exige(importarPartida("[1,2,3]", "carrera", 1) === "imp_err_formato", "acepta un JSON que no es una partida");
+  exige(importarPartida(bueno, "club", 1) === "imp_err_modo", "acepta una carrera como si fuera un club");
+  exige(importarPartida(JSON.stringify({ modo: "carrera", carrera: {} }), "carrera", 1) === "imp_err_incompleta", "acepta una carrera sin nombre");
+  exige(importarPartida(JSON.stringify({ modo: "carrera", carrera: { nombre: "X", semana: 1 } }), "carrera", 1) === "imp_err_mundo", "acepta una partida sin mundo");
+  exige(!slotInfo("carrera", 1), "un fichero inválido dejó algo escrito en la ranura");
+
+  // lo que sí
+  exige(importarPartida(bueno, "carrera", 3) === null, "rechaza una partida válida");
+  const inf = slotInfo("carrera", 3);
+  exige(inf && inf.nombre === nombre, "la partida importada no se lee bien");
+  // y se puede continuar de verdad
+  G = null; abrirModo("carrera");
+  document.getElementById("mmCont3").onclick();
+  exige(G && G.carrera && G.carrera.nombre === nombre, "no se puede continuar lo importado");
+  exige(G._slot === 3, "lo importado no se abre en su ranura");
+  limpiaRanuras();
+  return "ida y vuelta completa";
+});
+
+comprueba("Avisos: se pueden dar desde el menú, sin partida abierta", () => {
+  // avisa() llamaba a ent(), que hacía G.modo con G a null y reventaba. Salta
+  // desde el selector de ranuras, que vive en el menú: importar una partida
+  // escribía el fichero pero moría antes de repintar, y la ranura recién
+  // importada seguía apareciendo vacía.
+  G = null;
+  exige(ent() === null, "ent() debería devolver null sin partida abierta");
+  avisa("prueba desde el menú");     // no debe lanzar
+  avisa("prueba con tipo", "ok");
+  return "avisa() tolera G nulo";
+});
+
+comprueba("Ranuras: una partida corrupta se muestra y se puede borrar", () => {
+  limpiaRanuras();
+  lsSet(slotKey("carrera", 2), "{roto");
+  const inf = slotInfo("carrera", 2);
+  exige(inf && inf.roto, "una ranura ilegible debería marcarse como rota, no desaparecer");
+  G = null; abrirModo("carrera");   // el selector debe pintarse sin reventar con basura dentro
+  borrarSlot("carrera", 2);
+  exige(!slotInfo("carrera", 2), "no se pudo borrar la ranura rota");
+  limpiaRanuras();
+  return "visible y recuperable";
 });
 
 comprueba("Pádel: todas las parejas combinan drive y revés", () => {

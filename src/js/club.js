@@ -89,7 +89,7 @@ function pintarMercadoInicial(){
     if(plantillaTmp.length<2) return;
     const gasto2=plantillaTmp.reduce((s,j)=>s+costeFichaje(j),0);
     const nombre=document.getElementById("inClubNombre").value.trim()||"Rising Pádel Club";
-    G={v:1,modo:"club",dif:difMenu(),world:mkWorld(),carrera:null,clubG:{
+    G={v:1,modo:"club",_slot:slotDestino(),dif:difMenu(),world:mkWorld(),carrera:null,clubG:{
       nombre,color:colorClubSel,
       plantilla:plantillaTmp.map(j=>({...j})),
       alin:[0,1],alinB:null,quims:{},
