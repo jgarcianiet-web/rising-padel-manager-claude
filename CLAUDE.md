@@ -48,6 +48,22 @@ tier de patrocinador, tabla de récords). Si necesitas una variable ahí, lláma
   se encontraron el panel de Semana, la pantalla de fundar club y la analítica,
   que los tests de claves no veían.
 
+## El torneo tiene cuadro
+
+`tournament.js` construye un cuadro final de 16 con siembra por puntos de
+ranking (`mkCuadro`). Cada vez que avanzas de ronda se resuelven **todos** los
+cruces (`resolverRondaCuadro`), así que tu siguiente rival es quien ganó de
+verdad su partido, no una tirada nueva.
+
+- Los cruces entre parejas del ordenador se deciden con `probGana(nA,nB)`, una
+  logística sobre la diferencia de nivel: 12 puntos ≈ 90%. **No** se simulan
+  punto a punto —son 15 partidos por torneo— y por eso abrir el cuadro no se
+  nota.
+- Tu entrada en el cuadro **no es una pareja del mundo**: es un objeto
+  `{yo:true, nivel, pts}` sin `jug`. Usa `nivCuadro(p)` y `nomCuadro(p)`, nunca
+  `nivelPareja(p)` ni `p.nombre` directamente, o reventará en tu propia casilla.
+- La previa (fases 0 y 1) sigue siendo cruces sueltos: es lo que es una previa.
+
 ## Accesibilidad: los tamaños de letra escalan
 
 Todos los `font-size` del CSS son `calc(Npx * var(--esc))`, y el menú tiene un

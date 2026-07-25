@@ -13,6 +13,142 @@ function rivalDeFase(base,fase,usados){
   usados.add(r.id);
   return r;
 }
+/* ================================================================
+   EL CUADRO
+
+   Hasta ahora un torneo eran seis rivales sueltos, uno por ronda, generados por
+   separado en el momento de inscribirse. No había torneo alrededor: nadie más
+   jugaba, no existía la otra mitad del cuadro y daba igual quién cayera. En un
+   juego de raqueta eso se nota, porque el cuadro es donde está la historia —
+   que el primer cabeza de serie caiga en octavos te cambia el camino y lo sabes
+   al mirar el papel.
+
+   Ahora hay un cuadro final de 16 con siembra: los mejores se reparten por las
+   esquinas para no cruzarse antes de tiempo, tú ocupas tu sitio según ranking,
+   y cada ronda se resuelven TODOS los cruces. Tu siguiente rival es quien
+   realmente haya ganado su partido, no una tirada nueva.
+
+   Los cruces entre parejas del ordenador se resuelven por probabilidad según la
+   diferencia de nivel, no simulando el partido punto a punto: son 15 partidos
+   por torneo y hay que abrir el cuadro sin que se note la espera.
+================================================================ */
+const CUADRO_N=16;                 // parejas del cuadro final (octavos → final)
+const CUADRO_FASE0=2;              // el cuadro final empieza en octavos
+
+/* Orden de siembra estándar: el 1 y el 2 en extremos opuestos, el 3 y el 4 en
+   los cuartos que no les tocan, etc. Así los favoritos solo se cruzan al final. */
+const SIEMBRA_16=[0,15,8,7,4,11,12,3,2,13,10,5,6,9,14,1];
+
+/* Probabilidad de que A gane a B por diferencia de nivel. Doce puntos de
+   diferencia dan aproximadamente un 90%: hay favoritos claros, pero la
+   campanada siempre es posible. */
+function probGana(nA,nB){ return 1/(1+Math.pow(10,(nB-nA)/12)); }
+/* Nivel de una entrada del cuadro. Tu propia entrada no es una pareja del
+   mundo (no tiene .jug), así que lleva su nivel calculado dentro. */
+function nivCuadro(p){ return p?(p.yo?(p.nivel||50):nivelPareja(p)):0; }
+/* Nombre visible de una entrada del cuadro, resuelto al pintar para que
+   cambiar de idioma a mitad de torneo lo traduzca. */
+function nomCuadro(p){ return p?(p.yo?t("cua_tu_pareja"):p.nombre):t("cua_pendiente"); }
+
+/* Construye el cuadro final. Devuelve {ronda:{2:[...16]}, mi:índice} */
+function mkCuadro(cat,usados){
+  const sx=miSugSexo();
+  const base=cat.base;
+  // 15 rivales del nivel del torneo, de más fuerte a más flojo
+  const rivales=[];
+  for(let i=0;i<CUADRO_N-1;i++){
+    const target=base+8-i*(16/(CUADRO_N-1));    // del cabeza de serie al último
+    let margen=5,cand=[];
+    while(cand.length<1&&margen<34){
+      cand=G.world.parejas.filter(p=>!usados.has(p.id)&&(p.sexo||"M")===sx&&Math.abs(nivelPareja(p)-target)<=margen);
+      margen+=4;
+    }
+    const r=pick(cand)||pick(G.world.parejas.filter(p=>!usados.has(p.id)&&(p.sexo||"M")===sx));
+    if(!r) break;
+    usados.add(r.id); rivales.push(r);
+  }
+  // tú entras en la lista y se ordena todo por nivel: eso decide la siembra
+  // La siembra va por PUNTOS de ranking, que es como se siembra un torneo de
+  // verdad: por lo que has hecho, no por lo bueno que eres. Así el que sube
+  // fuerte nota el premio de estar sembrado y evita a los gordos hasta el final.
+  const yo={yo:true,nivel:nivelPareja({jug:miTeam().jug}),pts:(ent().pts|0)};
+  const todos=rivales.map(r=>({p:r,pts:r.pts|0})).concat([{p:yo,pts:yo.pts}]);
+  todos.sort((a,b)=>b.pts-a.pts);
+  // se coloca cada uno en su casilla según la siembra
+  const slots=new Array(CUADRO_N).fill(null);
+  todos.forEach((x,i)=>{ if(i<CUADRO_N) slots[SIEMBRA_16[i]]=x.p; });
+  return {ronda:{[CUADRO_FASE0]:slots}, mi:slots.findIndex(p=>p&&p.yo), n:CUADRO_N};
+}
+/* Sexo del circuito en el que compites (envoltorio con respaldo). */
+function miSugSexo(){ return (typeof miSexo==="function")?miSexo():"M"; }
+
+/* Resuelve todos los cruces de una ronda del cuadro MENOS el tuyo, y deja
+   preparada la ronda siguiente. `miGane` dice cómo acabó el tuyo. */
+function resolverRondaCuadro(fase,miGane){
+  const c=torneo.cuadro; if(!c||!c.ronda[fase]) return [];
+  const act=c.ronda[fase], sig=[], sorpresas=[];
+  for(let i=0;i<act.length;i+=2){
+    const a=act[i], b=act[i+1];
+    if(!a&&!b){ sig.push(null); continue; }
+    if(!a||!b){ sig.push(a||b); continue; }
+    let gana;
+    if(a.yo||b.yo){ gana=(a.yo===!!miGane)?a:b; }   // el tuyo ya está jugado
+    else{
+      const nA=nivCuadro(a), nB=nivCuadro(b);
+      gana=rnd()<probGana(nA,nB)?a:b;
+      // campanada: gana el que tenía 6+ puntos menos de nivel
+      const perd=gana===a?b:a, dif=nivCuadro(perd)-nivCuadro(gana);
+      if(dif>=6) sorpresas.push({gana,perd,dif});
+    }
+    sig.push(gana);
+  }
+  c.ronda[fase+1]=sig;
+  return sorpresas;
+}
+/* Con quién te toca en la fase dada, según el cuadro. */
+function rivalDelCuadro(fase){
+  const c=torneo.cuadro; if(!c||!c.ronda[fase]) return null;
+  const r=c.ronda[fase], i=r.findIndex(p=>p&&p.yo);
+  if(i<0) return null;
+  const rival=r[i%2===0?i+1:i-1];
+  return (rival&&!rival.yo)?rival:null;
+}
+
+/* Pinta el papel: primero tu camino ronda a ronda y después el cuadro entero,
+   para que se vea quién anda por la otra mitad y quién ha caído. */
+function pintarCuadroHTML(){
+  const out=[];
+  // --- tu camino ---
+  out.push(`<div class="bclabel" style="border-top:none;padding-top:0">${t("cua_tu_camino")}</div>`);
+  FASES.forEach((fs,i)=>{
+    if(i<torneo.startFase){ out.push(`<div style="opacity:.35">${faseNombre(i)}: ${t("cua_exento")}</div>`); return; }
+    const rv=torneo.rivales[i];
+    const yaJugada=i<torneo.fase, ahora=i===torneo.fase;
+    const quien=rv?nomCuadro(rv):t("cua_pendiente");
+    out.push(`<div style="opacity:${ahora?1:yaJugada?.75:.5}">${faseNombre(i)}: ${t("cua_vs",{rival:quien})}`
+      +`${yaJugada?" ✔":""}${ahora?` <span style="color:var(--lima)">← ${t("cua_estais_aqui")}</span>`:""}</div>`);
+  });
+  // --- el cuadro completo ---
+  const c=torneo.cuadro;
+  if(c){
+    for(let f=CUADRO_FASE0;f<=5;f++){
+      const r=c.ronda[f]; if(!r||!r.length) break;
+      out.push(`<div class="bclabel">${faseNombre(f)}</div>`);
+      for(let i=0;i<r.length;i+=2){
+        const a=r[i], b=r[i+1];
+        if(!a&&!b) continue;
+        const mio=(a&&a.yo)||(b&&b.yo);
+        const col=mio?"var(--lima)":"var(--gris)";
+        out.push(`<div style="font-size:calc(10.5px * var(--esc));color:${col};padding:1px 0">`
+          +`${nomCuadro(a)} <span style="color:var(--gris2)">vs</span> ${nomCuadro(b)}</div>`);
+      }
+    }
+    const campeon=(c.ronda[6]||[])[0];
+    if(campeon) out.push(`<div class="bclabel">🏆 ${nomCuadro(campeon)}</div>`);
+  }
+  return out.join("");
+}
+
 function abrirTorneo(ci,wildcard){
   const cat=CATS[ci];
   if(G.modo==="club"){ repararAlin(); if(!alineacion()){ avisa(t("aviso_sin_plantilla")); return; } }
@@ -26,19 +162,27 @@ function abrirTorneo(ci,wildcard){
   const startFase=ent2;
   const usados=new Set();
   const rivales=[];
-  for(let f=0;f<6;f++) rivales.push(f<startFase?null:rivalDeFase(cat.base,f,usados));
+  // El cuadro final decide los rivales de octavos en adelante; la previa sigue
+  // siendo un par de cruces sueltos, que es justo lo que es una previa.
+  const cuadro=mkCuadro(cat,usados);
+  for(let f=0;f<6;f++){
+    if(f<startFase){ rivales.push(null); continue; }
+    rivales.push(f<CUADRO_FASE0 ? rivalDeFase(cat.base,f,usados) : null);
+  }
   const _slot=slotSemana(semanaTemp());
   const _ciudad=(cat.premier&&_slot.premier===ci)?_slot.ciudad:null;
-  torneo={cat:ci,nombre:catNombre(cat)+(_ciudad?` · ${_ciudad}`:""),premierT:cat.premier,pts:cat.pts,premio:cat.premio,base:cat.base,fase:startFase,startFase,rivales,wildcard:!!wildcard};
+  torneo={cat:ci,nombre:catNombre(cat)+(_ciudad?` · ${_ciudad}`:""),premierT:cat.premier,pts:cat.pts,premio:cat.premio,base:cat.base,fase:startFase,startFase,rivales,cuadro,wildcard:!!wildcard};
+  // si entras directo al cuadro final, tu primer rival ya está en el papel
+  if(startFase>=CUADRO_FASE0) torneo.rivales[startFase]=rivalDelCuadro(startFase);
   if(cat.premier&&startFase===2&&G.modo==="carrera"&&!G.carrera.pro){
     G.carrera.pro=true;
     noticia("hito",t("not_prof_t"),t("not_prof_s"));
     avisa(t("aviso_cabezas_serie"));
   }
   if(cat.premier){
-    const cuadro=rivales.filter(Boolean);
-    const cocoNiv=Math.max(...cuadro.map(r=>nivelPareja(r)));
-    const coco=cuadro.find(r=>nivelPareja(r)===cocoNiv);
+    const enJuego=(cuadro.ronda[CUADRO_FASE0]||[]).filter(p=>p&&!p.yo).concat(rivales.filter(Boolean));
+    const cocoNiv=Math.max(...enJuego.map(r=>nivCuadro(r)));
+    const coco=enJuego.find(r=>nivCuadro(r)===cocoNiv);
     const miNiv=G.modo==="carrera"?Math.round((mediaAttrs(G.carrera.attrs)+mediaAttrs(G.carrera.compi.attrs))/2):(alineacion()?Math.round(alineacion().reduce((a,j)=>a+mediaAttrs(j.attrs),0)/2):50);
     torneo.favNos=miNiv>=cocoNiv-1;
     avisa(torneo.favNos?t("aviso_fav_si",{torneo:torneo.nombre}):t("aviso_fav_no",{coco:coco.nombre,niv:cocoNiv}));
@@ -129,12 +273,7 @@ function pintarTorneo(){
   <span style="font-size:11px;color:var(--gris)">${entrada}</span><br>
   <span style="font-size:11px;color:var(--gris)">${infoPropia()}</span>
   ${infoHTML}`;
-  document.getElementById("tCuadro").innerHTML=FASES.map((fs,i)=>{
-    if(i<torneo.startFase) return `<div style="opacity:.35">${fs}: exentos (ranking)</div>`;
-    const rv=torneo.rivales[i];
-    const quien=i<=torneo.fase?`: vs ${rv.nombre}`:`: rival por definir (~${torneo.base+FASE_OFFSET[i]})`;
-    return `<div style="opacity:${i===torneo.fase?1:.55}">${fs}${i<torneo.fase?`: vs ${rv.nombre} ✔`:quien}${i===torneo.fase?"  ← estáis aquí":""}</div>`;
-  }).join("");
+  document.getElementById("tCuadro").innerHTML=pintarCuadroHTML();
 }
 function miTeam(){
   if(G.modo==="carrera"){
@@ -775,7 +914,19 @@ function finPartido(){
     avisa(t("aviso_retirada",{lesion:lesionTxt,pts:torneo.pts[idx]||0}));
     cerrarTorneo();return;
   }
+  /* El resto del cuadro juega su ronda a la vez que tú. Si cae un cabeza de
+     serie, se cuenta: eso es media gracia de mirar el papel. */
+  if(torneo.cuadro&&torneo.fase>=CUADRO_FASE0){
+    const sorpresas=resolverRondaCuadro(torneo.fase,true);
+    sorpresas.slice(0,2).forEach(s=>avisa(t("cua_campanada",{gana:nomCuadro(s.gana),perd:nomCuadro(s.perd)}),"info"));
+  }
   torneo.fase++;
+  // tu siguiente rival es quien haya ganado de verdad su partido, no una tirada nueva
+  if(torneo.cuadro&&torneo.fase>=CUADRO_FASE0&&torneo.fase<=5){
+    const r=rivalDelCuadro(torneo.fase);
+    if(r) torneo.rivales[torneo.fase]=r;
+    else if(!torneo.rivales[torneo.fase]) torneo.rivales[torneo.fase]=rivalDeFase(torneo.base,torneo.fase,new Set());
+  }
   if(torneo.premierT&&torneo.fase===2&&G.modo==="carrera"&&!G.carrera.pro){
     G.carrera.pro=true;
     noticia("hito",t("not_debut_prof_t"),t("not_debut_prof_s"));

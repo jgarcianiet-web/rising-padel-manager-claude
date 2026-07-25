@@ -771,6 +771,69 @@ comprueba("Ranuras: una partida corrupta se muestra y se puede borrar", () => {
   return "visible y recuperable";
 });
 
+comprueba("Cuadro: el torneo tiene un cuadro de 16 con siembra", () => {
+  const c = nuevaCarrera("agresivo");
+  c.pts = 99999;                       // nº1: te toca ser cabeza de serie
+  abrirTorneo(6);
+  const cu = torneo.cuadro;
+  exige(cu, "el torneo no genera cuadro");
+  exige(cu.ronda[2].length === CUADRO_N, `el cuadro tiene ${cu.ronda[2].length} y no ${CUADRO_N}`);
+  exige(cu.mi >= 0, "tu pareja no está en el cuadro");
+  // sin repetidos: nadie juega dos veces en la misma ronda
+  const ids = cu.ronda[2].filter(p => p && !p.yo).map(p => p.id);
+  exige(new Set(ids).size === ids.length, "hay parejas repetidas en el cuadro");
+  // el mejor sembrado va a una punta y el segundo a la otra: no se cruzan antes de la final
+  exige(cu.mi === 0, "el nº1 del ranking debería estar sembrado en la primera casilla, está en " + cu.mi);
+  // tu rival de octavos sale del cuadro, no de una tirada suelta
+  const rival = torneo.rivales[2];
+  exige(rival && rival === cu.ronda[2][1], "el rival de octavos no viene del cuadro");
+  return `${CUADRO_N} parejas, sembrado en la casilla ${cu.mi}`;
+});
+
+comprueba("Cuadro: el resto del torneo también juega, ronda a ronda", () => {
+  const c = nuevaCarrera("agresivo");
+  c.pts = 99999;
+  ATTR_KEYS.forEach(k => { c.attrs[k] = 95; c.compi.attrs[k] = 95; });   // para llegar a la final
+  abrirTorneo(6);
+  const cu = torneo.cuadro;
+  const octavos = cu.ronda[2].filter(Boolean).length;
+  const rivales = [];
+  let v = 0;
+  while (torneo && v++ < 6) {
+    rivales.push(torneo.rivales[torneo.fase]);
+    empezarPartido(false);
+    pulsarFicha();
+  }
+  exige(cu.ronda[3] && cu.ronda[3].filter(Boolean).length === octavos / 2, "los cuartos no se resuelven");
+  exige(cu.ronda[4] && cu.ronda[4].filter(Boolean).length === octavos / 4, "las semifinales no se resuelven");
+  // cada rival tuyo tiene que haber ganado su cruce anterior
+  for (let f = 3; f <= 5; f++) {
+    const riv = rivales[f - 2];
+    if (!riv) continue;
+    exige(cu.ronda[f].includes(riv), `el rival de la fase ${f} no había ganado su partido`);
+  }
+  // nadie eliminado reaparece más adelante
+  const enSemis = new Set((cu.ronda[4] || []).filter(Boolean).map(p => p.yo ? "yo" : p.id));
+  (cu.ronda[5] || []).filter(Boolean).forEach(p => {
+    exige(enSemis.has(p.yo ? "yo" : p.id), "una pareja llega a la final sin haber jugado la semifinal");
+  });
+  return `${octavos} en octavos → ${(cu.ronda[5] || []).filter(Boolean).length} en la final`;
+});
+
+comprueba("Cuadro: el favorito gana casi siempre, pero la campanada existe", () => {
+  // probGana es la que decide los cruces entre parejas del ordenador
+  exige(Math.abs(probGana(70, 70) - .5) < 1e-9, "a igual nivel debería ser 50%");
+  exige(probGana(82, 70) > .85 && probGana(82, 70) < .96, "12 puntos de ventaja deberían dar ~90%: " + probGana(82, 70).toFixed(3));
+  exige(probGana(70, 82) < .15, "y al revés");
+  exige(probGana(95, 40) < 1, "nunca debería ser certeza absoluta");
+  exige(probGana(40, 95) > 0, "la campanada nunca debería ser imposible");
+  // en 2000 cruces con 8 puntos de diferencia, el flojo gana alguna vez
+  let sorpresas = 0;
+  for (let i = 0; i < 2000; i++) if (rnd() >= probGana(78, 70)) sorpresas++;
+  exige(sorpresas > 100 && sorpresas < 700, `${sorpresas}/2000 campanadas: el equilibrio se ha ido`);
+  return `8 puntos de ventaja → ${(100 - sorpresas / 20).toFixed(0)}% para el favorito`;
+});
+
 comprueba("Contenido: los catálogos tienen volumen para una carrera larga", () => {
   // Antes: 3 dilemas, 7 lesiones, 4 reformas, 11+9 hitos. Una carrera de diez
   // temporadas los agotaba y empezaba a repetir de forma visible.
