@@ -577,79 +577,123 @@ const WORLD_N=80;
 const PAISES=[["🇪🇸",46],["🇦🇷",30],["🇧🇷",5],["🇫🇷",4],["🇮🇹",4],["🇵🇹",3],["🇸🇪",2],["🇲🇽",2],["🇨🇱",2],["🇧🇪",2]];
 // hash determinista del nombre → siempre la misma cara para el mismo jugador
 function hashStr(str){let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
-const AVA_PIEL=["#F2C9A0","#E8B183","#D89B6A","#C6824E","#A9683B","#8A5230","#6E3F24"];
-const AVA_PELO=["#1A1512","#3A2A1A","#5A3820","#8A5A2A","#B07830","#D9C9A8","#9A9A9A","#E8E8E8","#6A3020"];
+const AVA_PIEL=["#EFC49E","#E3AE85","#D2996E","#BE8154","#A26940","#7F4E2E","#5E3A22"];
+const AVA_PELO=["#140F0C","#2E2118","#4A2E1B","#6E4423","#9A6B2E","#B98A44","#241A14"];
 const AVA_ROPA=["#4FA3D8","#E05656","#3FBF8F","#E0A030","#9B59D0","#5CC8E6","#E06AA0","#C6F53C","#D8D8D8","#2A2A32","#E85040","#40C0A0"];
-/* Avatar SVG minimalista geométrico. tam=lado px. Determinista por nombre. */
+/* ================================================================
+   AVATAR: retrato ilustrado con volumen. Todo se dibuja por código (SVG puro,
+   sin recursos externos) y es DETERMINISTA por nombre, así el mismo jugador
+   tiene siempre la misma cara sin guardar nada.
+   El realismo viene de tres cosas: sombras DIFUMINADAS (filtros de desenfoque)
+   en vez de manchas planas, ojos pequeños con párpado que recorta el iris, y
+   una textura de piel granulada. Además el retrato ENVEJECE: desde los 29
+   aparecen canas progresivas y a partir de 32/38 arrugas de expresión.
+================================================================ */
 let _avId=0;
-function avatarSVG(jug,tam){
+const AVA_COMPL=["nada","gorra","visera","cinta","gafas"];
+function _avaMez(a,b,t){
+  if(!a||a[0]!=="#"||!b||b[0]!=="#") return a||"#8A94A7";
+  const A=parseInt(a.slice(1),16),B=parseInt(b.slice(1),16);
+  const r=Math.round(((A>>16)&255)*(1-t)+((B>>16)&255)*t),
+        g=Math.round(((A>>8)&255)*(1-t)+((B>>8)&255)*t),
+        c=Math.round((A&255)*(1-t)+(B&255)*t);
+  return "#"+((1<<24)+(r<<16)+(g<<8)+c).toString(16).slice(1);
+}
+function avatarSVG(jug,tam,edadOverride){
   tam=tam||44;
   const nom=(jug&&jug.n)||"?";
-  const h=Math.abs(hashStr(nom));   // no-negativo: evita índices negativos → undefined
+  const h=Math.abs(hashStr(nom));
   const av=(jug&&jug.ava)||{};
-  const piel=av.piel!==undefined?AVA_PIEL[av.piel%AVA_PIEL.length]:AVA_PIEL[h%AVA_PIEL.length];
-  const pelo=av.pelo!==undefined?AVA_PELO[av.pelo%AVA_PELO.length]:AVA_PELO[(h>>3)%AVA_PELO.length];
-  const ropa=(jug&&jug._ropa)||AVA_ROPA[(h>>6)%AVA_ROPA.length];
-  const tipoPelo=av.tipoPelo!==undefined?av.tipoPelo%5:(h>>9)%5;
-  const barba=av.barba!==undefined?!!av.barba:((h>>12)%4===0);
-  const fem=(jug&&jug.sexo==="F");
-  const gafas=av.gafas!==undefined?!!av.gafas:((h>>14)%5===0);
-  const compl=(h>>16)%3;                       // complexión: 0 normal, 1 ancho, 2 fino
-  const pielSombra=sombraPiel(piel);
   const id="a"+(_avId=(_avId||0)+1);
-  const ropaAlta=aclara(ropa,1.28), pielAlta=aclara(piel,1.12);
-  const defs=`<defs>`
-    +`<linearGradient id="pk${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${pielAlta}"/><stop offset=".62" stop-color="${piel}"/><stop offset="1" stop-color="${pielSombra}"/></linearGradient>`
-    +`<linearGradient id="sh${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${ropaAlta}"/><stop offset="1" stop-color="${ropa}"/></linearGradient>`
-    +`</defs>`;
-  const hombroW=compl===1?23:compl===2?18:20.5;
-  // ── cuerpo/hombros (atlético, con cuello) ──
-  let el=defs+`<path d="M${32-3.2} 52 h6.4 v5 h-6.4 z" fill="${piel}"/>`;   // cuello
-  el+=`<path d="M${32-3.5} 55 q-1 1.5 -2 2 L${32-hombroW} 68 h${hombroW*2} L${32+3.5+1.5} 57 q-1 -.5 -2 -2 z" fill="${pielSombra}" opacity=".25"/>`;
-  el+=`<path d="M32 55 C${32-9} 55 ${32-hombroW} 60 ${32-hombroW} 68 h${hombroW*2} C${32+hombroW} 60 ${32+9} 55 32 55 z" fill="url(#sh${id})"/>`;
-  // detalle camiseta (cuello en V y sombra lateral)
-  el+=`<path d="M32 55 l-4 6 l4 3 l4 -3 z" fill="#fff" opacity=".12"/>`;
-  el+=`<path d="M${32-hombroW} 68 l3 -6 q${hombroW-3} -4 ${hombroW*2-6} 0 l3 6 z" fill="#000" opacity=".08"/>`;
-  // ── cabeza (óvalo adulto, mandíbula) ──
-  el+=`<path d="M32 12 C${32+11} 12 ${32+12.5} 22 ${32+12} 30 C${32+11.5} 40 ${32+7} 50 32 50 C${32-7} 50 ${32-11.5} 40 ${32-12} 30 C${32-12.5} 22 ${32-11} 12 32 12 z" fill="url(#pk${id})"/>`;
-  // brillo suave (luz de estudio)
-  el+=`<ellipse cx="27" cy="24" rx="6" ry="7.5" fill="#fff" opacity=".07"/>`;
-  // orejas
-  el+=`<circle cx="20" cy="31" r="2.6" fill="${piel}"/><circle cx="44" cy="31" r="2.6" fill="${piel}"/>`;
-  // sombra de mandíbula (definición adulta)
-  el+=`<path d="M22 40 C26 47 38 47 42 40 C40 45 24 45 22 40 z" fill="${pielSombra}" opacity=".18"/>`;
-  // ── pelo por tipo (adaptado al óvalo nuevo) ──
-  if(tipoPelo===3){ // rapado
-    el+=`<path d="M21 26 C22 16 27 12 32 12 C37 12 42 16 43 26 C39 20 25 20 21 26 z" fill="${pelo}" opacity=".9"/>`;
-  } else if(fem||tipoPelo===2){ // melena / recogido
-    el+=`<path d="M19 32 C17 18 24 10 32 10 C40 10 47 18 45 32 C46 29 47 22 44 16 C41 10 37 8 32 8 C27 8 23 10 20 16 C17 22 18 29 19 32 z" fill="${pelo}"/>`;
-    el+= fem?`<path d="M19 30 C15 37 15 48 18 55 l4 -1 C19 47 19 38 20 32 z M45 30 C49 37 49 48 46 55 l-4 -1 C45 47 45 38 44 32 z" fill="${pelo}"/>`
-            :`<path d="M28 9 h8 l-1 4 h-6 z" fill="${pelo}"/>`;
-  } else if(tipoPelo===1){ // flequillo
-    el+=`<path d="M20 30 C18 16 25 11 32 11 C39 11 46 16 44 30 C43 24 40 21 40 21 C36 25 28 25 24 21 C24 21 21 24 20 30 z" fill="${pelo}"/>`;
-  } else if(tipoPelo===4){ // con cinta
-    el+=`<path d="M21 27 C22 16 27 12 32 12 C37 12 42 16 43 27 C39 21 25 21 21 27 z" fill="${pelo}"/><rect x="19" y="21" width="26" height="4" rx="2" fill="${ropa}"/>`;
-  } else { // corto peinado
-    el+=`<path d="M20 29 C19 16 25 12 32 12 C39 12 45 16 44 29 C42 23 39 21 39 21 C35 24 29 24 25 21 C25 21 22 23 20 29 z" fill="${pelo}"/>`;
-  }
-  // ── ojos (más separados y adultos) ──
-  const ey=31;
-  if(gafas){
-    el+=`<g fill="none" stroke="#23232B" stroke-width="1.3"><rect x="22.5" y="${ey-3}" width="7.5" height="6" rx="2.5"/><rect x="34" y="${ey-3}" width="7.5" height="6" rx="2.5"/><line x1="30" y1="${ey}" x2="34" y2="${ey}"/></g>`;
-    el+=`<circle cx="26.2" cy="${ey}" r="1.5" fill="#23232B"/><circle cx="37.8" cy="${ey}" r="1.5" fill="#23232B"/>`;
-  } else {
-    el+=`<ellipse cx="26.2" cy="${ey}" rx="1.6" ry="1.9" fill="#fff"/><ellipse cx="37.8" cy="${ey}" rx="1.6" ry="1.9" fill="#fff"/>`;
-    el+=`<circle cx="26.4" cy="${ey+.2}" r="1.5" fill="#3A2A22"/><circle cx="38" cy="${ey+.2}" r="1.5" fill="#3A2A22"/>`;
-  }
-  // cejas marcadas
-  el+=`<path d="M23 ${ey-4.5} q3 -1.5 6 -.3" stroke="${pelo}" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M35 ${ey-4.8} q3 -1.2 6 .3" stroke="${pelo}" stroke-width="1.5" fill="none" stroke-linecap="round"/>`;
-  // nariz (sombra sutil)
-  el+=`<path d="M32 32 l-1.4 5 q1.4 1 2.8 0 z" fill="${pielSombra}" opacity=".22"/>`;
-  // boca
-  el+=`<path d="M28.5 42 q3.5 2.6 7 0" stroke="#8A4A3C" stroke-width="1.5" fill="none" stroke-linecap="round"/>`;
-  // barba
-  if(barba&&!fem){ el+=`<path d="M21 36 C23 46 27 50 32 50 C37 50 41 46 43 36 C40 41 38 43 32 43.5 C26 43 24 41 21 36 z" fill="${pelo}" opacity=".5"/>`; }
-  return `<svg viewBox="0 0 64 70" width="${tam}" height="${Math.round(tam*70/64)}" preserveAspectRatio="xMidYMid meet">${el}</svg>`;
+  const piel=av.piel!==undefined?AVA_PIEL[av.piel%AVA_PIEL.length]:AVA_PIEL[h%AVA_PIEL.length];
+  const ropa=(jug&&jug._ropa)||AVA_ROPA[(h>>6)%AVA_ROPA.length];
+  const fem=(jug&&jug.sexo==="F");
+  const edad=edadOverride!==undefined?edadOverride:((jug&&jug.edad)||24);
+  // canas progresivas desde 29; arrugas desde 32 y 38
+  let pelo=av.pelo!==undefined?AVA_PELO[av.pelo%AVA_PELO.length]:AVA_PELO[(h>>3)%AVA_PELO.length];
+  const cana=edad<29?0:Math.min(.9,(edad-29)/15);
+  if(cana>0) pelo=_avaMez(pelo,"#CFCCC6",cana);
+  const vet=edad>=32, may=edad>=38;
+  // peinado: catálogos distintos por sexo (0-2 femeninos · 3-6 masculinos)
+  const tipos=fem?[0,1,2]:[3,4,5,6];
+  const tp=av.tipoPelo!==undefined?tipos[av.tipoPelo%tipos.length]:tipos[(h>>9)%tipos.length];
+  const barba=fem?0:(av.barba!==undefined?(av.barba%3):(((h>>12)%3===0)?(((h>>13)%2)?1:2):0));
+  const cmp=av.compl!==undefined?(av.compl%AVA_COMPL.length):[0,0,0,1,1,2,3,4][(h>>15)%8];
+  const S1=aclara(piel,.80), S2=aclara(piel,.62), S3=aclara(piel,.46),
+        LUZ=aclara(piel,1.13), LUZ2=aclara(piel,1.24), lab=_avaMez(piel,"#8E4038",.55);
+  return `<svg viewBox="0 0 64 76" width="${tam}" height="${Math.round(tam*76/64)}" preserveAspectRatio="xMidYMid meet">
+ <defs>
+  <filter id="b${id}" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="1.7"/></filter>
+  <filter id="bb${id}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3.2"/></filter>
+  <filter id="bs${id}" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation=".7"/></filter>
+  <filter id="gr${id}" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="1.9" numOctaves="3" seed="${h%97}" result="n"/><feColorMatrix in="n" type="saturate" values="0"/><feComponentTransfer><feFuncA type="linear" slope=".13"/></feComponentTransfer></filter>
+  <linearGradient id="bg${id}" x1=".2" y1="0" x2=".9" y2="1"><stop offset="0" stop-color="#2B3543"/><stop offset="1" stop-color="#121820"/></linearGradient>
+  <linearGradient id="tr${id}" x1="0" y1="0" x2="1" y2=".7"><stop offset="0" stop-color="${aclara(ropa,1.18)}"/><stop offset=".55" stop-color="${ropa}"/><stop offset="1" stop-color="${aclara(ropa,.58)}"/></linearGradient>
+  <clipPath id="cf${id}"><path d="M32 10.5 C41 10.5 45.6 17.5 45.6 27 C45.6 33.5 43.8 39 41 43.2 C38.4 47.2 35.2 50 32 50 C28.8 50 25.6 47.2 23 43.2 C20.2 39 18.4 33.5 18.4 27 C18.4 17.5 23 10.5 32 10.5z"/></clipPath>
+ </defs>
+ <rect width="64" height="76" fill="url(#bg${id})"/>
+ <ellipse cx="30" cy="26" rx="24" ry="26" fill="#fff" opacity=".055" filter="url(#bb${id})"/>
+ <path d="M32 55 C22.5 55 12.5 61.5 10.5 76 h43 C51.5 61.5 41.5 55 32 55z" fill="url(#tr${id})"/>
+ <path d="M23 57.5 C20 62 18 68 17.4 76 h-6.9 C12.5 63.5 17 58 23 57.5z" fill="#000" opacity=".16" filter="url(#b${id})"/>
+ <path d="M26.4 44 h11.2 v10 q-5.6 3.4 -11.2 0z" fill="${S1}"/>
+ <path d="M26 44 q6 7 12 0 v5 q-6 5 -12 0z" fill="${S3}" opacity=".85" filter="url(#b${id})"/>
+ <path d="M32 10.5 C41 10.5 45.6 17.5 45.6 27 C45.6 33.5 43.8 39 41 43.2 C38.4 47.2 35.2 50 32 50 C28.8 50 25.6 47.2 23 43.2 C20.2 39 18.4 33.5 18.4 27 C18.4 17.5 23 10.5 32 10.5z" fill="${piel}"/>
+ <g clip-path="url(#cf${id})">
+   <path d="M38 8 C46 14 48 24 47 34 C46 42 43 48 39 52 L52 52 L52 6z" fill="${S2}" opacity=".85" filter="url(#bb${id})"/>
+   <path d="M40 40 C38 46 35 50 32 52 C29 50 26 46 24 40 C27 46 37 46 40 40z" fill="${S2}" opacity=".5" filter="url(#b${id})"/>
+   <ellipse cx="25.5" cy="24" rx="7" ry="9" fill="${LUZ2}" opacity=".5" filter="url(#bb${id})"/>
+   <ellipse cx="32" cy="17" rx="9" ry="5" fill="${LUZ}" opacity=".45" filter="url(#bb${id})"/>
+   <ellipse cx="25.6" cy="29.6" rx="5" ry="3.4" fill="${S2}" opacity=".45" filter="url(#b${id})"/>
+   <ellipse cx="38.4" cy="29.6" rx="5" ry="3.4" fill="${S2}" opacity=".55" filter="url(#b${id})"/>
+   <ellipse cx="23.8" cy="34.5" rx="4.2" ry="3" fill="${LUZ}" opacity=".4" filter="url(#b${id})"/>
+   <ellipse cx="40.2" cy="34.5" rx="4.2" ry="3" fill="${S1}" opacity=".5" filter="url(#b${id})"/>
+   <ellipse cx="20.6" cy="26" rx="2.6" ry="4.5" fill="${S1}" opacity=".45" filter="url(#b${id})"/>
+   <path d="M30.6 27 q-.9 6 -1.6 9.4 l3 .6 q.4 -5 .6 -10z" fill="${S1}" opacity=".55" filter="url(#bs${id})"/>
+   <ellipse cx="32.6" cy="37.4" rx="3.2" ry="1.9" fill="${S1}" opacity=".5" filter="url(#bs${id})"/>
+   <ellipse cx="31.4" cy="35.6" rx="2.2" ry="1.6" fill="${LUZ}" opacity=".5" filter="url(#bs${id})"/>
+   <ellipse cx="30" cy="37.6" rx=".85" ry=".6" fill="${S3}" opacity=".6" filter="url(#bs${id})"/>
+   <ellipse cx="34" cy="37.6" rx=".85" ry=".6" fill="${S3}" opacity=".6" filter="url(#bs${id})"/>
+   <path d="M28.4 38.4 q-1.4 3 -.6 5.4" stroke="${S2}" stroke-width=".9" fill="none" opacity=".3" filter="url(#bs${id})"/>
+   <path d="M35.6 38.4 q1.4 3 .6 5.4" stroke="${S2}" stroke-width=".9" fill="none" opacity=".35" filter="url(#bs${id})"/>
+   <path d="M23.4 30.1 q2.5 -2.6 5.2 -.4 q-2.5 2.1 -5.2 .4z" fill="#E8E2D9"/>
+   <path d="M35.6 29.7 q2.7 -2.2 5.2 .4 q-2.7 1.7 -5.2 -.4z" fill="#E1DBD2"/>
+   <circle cx="26" cy="29.8" r="1.45" fill="#4A3220"/><circle cx="38.1" cy="29.8" r="1.45" fill="#422C1D"/>
+   <circle cx="26" cy="29.8" r=".68" fill="#140E08"/><circle cx="38.1" cy="29.8" r=".68" fill="#140E08"/>
+   <circle cx="25.6" cy="29.3" r=".38" fill="#fff" opacity=".95"/><circle cx="37.7" cy="29.3" r=".38" fill="#fff" opacity=".8"/>
+   <path d="M23 29.8 q2.9 -2.9 5.8 -.7 l0 -1.3 q-3 -2 -6.1 .5z" fill="${S1}"/>
+   <path d="M35.3 29.4 q3 -2.5 5.9 .5 l.2 -1.3 q-3 -2.2 -6.3 -.3z" fill="${S1}"/>
+   <path d="M23.1 29.9 q2.9 -2.8 5.7 -.6" stroke="${S3}" stroke-width=".65" fill="none" opacity=".85"/>
+   <path d="M35.4 29.5 q2.9 -2.5 5.8 .5" stroke="${S3}" stroke-width=".65" fill="none" opacity=".85"/>
+   <path d="M23.6 31.1 q2.5 1.3 5 -.35" stroke="${S1}" stroke-width=".5" fill="none" opacity=".6"/>
+   <path d="M35.8 30.8 q2.5 1.4 5 -.4" stroke="${S1}" stroke-width=".5" fill="none" opacity=".6"/>
+   <path d="M22.4 26.2 q3.2 -2.3 6.4 -.8 q-3.2 -.4 -6.4 .8z" fill="${pelo}" opacity=".92"/>
+   <path d="M35.2 25.4 q3.2 -1.5 6.6 1 q-3.4 -1.2 -6.6 -1z" fill="${pelo}" opacity=".92"/>
+   <path d="M27.4 42.6 q4.6 -1.9 9.2 -.2 q-4.6 1.5 -9.2 .2z" fill="${lab}" opacity=".85"/>
+   <path d="M27.6 42.6 q4.5 3.2 8.9 -.2 q-4.4 1.7 -8.9 .2z" fill="${_avaMez(lab,'#000',.25)}" opacity=".7"/>
+   <path d="M28.6 44.4 q3.4 1.2 6.8 -.2" stroke="${LUZ}" stroke-width=".7" fill="none" opacity=".35" filter="url(#bs${id})"/>
+   <path d="M27.3 42.5 q4.7 -1.6 9.4 -.1" stroke="${S3}" stroke-width=".6" fill="none" opacity=".5"/>
+   <ellipse cx="32" cy="47" rx="3.4" ry="2.2" fill="${LUZ}" opacity=".28" filter="url(#b${id})"/>
+   <rect x="16" y="8" width="32" height="44" filter="url(#gr${id})" opacity=".9"/>
+   ${vet?`<path d="M22 35.6 q1.8 2.8 1.2 5.2" stroke="${S3}" stroke-width=".5" fill="none" opacity=".35"/><path d="M42 35.6 q-1.8 2.8 -1.2 5.2" stroke="${S3}" stroke-width=".5" fill="none" opacity=".4"/><path d="M22.2 26.8 q3.2 -1.6 6.4 -.6" stroke="${S2}" stroke-width=".45" fill="none" opacity=".35"/>`:""}
+   ${may?`<path d="M25 21.4 q7 -1.9 14 0" stroke="${S2}" stroke-width=".5" fill="none" opacity=".4"/><path d="M25.8 23.8 q6.2 -1.6 12.4 0" stroke="${S2}" stroke-width=".45" fill="none" opacity=".32"/><path d="M20.6 31.6 q1.6 -.8 3 -.3" stroke="${S2}" stroke-width=".45" fill="none" opacity=".35"/><path d="M43.4 31.6 q-1.6 -.8 -3 -.3" stroke="${S2}" stroke-width=".45" fill="none" opacity=".35"/>`:""}
+   ${barba===2?`<path d="M20.6 33 C22.6 44 27 50 32 50 C37 50 41.4 44 43.4 33 C41 41 37.4 43.4 32 43.8 C26.6 43.4 23 41 20.6 33z" fill="${pelo}" opacity=".5" filter="url(#bs${id})"/>`:""}
+   ${barba===1?`<path d="M28.4 45.6 q3.6 1.6 7.2 0 q-.6 4.4 -3.6 4.6 q-3 -.2 -3.6 -4.6z" fill="${pelo}" opacity=".55" filter="url(#bs${id})"/><path d="M27.8 41.4 q-.8 1.6 -.4 2.6 M36.2 41.4 q.8 1.6 .4 2.6" stroke="${pelo}" stroke-width="1.4" fill="none" opacity=".45"/>`:""}
+ </g>
+ <path d="M18.8 27.6 C16.2 27.4 15.4 31.6 17.2 33.8 C18.2 35 19.2 34.4 19.3 33.6z" fill="${piel}"/>
+ <path d="M18.4 29 C17.4 29.6 17.4 32 18.4 33" stroke="${S2}" stroke-width=".7" fill="none" opacity=".6"/>
+ <path d="M45.2 27.6 C47.8 27.4 48.6 31.6 46.8 33.8 C45.8 35 44.8 34.4 44.7 33.6z" fill="${S1}"/>
+ ${tp===0?`<path d="M32 9.4 C41.6 9.4 46.4 17 45.8 27.4 C45 22 43.4 18.4 41 15.8 C37.4 19 26.6 19 23 15.8 C20.6 18.4 19 22 18.2 27.4 C17.6 17 22.4 9.4 32 9.4z" fill="${pelo}"/><path d="M23 15.8 C26.6 19 37.4 19 41 15.8 C39.2 12.8 35.8 11.2 32 11.2 C28.2 11.2 24.8 12.8 23 15.8z" fill="${pelo}"/><path d="M44 16.4 C49.6 20 51 28.4 48.2 36 C47.2 38.8 45.6 39.6 44.8 39 C47 33.4 47.2 23.4 44 16.4z" fill="${aclara(pelo,.82)}"/><path d="M24 13 C27.6 15.6 36.4 15.6 40 13 C41.6 14.6 43 17 43.8 19.6 C43 15.8 41 12.8 38 11.4 C35.4 13.4 28.6 13.4 26 11.4 C23 12.8 21 15.8 20.2 19.6 C21 17 22.4 14.6 24 13z" fill="#fff" opacity=".1"/>`
+  :tp===1?`<path d="M32 9 C41.6 9 47 16.4 46.2 30 C45.6 23 44 18.4 41.4 15.4 C37.6 19.4 26.4 19.4 22.6 15.4 C20 18.4 18.4 23 17.8 30 C17 16.4 22.4 9 32 9z" fill="${pelo}"/><path d="M22.6 15.4 C26.4 19.4 37.6 19.4 41.4 15.4 C39.4 12.4 35.8 10.8 32 10.8 C28.2 10.8 24.6 12.4 22.6 15.4z" fill="${pelo}"/><path d="M17.8 29 C14 37.4 14.2 51 17.6 59.4 l4.6 -1.6 C19 50.2 18.8 37.6 20 30z" fill="${pelo}"/><path d="M46.2 29 C50 37.4 49.8 51 46.4 59.4 l-4.6 -1.6 C45 50.2 45.2 37.6 44 30z" fill="${aclara(pelo,.78)}"/><path d="M25 12.4 C28.6 14.6 35.4 14.6 39 12.4 C41 14 42.8 16.8 43.8 20 C43 15.6 40.8 12.2 37.6 10.8 C35 12.4 29 12.4 26.4 10.8 C23.2 12.2 21 15.6 20.2 20 C21.2 16.8 23 14 25 12.4z" fill="#fff" opacity=".1"/>`
+  :tp===2?`<path d="M32 10 C40.8 10 46.6 16.6 45.8 28 C45 23 43.6 19.4 41.2 17 C37.6 20 26.4 20 22.8 17 C20.4 19.4 19 23 18.2 28 C17.4 16.6 23.2 10 32 10z" fill="${pelo}"/><path d="M22.8 17 C26.4 20 37.6 20 41.2 17 C39.4 14.2 35.8 12.6 32 12.6 C28.2 12.6 24.6 14.2 22.8 17z" fill="${pelo}"/><ellipse cx="32" cy="7.6" rx="5" ry="4.4" fill="${pelo}"/><ellipse cx="30.2" cy="6.4" rx="1.8" ry="1.4" fill="#fff" opacity=".13"/>`
+  :tp===3?`<path d="M32 10 C40 10 45.8 15 45.4 27.4 C44.6 22 43 19 41 15.4 C36.6 19.4 27.4 19.4 23 15.4 C21 19 19.4 22 18.6 27.4 C18.2 15 24 10 32 10z" fill="${pelo}"/><path d="M23 15.4 C27.4 19.4 36.6 19.4 41 15.4 C38.8 13.8 35.6 12.2 32 12.2 C28.4 12.2 25.2 13.8 23 15.4z" fill="${pelo}"/><path d="M24.4 13.4 C28 15.6 36 15.6 39.6 13.4 C41.4 15 43 17.6 43.8 20.6 C43 16.4 41 13 38.2 11.6 C35.4 13.4 28.6 13.4 25.8 11.6 C23 13 21 16.4 20.2 20.6 C21 17.6 22.6 15 24.4 13.4z" fill="#fff" opacity=".12"/>`
+  :tp===4?`<path d="M32 10.4 C39.2 10.4 44.4 15.4 45 25 C43.4 20.2 38.4 17.2 32 17.2 C25.6 17.2 20.6 20.2 19 25 C19.6 15.4 24.8 10.4 32 10.4z" fill="${pelo}" opacity=".92"/><path d="M20 23.6 C21.8 16.6 26.2 12.4 32 12.4 C37.8 12.4 42.2 16.6 44 23.6 C41.6 19.2 37.2 16.6 32 16.6 C26.8 16.6 22.4 19.2 20 23.6z" fill="#fff" opacity=".1"/>`
+  :tp===5?`<path d="M32 9.4 C40 9.4 46.6 15 45.4 28.4 C44.8 23 43.4 19.6 41.6 17.2 C37 22.2 27 22.2 22.4 17.2 C20.6 19.6 19.2 23 18.6 28.4 C17.4 15 24 9.4 32 9.4z" fill="${pelo}"/><path d="M22.4 17.2 C27 22.2 37 22.2 41.6 17.2 C39.4 13.8 35.8 12 32 12 C28.2 12 24.6 13.8 22.4 17.2z" fill="${pelo}"/><path d="M22.6 18.2 C27 23 37 23 41.4 18.2 C41.4 20.6 41 22.6 40.2 23.8 C36 26.6 28 26.6 23.8 23.8 C23 22.6 22.6 20.6 22.6 18.2z" fill="${pelo}"/>`
+  :`<path d="M32 11 C38.6 11 43.4 15.6 44.6 24.6 C43.6 21.2 42.2 18.8 40.6 17.4 C40.2 14.8 38.4 13 36 12.2 C38 14.4 39 17.2 39.2 20.2 C36 22 28 22 24.8 20.2 C25 17.2 26 14.4 28 12.2 C25.6 13 23.8 14.8 23.4 17.4 C21.8 18.8 20.4 21.2 19.4 24.6 C20.6 15.6 25.4 11 32 11z" fill="${pelo}"/><path d="M18.9 30 C18.7 26.6 19.1 23.6 19.9 21.8 C19.5 25.2 19.5 28.2 19.9 31z" fill="${pelo}"/><path d="M45.1 30 C45.3 26.6 44.9 23.6 44.1 21.8 C44.5 25.2 44.5 28.2 44.1 31z" fill="${pelo}"/>`}
+ ${cmp===1?`<path d="M17.6 24.6 C17.6 14.4 24 8.6 32 8.6 C40 8.6 46.4 14.4 46.4 24.6 q-14.4 -5.4 -28.8 0z" fill="${ropa}"/><path d="M32 8.6 C24 8.6 17.6 14.4 17.6 24.6 q3.4 -1.3 6.9 -2.1 C25.2 15.4 28 10.6 32 8.6z" fill="#fff" opacity=".16"/><path d="M17.6 23.4 C11.6 24.2 8.6 26.6 8.4 29.4 q11.6 -3.8 23.6 -3.8 q-7.6 -2.4 -14.4 -2.2z" fill="${aclara(ropa,.72)}"/><ellipse cx="32" cy="8.4" rx="1.5" ry="1.5" fill="${aclara(ropa,1.3)}"/><path d="M18 22.6 q14 -4.6 28 0 l0 1.6 q-14 -4.4 -28 0z" fill="#000" opacity=".12"/>`
+  :cmp===2?`<path d="M18.2 23.6 q13.8 -5.2 27.6 0 l-.4 2.6 q-13.4 -4.6 -26.8 0z" fill="${ropa}"/><path d="M18.4 24.6 C12 25.4 8.8 28 8.6 31 q11.8 -4 24 -4 q-7 -2.8 -14.2 -2.4z" fill="${aclara(ropa,.78)}"/><path d="M19 23 q13 -4.4 26 0 l0 1.2 q-13 -4.2 -26 0z" fill="#fff" opacity=".18"/>`
+  :cmp===3?`<path d="M18.4 23.8 q13.6 -5 27.2 0 l-.5 3.4 q-13.1 -4.6 -26.2 0z" fill="${ropa}"/><path d="M18.6 24.6 q13.4 -4.6 26.8 0" stroke="#fff" stroke-width=".8" fill="none" opacity=".22"/><path d="M18.4 26.6 q13.6 -4.6 27.2 0 l-.2 .8 q-13.4 -4.4 -26.8 0z" fill="#000" opacity=".14"/>`
+  :cmp===4?`<g><path d="M20.4 27.4 q5.6 -1.6 10.8 -.2 q.8 4.6 -1.6 6.2 q-4 1.8 -7 -.6 q-2 -2 -2.2 -5.4z" fill="#1A1D24" opacity=".92"/><path d="M33 27.2 q5.4 -1.4 10.8 .2 q-.2 3.4 -2.2 5.4 q-3 2.4 -7 .6 q-2.4 -1.6 -1.6 -6.2z" fill="#1A1D24" opacity=".92"/><path d="M30.6 27.5 q1.4 -.4 2.8 0" stroke="#1A1D24" stroke-width="1.3" fill="none"/><path d="M19.6 27.6 q1 -1 2 -1.2 M42.4 26.4 q1.4 .2 2.4 1.2" stroke="#1A1D24" stroke-width="1.1" fill="none" stroke-linecap="round"/><path d="M22 28.4 q3 -.9 5.6 -.3 q-.4 1.6 -1.4 2.2 q-3 .4 -4.2 -1.9z" fill="#fff" opacity=".22"/><path d="M34.6 28.1 q2.6 -.6 5.6 .3 q-1.2 2.3 -4.2 1.9 q-1 -.6 -1.4 -2.2z" fill="#fff" opacity=".14"/></g>`:""}
+</svg>`;
 }
 function sombraPiel(hex){
   // oscurece un tono de piel para sombras
