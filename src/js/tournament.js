@@ -716,7 +716,7 @@ function finPartido(){
     if(torneo.premierT) e._campPremSem=semanaTemp();
     if(torneo.cat===6){ e.recMajors=(e.recMajors||0)+1; }
     if(torneo.cat===7){ e.recFinals=(e.recFinals||0)+1; }
-    fansAdd([60,120,250,500,1500,3000,8000,5000][torneo.cat]||60,`título del ${torneo.nombre}`);
+    fansAdd([60,120,250,500,1500,3000,8000,5000][torneo.cat]||60,t("fan_titulo",{torneo:torneo.nombre}));
     post("titulo",{torneo:torneo.nombre});
     if(torneo.premierT&&torneo.favNos===false){
       noticia("titulo",t("not_campanada_t"),t("not_campanada_s",{torneo:torneo.nombre}),miParejaProt());
@@ -783,7 +783,7 @@ function ruedaDePrensa(gano,fase){
     if(c.compi.perso==="conservador"||c.compi.perso==="frio") c.compiMoral=clamp((c.compiMoral??65)-5,5,95);
     else c.compiMoral=clamp((c.compiMoral??65)+3,5,95);
     noticia("hito",t("not_declaraciones_t"),t("not_declaraciones_s",{nombre:c.nombre}));
-    fansAdd(Math.round(R(120,300)),"el ruido vende");
+    fansAdd(Math.round(R(120,300)),t("fan_ruido"));
     post("picante");
   });
 }

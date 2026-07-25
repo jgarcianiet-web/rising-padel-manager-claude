@@ -93,7 +93,7 @@ function ofertaStaffSemanal(){
   st.seOfrece=true; st.sal=Math.round(st.sal*.82); st.caduca=semanaTemp()+2;
   e.mercadoStaff.unshift(st);
   e.mercadoStaff=e.mercadoStaff.slice(0,14);
-  avisa(`📇 ${ROLES_STAFF[st.rol].ico} ${st.n} (${"★".repeat(st.niv)}) se ofrece a trabajar contigo: ${st.sal}€/sem (rebajado). La oferta caduca pronto — pestaña ${G.modo==="carrera"?"STAFF":"Club"}.`);
+  avisa(t("av_staff_ofrece",{ico:ROLES_STAFF[st.rol].ico,n:st.n,estrellas:"★".repeat(st.niv),sal:st.sal,tab:G.modo==="carrera"?"STAFF":"Club"}));
 }
 function ficharStaff(idx){
   const e=ent(), st=e.mercadoStaff[idx];
@@ -222,7 +222,7 @@ function ofertaPatro(tier){
   if(cat.length){
     const n=tier>=3?2:1;
     const pool=[...cat];
-    for(let i=0;i<n&&pool.length;i++){ of.primas.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0]); }
+    for(let i=0;i<n&&pool.length;i++){ const pr=pool.splice(Math.floor(Math.random()*pool.length),1)[0]; of.primas.push([pr[0],t("prima_"+pr[0]),pr[2]]); }
   }
   return of;
 }
@@ -325,7 +325,7 @@ function empezarCarrera(estiloKey){
   }};
   G.carrera.mercadoP=mkMercadoParejas();
   G.carrera.objetivos=mkObjetivosTemporada(G.carrera,miPuesto());
-  avisa(`Debut de ${nombre} (16 años, ${estiloNombre(estiloKey).toLowerCase()}, ${persoNombre(persoSel).toLowerCase()}). Semanas de lunes a domingo, calendario oficial de 52 semanas y el puesto 41 del ranking como punto de partida. Administra tus 2.500€.`);
+  avisa(t("av_debut",{nombre,estilo:estiloNombre(estiloKey).toLowerCase(),perso:persoNombre(persoSel).toLowerCase()}));
   noticia("debut",t("not_debut_t",{nombre}),t("not_debut_s"));
   entrarPartida();
   verTuto("carrera");
@@ -455,9 +455,9 @@ function pintarEventosSemana(td, disponible, motivoNo){
         b.onclick=()=>{
           if(ent().wildcards<=0){ avisa("No te quedan wildcards esta temporada."); return; }
           const viaje=costeViaje(ci);
-          if(ent().dinero<viaje){ avisa(`✗ No hay caja para el viaje a ${cat.n} (${viaje}€).`); return; }
+          if(ent().dinero<viaje){ avisa(t("av_viaje_no",{cat:cat.n,viaje})); return; }
           ent().wildcards--;
-          avisa(`🎟 Wildcard usada: entráis a la previa del ${cat.n}. Quedan ${ent().wildcards}.`);
+          avisa(t("av_wildcard",{cat:cat.n,n:ent().wildcards}));
           abrirTorneo(ci,true);
         };
         d.appendChild(b);
@@ -552,7 +552,7 @@ function pintarSemana(){
       const sp=c._spot; c._spot=null;
       c.dinero+=sp.pago;
       if(c.sponsor) c.sponsor.spots=(c.sponsor.spots||0)+1;
-      fansAdd(sp.fans||Math.round(R(80,220)),`salir en ${sp.tipo||"el anuncio"}`);
+      fansAdd(sp.fans||Math.round(R(80,220)),t("fan_spot",{tipo:sp.tipo?t(sp.tipo):t("not_anuncio_default")}));
       noticia("contrato",t("not_anuncio_t",{marca:sp.marca,tipo:sp.tipo?t(sp.tipo):t("not_anuncio_default")}),t("not_anuncio_s",{entidad:nombreEntidad().replace("★ ","")}));
       avisa(t("spot_av_hecho",{tipo:sp.tipo?t(sp.tipo):t("spot_rodaje"),marca:sp.marca,pago:sp.pago}));
       post("picante");
@@ -715,7 +715,7 @@ function pintarJugador(){
     d.innerHTML=`<b>${t("patro_oferta",{marca:of.marca})}</b> ${of.tier?`<span class="pill" style="color:${of.tier===4?"var(--oro)":of.tier===3?"#9B59D0":of.tier===2?"#4FA3D8":"var(--gris)"}">${tierTxt(of.tier)}</span>`:""}${of._perfil?`<span class="pill" style="color:${of._perfil==="fijo alto"?"var(--lima)":"var(--oro)"}">${t(of._perfil==="fijo alto"?"patro_perfil_fijo":"patro_perfil_obj")}</span>`:""}${of.sec?`<div class="d" style="font-style:italic">${of.sec}</div>`:""}<div class="d">${t("patro_of_detalle",{sem:of.sem,bonus:of.bonus,obj:of.objetivo,n:of.tRest})}${(of.primas&&of.primas.length)?`<br>${t("patro_of_primas")} ${of.primas.map(pr=>`${pr[1]} +${pr[2]}€`).join(" · ")}`:""}</div>`;
     const b=document.createElement("button");b.className="pri";b.style.width="100%";
     b.textContent=c.sponsor?t("patro_firmar_sust",{marca:c.sponsor.marca}):t("patro_firmar");
-    b.onclick=()=>{c.sponsor={...of};c.ofertasPatro=[];noticia("contrato",t("patro_not_t",{marca:of.marca,quien:nombreEntidad().replace("★ ","")}),t("patro_not_s",{tier:tierTxt(of.tier),sem:of.sem,obj:of.objetivo}));avisa(t("patro_av_firma",{marca:of.marca,tier:tierTxt(of.tier),sem:of.sem,obj:of.objetivo}));fansAdd(of.tier>=3?300:60,"nuevo patrocinador");guardar();pintarCarrera();};
+    b.onclick=()=>{c.sponsor={...of};c.ofertasPatro=[];noticia("contrato",t("patro_not_t",{marca:of.marca,quien:nombreEntidad().replace("★ ","")}),t("patro_not_s",{tier:tierTxt(of.tier),sem:of.sem,obj:of.objetivo}));avisa(t("patro_av_firma",{marca:of.marca,tier:tierTxt(of.tier),sem:of.sem,obj:of.objetivo}));fansAdd(of.tier>=3?300:60,t("fan_patro"));guardar();pintarCarrera();};
     d.appendChild(b);st.appendChild(d);
   });
 }
@@ -770,7 +770,7 @@ function ficharPareja(ci,acuerdo){
     }
   }
   post("fichaje");
-  fansAdd(cand.origen==="circuito"?200:40,cand.origen==="circuito"?"bombazo de mercado":null);
+  fansAdd(cand.origen==="circuito"?200:40,cand.origen==="circuito"?t("fan_bombazo"):null);
   const ac=acuerdo||{};
   c.compi={id:"m"+Date.now(),n:cand.n,pais:cand.pais,estilo:cand.estilo,perso:cand.perso,attrs:{...cand.attrs},rasgos:(cand.rasgos?cand.rasgos.slice():undefined),
     lado:(ac.suLado===0||ac.suLado===1)?ac.suLado:undefined, _acuerdo:{objetivo:ac.objetivoRanking||null,reparto:ac.reparto||50}};
@@ -882,7 +882,7 @@ function fmtFans(n){return n>=1000?(n/1000).toFixed(1).replace(".0","")+"k":""+n
 function fansAdd(n,motivo){
   const e=ent(); if(!e) return;
   e.fans=Math.max(0,(e.fans||0)+n);
-  if(n>=100&&motivo) avisa(`📈 +${n} seguidores: ${motivo}. Total: ${fmtFans(e.fans)}.`);
+  if(n>=100&&motivo) avisa(t("av_fans",{n,motivo,total:fmtFans(e.fans)}));
 }
 function post(tipo,ctx){
   const e=ent(); if(!e) return;
@@ -964,8 +964,8 @@ function chequeaHitos(){
       e.hitosOk[h.id]=temporada();
       e.dinero+=h.din;
       fansAdd(h.fans);
-      avisa(`🎯 HITO conseguido: ${h.txt}. ${h.din?`+${h.din}€ de premios federativos, `:""}+${h.fans} seguidores.`);
-      if(h.fans>=800) noticia("hito",h.txt,t("not_hito_s"));
+      avisa(t("av_hito",{txt:hitoTxt(h),din:h.din?t("av_hito_din",{din:h.din}):"",fans:h.fans}));
+      if(h.fans>=800) noticia("hito",hitoTxt(h),t("not_hito_s"));
       // ¿el contrato de patrocinio tenía prima por este objetivo?
       const sp=G.modo==="carrera"?G.carrera.sponsor:null;
       if(sp&&sp.primas){
@@ -974,27 +974,28 @@ function chequeaHitos(){
           sp.primasCobradas=sp.primasCobradas||{};
           sp.primasCobradas[h.id]=true;
           e.dinero+=pr[2];
-          avisa(`💶 ${sp.marca} paga la prima por objetivo «${pr[1]}»: +${pr[2]}€.`);
+          avisa(t("av_prima",{marca:sp.marca,prima:pr[1],imp:pr[2]}));
           noticia("contrato",t("not_prima_t",{marca:sp.marca}),t("not_prima_s",{prima:pr[2],motivo:pr[1].toLowerCase()}));
         }
       }
     }
   });
 }
+function hitoTxt(h){ return t((G.modo==="carrera"?"hito_ca_":"hito_cl_")+h.id); }
 function renderHitos(el){
   const e=ent(), lista=G.modo==="carrera"?HITOS_CARRERA:HITOS_CLUB, ok=e.hitosOk||{};
-  el.innerHTML=lista.map(h=>`<div style="font-size:11.5px;padding:3px 0;color:${ok[h.id]?"var(--verde)":"var(--gris)"}">${ok[h.id]?"✓":"○"} ${h.txt}${ok[h.id]?` <span style="color:var(--gris2);font-family:'IBM Plex Mono',monospace;font-size:9px">T${ok[h.id]}</span>`:` <span style="color:var(--gris2)">· +${h.din}€ +${h.fans} seg.</span>`}</div>`).join("");
+  el.innerHTML=lista.map(h=>`<div style="font-size:11.5px;padding:3px 0;color:${ok[h.id]?"var(--verde)":"var(--gris)"}">${ok[h.id]?"✓":"○"} ${hitoTxt(h)}${ok[h.id]?` <span style="color:var(--gris2);font-family:'IBM Plex Mono',monospace;font-size:9px">T${ok[h.id]}</span>`:` <span style="color:var(--gris2)">· +${h.din}€ +${h.fans} seg.</span>`}</div>`).join("");
 }
 function renderRecords(el){
   const e=ent(), fem=miSexo()==="F";
   const filas=[
-    ["Majors ganados",fem?"D. Brisa / G. Triana · 8":"A. Cotelo / A. Tapias · 9",e.recMajors||0],
-    ["Títulos Premier en una temporada",fem?"Sánchiz/Ustera · 10":"Gabán/Chingorro · 11",Math.max(0,...(e.hist||[]).map(h=>h.tit||0),0)],
-    ["Racha de victorias",fem?"Gonzálvez/Josemarí · 19":"J. Lebrín/F. Stupak · 21",e.rachaMax||0],
-    ["Temporadas como nº1",fem?"D. Brisa / G. Triana · 4":"A. Cotelo / A. Tapias · 5",(G.world.n1hist||[]).filter(x=>x.yo).length],
+    [t("rec_majors"),fem?"D. Brisa / G. Triana · 8":"A. Cotelo / A. Tapias · 9",e.recMajors||0],
+    [t("rec_titp"),fem?"Sánchiz/Ustera · 10":"Gabán/Chingorro · 11",Math.max(0,...(e.hist||[]).map(h=>h.tit||0),0)],
+    [t("rec_racha"),fem?"Gonzálvez/Josemarí · 19":"J. Lebrín/F. Stupak · 21",e.rachaMax||0],
+    [t("rec_n1"),fem?"D. Brisa / G. Triana · 4":"A. Cotelo / A. Tapias · 5",(G.world.n1hist||[]).filter(x=>x.yo).length],
   ];
-  el.innerHTML=`<tr class="hd"><td>Récord</td><td>Leyenda</td><td class="pts">Tú</td></tr>`+
-    filas.map(([r,l,t])=>`<tr><td style="font-size:11px">${r}</td><td style="font-size:11px;color:var(--gris)">${l}</td><td class="pts" style="color:${t>0?"var(--lima)":"var(--gris2)"}">${t}</td></tr>`).join("");
+  el.innerHTML=`<tr class="hd"><td>${t("rec_hd_record")}</td><td>${t("rec_hd_leyenda")}</td><td class="pts">${t("rec_hd_tu")}</td></tr>`+
+    filas.map(([r,l,v])=>`<tr><td style="font-size:11px">${r}</td><td style="font-size:11px;color:var(--gris)">${l}</td><td class="pts" style="color:${v>0?"var(--lima)":"var(--gris2)"}">${v}</td></tr>`).join("");
 }
 function renderN1(el){
   const h=(G.world.n1hist||[]);
@@ -1148,7 +1149,7 @@ function avanzarDia(){
   const c=G.carrera;
   c.dia=(c.dia||1)+1;
   if(torneo&&c.dia>diaDeFase(torneo.fase)){
-    avisa(`✗ No os presentáis a ${faseNombre(torneo.fase).toLowerCase()} del ${torneo.nombre}: eliminados por W.O.`);
+    avisa(t("av_wo",{fase:faseNombre(torneo.fase).toLowerCase(),torneo:torneo.nombre}));
     const e=ent();
     e.calRes=e.calRes||{}; e.calRes[semanaTemp()]="•";
     torneo=null;
@@ -1164,7 +1165,7 @@ function avanzarSemanaCarrera(){
   const it=c.intens||"normal";
   if(!c.lesion&&factor>0){
     const log=entrenoSemanalCarrera(factor);
-    if(log) avisa(`Balance de entrenos de la semana (${it}) — ${log}.`);
+    if(log) avisa(t("av_entrenos",{it:({suave:t("ent_suave"),normal:t("ent_normal"),intensa:t("ent_intensa")})[it]||it,log}));
   }
   simCircuito(c._rivalesSemana);c._rivalesSemana=[];
   prensaSemanal();
@@ -1195,7 +1196,7 @@ function avanzarSemanaCarrera(){
   c._jugoTorneo=false;
   c.dinero+=ingresosSemanaCarrera();
   const fijos=Object.keys(c.staff||{}).reduce((x,k)=>x+((c.staff[k]&&c.staff[k].sal)||0),0);
-  if(c.dinero<300&&fijos>100&&!c._avisoFijos){c._avisoFijos=true;avisa(`⚠ Tu estructura te cuesta ${fijos}€/sem y la caja está seca. Plantéate recortar staff o entrenador.`);}
+  if(c.dinero<300&&fijos>100&&!c._avisoFijos){c._avisoFijos=true;avisa(t("av_fijos",{fijos}));}
   if(c.dinero>1500) c._avisoFijos=false;
   const vida=40+(c.pro?180:0)+(miPuesto()<=15?180:0);
   c.dinero-=Math.min(vida,Math.max(0,c.dinero));  // no puedes gastar lo que no tienes: vives al día
@@ -1212,7 +1213,7 @@ function avanzarSemanaCarrera(){
   if(c.staff&&c.staff.psico&&c.conf<35+staffNiv("psico")*2) c.conf=35+staffNiv("psico")*2;
   if(c.compiMoral===29&&!c._avisoMoral){
     c._avisoMoral=true;
-    avisa(`⚠ ${c.compi.n} está harto de perder. O cambiáis la dinámica o te deja a final de temporada.`);
+    avisa(t("av_harto",{n:c.compi.n}));
   }
   // dilemas encadenados: primero llegan las consecuencias de decisiones pasadas...
   resolverPendientes(c,c.semana).forEach(p=>avisa(`⏳ ${p.txt}`));
@@ -1221,9 +1222,9 @@ function avanzarSemanaCarrera(){
   // objetivos de temporada: premia los que se van cumpliendo
   if(!c.objetivos) c.objetivos=mkObjetivosTemporada(c,miPuesto());
   evaluaObjetivos(c,miPuesto()).forEach(o=>{
-    if(o.rec){ if(o.rec.dinero) c.dinero+=o.rec.dinero; if(o.rec.fans) fansAdd(o.rec.fans,"objetivo cumplido"); if(o.rec.moral) c.compiMoral=clamp((c.compiMoral??65)+o.rec.moral,5,95); }
+    if(o.rec){ if(o.rec.dinero) c.dinero+=o.rec.dinero; if(o.rec.fans) fansAdd(o.rec.fans,t("fan_objetivo")); if(o.rec.moral) c.compiMoral=clamp((c.compiMoral??65)+o.rec.moral,5,95); }
     noticia("hito",t("not_objetivo_t"),o.txt);
-    avisa(`🎯 Objetivo cumplido: ${o.txt}${o.rec&&o.rec.dinero?` (+${o.rec.dinero}€)`:""}.`);
+    avisa(t("av_obj_cumplido",{txt:o.txt,extra:o.rec&&o.rec.dinero?` (+${o.rec.dinero}€)`:""}));
   });
   if((c.semana-1)%SEMANAS_TEMP===0){
     const posFin=miPuesto(), ptsFin=c.pts;
@@ -1233,7 +1234,7 @@ function avanzarSemanaCarrera(){
     const cumplidos=(c.objetivos||[]).filter(o=>o.hecho).length, totalObj=(c.objetivos||[]).length;
     c.edad++;evolucionaMundo();
     c.pts=Math.round(c.pts*.55);
-    avisa(`— Cierre de temporada ${temporada()-1}: #${posFin} con ${ptsFin} pts y ${titsT} título(s). Objetivos ${cumplidos}/${totalObj}. Cumples ${c.edad} años.`);
+    avisa(t("av_cierre",{t:temporada()-1,pos:posFin,pts:ptsFin,tit:titsT,ok:cumplidos,total:totalObj,edad:c.edad}));
     if(totalObj&&cumplidos<totalObj) c.compiMoral=clamp((c.compiMoral??65)-(totalObj-cumplidos)*3,5,95);
     c.objetivos=mkObjetivosTemporada(c,miPuesto());   // metas para la nueva temporada
     cierreTemporadaCarrera();
@@ -1251,17 +1252,17 @@ function cierreTemporadaCarrera(){
     const s=c.sponsor;
     if(pos>s.objetivo){
       noticia("contrato",t("not_rescinde_t",{marca:s.marca}),t("not_rescinde_s",{obj:s.objetivo,pos}));
-      avisa(`✗ ${s.marca} rescinde el contrato: exigían top ${s.objetivo} y habéis cerrado #${pos}.`);
+      avisa(t("av_rescinde",{marca:s.marca,obj:s.objetivo,pos}));
       c.sponsor=null;
     } else {
       s.tRest--;
       if(s.tRest<=0){
-        avisa(`✔ Contrato con ${s.marca} cumplido con éxito. Quieren renovar al alza.`);
+        avisa(t("av_renueva",{marca:s.marca}));
         c.sponsor=null;
         const t=(pos<=8&&(c.fans||0)>=6000)?4:pos<=11?3:pos<=20?2:1;
         c.ofertasPatro.push({...ofertaPatro(t),sem:Math.round(ofertaPatro(t).sem*1.2)});
       } else {
-        avisa(`✔ Objetivo de ${s.marca} cumplido (#${pos}). ${s.tRest} temporada(s) de contrato.`);
+        avisa(t("av_obj_marca",{marca:s.marca,pos,n:s.tRest}));
       }
     }
   }
@@ -1284,7 +1285,7 @@ function cierreTemporadaCarrera(){
       if(!c.ofertasPatro.some(x=>x.marca===of.marca)) c.ofertasPatro.push(of);
     }
   }
-  if(c.ofertasPatro.length) avisa(`📋 ${c.ofertasPatro.length} oferta(s) de patrocinio sobre la mesa. Elige en la pestaña Jugador.`);
+  if(c.ofertasPatro.length) avisa(t("av_ofertas",{n:c.ofertasPatro.length}));
   // la marca a veces te quiere delante de una cámara
 
   // moral del compañero: ¿sigue contigo? Si la relación está rota, no salta un
@@ -1294,9 +1295,9 @@ function cierreTemporadaCarrera(){
   const evPar=evaluarRuptura(c,miPuesto());
   if(evPar.crisis&&Math.random()<.85){
     c._crisisPareja=evPar;
-    avisa(`💔 Tensión con ${c.compi.n} al cierre de temporada: quiere hablar. (Resuélvelo en el panel de carrera.)`);
+    avisa(t("av_tension",{n:c.compi.n}));
   } else if(moral<50){
-    avisa(`📰 ${c.compi.n} renueva contigo, pero con dudas. Los resultados mandan.`);
+    avisa(t("av_renueva_compi",{n:c.compi.n}));
     c.compiMoral=clamp(moral+10,5,95);
   } else {
     c.compiMoral=clamp(moral+(tieneRasgo(c.compi,"leal")?7:5),5,95);
