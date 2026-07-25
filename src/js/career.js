@@ -382,6 +382,64 @@ function mostrarRuptura(c){
   });
 }
 // Panel de objetivos de la temporada con su progreso (barra + estado).
+/* ================================================================
+   EL ÚLTIMO BAILE · interfaz: anunciar la última temporada, vivirla como una
+   gira de despedida y cerrar la carrera con la pantalla de legado.
+================================================================ */
+// Panel del jugador: botón para anunciar la retirada (o el aviso de que ya
+// está anunciada). Solo aparece cuando la edad lo permite.
+function pintarUltimoBaile(){
+  const box=document.getElementById("ultimoBaile"); if(!box) return;
+  const c=G&&G.carrera; if(!c){ box.innerHTML=""; return; }
+  if(c.ultimoBaile){
+    const quedan=SEMANAS_TEMP-semanaTemp()+1;
+    box.innerHTML=`<div class="opcion" style="border-color:var(--oro)">
+      <b style="color:var(--oro)">${t("ub_titulo")}</b>
+      <div class="d">${t("ub_activo",{n:quedan})}</div></div>`;
+    return;
+  }
+  if(!puedeRetirarse(c)){ box.innerHTML=""; return; }
+  box.innerHTML=`<div class="opcion">
+    <b>${t("ub_puedes")}</b><div class="d">${t("ub_puedes_d",{edad:c.edad})}</div>
+    <button style="width:100%;margin-top:6px" onclick="anunciarUltimoBaile()">${t("ub_anunciar")}</button></div>`;
+}
+function anunciarUltimoBaile(){
+  const c=G&&G.carrera; if(!c||!puedeRetirarse(c)) return;
+  if(!confirm(t("ub_confirmar"))) return;
+  c.ultimoBaile=temporada();
+  fansAdd(3000,t("ub_fan_motivo"));
+  noticia("retirada",t("not_ub_t",{nombre:c.nombre}),t("not_ub_s",{t:temporada()}),miParejaProt());
+  avisa(t("ub_av_anuncio"));
+  post("gala");
+  guardar(); pintarCarrera();
+}
+// Cierre definitivo: calcula el legado, lo muestra y archiva la partida.
+function retirarse(){
+  const c=G&&G.carrera; if(!c) return;
+  const L=legadoDe(c,G.world);
+  c.retirado=true;
+  try{ lsDel(SLOTS.carrera); }catch(e){}
+  const fila=(k,v)=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px solid var(--borde)"><span style="color:var(--gris)">${k}</span><b>${v}</b></div>`;
+  const ov=document.getElementById("legadoModal")||(()=>{const d=document.createElement("div");d.id="legadoModal";d.style.cssText="position:fixed;inset:0;background:rgba(8,10,14,.96);z-index:90;display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto";document.body.appendChild(d);return d;})();
+  ov.innerHTML=`<div class="card" style="max-width:460px;width:100%">
+    <h3 style="margin-top:0;color:var(--oro)">${t("leg_titulo")}</h3>
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
+      ${avatarSVG({n:c.nombre,sexo:c.sexo,_ropa:c._ropa||c.color,ava:c.ava,edad:c.edad},64)}
+      <div><div style="font-size:15px;font-weight:700">${c.nombre}</div>
+      <div class="foot" style="text-align:left">${t("leg_rango_"+L.rango)}</div></div>
+    </div>
+    <div style="font-size:12px;margin-bottom:10px">
+      ${fila(t("leg_temporadas"),L.temporadas)}
+      ${fila(t("leg_titulos"),L.titulos)}
+      ${fila(t("leg_majors"),L.majors)}
+      ${fila(t("leg_n1"),L.n1)}
+      ${fila(t("leg_mejor"),"#"+L.mejorPuesto)}
+      ${L.rival?fila(t("leg_rival"),`${L.rival.nombre} (${L.rival.v}-${L.rival.d})`):""}
+    </div>
+    <div class="foot" style="text-align:left;line-height:1.6;margin-bottom:10px">${t("leg_cierre_"+L.rango,{nombre:c.nombre,edad:L.edad})}</div>
+    <button class="pri" style="width:100%" onclick="quitarEl(document.getElementById('legadoModal'));G=null;irA('menu');pintarMenu();">${t("leg_volver")}</button>
+  </div>`;
+}
 function pintarObjetivos(){
   const box=document.getElementById("objTemp"); if(!box) return;
   const c=G.carrera; if(!c) return;
@@ -440,7 +498,7 @@ function pintarCarrera(){
     const cst=Object.keys(ent().staff||{}).reduce((x,k)=>x+((ent().staff[k]&&ent().staff[k].sal)||0),0);
     document.getElementById("staffCoste").textContent=t("staff_coste",{cst});
   }
-  if(tabActiva==="jugador"){pintarJugador();renderHitos(document.getElementById("hitos"));renderRivalidades(document.getElementById("rivalidades"));}
+  if(tabActiva==="jugador"){pintarJugador();pintarUltimoBaile();renderHitos(document.getElementById("hitos"));renderRivalidades(document.getElementById("rivalidades"));}
   if(tabActiva==="ranking"){renderRanking(document.getElementById("tablaRk"));renderClubes(document.getElementById("tablaClubes"));renderN1(document.getElementById("n1hist"));renderRecords(document.getElementById("records"));}
   if(tabActiva==="diario"){renderNoticias(document.getElementById("feedNoti"));renderDiario(document.getElementById("diario"),document.getElementById("palmares"));renderSocial(document.getElementById("social"));renderTrayectoria(document.getElementById("trayec"));}
 }
@@ -1240,11 +1298,19 @@ function avanzarSemanaCarrera(){
     c.calRes={}; c.wildcards=2;
     const cumplidos=(c.objetivos||[]).filter(o=>o.hecho).length, totalObj=(c.objetivos||[]).length;
     c.edad++;evolucionaMundo();
+    // EL ÚLTIMO BAILE · el cuerpo empieza a pasar factura: lo explosivo se va
+    // antes que el toque, así el jugador se reconvierte solo.
+    const perdido=aplicaDeclive(c.attrs,c.edad);
+    if(perdido>0) avisa(t("ub_declive",{n:perdido,edad:c.edad}));
+    if(c.compi&&c.compi.attrs&&(c.compi.edad=(c.compi.edad||c.edad)+1)>=EDAD_DECLIVE) aplicaDeclive(c.compi.attrs,c.compi.edad);
     c.pts=Math.round(c.pts*.55);
     avisa(t("av_cierre",{t:temporada()-1,pos:posFin,pts:ptsFin,tit:titsT,ok:cumplidos,total:totalObj,edad:c.edad}));
     if(totalObj&&cumplidos<totalObj) c.compiMoral=clamp((c.compiMoral??65)-(totalObj-cumplidos)*3,5,95);
     c.objetivos=mkObjetivosTemporada(c,miPuesto());   // metas para la nueva temporada
     cierreTemporadaCarrera();
+    // ¿se cierra el arco? La temporada anunciada ha terminado, o el cuerpo dice basta.
+    if(c.ultimoBaile&&temporada()>c.ultimoBaile){ setTimeout(retirarse,700); return; }
+    if(retiroForzado(c)&&!c.ultimoBaile){ avisa(t("ub_av_forzado",{edad:c.edad})); setTimeout(retirarse,700); return; }
   }
   ofertaStaffSemanal();
   chequeaHitos();

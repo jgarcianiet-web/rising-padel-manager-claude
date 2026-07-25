@@ -103,6 +103,10 @@ function resolveShot(pl,shotKey,ctx,rallyLen){
   if(conf<40) err*=1.15; else if(conf>75) err*=.92;
   if(ctx.afterGlass) err*=(1.35-pl.attrs.pared/160);
   if(ctx.pressure) err*=1+ctx.pressure*.55;
+  // OFICIO del veterano: quien lleva temporadas compitiendo falla menos cuando
+  // el punto quema. Solo se aplica a TU jugador (el que tiene carrera detrás).
+  if(pl.me&&typeof factorOficio==="function"&&typeof G!=="undefined"&&G&&G.carrera)
+    err*=factorOficio(G.carrera,typeof PRESION!=="undefined"?PRESION:0);
   let win=Math.min(.52,s.win*q*(1+.25*q));
   if(ctx.oppDef) win*=clamp(1.25-ctx.oppDef/160,.7,1.1);   // la defensa rival llega a más bolas
   const mia2=ctx.team===0&&match&&!match.cpu;

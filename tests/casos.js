@@ -852,6 +852,44 @@ comprueba("Idiomas: t() traduce y cae con red de seguridad", () => {
   return "traduce, fallback de idioma y de clave";
 });
 
+comprueba("El último baile: declive diferenciado, oficio y legado", () => {
+  // 1) antes de los 31 no declina nadie
+  const at = () => ({ fondo: 70, globo: 70, chiquita: 70, volea: 70, dejada: 70, bandeja: 70, vibora: 70, remate: 70, pared: 70 });
+  const joven = at();
+  exige(aplicaDeclive(joven, 27) === 0, "un jugador de 27 no debería declinar");
+  // 2) lo explosivo cae ANTES y MÁS que el toque (Monte Carlo con rnd real)
+  let expl = 0, toque = 0;
+  for (let i = 0; i < 400; i++) {
+    const a = at(); aplicaDeclive(a, 35);
+    expl += (70 - a.remate) + (70 - a.vibora) + (70 - a.bandeja) + (70 - a.volea);
+    toque += (70 - a.chiquita) + (70 - a.dejada) + (70 - a.globo) + (70 - a.fondo);
+  }
+  exige(expl > toque * 1.5, `lo explosivo debería caer bastante más que el toque (${expl} vs ${toque})`);
+  // 3) el declive se acelera con la edad
+  let d33 = 0, d41 = 0;
+  for (let i = 0; i < 300; i++) { const a = at(), b = at(); d33 += aplicaDeclive(a, 33); d41 += aplicaDeclive(b, 41); }
+  exige(d41 > d33 * 1.4, `a los 41 se debería perder mucho más que a los 33 (${d41} vs ${d33})`);
+  // 4) OFICIO: sin temporadas no hace nada; con carrera larga reduce el error en presión alta
+  exige(factorOficio({ hist: [] }, .9) === 1, "sin temporadas no debería haber oficio");
+  exige(factorOficio({ hist: new Array(12).fill({}) }, .2) === 1, "sin presión el oficio no debería actuar");
+  const fo = factorOficio({ hist: new Array(12).fill({}) }, 1);
+  exige(fo < 1 && fo >= .75, "el oficio debería reducir el error entre 0 y 25%: " + fo);
+  // 5) puertas de la retirada
+  exige(!puedeRetirarse({ edad: 30 }), "a los 30 no se puede anunciar la retirada");
+  exige(puedeRetirarse({ edad: 34 }), "a los 34 sí se puede");
+  exige(!puedeRetirarse({ edad: 34, ultimoBaile: 3 }), "no se puede anunciar dos veces");
+  exige(retiroForzado({ edad: 45 }) && !retiroForzado({ edad: 40 }), "el retiro forzado no cae donde debe");
+  // 6) legado: rangos y rival más repetido
+  const leyenda = legadoDe({ edad: 38, hist: [{ pos: 1 }], palmares: [], recMajors: 6, h2h: {} }, { n1hist: [{ yo: true }, { yo: true }, { yo: true }] });
+  exige(leyenda.rango === "leyenda" && leyenda.n1 === 3, "no reconoce una leyenda: " + leyenda.rango);
+  const modesto = legadoDe({ edad: 35, hist: [{ pos: 44 }], palmares: [], recMajors: 0, h2h: {} }, { n1hist: [] });
+  exige(modesto.rango === "promesa", "no clasifica una carrera modesta: " + modesto.rango);
+  const conRival = legadoDe({ edad: 35, hist: [{ pos: 12 }], palmares: ["a", "b", "c"], h2h: { 5: { v: 2, d: 1, n: "Poca" }, 9: { v: 4, d: 5, n: "Mucha" } } }, { n1hist: [] });
+  exige(conRival.rival && conRival.rival.nombre === "Mucha" && conRival.rival.n === 9, "no identifica al rival más repetido");
+  exige(conRival.mejorPuesto === 12, "no calcula el mejor puesto");
+  return `explosivo ${expl} vs toque ${toque}; oficio ${fo.toFixed(2)}; rangos ok`;
+});
+
 comprueba("Idiomas: catálogo completo y sin claves huérfanas en los 5 idiomas", () => {
   // toda clave definida en español existe en los otros 4 y no está vacía
   const claves = Object.keys(I18N.es);

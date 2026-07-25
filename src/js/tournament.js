@@ -749,6 +749,11 @@ function finPartido(){
     avisa(t("aviso_previa_superada"));
   }
   if(G.modo==="carrera"){
+    // gira de despedida: el circuito te brinda pasillo en cada torneo nuevo
+    if(G.carrera&&G.carrera.ultimoBaile&&torneo&&torneo.fase===torneo.startFase){
+      avisa(t("ub_despedida",{torneo:torneo.nombre}));
+      fansAdd(Math.round(R(150,400)),t("ub_fan_motivo"));
+    }
     avisa(t("aviso_ronda",{torneo:torneo.nombre,fase:faseNombre(torneo.fase).toLowerCase(),dia:diaNombre(diaDeFase(torneo.fase)-1)}));
     G.carrera._jugoTorneo=true;
     avanzarDia();
