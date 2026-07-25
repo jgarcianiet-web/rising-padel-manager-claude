@@ -452,11 +452,11 @@ function pintarEventosSemana(td, disponible, motivoNo){
       if(cat.premier&&!cat.tf&&wc>0){
         const b=document.createElement("button");
         b.className="pri";b.style.width="100%";
-        b.textContent=`Usar wildcard → previa del ${cat.n} (${wc} restantes)`;
+        b.textContent=t("sem_wc_usar",{cat:cat.n,n:wc});
         b.disabled=!disponible||wc<=0;
-        if(wc<=0) b.textContent=`Sin wildcards este año`;
+        if(wc<=0) b.textContent=t("sem_wc_sin");
         b.onclick=()=>{
-          if(ent().wildcards<=0){ avisa("No te quedan wildcards esta temporada."); return; }
+          if(ent().wildcards<=0){ avisa(t("sem_wc_no_quedan")); return; }
           const viaje=costeViaje(ci);
           if(ent().dinero<viaje){ avisa(t("av_viaje_no",{cat:cat.n,viaje})); return; }
           ent().wildcards--;
@@ -467,25 +467,21 @@ function pintarEventosSemana(td, disponible, motivoNo){
       }
       td.appendChild(d);return;
     }
-    const modo=cat.tf
-      ?`<b>Solo el top 8</b> de la temporada. Cuadro de maestros: cuartos, semis y final.`
-      :ent2===2
-      ?`Vuestro ranking (#${pos}) os mete <b>directos al cuadro final</b>: 4 partidos hasta el título.`
-      :`Entráis por la <b>previa clasificatoria</b>: hasta 6 partidos.`;
+    const modo=cat.tf ? t("sem_modo_tf") : ent2===2 ? t("sem_modo_directo",{pos}) : t("sem_modo_previa");
     const slotE=slotSemana(semanaTemp());
-    const sede=(cat.premier&&slotE.premier===ci)?`${slotE.ciudad}`:"sede nacional";
+    const sede=(cat.premier&&slotE.premier===ci)?`${slotE.ciudad}`:t("sem_sede_nacional");
     const viaje=costeViaje(ci);
-    d.innerHTML=`<b>${cat.n}</b> ${tag} <span class="pill">📍 ${sede}</span> <span class="pill">viaje ${viaje}€</span> <span class="pill">campeón ${cat.premio[0]}€</span><div class="d">${modo}</div>`;
+    d.innerHTML=`<b>${cat.n}</b> ${tag} <span class="pill">📍 ${sede}</span> <span class="pill">${t("sem_viaje",{n:viaje})}</span> <span class="pill">${t("sem_campeon",{n:cat.premio[0]})}</span><div class="d">${modo}</div>`;
     const b=document.createElement("button");
     b.className=cat.premier?"pri":"azul";b.style.width="100%";
     const sinCaja=ent().dinero<viaje;
-    b.textContent=sinCaja?`Sin caja para el viaje (${viaje}€)`:`Inscribirse: ${cat.n} (${viaje}€ de viaje)`;
+    b.textContent=sinCaja?t("sem_sin_caja",{viaje}):t("sem_inscribirse",{cat:cat.n,viaje});
     b.disabled=!disponible||sinCaja;
     b.onclick=()=>abrirTorneo(ci);
     d.appendChild(b);td.appendChild(d);
   });
   if(!disponible){const p=document.createElement("div");p.className="foot";p.textContent=motivoNo;td.appendChild(p);}
-  const sep=document.createElement("div");sep.className="foot";sep.textContent="— o dedica la semana a entrenar —";sep.style.margin="8px 0";td.appendChild(sep);
+  const sep=document.createElement("div");sep.className="foot";sep.textContent=t("sem_o_entrenar");sep.style.margin="8px 0";td.appendChild(sep);
 }
 function pintarSemana(){
   const c=G.carrera;
@@ -498,7 +494,7 @@ function pintarSemana(){
   for(let d=1;d<=7;d++){
     const cel=document.createElement("div");
     let cls="diacel"+(d===dia?" hoy":"")+(d<dia?" pasado":"");
-    let txt=DIAS[d-1].slice(0,3).toUpperCase();
+    let txt=diaNombre(d-1).slice(0,3).toUpperCase();
     if(torneo&&d>=dia){
       for(let f2=torneo.fase;f2<6;f2++) if(d===diaDeFase(f2)){cls+=" partido";txt=(f2===torneo.fase?"🎾":"·")+txt;break;}
     }
@@ -512,45 +508,45 @@ function pintarSemana(){
     const d=document.createElement("div");d.className="opcion";
     if(dia===dPart){
       const r=torneo.rivales[torneo.fase];
-      d.innerHTML=`<b>HOY: ${faseNombre(torneo.fase)}</b> <span class="pill oro">${torneo.nombre}</span><div class="d">Rival: ${r.nombre} (nivel ${nivelPareja(r)}).</div>`;
+      d.innerHTML=`<b>${t("sem_hoy_fase",{fase:faseNombre(torneo.fase)})}</b> <span class="pill oro">${torneo.nombre}</span><div class="d">${t("sem_rival",{n:r.nombre,niv:nivelPareja(r)})}</div>`;
     } else {
-      d.innerHTML=`<b>En el ${torneo.nombre}</b><div class="d">Próxima ronda: ${faseNombre(torneo.fase).toLowerCase()} el ${DIAS[dPart-1]}. Hasta entonces, cada día decides: entrenar o descansar.</div>`;
+      d.innerHTML=`<b>${t("sem_en_torneo",{torneo:torneo.nombre})}</b><div class="d">${t("sem_prox_ronda",{fase:faseNombre(torneo.fase).toLowerCase(),dia:diaNombre(dPart-1)})}</div>`;
     }
     td.appendChild(d);
   } else if(esT&&dia===1&&!c.lesion){
     const info=document.createElement("div");info.className="foot";info.style.textAlign="left";info.style.marginBottom="6px";
-    info.textContent="LUNES: día de inscripciones. Si lo dejas pasar, la semana es toda tuya.";
+    info.textContent=t("sem_lunes");
     td.appendChild(info);
-    pintarEventosSemana(td, c.energia>=30, "Necesitas 30 de energía para competir.");
+    pintarEventosSemana(td, c.energia>=30, t("sem_energia_min"));
   } else if(!esT||dia>1){
     const info=document.createElement("div");info.className="foot";info.style.textAlign="left";info.style.marginBottom="6px";
-    info.textContent=dia===1?"Semana sin torneo disponible para vosotros.":"Las inscripciones cerraron el lunes. Semana de trabajo en casa.";
+    info.textContent=dia===1?t("sem_sin_torneo"):t("sem_cerradas");
     td.appendChild(info);
   }
   // ===== ACCIONES DEL DÍA (siempre visibles) =====
   const ac=document.getElementById("accionesDia");ac.innerHTML="";
   const tit=document.createElement("div");tit.className="foot";tit.style.textAlign="left";tit.style.margin="4px 0 6px";
-  tit.innerHTML=`¿Qué haces HOY, ${DIAS[dia-1]}? · sesiones de entreno esta semana: <b style="color:var(--lima)">${c._sesEntreno||0}</b>/5`;
+  tit.innerHTML=t("sem_que_haces",{dia:diaNombre(dia-1),n:c._sesEntreno||0});
   ac.appendChild(tit);
   const fila=document.createElement("div");fila.className="fila";
   const esDiaPartido=torneo&&dia===diaDeFase(torneo.fase);
   if(esDiaPartido){
     const bJ=document.createElement("button");bJ.className="pri";bJ.style.flex="1.4";
-    bJ.textContent=`🎾 Jugar: ${faseNombre(torneo.fase)}`;
+    bJ.textContent=t("sem_jugar",{fase:faseNombre(torneo.fase)});
     bJ.onclick=()=>{pintarTorneo();irA("torneo");};
     fila.appendChild(bJ);
   }
   const bE=document.createElement("button");
-  bE.textContent="🏋 Entrenar hoy";
+  bE.textContent=t("sem_entrenar");
   bE.disabled=!!c.lesion||esDiaPartido||c.energia<10;
-  bE.title=c.lesion?"De baja: solo fisioterapia":esDiaPartido?"Hoy toca partido":"Sesión según tu plan (pestaña Entreno)";
+  bE.title=c.lesion?t("sem_t_baja"):esDiaPartido?t("sem_t_partido"):t("sem_t_sesion");
   bE.onclick=()=>entrenarDia();
   fila.appendChild(bE);
   if(c._spot&&(!c._spot.caduca||c._spot.caduca>=semanaTemp())&&!esDiaPartido&&!c.lesion){
     const bSpot=document.createElement("button");
     bSpot.style.flex="1.2";
-    bSpot.textContent=`🎬 Rodar (+${c._spot.pago}€)`;
-    bSpot.title=`${c._spot.tipo||"Rodaje"} para ${c._spot.marca}`;
+    bSpot.textContent=t("sem_rodar",{pago:c._spot.pago});
+    bSpot.title=t("sem_rodar_t",{tipo:c._spot.tipo?t(c._spot.tipo):t("spot_rodaje"),marca:c._spot.marca});
     bSpot.onclick=()=>{
       const sp=c._spot; c._spot=null;
       c.dinero+=sp.pago;
@@ -565,20 +561,20 @@ function pintarSemana(){
   }
   if(c._spot&&c._spot.caduca&&c._spot.caduca<semanaTemp()) c._spot=null;
   const bD=document.createElement("button");bD.className="azul";
-  bD.textContent=c.lesion?"🏥 Fisio hoy":"😴 Descansar hoy";
+  bD.textContent=c.lesion?t("sem_fisio"):t("sem_descansar");
   bD.disabled=esDiaPartido&&!c.lesion;
-  bD.title=esDiaPartido?"Hoy toca partido: el torneo no espera":"";
+  bD.title=esDiaPartido?t("sem_t_no_espera"):"";
   bD.onclick=()=>descansarDia();
   fila.appendChild(bD);
   ac.appendChild(fila);
   if(torneo&&dia<diaDeFase(torneo.fase)){
     const bS=document.createElement("button");bS.style.width="100%";bS.style.marginTop="6px";
-    bS.textContent=`⏩ Saltar al ${DIAS[diaDeFase(torneo.fase)-1]} (descansando)`;
+    bS.textContent=t("sem_saltar",{dia:diaNombre(diaDeFase(torneo.fase)-1)});
     bS.onclick=()=>{while(G.carrera.dia<diaDeFase(torneo.fase)){G.carrera.energia=clamp(G.carrera.energia+5,0,100);G.carrera.dia++;}guardar();pintarCarrera();};
     ac.appendChild(bS);
   }
   const nota=document.createElement("div");nota.className="foot";nota.style.textAlign="left";nota.style.marginTop="6px";
-  nota.textContent="El plan de entrenamiento (golpe, intensidad, entrenador y plan de tu pareja) se ajusta en la pestaña ENTRENO.";
+  nota.textContent=t("sem_nota_plan");
   ac.appendChild(nota);
   document.getElementById("calendario").innerHTML=calHtml();
 }
@@ -652,8 +648,8 @@ function pintarJugador(){
   _hsub.innerHTML=`${c.edad} años · ${ladoTxt(c.lado)} · ${estiloNombre(c.estilo)} · ${persoNombre(c.perso)}`+(()=>{const r=chipRasgos(c);return r?`<div style="margin-top:4px">${r}</div>`:"";})();
   document.getElementById("hMedia").textContent=mediaAttrs(c.attrs);
   document.getElementById("hMeta").innerHTML=`
-    <div class="chip">Confianza <b style="color:${colAttr(c.conf)}">${c.conf}</b></div>
-    <div class="chip">Química <b style="color:${colAttr(c.quimica)}">${c.quimica}</b></div>
+    <div class="chip">${t("kpi_confianza2")} <b style="color:${colAttr(c.conf)}">${c.conf}</b></div>
+    <div class="chip">${t("kpi_quimica2")} <b style="color:${colAttr(c.quimica)}">${c.quimica}</b></div>
     <div class="chip">Forma ${rachaHtml(c.racha)}</div>
     <div class="chip">Récord <b>${(c.vd||{v:0,d:0}).v}-${(c.vd||{v:0,d:0}).d}</b></div>
     <div class="chip">Seguidores <b style="color:var(--lima)">${fmtFans(c.fans||0)}</b></div>
@@ -787,7 +783,7 @@ function ficharPareja(ci,acuerdo){
 function renderRanking(el){
   const filas=rankingFilas();
   const yo=filas.find(f=>f.yo);
-  let html=`<tr class="hd"><td>#</td><td>Pareja</td><td class="niv">Niv</td><td class="pts">Pts</td></tr>`;
+  let html=`<tr class="hd"><td>#</td><td>${t("tab_pareja")}</td><td class="niv">Niv</td><td class="pts">Pts</td></tr>`;
   html+=filas.slice(0,12).map(f=>filaRk(f)).join("");
   if(yo.pos>13){
     html+=`<tr class="sep"><td colspan="4">···</td></tr>`;
@@ -851,7 +847,7 @@ function verClub(idx){
     <table class="rk">${pares.map(p=>`<tr><td style="font-size:11px"><span style="display:inline-block;vertical-align:middle;margin-right:3px">${avatarSVG(p.jug[0],18)}${avatarSVG(p.jug[1],18)}</span>${p.nombre}</td><td class="pts">#${posDe(p.nombre)}</td><td class="pts">${nivelPareja(p)}</td></tr>`).join("")||'<tr><td class="foot">Sin parejas esta temporada</td></tr>'}</table>
     <div style="font-size:11px;color:var(--gris);text-transform:uppercase;letter-spacing:1px;margin:10px 0 3px">Palmarés reciente (${tit.length})</div>
     ${tit.length?`<div class="foot" style="text-align:left">${tit.slice(0,8).map(t=>`🏆 ${t}`).join("<br>")}</div>`:'<div class="foot" style="text-align:left">Aún sin títulos. La historia se escribe.</div>'}
-    <button class="pri" style="width:100%;margin-top:10px" onclick="quitarEl(document.getElementById('clubModal'))">Cerrar</button>
+    <button class="pri" style="width:100%;margin-top:10px" onclick="quitarEl(document.getElementById('clubModal'))">${t("btn_cerrar")}</button>
   </div>`;
   ov.onclick=(e)=>{ if(e.target===ov) quitarEl(ov); };
 }
@@ -872,7 +868,7 @@ function renderRivalidades(el){
     .map(([id,h2])=>({id,...h2,tot:h2.v+h2.d,cl:clasificaRiv(h2)}))
     .filter(x=>x.tot>=2&&x.n)
     .sort((a,b)=>b.tot-a.tot).slice(0,6);
-  if(!filas.length){ el.innerHTML=`<div class="foot" style="text-align:left">Aún no hay historia con nadie. Los rivales se hacen cruzándose.</div>`; return; }
+  if(!filas.length){ el.innerHTML=`<div class="foot" style="text-align:left">${t("pan_sin_rivales")}</div>`; return; }
   el.innerHTML=filas.map(x=>`
     <div style="display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--borde)">
       <div style="font-size:11.5px">${x.cl?`<span style="color:${x.cl.col};font-weight:700">${x.cl.emo} ${x.cl.tag}</span> · `:""}${x.n}
@@ -912,8 +908,8 @@ function post(tipo,ctx){
 }
 function renderSocial(el){
   const e=ent(), posts=e.social||[];
-  const head=`<div class="foot" style="text-align:left;margin-bottom:7px">Seguidores: <b style="color:var(--lima)">${fmtFans(e.fans||0)}</b> — suben ganando, con títulos y dando que hablar.</div>`;
-  if(!posts.length){ el.innerHTML=head+`<div class="foot" style="text-align:left">La grada todavía no habla de vosotros. Dales motivos.</div>`; return; }
+  const head=`<div class="foot" style="text-align:left;margin-bottom:7px">${t("pan_fans_head",{n:fmtFans(e.fans||0)})}</div>`;
+  if(!posts.length){ el.innerHTML=head+`<div class="foot" style="text-align:left">${t("pan_sin_posts")}</div>`; return; }
   el.innerHTML=head+posts.map(p2=>`
     <div class="spost">
       <div class="sava" style="background:${["#4FA3D8","#E06AA0","#3FBF8F","#E0A030","#9B59D0","#5CC8E6"][p2.user.length%6]}">${p2.user[0]}</div>
@@ -1002,7 +998,7 @@ function renderRecords(el){
 }
 function renderN1(el){
   const h=(G.world.n1hist||[]);
-  if(!h.length){ el.innerHTML=`<tr><td class="foot" style="border:none;text-align:left">Aún no se ha cerrado ninguna temporada.</td></tr>`; return; }
+  if(!h.length){ el.innerHTML=`<tr><td class="foot" style="border:none;text-align:left">${t("pan_sin_temporadas")}</td></tr>`; return; }
   let html=`<tr class="hd"><td>T</td><td>Nº1 al cierre</td><td class="pts">Pts</td></tr>`;
   html+=h.slice(-10).map(x=>`<tr class="${x.yo?"yo":""}"><td class="pos">T${x.t}</td><td>${x.yo?"👑 ":""}${x.nombre}</td><td class="pts">${x.pts}</td></tr>`).join("");
   el.innerHTML=html;
@@ -1082,12 +1078,12 @@ function renderNoticias(el){
   const ns=ent().noticias||[];
   const kcol={titulo:"#8A6A00",n1:"#8A6A00",contrato:"#8A6A00",lesion:"#8A1E1E",ruptura:"#8A1E1E",retirada:"#5A5548",fichaje:"#1E4E8A",venta:"#1E4E8A",debut:"#3E6B1E",hito:"#3E6B1E"};
   const mast=`<div class="mast">RISING <em>PÁDEL</em></div>
-    <div class="mastsub">EL DIARIO DEL CIRCUITO · TEMPORADA ${temporada()} · SEMANA ${semanaTemp()} · ${miSexo()==="F"?"CIRCUITO FEMENINO":"CIRCUITO MASCULINO"} · 1,50€</div>`;
+    <div class="mastsub">${t("pre_masthead",{t:temporada(),s:semanaTemp(),circuito:miSexo()==="F"?t("pre_circ_f"):t("pre_circ_m")})}</div>`;
   if(!ns.length){
     el.innerHTML=`<div class="paper">${mast}
       <div class="apertura"><div class="atit">El circuito espera su próxima historia</div>
       <div class="asub">Esta portada se escribirá con tus títulos, tus fichajes y tus batallas. La rotativa está lista.</div></div>
-      <div class="pfoot">RISING PÁDEL · PRENSA DEPORTIVA DESDE 2026</div></div>`;
+      <div class="pfoot">${t("pre_pie")}</div></div>`;
     return;
   }
   const [a,...resto]=ns;
@@ -1106,8 +1102,8 @@ function renderNoticias(el){
         <div class="mtit">${n.titular}</div>
       </div>`).join("")}</div>`:""}
     ${tambien.length?`<div class="tambien"><b>TAMBIÉN EN PORTADA</b>${tambien.map(n=>`<div>· ${n.titular} <span style="color:#7A7462;font-size:9px">T${n.t}S${n.sem}</span></div>`).join("")}</div>`:""}
-    ${(()=>{const e2=ent();const ops=[[fmtFans(e2.fans||0),"seguidores y subiendo"],["#"+miPuesto(),"en el ranking del circuito"],[(e2.rachaAct||0)>=3?e2.rachaAct:(e2.vd||{v:0}).v,(e2.rachaAct||0)>=3?"victorias seguidas y contando":"victorias esta carrera"],[e2.palmares.length,"títulos en las vitrinas"]];const [num,txt]=ops[semanaTemp()%ops.length];return `<div class="lacifra"><span>LA CIFRA</span><b>${num}</b>${txt}</div>`;})()}
-    <div class="pfoot">RISING PÁDEL · PRENSA DEPORTIVA DESDE 2026 · EDICIÓN ${G.modo==="carrera"?"CARRERA":"CLUBES"}</div>
+    ${(()=>{const e2=ent();const ops=[[fmtFans(e2.fans||0),t("cifra_seguidores")],["#"+miPuesto(),t("cifra_ranking")],[(e2.rachaAct||0)>=3?e2.rachaAct:(e2.vd||{v:0}).v,(e2.rachaAct||0)>=3?t("cifra_racha"):t("cifra_victorias")],[e2.palmares.length,t("cifra_titulos")]];const [num,txt]=ops[semanaTemp()%ops.length];return `<div class="lacifra"><span>${t("cifra_hd")}</span><b>${num}</b>${txt}</div>`;})()}
+    <div class="pfoot">${t("pre_pie_ed",{ed:G.modo==="carrera"?t("pre_ed_carrera"):t("pre_ed_clubes")})}</div>
   </div>`;
 }
 function colorNoticia(x){
@@ -1126,7 +1122,7 @@ function renderDiario(elD,elP){
   elD.innerHTML=e.diario.length
     ?`<div class="teletipo"><div class="thead">ÚLTIMA HORA · AGENCIA RPD · CIRCUITO ${miSexo()==="F"?"FEMENINO":"MASCULINO"}</div>${briefs}</div>`
     :"<div class='foot' style='text-align:left'>Sin novedades.</div>";
-  elP.innerHTML=e.palmares.length?e.palmares.map(x=>`<div style="color:var(--oro)">🏆 ${x}</div>`).join(""):"<div>Sin títulos todavía.</div>";
+  elP.innerHTML=e.palmares.length?e.palmares.map(x=>`<div style="color:var(--oro)">🏆 ${x}</div>`).join(""):`<div>${t("pan_sin_titulos")}</div>`;
 }
 
 function ingresosSemanaCarrera(){

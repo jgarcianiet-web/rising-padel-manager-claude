@@ -52,28 +52,28 @@
   <!-- ============ CREAR JUGADOR ============ -->
   <div id="scr-crear" class="cont oculto">
     <div class="card">
-      <h3>Carrera de jugador · <em>16 años</em></h3>
-      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)">Nombre</label>
+      <h3 data-i18n-html="hd_crear_carrera_full">Carrera de jugador · <em>16 años</em></h3>
+      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)" data-i18n="crea_nombre">Nombre</label>
       <input id="inNombre" value="Jesús" style="margin:5px 0 12px">
-      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)">Tu avatar</label>
+      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)" data-i18n="crea_avatar">Tu avatar</label>
       <div style="display:flex;align-items:center;gap:12px;margin:6px 0 12px">
         <div id="avaPreview" style="background:#1a2130;border-radius:10px;padding:6px;flex:none"></div>
         <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:5px" id="avaCtrls"></div>
       </div>
-      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)">Sexo <span style="text-transform:none;letter-spacing:0">(define tu circuito: jugarás con y contra tu categoría)</span></label>
+      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)" data-i18n-html="crea_sexo_full">Sexo <span style="text-transform:none;letter-spacing:0">(define tu circuito: jugarás con y contra tu categoría)</span></label>
       <div class="fila" style="margin:5px 0 12px">
         <button class="selbtn" id="sexoM" data-i18n="crea_masculino">Masculino</button>
         <button class="selbtn" id="sexoF" data-i18n="crea_femenino">Femenino</button>
       </div>
-      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)">Lado de pista</label>
+      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)" data-i18n="crea_lado">Lado de pista</label>
       <div class="fila" style="margin:5px 0 12px">
         <button class="selbtn" id="ladoRev" data-i18n="crea_reves">Revés</button>
         <button class="selbtn" id="ladoDer" data-i18n="crea_derecha">Derecha</button>
       </div>
-      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)">Carácter competitivo</label>
+      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)" data-i18n="crea_caracter">Carácter competitivo</label>
       <div class="fila" style="margin:5px 0 12px" id="persos"></div>
       <div class="foot" id="persoDesc" style="text-align:left;min-height:14px"></div>
-      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)">Color</label>
+      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)" data-i18n="crea_color">Color</label>
       <div class="fila" id="colores" style="margin:5px 0"></div>
     </div>
     <div class="card">
@@ -85,22 +85,22 @@
   <!-- ============ CREAR CLUB ============ -->
   <div id="scr-crearclub" class="cont oculto">
     <div class="card">
-      <h3>Modo club · <em>funda tu club</em></h3>
-      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)">Nombre del club</label>
+      <h3 data-i18n-html="clb_hd_modo_full">Modo club · <em>funda tu club</em></h3>
+      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)" data-i18n="clb_nombre">Nombre del club</label>
       <input id="inClubNombre" value="Rising Pádel Club" style="margin:5px 0 12px">
-      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)">Circuito del club</label>
+      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)" data-i18n="clb_circuito">Circuito del club</label>
       <div class="fila" style="margin:5px 0 12px">
         <button class="selbtn" id="clubSexoM" data-i18n="crea_masculino">Masculino</button>
         <button class="selbtn" id="clubSexoF" data-i18n="crea_femenino">Femenino</button>
       </div>
-      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)">Color del club</label>
+      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)" data-i18n="clb_color">Color del club</label>
       <div class="fila" id="coloresClub" style="margin:5px 0 12px"></div>
-      <div style="font-size:12px;color:var(--gris);line-height:1.6">Presupuesto inicial: <b style="color:var(--texto)">1.200 €</b>. Ficha al menos <b style="color:var(--texto)">2 jugadores</b> del mercado para poder competir. Cada semana pagarás sus salarios; los premios y los socios sostienen la caja.</div>
+      <div style="font-size:12px;color:var(--gris);line-height:1.6" data-i18n-html="clb_presu">Presupuesto inicial: <b style="color:var(--texto)">1.200 €</b>. Ficha al menos <b style="color:var(--texto)">2 jugadores</b> del mercado para poder competir. Cada semana pagarás sus salarios; los premios y los socios sostienen la caja.</div>
     </div>
     <div class="card">
-      <h3>Mercado de fichajes · <em id="mercTitulo"></em></h3>
+      <h3><span data-i18n="clb_mercado_hd">Mercado de fichajes</span> · <em id="mercTitulo"></em></h3>
       <div id="mercadoInicial"></div>
-      <button class="pri" id="btnEmpezarClub" style="width:100%;margin-top:6px" disabled>Necesitas 2 jugadores</button>
+      <button class="pri" id="btnEmpezarClub" style="width:100%;margin-top:6px" disabled data-i18n="clb_necesitas_0">Necesitas 2 jugadores</button>
     </div>
   </div>
 
@@ -125,7 +125,7 @@
       <div id="proBanner" class="oculto"><div class="banner-pro">CONTRATO PROFESIONAL · Bienvenido al circuito</div></div>
       <div id="tab-semana">
         <div class="card">
-          <h3 id="semTitulo">Plan de la semana</h3>
+          <h3 id="semTitulo" data-i18n="hd_plan_semana">Plan de la semana</h3>
           <div id="torneosDisp"></div>
           <div id="accionesDia"></div>
         </div>
@@ -139,7 +139,7 @@
       </div>
       <div id="tab-entreno" class="oculto">
         <div class="card">
-          <h3>Plan de entrenamiento · <em>se aplica cada día que entrenas</em></h3>
+          <h3 data-i18n-html="hd_plan_entreno_full">Plan de entrenamiento · <em>se aplica cada día que entrenas</em></h3>
           <div class="entreno" id="btnsEntreno"></div>
           <div id="compiPlanRow" style="margin-top:8px"></div>
         </div>
@@ -157,7 +157,7 @@
         </div>
         <div class="card"><h3 data-i18n="hd_atributos">Atributos</h3><div class="attrs" id="attrs"></div></div>
         <div class="card">
-          <h3>Pareja · <em id="compName"></em></h3>
+          <h3><span data-i18n="hd_pareja">Pareja</span> · <em id="compName"></em></h3>
           <div class="meta" id="compMeta" style="margin-top:0"></div>
           <div id="mercado" style="margin-top:10px"></div>
         </div>
@@ -323,7 +323,7 @@
     <div class="card" style="max-width:460px;width:100%">
       <h3>Analítica · <em>base de datos</em></h3>
       <div id="analiticaCuerpo"></div>
-      <button class="pri" id="analiticaCerrar" style="width:100%;margin-top:10px">Cerrar</button>
+      <button class="pri" id="analiticaCerrar" style="width:100%;margin-top:10px" data-i18n="btn_cerrar">Cerrar</button>
     </div>
   </div>
   <div id="hawk" class="oculto">
