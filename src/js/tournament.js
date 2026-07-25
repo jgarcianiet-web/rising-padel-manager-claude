@@ -190,8 +190,13 @@ function empezarPartido(ver,coach){
     document.getElementById("avaA").innerHTML=(teams[0].jug||[]).map(j=>avatarSVG(j,30)).join("");
     document.getElementById("avaB").innerHTML=(teams[1].jug||[]).map(j=>avatarSVG(j,30)).join("");
     document.getElementById("coms").innerHTML="";
+    const esNem=G.modo==="carrera"&&G.carrera&&G.carrera.nemesis&&String(G.carrera.nemesis.id)===String(rival.id);
+    if(esNem){
+      match.rivBoost=(match.rivBoost||0)+presionNemesis(G.carrera,rival.id);
+      addCom(t("com_nemesis",{rival:rival.nombre,n:G.carrera.nemesis.elim|0}),0);
+    }
     if(clPre){
-      match.rivBoost=clPre.tag==="RIVALIDAD"?.06:0;
+      match.rivBoost=(match.rivBoost||0)+(clPre.tag==="RIVALIDAD"?.06:0);
       if(clPre.tag==="BESTIA NEGRA") teams[0].jug.forEach(j=>j.conf=clamp((j.conf??55)-4,10,95));
       if(clPre.tag==="CLIENTE") teams[1].jug.forEach(j=>j.conf=clamp((j.conf??55)-3,10,95));
       addCom(`${clPre.emo} ${clPre.tag==="RIVALIDAD"?`¡Capítulo ${h2pre.v+h2pre.d+1} de la rivalidad! ${h2pre.v}-${h2pre.d} hasta hoy.`:clPre.tag==="BESTIA NEGRA"?`Vuestra bestia negra al otro lado: ${h2pre.v}-${h2pre.d}. A romper el muro.`:`Un viejo cliente: ${h2pre.v}-${h2pre.d} a favor. Que no se despierte.`}`,0);
@@ -626,6 +631,19 @@ function finPartido(){
   h2r[gane?"v":"d"]++;
   h2r.n=rival.nombre; h2r.ultT=temporada();
   if(f>=4) h2r.alta=(h2r.alta||0)+1;
+  // ARCHIRRIVAL: perder es lo que crea rivales de verdad — quien te elimina de
+  // un torneo suma, y en fases altas la herida cuenta doble.
+  if(!gane){ h2r.elim=(h2r.elim||0)+1; if(f>=4) h2r.altaElim=(h2r.altaElim||0)+1; }
+  if(G.modo==="carrera"&&typeof nuevoNemesis==="function"){
+    const nm=nuevoNemesis(e);
+    if(nm){
+      e.nemesis={id:nm.id,nombre:nm.nombre,desde:temporada(),elim:nm.elim};
+      noticia("ruptura",t("not_nemesis_t",{rival:nm.nombre}),t("not_nemesis_s",{yo:nombreEntidad().replace("★ ",""),n:nm.elim}));
+      avisa(t("aviso_nemesis",{rival:nm.nombre,n:nm.elim}));
+    } else if(e.nemesis&&String(e.nemesis.id)===String(rival.id)){
+      e.nemesis.elim=h2r.elim|0;   // el marcador del duelo se mantiene al día
+    }
+  }
   const clAhora=clasificaRiv(h2r);
   if(clAhora&&clAhora.tag==="RIVALIDAD"&&(!clAntes||clAntes.tag!=="RIVALIDAD")){
     noticia("hito",t("not_rivalidad_t"),t("not_rivalidad_s",{yo:nombreEntidad().replace("★ ",""),rival:rival.nombre,n:h2r.v+h2r.d}));

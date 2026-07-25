@@ -890,6 +890,33 @@ comprueba("El último baile: declive diferenciado, oficio y legado", () => {
   return `explosivo ${expl} vs toque ${toque}; oficio ${fo.toFixed(2)}; rangos ok`;
 });
 
+comprueba("Archirrival: se declara al eliminarte, manda en la presión y cierra el legado", () => {
+  // hace falta ELIMINAR, no solo ganar: 5 derrotas normales no bastan sin eliminaciones
+  exige(candidatoNemesis({ 1: { v: 0, d: 5, n: "Solo derrotas" } }) === null, "no debería declararse sin eliminaciones");
+  exige(candidatoNemesis({ 1: { v: 1, d: 2, elim: 2, n: "Casi" } }) === null, "con 2 eliminaciones aún no");
+  const c1 = candidatoNemesis({ 1: { v: 1, d: 3, elim: 3, n: "Justo" } });
+  exige(c1 && c1.nombre === "Justo" && c1.elim === 3, "a las 3 eliminaciones debería declararse");
+  // desempate: gana quien más te ha eliminado; a igualdad, quien lo hizo en fases altas
+  const c2 = candidatoNemesis({ 1: { v: 0, d: 4, elim: 4, n: "Cuatro" }, 2: { v: 0, d: 9, elim: 3, altaElim: 3, n: "Tres" } });
+  exige(c2.nombre === "Cuatro", "debería ganar quien más elimina: " + c2.nombre);
+  const c3 = candidatoNemesis({ 1: { v: 0, d: 4, elim: 3, altaElim: 0, n: "Rondas bajas" }, 2: { v: 0, d: 4, elim: 3, altaElim: 2, n: "Fases altas" } });
+  exige(c3.nombre === "Fases altas", "a igualdad debería pesar la fase alta: " + c3.nombre);
+  // no se destrona al archirrival actual si el nuevo no le supera
+  const carrera = { h2h: { 1: { v: 0, d: 4, elim: 4, n: "Actual" }, 2: { v: 0, d: 3, elim: 3, n: "Aspirante" } }, nemesis: { id: "1", elim: 4 } };
+  exige(nuevoNemesis(carrera) === null, "un aspirante con menos eliminaciones no debería destronar");
+  carrera.h2h[2].elim = 5;
+  exige(nuevoNemesis(carrera).nombre === "Aspirante", "con más eliminaciones sí debería destronar");
+  // presión: solo contra él, y crece con las eliminaciones
+  exige(presionNemesis(carrera, "9") === 0, "no debería haber presión extra contra otro rival");
+  const p4 = presionNemesis({ nemesis: { id: "1", elim: 4 } }, "1");
+  const p6 = presionNemesis({ nemesis: { id: "1", elim: 6 } }, "1");
+  exige(p4 > 0 && p6 > p4 && p6 <= .14, `la presión debería crecer y estar acotada (${p4} → ${p6})`);
+  // el legado cierra con el archirrival aunque otro se haya cruzado más veces
+  const L = legadoDe({ edad: 36, hist: [{ pos: 8 }], palmares: ["a"], h2h: { 1: { v: 1, d: 4, n: "Nemesis" }, 2: { v: 9, d: 9, n: "Muy visto" } }, nemesis: { id: "1", nombre: "Nemesis" } }, { n1hist: [] });
+  exige(L.rival.nombre === "Nemesis" && L.rival.nemesis === true, "el legado debería cerrar con el archirrival: " + L.rival.nombre);
+  return `declarado a las ${NEMESIS_ELIM} eliminaciones; presión ${p4.toFixed(2)}→${p6.toFixed(2)}`;
+});
+
 comprueba("Idiomas: catálogo completo y sin claves huérfanas en los 5 idiomas", () => {
   // toda clave definida en español existe en los otros 4 y no está vacía
   const claves = Object.keys(I18N.es);

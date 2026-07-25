@@ -930,12 +930,22 @@ function clasificaRiv(h2){
 }
 function renderRivalidades(el){
   const e=ent();
+  // el archirrival va primero y con cartel propio: no es una fila más
+  let cab="";
+  if(e.nemesis){
+    const h2=(e.h2h||{})[e.nemesis.id]||{v:0,d:0};
+    cab=`<div class="opcion" style="border-color:#E05656;margin-bottom:7px">
+      <b style="color:#E05656">${t("nem_titulo")}</b>
+      <div style="font-size:13px;font-weight:700;margin:2px 0">${e.nemesis.nombre}</div>
+      <div class="d">${t("nem_detalle",{n:e.nemesis.elim|0,desde:e.nemesis.desde,v:h2.v|0,d:h2.d|0})}</div>
+    </div>`;
+  }
   const filas=Object.entries(e.h2h||{})
     .map(([id,h2])=>({id,...h2,tot:h2.v+h2.d,cl:clasificaRiv(h2)}))
     .filter(x=>x.tot>=2&&x.n)
     .sort((a,b)=>b.tot-a.tot).slice(0,6);
-  if(!filas.length){ el.innerHTML=`<div class="foot" style="text-align:left">${t("pan_sin_rivales")}</div>`; return; }
-  el.innerHTML=filas.map(x=>`
+  if(!filas.length){ el.innerHTML=cab+`<div class="foot" style="text-align:left">${t("pan_sin_rivales")}</div>`; return; }
+  el.innerHTML=cab+filas.map(x=>`
     <div style="display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--borde)">
       <div style="font-size:11.5px">${x.cl?`<span style="color:${x.cl.col};font-weight:700">${x.cl.emo} ${x.cl.tag}</span> · `:""}${x.n}
         <div style="font-size:9.5px;color:var(--gris2)">${x.tot} cruces${x.alta?` · ${x.alta} en semis o más`:""}</div>
