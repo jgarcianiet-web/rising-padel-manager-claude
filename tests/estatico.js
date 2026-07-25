@@ -68,6 +68,47 @@ module.exports = function pruebasEstaticas() {
     return "navegador y Tauri";
   });
 
+  /* Con script-src 'self', un manejador escrito como atributo del marcado es
+     código en línea y el navegador se niega a ejecutarlo. Pasó de verdad: al
+     poner la CSP, los selectores de dificultad e idioma dejaron de responder y
+     ninguna prueba se enteró, porque el arnés no aplica CSP. Los botones que se
+     pintan con plantillas usan data-ac + el despachador de ui.js. */
+  comprueba("CSP: ninguna plantilla genera manejadores inline", () => {
+    const objetivo = [...ficheros("src/js"), ...ficheros("src/js/engine")].filter(f => f.endsWith(".js") && !f.includes("vendor"));
+    const malos = [];
+    for (const f of objetivo.concat("src/index.html")) {
+      leer(f).split("\n").forEach((l, i) => {
+        // se ignora la línea del comentario que documenta el problema
+        if (/\bonclick\s*=\s*["']/.test(l) && !/despachador|documenta|llevaban/.test(l)) malos.push(f + ":" + (i + 1));
+        if (/\son(change|input|submit|keyup|mouse\w+)\s*=\s*["']/.test(l)) malos.push(f + ":" + (i + 1));
+      });
+    }
+    exige(!malos.length, "manejador inline en " + malos.join(", "));
+    return objetivo.length + " ficheros sin código en el marcado";
+  });
+
+  /* El despachador falla en silencio a propósito, así que un data-ac mal escrito
+     daría un botón muerto sin ningún aviso. Esta prueba lo caza en frío. */
+  comprueba("CSP: toda acción declarada está registrada", () => {
+    const fuentes = [...ficheros("src/js"), ...ficheros("src/js/engine")].filter(f => f.endsWith(".js") && !f.includes("vendor"));
+    const todo = fuentes.map(leer).join("\n");
+    // nombres usados en las plantillas: ac("nombre", …)
+    const usadas = [...new Set([...todo.matchAll(/\bac\(\s*"([^"]+)"/g)].map(m => m[1]))];
+    // nombres registrados: el bloque registraAcciones({...}) de extras.js
+    const bloque = /registraAcciones\(\{([\s\S]*?)\n\}/.exec(leer("src/js/extras.js"));
+    exige(bloque, "no se encuentra el bloque registraAcciones de extras.js");
+    // Se recogen todos los identificadores seguidos de coma o dos puntos: capta
+    // tanto "cerrarModal:(id)=>…" como las abreviadas "setDif, setIdioma,". Puede
+    // recoger de más (algún nombre del cuerpo de una lambda), y da igual: esto es
+    // una lista blanca, y de más solo la hace más permisiva. Lo que importa es
+    // que no se escape ningún nombre registrado.
+    const registradas = new Set([...bloque[1].matchAll(/([A-Za-z_$][\w$]*)\s*[,:]/g)].map(m => m[1]));
+    const huerfanas = usadas.filter(u => !registradas.has(u));
+    exige(!huerfanas.length, "acción usada pero no registrada: " + huerfanas.join(", "));
+    exige(usadas.length >= 15, "se esperaban al menos 15 acciones, hay " + usadas.length);
+    return usadas.length + " acciones, todas registradas";
+  });
+
   /* Las tipografías incrustadas son OFL: se pueden usar y vender, pero hay que
      distribuir el aviso. Y sql.js es MIT, que también lo exige. */
   comprueba("Licencias: se distribuyen los avisos de los terceros", () => {

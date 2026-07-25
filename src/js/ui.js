@@ -1,6 +1,50 @@
 /* ================================================================
    NAVEGACIÓN Y MENÚ
 ================================================================ */
+
+/* ---------- acciones declarativas (sin onclick inline) ----------
+
+   El juego pinta casi toda su interfaz con plantillas de texto, y durante mucho
+   tiempo los botones así generados llevaban onclick="funcion(arg)" dentro del
+   HTML. Eso dejó de funcionar al poner la CSP: un manejador escrito como
+   atributo es código en línea, y script-src 'self' lo bloquea. Los selectores
+   de dificultad e idioma se quedaron mudos sin que ninguna prueba lo notara.
+
+   La solución mantiene el estilo de plantillas pero saca el código del HTML: el
+   botón declara QUÉ quiere hacer con atributos de datos
+
+     <button ${ac("setDif","duro")}>…</button>   →   data-ac="setDif" data-a0="duro"
+
+   y un único escuchador delegado busca ese nombre en el registro ACCIONES y lo
+   llama. El nombre es una clave de un objeto, no código: un texto que no esté
+   registrado no hace nada. Los argumentos viajan como cadenas; si el registro
+   declara que son números, se convierten al llamar. */
+const ACCIONES = {};
+/* Registra acciones. `num` lista las que reciben argumentos numéricos. */
+function registraAcciones(mapa, num){
+  for(const k in mapa){ if(Object.prototype.hasOwnProperty.call(mapa,k)) ACCIONES[k]=mapa[k]; }
+  (num||[]).forEach(k=>{ if(ACCIONES[k]) ACCIONES[k]._num=true; });
+}
+/* Genera los atributos para meterlos en una plantilla. Escapa las comillas para
+   que un nombre con comillas dentro no pueda romper el marcado. */
+function ac(nombre,...args){
+  const esc=s=>String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+  return `data-ac="${esc(nombre)}"`+args.map((v,i)=>` data-a${i}="${esc(v)}"`).join("");
+}
+document.addEventListener("click",ev=>{
+  const el=ev.target && ev.target.closest && ev.target.closest("[data-ac]");
+  if(!el) return;
+  const fn=ACCIONES[el.getAttribute("data-ac")];
+  if(typeof fn!=="function") return;          // nombre no registrado: no pasa nada
+  if(el.disabled) return;
+  const args=[];
+  for(let i=0;el.hasAttribute("data-a"+i);i++){
+    const v=el.getAttribute("data-a"+i);
+    args.push(fn._num?Number(v):v);
+  }
+  fn.apply(null,args);
+});
+
 function irA(s){
   ["menu","crear","crearclub","club","clubm","torneo","partido","superliga"].forEach(x=>{
     const el=document.getElementById("scr-"+x);
@@ -45,7 +89,7 @@ function pintarSelectorDif(){
   const sel=difMenu();
   const chips=Object.keys(PERFILES_DIF).map(id=>{
     const p=PERFILES_DIF[id], on=id===sel;
-    return `<button type="button" class="difchip${on?" on":""}" onclick="setDif('${id}')" aria-pressed="${on}">${p.emoji} ${difNombre(id)}</button>`;
+    return `<button type="button" class="difchip${on?" on":""}" ${ac("setDif",id)} aria-pressed="${on}">${p.emoji} ${difNombre(id)}</button>`;
   }).join("");
   cont.innerHTML=`<div class="diflabel">${t("dif_label")}</div><div class="difrow">${chips}</div><div class="difdesc">${difDesc(sel)}</div>`;
 }
@@ -58,7 +102,7 @@ function pintarSelectorIdioma(){
   const sel=idiomaActual();
   const chips=IDIOMAS.map(l=>{
     const on=l.id===sel;
-    return `<button type="button" class="difchip${on?" on":""}" onclick="setIdioma('${l.id}')" aria-pressed="${on}" title="${l.n}">${l.bandera} ${l.n}</button>`;
+    return `<button type="button" class="difchip${on?" on":""}" ${ac("setIdioma",l.id)} aria-pressed="${on}" title="${l.n}">${l.bandera} ${l.n}</button>`;
   }).join("");
   cont.innerHTML=`<div class="diflabel">${t("idioma_label")}</div><div class="difrow difrow-wrap">${chips}</div>`;
 }

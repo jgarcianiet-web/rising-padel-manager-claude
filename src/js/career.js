@@ -135,7 +135,7 @@ function renderEquipoStaff(el){
       <div style="font-size:11.5px">${ROLES_STAFF[r].ico} <b>${st?st.n:"—"}</b> <span style="color:var(--gris2)">· ${t("rol_"+r)}</span>
         ${st?`<div style="font-size:10px;color:var(--gris)">${"★".repeat(st.niv)}${"☆".repeat(5-st.niv)} · ${st.sal}€/sem${st.rol==="rep"?` · ${t("staff_comision",{c:st.com})}`:""}${st.esp?` · ${atLista(st.esp).join("/")}`:""}<br><em style="color:var(--gris2)">«${t(st.frase)}»</em></div>`:`<div style="font-size:10px;color:var(--gris2)">${t("staff_vacante")}</div>`}
       </div>
-      ${st?`<button style="font-size:10px;padding:3px 7px" onclick="despedirStaff('${r}')">${t("staff_despedir")}</button>`:""}
+      ${st?`<button style="font-size:10px;padding:3px 7px" ${ac("despedirStaff",r)}>${t("staff_despedir")}</button>`:""}
     </div>`;}).join("");
 }
 function renderMercadoStaff(el){
@@ -145,7 +145,7 @@ function renderMercadoStaff(el){
   // filtro por rol (bolsa grande → pestañas de rol)
   e._staffFiltro=e._staffFiltro||"todos";
   const roles=rolesDeModo();
-  const filtroBar=`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px">${["todos",...roles].map(r=>`<button class="selbtn${e._staffFiltro===r?" on":""}" style="font-size:9px;padding:4px 6px" onclick="ent()._staffFiltro='${r}';${G.modo==="carrera"?"pintarCarrera":"pintarClubM"}()">${r==="todos"?t("staff_todos"):ROLES_STAFF[r].ico+" "+t("rol_"+r).split("/")[0]}</button>`).join("")}</div>`;
+  const filtroBar=`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px">${["todos",...roles].map(r=>`<button class="selbtn${e._staffFiltro===r?" on":""}" style="font-size:9px;padding:4px 6px" ${ac("filtroStaff",r)}>${r==="todos"?t("staff_todos"):ROLES_STAFF[r].ico+" "+t("rol_"+r).split("/")[0]}</button>`).join("")}</div>`;
   let listaVis=e.mercadoStaff.filter(st=>e._staffFiltro==="todos"||st.rol===e._staffFiltro);
   listaVis=listaVis.slice().sort((a,b)=>(a.equipoDe?1:0)-(b.equipoDe?1:0)||b.niv-a.niv);
   if(!listaVis.length){ el.innerHTML=filtroBar+`<div class="foot" style="text-align:left">${t("staff_nadie")}</div>`; return; }
@@ -153,7 +153,7 @@ function renderMercadoStaff(el){
     <div class="opcion" style="padding:8px">
       <div style="font-size:11.5px">${ROLES_STAFF[st.rol].ico} <b>${st.n}</b>, ${st.edad} <span class="pill">${t("rol_"+st.rol)}</span> ${st.seOfrece?`<span class="pill" style="color:var(--lima)">${t("staff_se_ofrece")}</span>`:""}${st.equipoDe?`<span class="pill" style="color:var(--oro)">${t("staff_entrena_a",{pos:puestoDePareja(st.equipoDe),equipo:st.equipoDe})}</span>`:""}</div>
       <div style="font-size:10px;color:var(--gris);margin:3px 0">${"★".repeat(st.niv)}${"☆".repeat(5-st.niv)} · ${st.sal}€/sem${st.rol==="rep"?` · ${t("staff_comision",{c:st.com})}`:""}${st.esp?` · ${t("staff_especialista",{lista:atLista(st.esp).join(", ")})}`:""} · <em>«${t(st.frase)}»</em>${st.equipoDe?(()=>{const cl=clausulaEntrenador(st);const alcanza=miPuesto()-puestoDePareja(st.equipoDe)<=([99,30,20,12,7,4][st.niv]||15);return `<br><span style="color:var(--oro)">${t("staff_clausula",{cl:cl.toLocaleString("es")})}</span>${alcanza?"":` <span style="color:#E05656">${t("staff_fuera_alcance")}</span>`}`;})():""}</div>
-      ${st.equipoDe?(()=>{const cl=clausulaEntrenador(st);const alcanza=miPuesto()-puestoDePareja(st.equipoDe)<=([99,30,20,12,7,4][st.niv]||15);return `<button style="width:100%;font-size:11px" onclick="ficharStaff(${i})"${(!alcanza||e.dinero<cl)?' disabled':''}>${!alcanza?t("staff_no_aceptaria"):e.dinero<cl?t("staff_clausula_sin_caja",{cl:cl.toLocaleString("es")}):t("staff_negociar",{cl:cl.toLocaleString("es")})}</button>`;})():`<button style="width:100%;font-size:11px" onclick="ficharStaff(${i})">${t("staff_contratar",{sal:st.sal})}</button>`}
+      ${st.equipoDe?(()=>{const cl=clausulaEntrenador(st);const alcanza=miPuesto()-puestoDePareja(st.equipoDe)<=([99,30,20,12,7,4][st.niv]||15);return `<button style="width:100%;font-size:11px" ${ac("ficharStaff",i)}${(!alcanza||e.dinero<cl)?' disabled':''}>${!alcanza?t("staff_no_aceptaria"):e.dinero<cl?t("staff_clausula_sin_caja",{cl:cl.toLocaleString("es")}):t("staff_negociar",{cl:cl.toLocaleString("es")})}</button>`;})():`<button style="width:100%;font-size:11px" ${ac("ficharStaff",i)}>${t("staff_contratar",{sal:st.sal})}</button>`}
     </div>`;}).join("");
 }
 function entrenadorActual(){
@@ -264,7 +264,7 @@ function pintarAvaEditor(){
   const ctrls=document.getElementById("avaCtrls");
   // el catálogo de peinado tiene 3 opciones en femenino y 4 en masculino
   const campos=[["piel",t("ava_piel"),AVA_PIEL.length],["pelo",t("ava_pelo"),AVA_PELO.length],["tipoPelo",t("ava_peinado"),sexoSel==="F"?3:4],["barba",t("ava_barba"),sexoSel==="F"?1:3],["compl",t("ava_compl"),AVA_COMPL.length]];
-  ctrls.innerHTML=campos.map(([c,lbl,mod])=>`<button class="selbtn" style="font-size:10px;padding:5px 4px" onclick="ciclaAva('${c}',1,${mod})">${lbl} ▸</button>`).join("")+`<button class="selbtn" style="font-size:10px;padding:5px 4px" onclick="avaAleatorio()">🎲 ${t("ava_aleatorio")}</button>`;
+  ctrls.innerHTML=campos.map(([c,lbl,mod])=>`<button class="selbtn" style="font-size:10px;padding:5px 4px" ${ac("ciclaAva",c,mod)}>${lbl} ▸</button>`).join("")+`<button class="selbtn" style="font-size:10px;padding:5px 4px" ${ac("avaAleatorio")}>🎲 ${t("ava_aleatorio")}</button>`;
 }
 function avaAleatorio(){
   const nPein=sexoSel==="F"?3:4;
@@ -404,7 +404,7 @@ function pintarUltimoBaile(){
   if(!puedeRetirarse(c)){ box.innerHTML=""; return; }
   box.innerHTML=`<div class="opcion">
     <b>${t("ub_puedes")}</b><div class="d">${t("ub_puedes_d",{edad:c.edad})}</div>
-    <button style="width:100%;margin-top:6px" onclick="anunciarUltimoBaile()">${t("ub_anunciar")}</button></div>`;
+    <button style="width:100%;margin-top:6px" ${ac("anunciarUltimoBaile")}>${t("ub_anunciar")}</button></div>`;
 }
 function anunciarUltimoBaile(){
   const c=G&&G.carrera; if(!c||!puedeRetirarse(c)) return;
@@ -440,7 +440,7 @@ function retirarse(){
       ${L.rival?fila(t("leg_rival"),`${L.rival.nombre} (${L.rival.v}-${L.rival.d})`):""}
     </div>
     <div class="foot" style="text-align:left;line-height:1.6;margin-bottom:10px">${t("leg_cierre_"+L.rango,{nombre:c.nombre,edad:L.edad})}</div>
-    <button class="pri" style="width:100%" onclick="quitarEl(document.getElementById('legadoModal'));G=null;irA('menu');pintarMenu();">${t("leg_volver")}</button>
+    <button class="pri" style="width:100%" ${ac("cerrarLegado")}>${t("leg_volver")}</button>
   </div>`;
 }
 function pintarObjetivos(){
@@ -905,7 +905,7 @@ function renderClubes(el){
   if(G.modo==="club") acc.push({n:"★ "+G.clubG.nombre,color:G.clubG.color,pts:G.clubG.pts,yo:true,tit:(G.clubG.palmares||[]).length,parejas:(G.clubG.plantilla||[]).length});
   acc.sort((a,b)=>b.pts-a.pts);
   let html=`<tr class="hd"><td>#</td><td>Club</td><td class="pts">🏆</td><td class="pts">Pts</td></tr>`;
-  html+=acc.map((c,i)=>`<tr class="${c.yo?"yo":i<3?"top":""}" ${c.idx!==undefined?`style="cursor:pointer" onclick="verClub(${c.idx})"`:""}><td class="pos">${i+1}</td><td><span style="color:${c.color}">●</span> ${c.n}${c.idx!==undefined?' <span style="color:var(--gris2);font-size:9px">▸</span>':""}</td><td class="pts">${c.tit||0}</td><td class="pts">${c.pts}</td></tr>`).join("");
+  html+=acc.map((c,i)=>`<tr class="${c.yo?"yo":i<3?"top":""}" ${c.idx!==undefined?`style="cursor:pointer" ${ac("verClub",c.idx)}`:""}><td class="pos">${i+1}</td><td><span style="color:${c.color}">●</span> ${c.n}${c.idx!==undefined?' <span style="color:var(--gris2);font-size:9px">▸</span>':""}</td><td class="pts">${c.tit||0}</td><td class="pts">${c.pts}</td></tr>`).join("");
   el.innerHTML=html;
 }
 function verClub(idx){
@@ -923,7 +923,7 @@ function verClub(idx){
     <table class="rk">${pares.map(p=>`<tr><td style="font-size:11px"><span style="display:inline-block;vertical-align:middle;margin-right:3px">${avatarSVG(p.jug[0],18)}${avatarSVG(p.jug[1],18)}</span>${p.nombre}</td><td class="pts">#${posDe(p.nombre)}</td><td class="pts">${nivelPareja(p)}</td></tr>`).join("")||'<tr><td class="foot">Sin parejas esta temporada</td></tr>'}</table>
     <div style="font-size:11px;color:var(--gris);text-transform:uppercase;letter-spacing:1px;margin:10px 0 3px">Palmarés reciente (${tit.length})</div>
     ${tit.length?`<div class="foot" style="text-align:left">${tit.slice(0,8).map(t=>`🏆 ${t}`).join("<br>")}</div>`:'<div class="foot" style="text-align:left">Aún sin títulos. La historia se escribe.</div>'}
-    <button class="pri" style="width:100%;margin-top:10px" onclick="quitarEl(document.getElementById('clubModal'))">${t("btn_cerrar")}</button>
+    <button class="pri" style="width:100%;margin-top:10px" ${ac("cerrarModal","clubModal")}>${t("btn_cerrar")}</button>
   </div>`;
   ov.onclick=(e)=>{ if(e.target===ov) quitarEl(ov); };
 }
@@ -1476,7 +1476,7 @@ function mostrarAnuario(){
     ${graf}
     <div class="foot" style="text-align:left;margin-top:10px">👑 Nº1 del circuito: <b>${h.campeon}</b></div>
     ${anuarioMerito(c,h,prev)}
-    <button class="pri" style="width:100%;margin-top:12px" onclick="quitarEl(document.getElementById('anuarioModal'))">Empezar nueva temporada</button>
+    <button class="pri" style="width:100%;margin-top:12px" ${ac("cerrarModal","anuarioModal")}>Empezar nueva temporada</button>
   </div>`;
   ov.onclick=(e)=>{ if(e.target===ov) quitarEl(ov); };
 }

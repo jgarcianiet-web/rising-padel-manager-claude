@@ -155,3 +155,38 @@ function pintarLogos(){
   set("splImgJuego",LOGO_JUEGO);     set("menuImgJuego",LOGO_JUEGO);
 }
 
+
+/* ================================================================
+   REGISTRO DE ACCIONES DE LA INTERFAZ
+
+   Va al final del último fichero cargado (ver el orden en index.html) porque
+   aquí ya están definidas todas las funciones que referencia. Es la lista
+   blanca del despachador de ui.js: los botones pintados con plantillas dicen
+   data-ac="nombre" y solo se ejecuta lo que aparezca aquí.
+
+   Al añadir un botón nuevo a una plantilla, regístralo también aquí — si no,
+   no hará nada (falla en silencio, a propósito: es la contrapartida de no
+   ejecutar código que venga escrito en el marcado).
+================================================================ */
+registraAcciones({
+  // menú
+  setDif, setIdioma,
+  // staff
+  despedirStaff, ficharStaff,
+  filtroStaff:(rol)=>{ ent()._staffFiltro=rol; pintarTodo(); },
+  // editor de avatar
+  ciclaAva:(campo,mod)=>ciclaAva(campo,1,Number(mod)),
+  avaAleatorio,
+  // carrera
+  anunciarUltimoBaile, verClub,
+  cerrarLegado:()=>{ quitarEl(document.getElementById("legadoModal")); G=null; irA("menu"); pintarMenu(); },
+  cerrarModal:(id)=>quitarEl(document.getElementById(id)),
+  // torneo y partido
+  setTact, setTactPrev,
+  aplicarTacticaRec,
+  // Superliga
+  accionSuperliga, nuevaTempSuperliga, rechazarInvitacionSL, asignaParejaSL, ficharSLui,
+  aceptarInvitSL:()=>{ quitarEl(document.getElementById("slInvitModal")); aceptarInvitacionSL(); },
+},
+// acciones cuyos argumentos son números
+["ficharStaff","verClub","asignaParejaSL","ficharSLui"]);

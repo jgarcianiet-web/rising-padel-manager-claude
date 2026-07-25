@@ -65,7 +65,7 @@ function pintarPlanPartido(){
   const ta=e.tactica; if(!ta.red)ta.red="normal"; if(!ta.clutch)ta.clutch="normal";
   const ent_=entrenadorActual();
   const row=document.getElementById("planPartido");
-  const btn=(g,v,txt)=>`<button class="selbtn${ta[g]===v?" on":""}" onclick="setTactPrev('${g}','${v}')">${txt}</button>`;
+  const btn=(g,v,txt)=>`<button class="selbtn${ta[g]===v?" on":""}" ${ac("setTactPrev",g,v)}>${txt}</button>`;
   const grupo=(lbl,g,opts)=>`<div class="pgrow"><span class="plbl">${lbl}</span><span class="pbtns">${opts.map(o=>btn(g,o[0],o[1])).join("")}</span></div>`;
   row.innerHTML=`<div class="phead">${t("tac_plan_hd")} <span>· ${t("tac_plan_sub")}</span></div>
   <div class="plangrid">
@@ -120,7 +120,7 @@ function pintarTorneo(){
       ${li(inf.deb,"var(--verde)")}
       ${li(inf.fue,"var(--rojo)")}
       <div class="scoutRec"><b>${t("scout_plan")}</b> ${inf.recTxt}
-        <button class="selbtn" style="font-size:10px;padding:3px 8px;margin-left:4px" onclick="aplicarTacticaRec('${inf.rec.agres}','${inf.rec.diana}','${inf.rec.red}','${inf.rec.clutch}')">${t("scout_aplicar")}</button></div>
+        <button class="selbtn" style="font-size:10px;padding:3px 8px;margin-left:4px" ${ac("aplicarTacticaRec",inf.rec.agres,inf.rec.diana,inf.rec.red,inf.rec.clutch)}>${t("scout_aplicar")}</button></div>
     </div>`;
   }
   document.getElementById("tInfo").innerHTML=`<span style="display:flex;gap:2px;margin-bottom:5px">${(r.jug||[]).map(j=>avatarSVG(j,38)).join("")}</span>Rival: <b>${r.nombre}</b>${clubR} <span class="pill">nivel ${nivelPareja(r)}</span> <span class="pill oro">#${rankingFilas().find(f=>f.id===r.id).pos}</span>${r.pro?' <span class="tagpro">PRO</span>':""}<br>
@@ -286,7 +286,7 @@ function pintaTactica(){
   const row=document.getElementById("tactRow");
   if(!match||match.cpu){row.innerHTML="";return;}
   const t=ent().tactica; if(!t.red)t.red="normal"; if(!t.clutch)t.clutch="normal";
-  const btn=(grupo,val,txt)=>`<button class="selbtn${t[grupo]===val?" on":""}" style="font-size:10px;padding:4px 6px" onclick="setTact('${grupo}','${val}')">${txt}</button>`;
+  const btn=(grupo,val,txt)=>`<button class="selbtn${t[grupo]===val?" on":""}" style="font-size:10px;padding:4px 6px" ${ac("setTact",grupo,val)}>${txt}</button>`;
   row.innerHTML=`<div class="chbar"><span>TÁCTICA</span><span style="display:flex;gap:4px;flex-wrap:wrap">${btn("agres","conservadora","Segura")}${btn("agres","normal","Normal")}${btn("agres","agresiva","A degüello")}<span style="color:var(--gris2)">·</span>${btn("diana","repartir","Repartir")}${btn("diana","debil","Al flojo")}</span></div>`
     +`<div class="chbar" style="margin-top:4px"><span>RED · CALIENTES</span><span style="display:flex;gap:4px;flex-wrap:wrap">${btn("red","aguantar","Aguantar")}${btn("red","normal","Red normal")}${btn("red","subir","Subir")}<span style="color:var(--gris2)">·</span>${btn("clutch","conservar","Conservar")}${btn("clutch","normal","Normal")}${btn("clutch","arriesgar","Arriesgar")}</span></div>`;
 }

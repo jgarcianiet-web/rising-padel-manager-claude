@@ -245,8 +245,8 @@ function mostrarInvitacionSL(){
     <h3 style="margin-top:0;color:var(--oro)">${t("sl_invit_titulo")}</h3>
     <div style="font-size:12.5px;color:var(--gris);line-height:1.55;margin-bottom:9px">${t("sl_invit_texto",{club:cl.nombre})}</div>
     <div class="foot" style="text-align:left;margin-bottom:9px">${t("sl_invit_detalle")}</div>
-    <button class="pri" style="width:100%" onclick="quitarEl(document.getElementById('slInvitModal'));aceptarInvitacionSL();">${t("sl_invit_aceptar")}</button>
-    <button style="width:100%;margin-top:7px" onclick="rechazarInvitacionSL()">${t("sl_invit_rechazar")}</button>
+    <button class="pri" style="width:100%" ${ac("aceptarInvitSL")}>${t("sl_invit_aceptar")}</button>
+    <button style="width:100%;margin-top:7px" ${ac("rechazarInvitacionSL")}>${t("sl_invit_rechazar")}</button>
   </div>`;
 }
 function crearSuperliga(){
@@ -289,16 +289,16 @@ function pintarSuperliga(){
   let info="", accion="";
   if(sl.fase==="liga"){
     info=`Jornada ${sl.jornada+ (sl.jornada<sl.calendario.length?1:0)} de ${sl.calendario.length} · liga regular. Los 8 primeros pasan a los playoffs.`;
-    accion=`<button class="pri" style="width:100%" onclick="accionSuperliga()">▶ Jugar jornada ${sl.jornada+1}</button>`;
+    accion=`<button class="pri" style="width:100%" ${ac("accionSuperliga")}>▶ Jugar jornada ${sl.jornada+1}</button>`;
   } else if(sl.fase==="playoff"){
     const p=sl.playoff;
-    if(p.ronda==="cuartos"){ info=`🏆 PLAYOFFS · Cuartos: ${p.cuartos.map(c=>`${nom(c[0])}–${nom(c[1])}`).join(" · ")}`; accion=`<button class="pri" style="width:100%" onclick="accionSuperliga()">▶ Jugar cuartos de final</button>`; }
-    else if(p.ronda==="semis"){ info=`🏆 PLAYOFFS · Semifinales: ${nom(p.semis[0][0])} vs ${nom(p.semis[0][1])} · ${nom(p.semis[1][0])} vs ${nom(p.semis[1][1])}`; accion=`<button class="pri" style="width:100%" onclick="accionSuperliga()">▶ Jugar semifinales</button>`; }
-    else { info=`🏆 PLAYOFFS · FINAL: ${nom(p.final[0])} vs ${nom(p.final[1])}`; accion=`<button class="pri" style="width:100%" onclick="accionSuperliga()">▶ Jugar la final</button>`; }
+    if(p.ronda==="cuartos"){ info=`🏆 PLAYOFFS · Cuartos: ${p.cuartos.map(c=>`${nom(c[0])}–${nom(c[1])}`).join(" · ")}`; accion=`<button class="pri" style="width:100%" ${ac("accionSuperliga")}>▶ Jugar cuartos de final</button>`; }
+    else if(p.ronda==="semis"){ info=`🏆 PLAYOFFS · Semifinales: ${nom(p.semis[0][0])} vs ${nom(p.semis[0][1])} · ${nom(p.semis[1][0])} vs ${nom(p.semis[1][1])}`; accion=`<button class="pri" style="width:100%" ${ac("accionSuperliga")}>▶ Jugar semifinales</button>`; }
+    else { info=`🏆 PLAYOFFS · FINAL: ${nom(p.final[0])} vs ${nom(p.final[1])}`; accion=`<button class="pri" style="width:100%" ${ac("accionSuperliga")}>▶ Jugar la final</button>`; }
   } else if(sl.fase==="fin"){
     const camp=sl.playoff.campeon;
     info=`🏆 CAMPEÓN de la Superliga: <b style="color:${sl.equipos[camp].color}">${nom(camp)}</b>${sl.equipos[camp].tuyo?" — ¡ES EL TUYO!":""}.`;
-    accion=`<button class="pri" style="width:100%" onclick="nuevaTempSuperliga()">✦ Nueva temporada</button>`;
+    accion=`<button class="pri" style="width:100%" ${ac("nuevaTempSuperliga")}>✦ Nueva temporada</button>`;
   }
   const slInfo=document.getElementById("slInfo"); if(slInfo) slInfo.innerHTML=info;
   const slAccion=document.getElementById("slAccion"); if(slAccion) slAccion.innerHTML=accion;
@@ -323,7 +323,7 @@ function _pintarEquipoSL(sl){
     par.forEach(ji=>{ const j=sl.plantilla[ji];
       html+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;font-size:11px">
         <span>${j.n} <span style="color:var(--gris)">· ${mediaAttrs(j.attrs)} · ${ladoT(j.lado)}</span></span>
-        <span>${[0,1,2].filter(d=>d!==pi).map(d=>`<button class="selbtn" style="font-size:9px;padding:2px 6px" onclick="asignaParejaSL(${ji},${d})">→ P${d+1}</button>`).join("")}</span></div>`;
+        <span>${[0,1,2].filter(d=>d!==pi).map(d=>`<button class="selbtn" style="font-size:9px;padding:2px 6px" ${ac("asignaParejaSL",ji,d)}>→ P${d+1}</button>`).join("")}</span></div>`;
     });
     html+=`</div>`;
   });
@@ -334,7 +334,7 @@ function _pintarEquipoSL(sl){
       const coste=costeFichajeSL(cand), puede=(sl.caja||0)>=coste;
       html+=`<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:2px 0">
         <span>${cand.n} <span style="color:var(--gris)">· ${mediaAttrs(cand.attrs)} · ${ladoT(cand.lado)}</span></span>
-        <button class="selbtn" style="font-size:9px;padding:2px 7px" ${puede?"":"disabled"} onclick="ficharSLui(${ci})">${puede?`Fichar ${coste.toLocaleString("es")}€`:"Caja insuficiente"}</button></div>`;
+        <button class="selbtn" style="font-size:9px;padding:2px 7px" ${puede?"":"disabled"} ${ac("ficharSLui",ci)}>${puede?`Fichar ${coste.toLocaleString("es")}€`:"Caja insuficiente"}</button></div>`;
     });
   }
   slEq.innerHTML=html;
