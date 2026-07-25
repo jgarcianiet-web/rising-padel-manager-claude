@@ -852,6 +852,29 @@ comprueba("Idiomas: t() traduce y cae con red de seguridad", () => {
   return "traduce, fallback de idioma y de clave";
 });
 
+comprueba("Idiomas: el informe del ojeador y el plan salen en el idioma activo", () => {
+  const at = (o) => Object.assign({ fondo: 70, globo: 70, chiquita: 70, volea: 70, dejada: 70, bandeja: 70, vibora: 70, remate: 70, pared: 70 }, o || {});
+  const par = { nombre: "X / Y", jug: [
+    { n: "Fuerte", estilo: "constructor", perso: "frio", lado: 0, attrs: at({ fondo: 82, globo: 82, bandeja: 82, remate: 82, volea: 82, pared: 82, vibora: 82, chiquita: 82, dejada: 82 }) },
+    { n: "Flojo", estilo: "constructor", perso: "emocional", lado: 1, attrs: at({ globo: 55, bandeja: 55 }) }] };
+  try {
+    localStorage.setItem("rpm_idioma", "en");
+    const inf = informeRival(par, 84);
+    const txt = inf.deb.join(" | ");
+    exige(/weak link/.test(txt) && /Flojo/.test(txt), "el eslabón débil no sale en inglés: " + txt);
+    exige(/emotional/.test(txt), "la lectura mental no sale en inglés");
+    exige(/Load onto Flojo/.test(inf.recTxt), "el plan sugerido no sale en inglés: " + inf.recTxt);
+    localStorage.setItem("rpm_idioma", "it");
+    const infIt = informeRival(par, 84);
+    exige(/anello debole/.test(infIt.deb.join(" | ")), "el eslabón débil no sale en italiano");
+    // las claves tac_/scout_/inf_ existen en los 5 idiomas
+    const claves = Object.keys(I18N.es).filter(k => /^(tac_|scout_|inf_)/.test(k));
+    exige(claves.length >= 52, "faltan claves de tácticas: " + claves.length);
+    ["en", "fr", "de", "it"].forEach(l => claves.forEach(k => exige(typeof I18N[l][k] === "string" && I18N[l][k].length > 0, `falta ${k} en ${l}`)));
+  } finally { localStorage.removeItem("rpm_idioma"); }
+  return "informe y plan sugerido en 5 idiomas";
+});
+
 comprueba("Idiomas: los dilemas se muestran en el idioma activo", () => {
   const c = { sponsor: { marca: "PadelPro", sem: 200 }, energia: 90 };
   const d = _dilemaPorId("dubai");

@@ -456,34 +456,34 @@ function informeRival(par, miNivel){
   const pa=k=>Math.round(((j[0].attrs[k]||60)+(j[1].attrs[k]||60))/2);   // media de la pareja en un golpe
   const esRematador=j[0].estilo==="rematador"||j[1].estilo==="rematador";
   const deb=[], fue=[];
-  // fortalezas
+  // fortalezas (todo pasa por t(): el informe sale en el idioma activo)
   const redAtq=Math.round((pa("volea")+pa("remate")+pa("bandeja")+pa("vibora"))/4);
-  if(redAtq>=niv+4) fue.push("🥅 Temibles cuando toman la red: no se la regales, hazles jugar de fondo.");
-  if(esRematador) fue.push("💥 Pegan fuerte de arriba: cuidado con dejarles una bola alta cómoda.");
-  if(pa("dejada")>=niv+5) fue.push("🩹 Manejan bien la dejada: no te quedes clavado en el fondo.");
+  if(redAtq>=niv+4) fue.push(t("inf_fue_red"));
+  if(esRematador) fue.push(t("inf_fue_remate"));
+  if(pa("dejada")>=niv+5) fue.push(t("inf_fue_dejada"));
   // debilidades
-  if(pa("globo")<=niv-5) deb.push("🎈 Defienden mal el globo: súbete y globéales para robarles la red.");
-  if(pa("pared")<=niv-5) deb.push("🧱 Flojos en la salida de pared: bolas profundas al cristal les complican.");
-  if(pa("bandeja")<=niv-5) deb.push("🎾 Bandeja endeble: fuérzales bandejas con globos al centro.");
-  if(esRematador && pa("fondo")<=niv-3) deb.push("🏃 Se apagan en los intercambios largos: alarga los puntos, sin prisa.");
-  else if(pa("fondo")<=niv-6) deb.push("↔ Incómodos de fondo: pelotea profundo y espera su error.");
+  if(pa("globo")<=niv-5) deb.push(t("inf_deb_globo"));
+  if(pa("pared")<=niv-5) deb.push(t("inf_deb_pared"));
+  if(pa("bandeja")<=niv-5) deb.push(t("inf_deb_bandeja"));
+  if(esRematador && pa("fondo")<=niv-3) deb.push(t("inf_deb_largo"));
+  else if(pa("fondo")<=niv-6) deb.push(t("inf_deb_fondo"));
   // eslabón débil de la pareja
   let objetivo=null;
-  if(Math.abs(med[0]-med[1])>=6){ objetivo=med[0]<med[1]?0:1; deb.push(`🎯 ${j[objetivo].n} es el eslabón débil (media ${med[objetivo]} vs ${med[1-objetivo]}): cárgale el juego.`); }
+  if(Math.abs(med[0]-med[1])>=6){ objetivo=med[0]<med[1]?0:1; deb.push(t("inf_deb_eslabon",{n:j[objetivo].n,m1:med[objetivo],m2:med[1-objetivo]})); }
   // lectura mental
   const emo=j.find(p=>p.perso==="emocional");
-  if(emo) deb.push(`🧠 ${emo.n} es emocional: rómpele pronto y se vendrá abajo.`);
-  else { const val=j.find(p=>p.perso==="valiente"); if(val) fue.push(`🔥 ${val.n} crece en los puntos calientes.`); }
+  if(emo) deb.push(t("inf_deb_emocional",{n:emo.n}));
+  else { const val=j.find(p=>p.perso==="valiente"); if(val) fue.push(t("inf_fue_valiente",{n:val.n})); }
   // rasgos del rival (el ojeador los revela): identidad que cambia el partido
   j.forEach(p=>{
-    if(tieneRasgo(p,"fragil")) deb.push(`💔 ${p.n} es de cristal frágil: aprieta en los puntos calientes.`);
-    if(tieneRasgo(p,"propenso")) deb.push(`🩹 ${p.n} arrastra un físico frágil: los puntos largos le pasan factura.`);
-    if(tieneRasgo(p,"clutch")) fue.push(`🧊 ${p.n} es un especialista: aparece en los puntos decisivos.`);
-    if(tieneRasgo(p,"muro")) fue.push(`🧱 ${p.n} es un muro: tendrás que ganarle el punto dos veces.`);
-    if(tieneRasgo(p,"pegador")) fue.push(`💣 ${p.n} es pura pegada: no le des bola alta cómoda.`);
+    if(tieneRasgo(p,"fragil")) deb.push(t("inf_deb_fragil",{n:p.n}));
+    if(tieneRasgo(p,"propenso")) deb.push(t("inf_deb_propenso",{n:p.n}));
+    if(tieneRasgo(p,"clutch")) fue.push(t("inf_fue_clutch",{n:p.n}));
+    if(tieneRasgo(p,"muro")) fue.push(t("inf_fue_muro",{n:p.n}));
+    if(tieneRasgo(p,"pegador")) fue.push(t("inf_fue_pegador",{n:p.n}));
   });
-  if(!deb.length) deb.push("Sin grietas evidentes: tendrás que ganarlo con paciencia y oficio.");
-  if(!fue.length) fue.push("Pareja discreta arriba: puedes disputarles la red.");
+  if(!deb.length) deb.push(t("inf_deb_ninguna"));
+  if(!fue.length) fue.push(t("inf_fue_ninguna"));
   // táctica recomendada
   const rec={agres:"normal", diana:objetivo!=null?"debil":"repartir", red:"normal", clutch:"normal"};
   const d=miNivel!=null?miNivel-niv:0;
@@ -494,8 +494,11 @@ function informeRival(par, miNivel){
   else if(redAtq>=niv+5) rec.red="aguantar";
   // puntos calientes: de favorito, administra; de menos, arriesga para robar
   rec.clutch = d>=5?"conservar" : d<=-3?"arriesgar" : "normal";
-  const redTxt=rec.red==="subir"?", súbete a la red":rec.red==="aguantar"?", aguanta atrás y globéales":"";
-  const recTxt=`${objetivo!=null?`Carga sobre ${j[objetivo].n}`:"Reparte el juego"} y juega ${rec.agres==="agresiva"?"a degüello":rec.agres==="conservadora"?"a lo seguro":"normal"}${redTxt}.`;
+  const redTxt=rec.red==="subir"?t("inf_rec_subir"):rec.red==="aguantar"?t("inf_rec_aguantar"):"";
+  const recTxt=t("inf_rec_frase",{
+    quien:objetivo!=null?t("inf_rec_carga",{n:j[objetivo].n}):t("inf_rec_reparte"),
+    como:rec.agres==="agresiva"?t("inf_rec_deguello"):rec.agres==="conservadora"?t("inf_rec_seguro"):t("inf_rec_normal"),
+    red:redTxt});
   return {niv, med, deb:deb.slice(0,4), fue:fue.slice(0,2), objetivo, rec, recTxt};
 }
 // Lesiones con gravedad (grav 1 leve … 3 grave). Las graves tiran más semanas
