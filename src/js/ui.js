@@ -160,6 +160,20 @@ function abrirModo(modo){
           }
         }
       }
+      // Fase 4d·8: resto del protagonista (clave/valor JSON). Campo a campo:
+      // solo se adopta un valor si reproduce estructuralmente el del blob.
+      if(typeof dbSqlCargarProta==="function" && prot){
+        const prSql=dbSqlCargarProta();
+        if(prSql){
+          let tot=0,ok=0;
+          Object.keys(prSql).forEach(k=>{
+            if(!(k in prot)) return;
+            tot++;
+            try{ if(JSON.stringify(prot[k])===JSON.stringify(prSql[k])){ prot[k]=prSql[k]; ok++; } }catch(_){}
+          });
+          if(tot>0&&tot===ok) G._protaDesdeSql=true;
+        }
+      }
     }catch(e){}
     entrarPartida();
   };
