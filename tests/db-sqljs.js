@@ -130,5 +130,17 @@ module.exports = async function ejecutarPruebasSql() {
   db.dbSqlGuardarN1(d, []);
   chk(db.dbSqlLeerN1(d).length === 0, "4d · n1: lista vacía deja la tabla vacía");
 
+  // ---------- palmarés del protagonista (Fase 4d·2) ----------
+  const pal = ["Open Madrid (T1)", "MAJOR París (T2)", "Premier Roma — pareja B (T2)"];
+  db.dbSqlGuardarPalmares(d, pal);
+  db.dbSqlGuardarPalmares(d, pal); // reproyectar: debe REEMPLAZAR, no acumular
+  const palb = db.dbSqlLeerPalmares(d);
+  chk(palb.length === 3, "4d · palmarés: round-trip conserva 3 títulos (reemplaza, no acumula)", palb.length + " filas");
+  chk(palb[0] === pal[0] && palb[1] === pal[1] && palb[2] === pal[2],
+    "4d · palmarés: títulos y orden de inserción preservados", JSON.stringify(palb));
+  chk(palb[2].includes("—"), "4d · palmarés: caracteres no ASCII sobreviven");
+  db.dbSqlGuardarPalmares(d, []);
+  chk(db.dbSqlLeerPalmares(d).length === 0, "4d · palmarés: lista vacía deja la tabla vacía");
+
   return res;
 };
