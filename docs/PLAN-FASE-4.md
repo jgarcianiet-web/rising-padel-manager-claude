@@ -112,6 +112,8 @@ Sea cual sea la ruta, nunca *big-bang*:
 | Equipo de staff | `norm_staff` | #56 |
 | Finanzas y patrocinio | `norm_finanzas`, `norm_sponsor` | #57 |
 | Resto del protagonista (clave/valor JSON) | `norm_protagonista` | 4d·8 |
+| Identidad del contenido (volteo de autoridad) | `norm_meta` | 4d·9 |
+| Campos sueltos del mundo (`lider_*`, `nextId`…) | `norm_mundo` | 4d·10 |
 
 Con `norm_protagonista` la cobertura del protagonista queda completa: cada
 campo de `G.carrera`/`G.clubG` vive en una tabla (dedicada o clave/valor).
