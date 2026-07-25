@@ -358,37 +358,40 @@ function evaluaObjetivos(c,puesto){
    que llegan semanas después. Una elección de hoy reaparece más tarde: rodar el
    anuncio da dinero ahora pero te deja cansado para el Major de la semana que viene.
 ================================================================ */
+// Todos los textos son funciones que pasan por t(): así el dilema se muestra en
+// el idioma activo, y la consecuencia diferida se materializa (vía _efVal) en el
+// idioma vigente en el momento de decidir.
 const DILEMAS=[
   { id:"dubai",
     cond:c=>!!c.sponsor && (c.energia==null?100:c.energia)>40,
-    titulo:c=>`${c.sponsor.marca} te quiere en un rodaje`,
-    texto:c=>`${c.sponsor.marca} te ofrece rodar un anuncio en Dubái esta semana. Dinero y foco mediático… pero un viaje relámpago que te deja tocado justo cuando aprieta el calendario.`,
+    titulo:c=>t("dil_dubai_t",{marca:c.sponsor.marca}),
+    texto:c=>t("dil_dubai_x",{marca:c.sponsor.marca}),
     ops:[
-      {txt:"Rodar el anuncio",desc:"Cobras y ganas seguidores; llegarás cansado.",
+      {txt:c=>t("dil_dubai_o1"),desc:c=>t("dil_dubai_o1d"),
        inm:{dinero:c=>Math.max(300,(c.sponsor?c.sponsor.sem*2:300)),fans:400},
-       dif:{en:1,txt:"La resaca del viaje relámpago a Dubái pasa factura: llegas con la energía por los suelos.",ef:{energia:-24}}},
-      {txt:"Rechazar y entrenar",desc:"Proteges tu preparación; el patrocinador se enfría.",
+       dif:{en:1,txt:c=>t("dil_dubai_o1c"),ef:{energia:-24}}},
+      {txt:c=>t("dil_dubai_o2"),desc:c=>t("dil_dubai_o2d"),
        inm:{fans:-60},
-       dif:{en:2,txt:c=>`${c.sponsor?c.sponsor.marca:"El patrocinador"} no olvidó el plantón y recorta su implicación.`,ef:{dinero:c=>-(c.sponsor?Math.round(c.sponsor.sem*0.6):0)}}}]},
+       dif:{en:2,txt:c=>t("dil_dubai_o2c",{marca:c.sponsor?c.sponsor.marca:t("dil_patro_default")}),ef:{dinero:c=>-(c.sponsor?Math.round(c.sponsor.sem*0.6):0)}}}]},
   { id:"molestia",
     cond:c=>(c.energia==null?100:c.energia)<55 && !c.lesion,
-    titulo:c=>"Molestia en el gemelo",
-    texto:c=>"Notas un pinchazo en el gemelo. El médico duda: puedes forzar y competir, o parar una semana y asegurarte.",
+    titulo:c=>t("dil_gemelo_t"),
+    texto:c=>t("dil_gemelo_x"),
     ops:[
-      {txt:"Forzar y competir",desc:"No pierdes la semana, pero arriesgas una lesión mayor.",
+      {txt:c=>t("dil_gemelo_o1"),desc:c=>t("dil_gemelo_o1d"),
        inm:{},
-       dif:{en:1,txt:"Forzaste con la molestia: el gemelo termina pasando factura.",ef:{fragil:2,energia:-8}}},
-      {txt:"Parar y tratarte",desc:"Descansas esta semana; te aseguras.",
+       dif:{en:1,txt:c=>t("dil_gemelo_o1c"),ef:{fragil:2,energia:-8}}},
+      {txt:c=>t("dil_gemelo_o2"),desc:c=>t("dil_gemelo_o2d"),
        inm:{energia:18,moral:-4},dif:null}]},
   { id:"exhibicion",
     cond:c=>!!c.pro,
-    titulo:c=>"Invitación a una exhibición",
-    texto:c=>"Te invitan a una exhibición de estrellas en una gala. Buen escaparate… pero otra semana de desgaste.",
+    titulo:c=>t("dil_exhib_t"),
+    texto:c=>t("dil_exhib_x"),
     ops:[
-      {txt:"Aceptar la exhibición",desc:"Seguidores y caché; algo de desgaste.",
+      {txt:c=>t("dil_exhib_o1"),desc:c=>t("dil_exhib_o1d"),
        inm:{fans:300,dinero:200},
-       dif:{en:1,txt:"La exhibición y sus viajes dejan mella.",ef:{energia:-12}}},
-      {txt:"Declinar",desc:"Sigues con tu plan, sin distracciones.",inm:{},dif:null}]},
+       dif:{en:1,txt:c=>t("dil_exhib_o1c"),ef:{energia:-12}}},
+      {txt:c=>t("dil_exhib_o2"),desc:c=>t("dil_exhib_o2d"),inm:{},dif:null}]},
 ];
 function _efVal(v,c){ return typeof v==="function"?v(c):v; }
 function _aplicaEf(c,e){
