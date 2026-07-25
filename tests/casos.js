@@ -2299,3 +2299,105 @@ comprueba("Club: fundar da identidad y las partidas viejas también la reciben",
   exige(G.clubG.derbi && CLUBES_NPC[G.clubG.derbi.club], "la migración no puso derbi");
   return "identidad al fundar y al abrir una guardada antigua";
 });
+
+/* Rumores: el mercado se cuenta antes de pasar, y la mitad no pasa ---------- */
+comprueba("Rumores: nacen con desenlace decidido y no se repite el tipo vivo", () => {
+  const c = nuevaCarrera();
+  c.rumores = [];
+  const r1 = mkRumor(c, 5);
+  exige(r1, "no nació ningún rumor");
+  exige(typeof r1.cierto === "boolean", "el desenlace no se fija al nacer");
+  exige(r1.sem > 5, "el rumor se resuelve el mismo día que nace");
+  exige(c.rumores.length === 1, "no se encoló");
+  // el mismo tipo no vuelve a abrirse mientras el primero siga en boca de todos
+  for (let i = 0; i < 12; i++) mkRumor(c, 5);
+  const tipos = c.rumores.map(x => x.tipo);
+  exige(tipos.length === new Set(tipos).size, "se abrieron dos rumores del mismo tipo: " + tipos.join(","));
+  c.rumores.forEach(r => {
+    const tx = rumorTexto(r);
+    exige(tx.t && !/^rum_|\{[a-z]+\}|undefined/.test(tx.t), r.tipo + ": titular roto (" + tx.t + ")");
+    exige(tx.x && !/^rum_|\{[a-z]+\}/.test(tx.x), r.tipo + ": cuerpo roto");
+  });
+  return c.rumores.length + " rumores vivos, uno por tipo";
+});
+
+comprueba("Rumores: el confirmado mueve el mundo y el falso no deja rastro", () => {
+  const c = nuevaCarrera();
+  const par = G.world.parejas.find(p => (p.sexo || "M") === c.sexo && p.jug && p.jug.length === 2);
+  const antesNombre = par.nombre, antesJug = par.jug.map(j => j.n).join("+");
+  // ruptura CIERTA: la pareja cambia de verdad
+  c.rumores = [{ id: "r1", tipo: "ruptura", pid: par.id, pareja: par.nombre, jIdx: 0, sem: 10, cierto: true }];
+  const out = resolverRumores(c, 10);
+  exige(out.length === 1 && out[0].ok, "la ruptura cierta no se aplicó");
+  exige(par.jug.map(j => j.n).join("+") !== antesJug, "la pareja no cambió de jugadores");
+  exige(par.nombre !== antesNombre, "la pareja conserva el nombre viejo: " + par.nombre);
+  exige(!c.rumores.length, "el rumor resuelto sigue en la lista");
+  // fichaje FALSO: no toca nada
+  const otra = G.world.parejas.find(p => p.id !== par.id && (p.sexo || "M") === c.sexo);
+  const clubAntes = otra.club;
+  c.rumores = [{ id: "r2", tipo: "fichaje", pid: otra.id, pareja: otra.nombre, club: (clubAntes + 3) % CLUBES_NPC.length, sem: 10, cierto: false }];
+  const out2 = resolverRumores(c, 10);
+  exige(!out2[0].ok, "un rumor falso se dio por bueno");
+  exige(otra.club === clubAntes, "el rumor falso cambió de club a la pareja");
+  exige(out2[0].txt && !/^rum_|\{[a-z]+\}/.test(out2[0].txt), "desmentido sin traducir: " + out2[0].txt);
+  return "confirmado mueve el circuito, desmentido no";
+});
+
+comprueba("Rumores: el que va de tu pareja le cuesta moral", () => {
+  const c = nuevaCarrera();
+  c.compiMoral = 70;
+  c.rumores = [{ id: "r3", tipo: "pareja", compi: c.compi.n, pareja: "A/B", sem: 4, cierto: true }];
+  resolverRumores(c, 4);
+  exige(c.compiMoral < 70, "enterarse por la prensa debería costar moral: " + c.compiMoral);
+  const antes = c.compiMoral;
+  c.rumores = [{ id: "r4", tipo: "pareja", compi: c.compi.n, pareja: "A/B", sem: 5, cierto: false }];
+  resolverRumores(c, 5);
+  exige(c.compiMoral === antes, "un desmentido no debería mover la moral");
+  return "de 70 a " + antes + " al confirmarse";
+});
+
+comprueba("Rumores: en el club le cuesta la cabeza al jugador señalado", () => {
+  const cl = fundarClub();
+  const j = cl.plantilla[0];
+  j.moralC = 80;
+  cl.rumores = [{ id: "r5", tipo: "puja", j: j.n, club: 2, sem: 6, cierto: true }];
+  const out = resolverRumores(cl, 6);
+  exige(out[0].ok, "la puja cierta no se aplicó");
+  exige(j.moralC < 80, "saber lo que pagan fuera debería mover al jugador: " + j.moralC);
+  return "moral " + j.moralC + " tras enterarse de la oferta";
+});
+
+comprueba("Periódico: rumores y columna salen traducidos y sin claves crudas", () => {
+  const c = nuevaCarrera();
+  c.rumores = []; mkRumor(c, 3);
+  const el = document.getElementById("feedNoti");
+  noticia("titulo", "Prueba", "Sub");
+  renderNoticias(el);
+  const html = el.innerHTML;
+  exige(html.indexOf(t("pre_seccion_rum")) >= 0, "falta la sección de mercado");
+  exige(html.indexOf(t("pre_opinion")) >= 0, "falta la columna de opinión");
+  exige(!/>(rum|pre|soc)_[a-z0-9_]+</.test(html), "hay claves crudas en la portada");
+  exige(html.indexOf("TAMBIÉN EN PORTADA") < 0 || t("pre_tambien") === "TAMBIÉN EN PORTADA", "el rótulo de portada no pasa por t()");
+  // la columna cambia con tu momento
+  c.rachaAct = 5; const subiendo = columnaHTML();
+  c.rachaAct = 0; c.vd = { v: 1, d: 9 }; const bajando = columnaHTML();
+  exige(subiendo !== bajando, "la columna dice lo mismo ganando que perdiendo");
+  return "mercado, columna y opinión según el momento";
+});
+
+comprueba("Muro: la grada habla de ti, de tu pareja y del torneo", () => {
+  const c = nuevaCarrera();
+  c.social = [];
+  ["victoria", "compi", "torneo", "rumor", "derbi"].forEach(k => {
+    exige(POSTS_FAN[k] && POSTS_FAN[k].length >= 6, "categoría corta o ausente: " + k);
+    post(k, { rival: "A/B", torneo: "Corona de Madrid" });
+  });
+  exige(c.social.length === 5, "no se publicaron los cinco");
+  const el = document.getElementById("social");
+  renderSocial(el);
+  const html = el.innerHTML;
+  exige(!/\{[a-z]+\}/.test(html), "el muro dejó una interpolación sin resolver");
+  exige(html.indexOf(c.compi.n) >= 0, "la grada no nombra a tu pareja");
+  exige(html.indexOf("Corona de Madrid") >= 0, "la grada no nombra el torneo");
+  return "5 categorías nuevas publicando con nombres reales";
+});

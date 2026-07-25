@@ -764,6 +764,7 @@ function asegurarPlantillaClub(cl){
 function avanzarSemanaClub(){
   const cl=G.clubG;
   asegurarPlantillaClub(cl);
+  semanaDeRumores(cl,cl.semana);   // el mercado también habla en el modo club
   const accion=cl._accion||"descanso"; cl._accion=null;
   const factor=accion==="entreno"?1:accion==="torneo"?0.5:0;
   if(factor>0){

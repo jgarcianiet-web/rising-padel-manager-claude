@@ -248,6 +248,9 @@ button:active{transform:translateY(1px)}
 .paper .mast em{font-style:italic;color:#8A1E1E}
 .paper .mastsub{font-family:'IBM Plex Mono',monospace;font-size:calc(8.5px * var(--esc));letter-spacing:2.5px;text-align:center;color:#5A5548;border-top:1px solid #191C22;border-bottom:3px double #191C22;padding:4px 0;margin:7px 0 12px}
 .paper .apertura .afoto svg{width:100%;height:130px;display:block;border:1px solid #191C22}
+/* En pantalla ancha la foto de apertura es muy apaisada y el recorte se comía
+   las caras por los ojos. Más alto: la escena entra y sigue pareciendo prensa. */
+@media(min-width:620px){ .paper .apertura .afoto svg{height:200px} .paper .pmini .mfoto svg{height:96px} }
 .paper .akick{font-family:'IBM Plex Mono',monospace;font-size:calc(9px * var(--esc));letter-spacing:2px;margin-top:8px}
 .paper .atit{font-family:'Playfair Display',serif;font-weight:900;font-size:calc(24px * var(--esc));line-height:1.08;margin:3px 0 4px}
 .paper .asub{font-size:calc(12.5px * var(--esc));line-height:1.45;color:#3A3830;font-style:italic}
@@ -258,6 +261,21 @@ button:active{transform:translateY(1px)}
 .paper .tambien{border-top:1px solid #191C22;margin-top:12px;padding-top:8px;font-size:calc(11.5px * var(--esc))}
 .paper .tambien b{font-family:'IBM Plex Mono',monospace;font-size:calc(8.5px * var(--esc));letter-spacing:2px;color:#8A1E1E}
 .paper .tambien div{padding:2px 0;border-bottom:1px dotted #B5AE9C}
+/* Secciones del periódico: mercado (rumores) y columna de opinión. Van a dos
+   columnas cuando hay sitio, como una página de verdad, y a una en móvil. */
+.paper .seccion{border-top:1px solid #191C22;margin-top:12px;padding-top:8px}
+.paper .secthd{font-family:'IBM Plex Mono',monospace;font-size:calc(8.5px * var(--esc));letter-spacing:2px;color:#8A1E1E;margin-bottom:5px}
+.paper .rumor{padding:4px 0;border-bottom:1px dotted #B5AE9C;font-size:calc(11.5px * var(--esc));line-height:1.35}
+.paper .rumor b{font-family:'Playfair Display',serif;font-weight:700;display:block;font-size:calc(12.5px * var(--esc))}
+.paper .rumor span{color:#5A5548;font-style:italic}
+.paper .col{background:#E7E2D4;padding:8px 10px 7px;border-left:3px solid #8A1E1E}
+.paper .coltxt{font-family:'Playfair Display',serif;font-size:calc(13px * var(--esc));line-height:1.4;font-style:italic}
+.paper .colfirma{font-family:'IBM Plex Mono',monospace;font-size:calc(8.5px * var(--esc));letter-spacing:1.5px;color:#7A7462;text-align:right;margin-top:5px}
+.paper .dos{border-top:1px solid #191C22;margin-top:12px;padding-top:10px}
+@media(min-width:620px){
+  .paper .dos{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  .paper .dos .seccion{border-top:none;margin-top:0;padding-top:0}
+}
 .paper .lacifra{border:2px solid #191C22;margin-top:12px;padding:8px 10px;display:flex;align-items:baseline;gap:9px}
 .paper .lacifra span{font-family:'IBM Plex Mono',monospace;font-size:calc(8px * var(--esc));letter-spacing:2px;color:#8A1E1E}
 .paper .lacifra b{font-family:'Playfair Display',serif;font-size:calc(24px * var(--esc));font-weight:900}

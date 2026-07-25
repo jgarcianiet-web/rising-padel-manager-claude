@@ -128,6 +128,37 @@ visual: si la frase bebiera del flujo con semilla, esa moneda movería la
 simulación y dos partidas con la misma semilla dejarían de coincidir. Pasó al
 ampliar el repertorio, y la prueba de la semilla lo cazó.
 
+## El modo club tiene cara: filosofía, junta y derbi
+
+Tres cosas que se fijan al fundar (`club.js`) y que hay que respetar:
+
+1. **`FILOS_CLUB` condiciona el mercado.** `afinidadFilo(cl,j)` va de −2 a +2 y
+   entra en `costeFichajeCl` y `salarioDeCl`; a −2, `fichable()` dice que no y
+   el botón se apaga con su motivo. Si añades una filosofía, tiene que cambiar
+   *a quién puedes fichar*, no solo el texto.
+2. **`JUNTAS` no se elige: `mkJunta()` la sortea.** `margen` son las temporadas
+   de cuerda, `dureza` cuánto aprieta el objetivo al cerrar el año y `prima` lo
+   que paga por cumplirlo. La tacaña además mira la masa salarial.
+3. **El derbi** (`mkDerbi`, `esDerbi`, `anotaDerbi`) se resuelve al cerrar un
+   partido en `tournament.js`. Los guardados antiguos reciben las tres cosas en
+   `entrarPartida()`; ojo con no pisar el objetivo de junta que ya traían.
+
+## Rumores: el mercado se cuenta antes de pasar
+
+`mkRumor` / `resolverRumores` (en `engine/world.js`) publican lo que aún no ha
+ocurrido, y **la mitad no ocurre**. Dos reglas:
+
+- **El desenlace se decide al nacer**, no al resolver, para que el azar con
+  semilla lo fije de una vez y recargar no cambie el final.
+- **Un rumor confirmado mueve el mundo de verdad**: `_rompeParejaMundo` cambia
+  jugadores de pareja y renombra las dos, un fichaje cambia `p.club`, y los que
+  van de ti o de los tuyos cuestan moral. Si añades un tipo, añade su efecto: un
+  rumor que no cambia nada al confirmarse es ruido.
+
+El periódico (`renderNoticias`) tiene sección de mercado (`rumoresHTML`) y
+columna de opinión (`columnaHTML`), que **no es azar**: elige el texto según tu
+momento (arriba, subiendo, bajando, empezando, club).
+
 ## La guía de las primeras semanas
 
 `guia.js` sustituye al tutorial de fichas por una tira que pide **una cosa cada

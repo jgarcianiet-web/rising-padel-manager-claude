@@ -406,10 +406,120 @@ function moralMinutosDelta(j,rol){
 // Estado del jugador según su moral de club (0..100): a gusto, con dudas, exige jugar o pide salir.
 function estadoJugadorClub(j){
   const m=(j.moralC==null?70:j.moralC);
-  if(m<25) return {clave:"salir",txt:"Pide salir: harto de no jugar.",col:-1};
-  if(m<42) return {clave:"exige",txt:"Exige ser pareja A: se siente relegado.",col:-1};
-  if(m<58) return {clave:"dudas",txt:"Con dudas: necesita sentirse importante.",col:0};
-  return {clave:"ok",txt:"A gusto en el club.",col:1};
+  if(m<25) return {clave:"salir",txt:t("clb_est_salir"),col:-1};
+  if(m<42) return {clave:"exige",txt:t("clb_est_exige"),col:-1};
+  if(m<58) return {clave:"dudas",txt:t("clb_est_dudas"),col:0};
+  return {clave:"ok",txt:t("clb_est_ok"),col:1};
+}
+
+/* ================================================================
+   RUMORES
+
+   El mercado del juego pasaba de golpe: un día una pareja estaba junta y al
+   siguiente no. Un circuito de verdad se cuenta antes de pasar, y la mitad de
+   lo que se cuenta no pasa. Un rumor nace, se publica en el periódico y en el
+   muro, y semanas después se confirma —con consecuencia en el mundo— o se
+   desmiente. Que unos sean falsos es lo que hace que los verdaderos importen.
+
+   Se decide al nacer si es cierto, no al resolverlo: así el azar con semilla
+   lo fija de una vez y recargar la partida no cambia el desenlace.
+================================================================ */
+const RUM_PLAZO=[3,7];        // semanas hasta que se resuelve
+function _rumId(e){ return "r"+((e._rumN=(e._rumN|0)+1)); }
+/* Candidatos: parejas del circuito de tu mismo sexo que no seas tú. */
+function _parejasRumor(){
+  const sx=miSexo();
+  return (G.world.parejas||[]).filter(p=>!p.retiraT&&(p.sexo||"M")===sx&&p.jug&&p.jug.length===2);
+}
+/* Crea un rumor y lo encola. Devuelve el rumor o null si no hay de qué hablar. */
+function mkRumor(e,semana,azar){
+  const r=azar||rnd;
+  const tipos=[];
+  const cand=_parejasRumor();
+  if(cand.length>2){ tipos.push("ruptura","fichaje"); }
+  if(G.modo==="carrera"&&e.compi) tipos.push("pareja");
+  if(G.modo==="carrera"&&cand.length) tipos.push("tuyo");
+  if(G.modo==="club"&&(e.plantilla||[]).length) tipos.push("puja");
+  // no se abre un rumor del tipo que ya está vivo: el periódico repetía titular
+  const vivos=new Set((e.rumores||[]).map(x=>x.tipo));
+  const libres=tipos.filter(x=>!vivos.has(x));
+  if(!libres.length) return null;
+  const tipo=libres[Math.floor(r()*libres.length)];
+  const rum={id:_rumId(e),tipo,sem:semana+Math.round(RUM_PLAZO[0]+r()*(RUM_PLAZO[1]-RUM_PLAZO[0])),cierto:r()<.45};
+  if(tipo==="ruptura"||tipo==="fichaje"){
+    const p=cand[Math.floor(r()*cand.length)];
+    rum.pid=p.id; rum.pareja=p.nombre;
+    if(tipo==="ruptura") rum.jIdx=r()<.5?0:1;
+    else rum.club=Math.floor(r()*CLUBES_NPC.length);
+  } else if(tipo==="pareja"){
+    const p=cand.length?cand[Math.floor(r()*cand.length)]:null;
+    rum.compi=e.compi.n; rum.pareja=p?p.nombre:t("soc_rival_gen");
+  } else if(tipo==="tuyo"){
+    const p=cand[Math.floor(r()*cand.length)];
+    rum.pid=p.id; rum.pareja=p.nombre;
+  } else {                                  // puja por un jugador del club
+    const j=e.plantilla[Math.floor(r()*e.plantilla.length)];
+    rum.j=j.n; rum.club=Math.floor(r()*CLUBES_NPC.length);
+  }
+  (e.rumores=e.rumores||[]).push(rum);
+  return rum;
+}
+// Titular y cuerpo de un rumor abierto, ya traducidos.
+function rumorTexto(rum){
+  const club=rum.club!=null&&CLUBES_NPC[rum.club]?CLUBES_NPC[rum.club].n:"";
+  const p={pareja:rum.pareja||"",compi:rum.compi||"",j:rum.j||"",club};
+  return {t:t("rum_"+_rumK(rum.tipo)+"_t",p),x:t("rum_"+_rumK(rum.tipo)+"_x",p)};
+}
+function _rumK(tipo){ return tipo==="ruptura"?"rup":tipo==="fichaje"?"fic":tipo==="pareja"?"par":tipo==="tuyo"?"tuyo":"puja"; }
+/* Resuelve los rumores cuya semana ha llegado. Los ciertos MUEVEN el mundo;
+   los falsos se desmienten y no dejan más rastro que la vergüenza ajena.
+   Devuelve la lista de desenlaces ya traducidos, para contarlos. */
+function resolverRumores(e,semana){
+  const out=[], quedan=[];
+  (e.rumores||[]).forEach(rum=>{
+    if(rum.sem>semana){ quedan.push(rum); return; }
+    const club=rum.club!=null&&CLUBES_NPC[rum.club]?CLUBES_NPC[rum.club].n:"";
+    const par=(G.world.parejas||[]).find(x=>x.id===rum.pid);
+    const p={pareja:rum.pareja||"",compi:rum.compi||"",j:rum.j||"",club,jugador:""};
+    let efecto=null;
+    if(rum.cierto){
+      if(rum.tipo==="ruptura"&&par){
+        efecto=_rompeParejaMundo(par,rum.jIdx|0);
+        p.j=efecto?efecto.suelto:"";
+      } else if(rum.tipo==="fichaje"&&par&&rum.club!=null){
+        par.club=rum.club; efecto=true;
+      } else if(rum.tipo==="pareja"){
+        e.compiMoral=clamp((e.compiMoral==null?65:e.compiMoral)-18,5,95); efecto=true;
+      } else if(rum.tipo==="tuyo"){
+        if(typeof mkMercadoParejas==="function"&&G.modo==="carrera") e.mercadoP=mkMercadoParejas();
+        fansAdd(Math.round(120+(e.fans||0)*.03),t("rum_hd")); efecto=true;
+      } else if(rum.tipo==="puja"){
+        const j=(e.plantilla||[]).find(x=>x.n===rum.j);
+        if(j){ j.moralC=clamp((j.moralC==null?70:j.moralC)-22,0,100); efecto=true; }
+      }
+    }
+    // si el rumor era cierto pero el mundo ya no permite cumplirlo, se desmiente
+    const ok=rum.cierto&&!!efecto;
+    out.push({rum,ok,txt:t("rum_"+_rumK(rum.tipo)+(ok?"_si":"_no"),p)});
+  });
+  e.rumores=quedan;
+  return out;
+}
+/* Rompe una pareja del circuito de verdad: el jugador señalado se va con otra
+   pareja y ambas cambian de nombre. Es el único sitio donde el mercado del
+   mundo se mueve por sí solo, y por eso tiene que dejarlo todo consistente. */
+function _rompeParejaMundo(par,jIdx){
+  const otras=_parejasRumor().filter(x=>x.id!==par.id);
+  if(!otras.length||!par.jug||par.jug.length<2) return null;
+  const otra=otras[Math.floor(rnd()*otras.length)];
+  const oIdx=rnd()<.5?0:1;
+  const mio=par.jug[jIdx], suyo=otra.jug[oIdx];
+  if(!mio||!suyo) return null;
+  par.jug[jIdx]=suyo; otra.jug[oIdx]=mio;
+  const nom=p=>p.jug.map(j=>j.n.split(" ").slice(-1)[0]).join("/");
+  par.nombre=nom(par); otra.nombre=nom(otra);
+  if(typeof asignaLadosPareja==="function"){ asignaLadosPareja(par.jug); asignaLadosPareja(otra.jug); }
+  return {suelto:mio.n,destino:otra.nombre};
 }
 // Cláusula de rescisión de un jugador (la del contrato o, en su defecto, por nivel).
 function valorClausula(j){ return (j.contrato&&j.contrato.clausula)||Math.round(mediaAttrs(j.attrs)*mediaAttrs(j.attrs)*1.3); }

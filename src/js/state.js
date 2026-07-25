@@ -385,6 +385,36 @@ function accionesDeClub(w,noticias){
     }
   }
 }
+/* El circuito habla todas las semanas. Un rumor cada tres o cuatro, y los que
+   vencen se confirman (moviendo el mundo) o se desmienten. Va aquí, junto al
+   resto de lo que pasa cada semana, y lo llaman los dos modos. */
+function semanaDeRumores(e,semana){
+  /* Si el rumor va de una pareja del circuito, el periódico saca sus caras: un
+     rumor con foto de los protagonistas se lee como una noticia, no como una
+     ficha de datos. Los que van de ti usan tu pareja. */
+  const protDe=rum=>{
+    if(rum.pid!=null){
+      const p=(G.world.parejas||[]).find(x=>x.id===rum.pid);
+      if(p&&p.jug) return p;
+    }
+    return (rum.tipo==="pareja"&&typeof miParejaProt==="function")?miParejaProt():null;
+  };
+  resolverRumores(e,semana).forEach(res=>{
+    avisa(`📰 ${res.txt}`);
+    if(res.ok){
+      const tipoNot=res.rum.tipo==="ruptura"?"ruptura":res.rum.tipo==="fichaje"?"fichaje":"mercado";
+      noticia(tipoNot,res.txt,t("rum_pie"),protDe(res.rum));
+    }
+  });
+  if(rnd()<.3){
+    const rum=mkRumor(e,semana);
+    if(rum){
+      const tx=rumorTexto(rum);
+      noticia("mercado",tx.t,tx.x,protDe(rum));
+      if(rnd()<.5) post("rumor");
+    }
+  }
+}
 function evolucionaMundo(){
   const w=G.world;
   if(!w.nextId){ w.nextId=100; w.parejas.forEach(p=>{ if(p.id>=w.nextId) w.nextId=p.id+1; }); }

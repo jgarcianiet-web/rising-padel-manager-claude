@@ -1035,7 +1035,18 @@ const POSTS_FAN={
   maldicion:["soc_mal_1","soc_mal_2","soc_mal_3","soc_mal_4","soc_mal_5","soc_mal_6","soc_mal_7","soc_mal_8"],
   campanada:["soc_cam_1","soc_cam_2","soc_cam_3","soc_cam_4","soc_cam_5","soc_cam_6","soc_cam_7","soc_cam_8"],
   derbi:["soc_der_derbi_1","soc_der_derbi_2","soc_der_derbi_3","soc_der_derbi_4","soc_der_derbi_5","soc_der_derbi_6"],
+  rumor:["soc_rum_1","soc_rum_2","soc_rum_3","soc_rum_4","soc_rum_5","soc_rum_6"],
+  compi:["soc_cmp_1","soc_cmp_2","soc_cmp_3","soc_cmp_4","soc_cmp_5","soc_cmp_6"],
+  torneo:["soc_trn_1","soc_trn_2","soc_trn_3","soc_trn_4","soc_trn_5","soc_trn_6"],
 };
+/* Quién es "tu pareja" para el muro: en carrera, tu compañero; en club, el
+   primero de la pareja A. Si no hay ninguno, un genérico: el muro no puede
+   escribir «undefined juega mejor que nunca». */
+function nombreCompiMuro(){
+  if(G.modo==="carrera") return (G.carrera&&G.carrera.compi&&G.carrera.compi.n)||t("dil_compi_gen");
+  const al=typeof alineacion==="function"&&alineacion();
+  return (al&&al[0]&&al[0].n)||t("dil_compi_gen");
+}
 function post(tipo,ctx){
   const e=ent(); if(!e) return;
   ctx=ctx||{};
@@ -1045,6 +1056,7 @@ function post(tipo,ctx){
   // Se guarda la CLAVE y sus parámetros, no el texto ya resuelto: así el muro se
   // relee traducido si el jugador cambia de idioma a mitad de partida.
   const params={yo,YO:yo.toUpperCase(),
+    compi:ctx.compi||nombreCompiMuro(),
     rival:ctx.rival||t("soc_rival_gen"),
     torneo:ctx.torneo||t("soc_torneo_gen"),
     TORNEO:(ctx.torneo||t("soc_titulo_gen")).toUpperCase(),
@@ -1213,6 +1225,18 @@ function fotoNoticia(tipo,acc){
     art=`<rect x="48" y="24" width="64" height="42" rx="3" fill="#E9EDF4"/><path d="M56 38h48M56 46h48M56 54h28" stroke="#9AA6BB" stroke-width="2.5"/><path d="M88 58c6-6 10 4 16-4" stroke="${a}" stroke-width="2.5" fill="none"/><path d="M104 22l10 10-4 4-10-10z" fill="${a}"/>`;
   } else if(tipo==="hito"){
     art=`<rect x="42" y="50" width="24" height="20" fill="${a}" opacity=".55"/><rect x="68" y="38" width="24" height="32" fill="${a}"/><rect x="94" y="56" width="24" height="14" fill="${a}" opacity=".55"/><circle cx="80" cy="26" r="7" fill="${a}"/>`;
+  } else if(tipo==="mercado"){
+    // dos bocas hablando de un tercero: el dibujo del rumor
+    art=`<path d="M30 20h56a6 6 0 0 1 6 6v20a6 6 0 0 1-6 6H50l-12 10v-10h-8a6 6 0 0 1-6-6V26a6 6 0 0 1 6-6z" fill="${a}" opacity=".9"/>
+      <path d="M78 38h50a6 6 0 0 1 6 6v18a6 6 0 0 1-6 6h-8v9l-11-9H78a6 6 0 0 1-6-6V44a6 6 0 0 1 6-6z" fill="${a}" opacity=".5"/>
+      <g fill="${b}"><circle cx="46" cy="36" r="3"/><circle cx="58" cy="36" r="3"/><circle cx="70" cy="36" r="3"/></g>
+      <g fill="${b}" opacity=".8"><circle cx="92" cy="53" r="2.5"/><circle cx="103" cy="53" r="2.5"/><circle cx="114" cy="53" r="2.5"/></g>`;
+  } else if(tipo==="circuito"){
+    // un cuadro de torneo: llaves que se van cerrando
+    art=`<g stroke="${a}" stroke-width="2.5" fill="none">
+      <path d="M22 22h16v14h-16M22 50h16v14h-16"/><path d="M38 29h10v28h-10"/><path d="M48 43h14"/>
+      <path d="M138 22h-16v14h16M138 50h-16v14h16"/><path d="M122 29h-10v28h10"/><path d="M112 43h-14"/></g>
+      <circle cx="80" cy="43" r="9" fill="${a}"/>`;
   }
   return `<svg viewBox="0 0 160 90" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="g${tipo}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${b}"/><stop offset="1" stop-color="#0E1218"/></linearGradient></defs><rect width="160" height="90" fill="url(#g${tipo})"/>${pista}${art}</svg>`;
 }
@@ -1247,6 +1271,28 @@ function escenaNoticia(n){
    ediciones del diario. Se resuelven con kickTxt() al maquetar la portada. */
 const NOTI_KICK={titulo:"kick_titulo",n1:"kick_n1",lesion:"kick_lesion",fichaje:"kick_fichaje",venta:"kick_venta",ruptura:"kick_ruptura",retirada:"kick_retirada",debut:"kick_debut",contrato:"kick_contrato",hito:"kick_hito",circuito:"kick_circuito",mercado:"kick_mercado"};
 function kickTxt(tipo){ return t(NOTI_KICK[tipo]||"kick_mercado"); }
+/* La columna de mercado: lo que se dice y aún no ha pasado. Es la sección con
+   más vida del periódico porque la mitad de lo que hay ahí no va a ocurrir. */
+function rumoresHTML(){
+  const e=ent(), rs=(e.rumores||[]).slice(0,3);
+  const cuerpo=rs.length
+    ? rs.map(r=>{ const tx=rumorTexto(r); return `<div class="rumor"><b>${tx.t}</b><span>${tx.x}</span></div>`; }).join("")
+    : `<div class="rumor"><span>${t("rum_sin")}</span></div>`;
+  return `<div class="seccion"><div class="secthd">${t("pre_seccion_rum")}</div>${cuerpo}</div>`;
+}
+/* La columna de opinión. No es azar: el periódico opina sobre el momento que
+   estás viviendo, así que leerla dice algo que no está en los números. */
+function columnaHTML(){
+  const e=ent(), pos=miPuesto();
+  let k;
+  if(G.modo==="club") k="pre_op_club";
+  else if(pos<=5) k="pre_op_arriba";
+  else if((e.rachaAct||0)>=3) k="pre_op_subiendo";
+  else if((e.rachaAct||0)===0&&((e.vd||{}).d||0)>=3) k="pre_op_bajando";
+  else k="pre_op_empezando";
+  return `<div class="seccion col"><div class="secthd">${t("pre_opinion")}</div>
+    <div class="coltxt">${t(k)}</div><div class="colfirma">— ${t("pre_firma")}</div></div>`;
+}
 function renderNoticias(el){
   const ns=ent().noticias||[];
   const kcol={titulo:"#8A6A00",n1:"#8A6A00",contrato:"#8A6A00",lesion:"#8A1E1E",ruptura:"#8A1E1E",retirada:"#5A5548",fichaje:"#1E4E8A",venta:"#1E4E8A",debut:"#3E6B1E",hito:"#3E6B1E"};
@@ -1254,8 +1300,8 @@ function renderNoticias(el){
     <div class="mastsub">${t("pre_masthead",{t:temporada(),s:semanaTemp(),circuito:miSexo()==="F"?t("pre_circ_f"):t("pre_circ_m")})}</div>`;
   if(!ns.length){
     el.innerHTML=`<div class="paper">${mast}
-      <div class="apertura"><div class="atit">El circuito espera su próxima historia</div>
-      <div class="asub">Esta portada se escribirá con tus títulos, tus fichajes y tus batallas. La rotativa está lista.</div></div>
+      <div class="apertura"><div class="atit">${t("pre_vacio_t")}</div>
+      <div class="asub">${t("pre_vacio_x")}</div></div>
       <div class="pfoot">${t("pre_pie")}</div></div>`;
     return;
   }
@@ -1274,7 +1320,8 @@ function renderNoticias(el){
         <div class="mkick" style="color:${kcol[n.tipo]||"#1E4E8A"}">${kickTxt(n.tipo)}</div>
         <div class="mtit">${n.titular}</div>
       </div>`).join("")}</div>`:""}
-    ${tambien.length?`<div class="tambien"><b>TAMBIÉN EN PORTADA</b>${tambien.map(n=>`<div>· ${n.titular} <span style="color:#7A7462;font-size:9px">T${n.t}S${n.sem}</span></div>`).join("")}</div>`:""}
+    <div class="dos">${rumoresHTML()}${columnaHTML()}</div>
+    ${tambien.length?`<div class="tambien"><b>${t("pre_tambien")}</b>${tambien.map(n=>`<div>· ${n.titular} <span style="color:#7A7462;font-size:9px">T${n.t}S${n.sem}</span></div>`).join("")}</div>`:""}
     ${(()=>{const e2=ent();const ops=[[fmtFans(e2.fans||0),t("cifra_seguidores")],["#"+miPuesto(),t("cifra_ranking")],[(e2.rachaAct||0)>=3?e2.rachaAct:(e2.vd||{v:0}).v,(e2.rachaAct||0)>=3?t("cifra_racha"):t("cifra_victorias")],[e2.palmares.length,t("cifra_titulos")]];const [num,txt]=ops[semanaTemp()%ops.length];return `<div class="lacifra"><span>${t("cifra_hd")}</span><b>${num}</b>${txt}</div>`;})()}
     <div class="pfoot">${t("pre_pie_ed",{ed:G.modo==="carrera"?t("pre_ed_carrera"):t("pre_ed_clubes")})}</div>
   </div>`;
@@ -1387,6 +1434,8 @@ function avanzarSemanaCarrera(){
     c._avisoMoral=true;
     avisa(t("av_harto",{n:c.compi.n}));
   }
+  // el circuito habla: rumores que nacen, se confirman o se desmienten
+  semanaDeRumores(c,c.semana);
   // dilemas encadenados: primero llegan las consecuencias de decisiones pasadas...
   resolverPendientes(c,c.semana).forEach(p=>avisa(`⏳ ${p.txt}`));
   // ...y de vez en cuando surge un nuevo dilema (si no hay uno pendiente de decidir)
@@ -1585,7 +1634,9 @@ function prensaSemanal(){
     const w=cands[Math.floor(rnd()*Math.min(5,cands.length))];
     if(w){
       const giro=t(pick(["not_cron_giro1","not_cron_giro2","not_cron_giro3","not_cron_giro4","not_cron_giro5"]));
-      noticia("circuito",t("not_cron_t",{nombre:w.nombre,cat:catNombre(sl.premier),ciudad:sl.ciudad}),t("not_cron_s",{giro,ciudad:sl.ciudad}));
+      // la crónica sale con la foto de quien ganó, no con un dibujo genérico
+      const parW=(G.world.parejas||[]).find(x=>x.id===w.id);
+      noticia("circuito",t("not_cron_t",{nombre:w.nombre,cat:catNombre(sl.premier),ciudad:sl.ciudad}),t("not_cron_s",{giro,ciudad:sl.ciudad}),parW&&parW.jug?parW:null);
     }
   } else if(rnd()<.55&&G.world.prevPos){
     // 2) el movimiento de la semana en el ranking

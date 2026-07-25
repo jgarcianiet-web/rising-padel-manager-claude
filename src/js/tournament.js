@@ -179,6 +179,8 @@ function abrirTorneo(ci,wildcard){
     noticia("hito",t("not_prof_t"),t("not_prof_s"));
     avisa(t("aviso_cabezas_serie"));
   }
+  // el torneo de la semana también se comenta en la grada
+  if(rnd()<.35) post("torneo",{torneo:torneo.nombre});
   if(cat.premier){
     const enJuego=(cuadro.ronda[CUADRO_FASE0]||[]).filter(p=>p&&!p.yo).concat(rivales.filter(Boolean));
     const cocoNiv=Math.max(...enJuego.map(r=>nivCuadro(r)));
@@ -814,6 +816,8 @@ function finPartido(){
   else e.rachaAct=0;
   fansAdd(gane?(torneo&&torneo.premierT?Math.round(R(15,40)):Math.round(R(2,8))):-Math.round(R(1,4)));
   if(rnd()<(torneo&&torneo.premierT?.5:.15)) post(gane?"victoria":"derrota",{rival:rival.nombre,torneo:torneo?torneo.nombre:""});
+  // la grada también habla de tu pareja, que es media pista y nunca sale en el titular
+  if(rnd()<.12) post("compi");
   if(gane&&(e.rachaAct===5||e.rachaAct===10)) post("forma",{racha:e.rachaAct});
   let seLesiona=false, lesionTxt="";
 
