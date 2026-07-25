@@ -190,8 +190,13 @@ function empezarPartido(ver,coach){
     document.getElementById("avaA").innerHTML=(teams[0].jug||[]).map(j=>avatarSVG(j,30)).join("");
     document.getElementById("avaB").innerHTML=(teams[1].jug||[]).map(j=>avatarSVG(j,30)).join("");
     document.getElementById("coms").innerHTML="";
+    const esNem=G.modo==="carrera"&&G.carrera&&G.carrera.nemesis&&String(G.carrera.nemesis.id)===String(rival.id);
+    if(esNem){
+      match.rivBoost=(match.rivBoost||0)+presionNemesis(G.carrera,rival.id);
+      addCom(t("com_nemesis",{rival:rival.nombre,n:G.carrera.nemesis.elim|0}),0);
+    }
     if(clPre){
-      match.rivBoost=clPre.tag==="RIVALIDAD"?.06:0;
+      match.rivBoost=(match.rivBoost||0)+(clPre.tag==="RIVALIDAD"?.06:0);
       if(clPre.tag==="BESTIA NEGRA") teams[0].jug.forEach(j=>j.conf=clamp((j.conf??55)-4,10,95));
       if(clPre.tag==="CLIENTE") teams[1].jug.forEach(j=>j.conf=clamp((j.conf??55)-3,10,95));
       addCom(`${clPre.emo} ${clPre.tag==="RIVALIDAD"?`¡Capítulo ${h2pre.v+h2pre.d+1} de la rivalidad! ${h2pre.v}-${h2pre.d} hasta hoy.`:clPre.tag==="BESTIA NEGRA"?`Vuestra bestia negra al otro lado: ${h2pre.v}-${h2pre.d}. A romper el muro.`:`Un viejo cliente: ${h2pre.v}-${h2pre.d} a favor. Que no se despierte.`}`,0);
@@ -626,6 +631,19 @@ function finPartido(){
   h2r[gane?"v":"d"]++;
   h2r.n=rival.nombre; h2r.ultT=temporada();
   if(f>=4) h2r.alta=(h2r.alta||0)+1;
+  // ARCHIRRIVAL: perder es lo que crea rivales de verdad — quien te elimina de
+  // un torneo suma, y en fases altas la herida cuenta doble.
+  if(!gane){ h2r.elim=(h2r.elim||0)+1; if(f>=4) h2r.altaElim=(h2r.altaElim||0)+1; }
+  if(G.modo==="carrera"&&typeof nuevoNemesis==="function"){
+    const nm=nuevoNemesis(e);
+    if(nm){
+      e.nemesis={id:nm.id,nombre:nm.nombre,desde:temporada(),elim:nm.elim};
+      noticia("ruptura",t("not_nemesis_t",{rival:nm.nombre}),t("not_nemesis_s",{yo:nombreEntidad().replace("★ ",""),n:nm.elim}));
+      avisa(t("aviso_nemesis",{rival:nm.nombre,n:nm.elim}));
+    } else if(e.nemesis&&String(e.nemesis.id)===String(rival.id)){
+      e.nemesis.elim=h2r.elim|0;   // el marcador del duelo se mantiene al día
+    }
+  }
   const clAhora=clasificaRiv(h2r);
   if(clAhora&&clAhora.tag==="RIVALIDAD"&&(!clAntes||clAntes.tag!=="RIVALIDAD")){
     noticia("hito",t("not_rivalidad_t"),t("not_rivalidad_s",{yo:nombreEntidad().replace("★ ",""),rival:rival.nombre,n:h2r.v+h2r.d}));
@@ -715,6 +733,8 @@ function finPartido(){
   if(G.modo==="club") clubPalma(-1,`${torneo.nombre} (T${temporada()})`);   // -1 = tu club (se ignora, ya está en e.palmares)
     if(torneo.premierT) e._campPremSem=semanaTemp();
     if(torneo.cat===6){ e.recMajors=(e.recMajors||0)+1; }
+    // los títulos de la etapa actual con tu compañero: la historia es de LOS DOS
+    if(G.modo==="carrera") e._parejaTitulos=(e._parejaTitulos|0)+1;
     if(torneo.cat===7){ e.recFinals=(e.recFinals||0)+1; }
     fansAdd([60,120,250,500,1500,3000,8000,5000][torneo.cat]||60,t("fan_titulo",{torneo:torneo.nombre}));
     post("titulo",{torneo:torneo.nombre});
@@ -749,6 +769,11 @@ function finPartido(){
     avisa(t("aviso_previa_superada"));
   }
   if(G.modo==="carrera"){
+    // gira de despedida: el circuito te brinda pasillo en cada torneo nuevo
+    if(G.carrera&&G.carrera.ultimoBaile&&torneo&&torneo.fase===torneo.startFase){
+      avisa(t("ub_despedida",{torneo:torneo.nombre}));
+      fansAdd(Math.round(R(150,400)),t("ub_fan_motivo"));
+    }
     avisa(t("aviso_ronda",{torneo:torneo.nombre,fase:faseNombre(torneo.fase).toLowerCase(),dia:diaNombre(diaDeFase(torneo.fase)-1)}));
     G.carrera._jugoTorneo=true;
     avanzarDia();

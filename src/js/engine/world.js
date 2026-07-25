@@ -238,6 +238,88 @@ function evaluarRuptura(c,puesto){
   return {crisis:true,motivo,ops};
 }
 /* ================================================================
+   LA PAREJA COMO PERSONAJE: tu compañero deja de ser un conjunto de
+   atributos. Tiene un ACUERDO que firmasteis al fichar y que va a exigir,
+   ENVEJECE hasta retirarse, y lo que ganáis juntos queda registrado como
+   historia de la pareja, no solo como palmarés tuyo. Todo puro y testable.
+================================================================ */
+const EDAD_RETIRO_COMPI=35;
+// ¿Se cumplió lo que le prometiste? Devuelve null si no había acuerdo.
+function evaluaAcuerdoCompi(c,puesto){
+  const ac=c&&c.compi&&c.compi._acuerdo;
+  if(!ac||!ac.objetivo) return null;
+  const p=puesto||99, meta=ac.objetivo;
+  const cumplido=p<=meta;
+  // incumplir duele más cuanto más lejos quedaste de lo pactado
+  const fallo=Math.min(20,Math.round((p-meta)/2)+4);
+  return {cumplido,meta,puesto:p,delta:cumplido?8:-fallo};
+}
+// ¿El compañero cuelga la pala? Probabilidad creciente desde los 35.
+function compiSeRetira(compi,rnd){
+  const e=(compi&&compi.edad)||0;
+  if(e<EDAD_RETIRO_COMPI) return false;
+  const p=Math.min(.9,(e-EDAD_RETIRO_COMPI)*.18+.10);
+  return (rnd||Math.random)()<p;
+}
+// Cierra la etapa con un compañero y la devuelve para el histórico de parejas.
+function cierraEtapaPareja(c,temporada,motivo){
+  const co=c&&c.compi; if(!co) return null;
+  const desde=(c._parejaDesde==null?temporada:c._parejaDesde);
+  const tits=((c.palmares)||[]).filter(x=>x&&x._pareja===co.n).length;
+  return {n:co.n,desde,hasta:temporada,temps:Math.max(1,temporada-desde+1),
+    titulos:(c._parejaTitulos|0),quimica:c.quimica|0,motivo:motivo||"cambio"};
+}
+// Mejor pareja de tu carrera: la que más títulos os dio (desempate por años).
+function mejorPareja(hist){
+  let m=null;
+  (hist||[]).forEach(x=>{
+    if(!m||(x.titulos|0)>(m.titulos|0)||((x.titulos|0)===(m.titulos|0)&&(x.temps|0)>(m.temps|0))) m=x;
+  });
+  return m;
+}
+/* ================================================================
+   ARCHIRRIVAL: de las estadísticas al relato. El h2h ya guarda el cara a cara,
+   pero un rival de verdad no es el que más veces ves: es el que te ELIMINA.
+   Cuando alguien te echa tres veces de un torneo, deja de ser un rival más y
+   pasa a tener nombre propio, con titulares y presión extra en la pista.
+   Puro y testable: la interfaz solo pinta lo que decide esta función.
+================================================================ */
+const NEMESIS_ELIM=3;   // eliminaciones que hacen falta para que se declare
+// Recorre el h2h y devuelve el candidato a archirrival: el que más te ha
+// eliminado (desempata por eliminaciones en fases altas y luego por derrotas).
+function candidatoNemesis(h2h){
+  let mejor=null;
+  Object.keys(h2h||{}).forEach(id=>{
+    const x=h2h[id]||{}; const elim=x.elim|0;
+    if(elim<NEMESIS_ELIM||!x.n) return;
+    const clave=[elim,x.altaElim|0,x.d|0];
+    if(!mejor||clave[0]>mejor.clave[0]||(clave[0]===mejor.clave[0]&&clave[1]>mejor.clave[1])||
+       (clave[0]===mejor.clave[0]&&clave[1]===mejor.clave[1]&&clave[2]>mejor.clave[2])){
+      mejor={id,nombre:x.n,elim,altaElim:x.altaElim|0,v:x.v|0,d:x.d|0,clave};
+    }
+  });
+  if(!mejor) return null;
+  delete mejor.clave;
+  return mejor;
+}
+// ¿Cambia el archirrival? Devuelve el nuevo si hay que declararlo, o null.
+// Solo se declara uno nuevo si supera en eliminaciones al actual.
+function nuevoNemesis(c){
+  const cand=candidatoNemesis(c&&c.h2h);
+  if(!cand) return null;
+  const act=c&&c.nemesis;
+  if(act&&act.id===cand.id) return null;                  // ya es el mismo
+  if(act&&(cand.elim<=(act.elim|0))) return null;          // no destrona al actual
+  return cand;
+}
+// Intensidad de la rivalidad para el partido: presión añadida (0..0.14).
+function presionNemesis(c,rivalId){
+  const n=c&&c.nemesis;
+  if(!n||String(n.id)!==String(rivalId)) return 0;
+  // crece con cada eliminación pero se satura tarde: a las 3 pesa poco, a las 9 quema
+  return Math.min(.14,.04+(n.elim|0)*.012);
+}
+/* ================================================================
    NEGOCIACIÓN: fichar un compañero no es pagar y listo. El candidato tiene
    exigencias (prestigio, lado, entrenador, reparto, ambición) y hay que
    convencerle. Puro y testable; la UI monta el modal sobre estas funciones.
@@ -353,6 +435,88 @@ function evaluaObjetivos(c,puesto){
   return logr;
 }
 
+/* ================================================================
+   EL ÚLTIMO BAILE: el arco final de una carrera. Tres piezas que se
+   sostienen entre sí y son PURAS (testables sin DOM ni partida):
+   · declive por edad DIFERENCIADO — lo explosivo (remate, víbora, bandeja,
+     volea) se va antes que lo de cabeza (chiquita, dejada, globo, fondo,
+     pared), así el jugador se reconvierte solo hacia un perfil de constructor;
+   · OFICIO de veterano — las temporadas jugadas reducen el error bajo presión,
+     de modo que envejecer no es solo perder;
+   · la RETIRADA — a partir de cierta edad se puede anunciar la última
+     temporada, y al cerrarla se calcula el legado.
+================================================================ */
+const ATTR_EXPLOSIVOS=["remate","vibora","bandeja","volea"];
+const EDAD_DECLIVE=31;        // a partir de aquí el cuerpo empieza a pasar factura
+const EDAD_RETIRO_MIN=33;     // desde aquí puedes anunciar la última temporada
+const EDAD_RETIRO_FORZADO=44; // el cuerpo dice basta
+
+// Cuánto declina un atributo esta temporada. Devuelve el número de puntos a
+// restar (0..3). rnd inyectable para pruebas reproducibles.
+function declivePorEdad(edad,clave,rnd){
+  if(edad<EDAD_DECLIVE) return 0;
+  const r=rnd||Math.random;
+  const explosivo=ATTR_EXPLOSIVOS.indexOf(clave)>=0;
+  const años=edad-EDAD_DECLIVE;
+  // el explosivo cae antes y más rápido; el toque aguanta
+  const base=explosivo?(.30+años*.055):(.12+años*.030);
+  const p=Math.min(explosivo?.85:.55,base);
+  if(r()>=p) return 0;
+  return (explosivo&&años>=4&&r()<.35)?2:1;
+}
+// Aplica el declive a un conjunto de atributos. Devuelve el total perdido.
+function aplicaDeclive(attrs,edad,rnd){
+  if(!attrs||edad<EDAD_DECLIVE) return 0;
+  let tot=0;
+  ATTR_KEYS.forEach(k=>{
+    const d=declivePorEdad(edad,k,rnd);
+    if(d>0){ attrs[k]=clamp((attrs[k]||0)-d,20,96); tot+=d; }
+  });
+  return tot;
+}
+// OFICIO: 0..1 según temporadas compitiendo. Se traduce en menos error en los
+// puntos calientes — el veterano no corre más, pero falla menos cuando quema.
+function oficioDe(c){
+  const temps=((c&&c.hist)||[]).length;
+  return Math.min(1,temps/12);
+}
+// Factor multiplicador del error bajo presión (1 = sin efecto). Solo actúa
+// cuando de verdad hay presión, y nunca baja del 25% de mejora.
+function factorOficio(c,presion){
+  const of=oficioDe(c);
+  if(!of||!presion||presion<.4) return 1;
+  return 1-of*.25*Math.min(1,(presion-.4)/.6);
+}
+// ¿Puede anunciar su última temporada?
+function puedeRetirarse(c){ return !!c && (c.edad||0)>=EDAD_RETIRO_MIN && !c.ultimoBaile && !c.retirado; }
+// ¿El cuerpo obliga a colgar la pala?
+function retiroForzado(c){ return !!c && (c.edad||0)>=EDAD_RETIRO_FORZADO; }
+// Legado de una carrera: el resumen con el que se cierra el arco. Puro.
+function legadoDe(c,world){
+  const hist=(c&&c.hist)||[], pal=(c&&c.palmares)||[];
+  const n1=((world&&world.n1hist)||[]).filter(x=>x.yo).length;
+  const majors=(c&&c.recMajors)||0;
+  const mejor=hist.length?Math.min(...hist.map(h=>h.pos)):(c&&c.puestoFin)||99;
+  // el rival más repetido: con quien más veces te cruzaste
+  let rival=null,maxN=0;
+  Object.keys((c&&c.h2h)||{}).forEach(k=>{
+    const x=c.h2h[k], n=(x.v|0)+(x.d|0);
+    if(x.n&&n>maxN){ maxN=n; rival={nombre:x.n,v:x.v|0,d:x.d|0,n}; }
+  });
+  // categoría histórica: de mayor a menor peso
+  let rango="promesa";
+  if(n1>=3||majors>=5) rango="leyenda";
+  else if(n1>=1||majors>=2) rango="historico";
+  else if(pal.length>=8||mejor<=5) rango="grande";
+  else if(pal.length>=3||mejor<=15) rango="profesional";
+  else if(pal.length>=1||mejor<=30) rango="veterano";
+  // si hubo archirrival declarado, es ÉL quien cierra la historia
+  if(c&&c.nemesis){
+    const x=((c.h2h)||{})[c.nemesis.id]||{};
+    rival={nombre:c.nemesis.nombre,v:x.v|0,d:x.d|0,n:(x.v|0)+(x.d|0),nemesis:true};
+  }
+  return {temporadas:hist.length,titulos:pal.length,majors,n1,mejorPuesto:mejor,rival,rango,edad:(c&&c.edad)||0};
+}
 /* ================================================================
    DILEMAS ENCADENADOS: decisiones cuyas consecuencias no son inmediatas, sino
    que llegan semanas después. Una elección de hoy reaparece más tarde: rodar el

@@ -170,43 +170,43 @@ const ENTRENADORES=[
 /* Del bar de la esquina a la multinacional: cuatro escalones de patrocinio */
 const MARCAS=[
   // tier 1 · el barrio
-  {n:"Paletería Rincón",tier:1,sec:"tienda de palas del barrio"},
-  {n:"Bar Manolo",tier:1,sec:"el bar de la esquina"},
-  {n:"Ferretería El Clavo",tier:1,sec:"ferretería de toda la vida"},
-  {n:"Gimnasio Hierro Viejo",tier:1,sec:"gimnasio de barrio"},
-  {n:"Autoescuela Volante",tier:1,sec:"autoescuela local"},
-  {n:"Kebab Estrella",tier:1,sec:"el kebab de después de entrenar"},
+  {n:"Paletería Rincón",tier:1,sec:"sec_31"},
+  {n:"Bar Manolo",tier:1,sec:"sec_10"},
+  {n:"Ferretería El Clavo",tier:1,sec:"sec_14"},
+  {n:"Gimnasio Hierro Viejo",tier:1,sec:"sec_16"},
+  {n:"Autoescuela Volante",tier:1,sec:"sec_03"},
+  {n:"Kebab Estrella",tier:1,sec:"sec_12"},
   // tier 2 · marca nacional
-  {n:"RisingWear",tier:2,sec:"ropa deportiva nacional"},
-  {n:"VoltIso",tier:2,sec:"bebida isotónica"},
-  {n:"PalaTech",tier:2,sec:"palas de gama media"},
-  {n:"Seguros Peninsular",tier:2,sec:"aseguradora nacional"},
-  {n:"Colchones Morfeo",tier:2,sec:"descanso deportivo"},
-  {n:"Gasolineras Petro-Lite",tier:2,sec:"red de gasolineras"},
+  {n:"RisingWear",tier:2,sec:"sec_28"},
+  {n:"VoltIso",tier:2,sec:"sec_06"},
+  {n:"PalaTech",tier:2,sec:"sec_22"},
+  {n:"Seguros Peninsular",tier:2,sec:"sec_02"},
+  {n:"Colchones Morfeo",tier:2,sec:"sec_09"},
+  {n:"Gasolineras Petro-Lite",tier:2,sec:"sec_26"},
   // tier 3 · gigante del deporte
-  {n:"Toropádel",tier:3,sec:"palas de élite"},
-  {n:"Cabeza Sport",tier:3,sec:"multinacional de raqueta"},
-  {n:"Knoxx",tier:3,sec:"palas profesionales"},
-  {n:"Adipala",tier:3,sec:"gigante deportivo"},
-  {n:"Babolate",tier:3,sec:"marca histórica de raqueta"},
-  {n:"Banco Meridional",tier:3,sec:"banca deportiva"},
-  {n:"Peña El Revés",tier:1,sec:"peña padelística local"},
-  {n:"Panadería La Miga",tier:1,sec:"la panadería de abajo"},
+  {n:"Toropádel",tier:3,sec:"sec_23"},
+  {n:"Cabeza Sport",tier:3,sec:"sec_20"},
+  {n:"Knoxx",tier:3,sec:"sec_24"},
+  {n:"Adipala",tier:3,sec:"sec_15"},
+  {n:"Babolate",tier:3,sec:"sec_19"},
+  {n:"Banco Meridional",tier:3,sec:"sec_04"},
+  {n:"Peña El Revés",tier:1,sec:"sec_25"},
+  {n:"Panadería La Miga",tier:1,sec:"sec_17"},
   // tier 2 · marca nacional
-  {n:"Deportes Zabala",tier:2,sec:"cadena de deportes"},
-  {n:"Clínica FisioVida",tier:2,sec:"clínica de fisioterapia"},
+  {n:"Deportes Zabala",tier:2,sec:"sec_07"},
+  {n:"Clínica FisioVida",tier:2,sec:"sec_08"},
   // tier 3 · gigante del deporte
-  {n:"Puwma",tier:3,sec:"multinacional del felino"},
-  {n:"Relojes Tissec",tier:3,sec:"relojería suiza"},
+  {n:"Puwma",tier:3,sec:"sec_21"},
+  {n:"Relojes Tissec",tier:3,sec:"sec_27"},
   // tier 4 · multinacional global
-  {n:"Colavola",tier:4,sec:"el refresco de siempre"},
-  {n:"RedToro",tier:4,sec:"bebida energética global"},
-  {n:"Nikke",tier:4,sec:"el gigante del swoosh"},
-  {n:"Catarí Airways",tier:4,sec:"aerolínea del Golfo"},
-  {n:"Movistrella",tier:4,sec:"teleco multinacional"},
-  {n:"Amazonia Prime",tier:4,sec:"tecnológica global"},
-  {n:"Rolox",tier:4,sec:"lujo de alta gama"},
-  {n:"Emiratos Fly",tier:4,sec:"aerolínea de bandera"},
+  {n:"Colavola",tier:4,sec:"sec_13"},
+  {n:"RedToro",tier:4,sec:"sec_05"},
+  {n:"Nikke",tier:4,sec:"sec_11"},
+  {n:"Catarí Airways",tier:4,sec:"sec_01"},
+  {n:"Movistrella",tier:4,sec:"sec_30"},
+  {n:"Amazonia Prime",tier:4,sec:"sec_29"},
+  {n:"Rolox",tier:4,sec:"sec_18"},
+  {n:"Emiratos Fly",tier:4,sec:"sec_00"},
 ];
 const SPOT_TIPOS=["spot_1","spot_2","spot_3","spot_4","spot_5","spot_6"];   // claves i18n; los guardados antiguos llevan el texto literal (t() lo devuelve tal cual)
 /* catálogo de primas por objetivos (se cobran una vez al lograrse, mientras dure el contrato) */
@@ -356,6 +356,9 @@ function empezarCarrera(estiloKey){
 // Se rompe la pareja: el compañero se va y Chino/China vuelve al rescate.
 function rompeConCompi(c){
   const ex=c.compi.n;
+  const _et=cierraEtapaPareja(c,temporada(),"ruptura");
+  if(_et){ c.parejasHist=(c.parejasHist||[]); c.parejasHist.push(_et); }
+  c._parejaDesde=temporada(); c._parejaTitulos=0;
   const protRup={jug:[{n:c.nombre,sexo:c.sexo,_ropa:"#C6F53C"},{n:ex,sexo:c.sexo}]};
   c.compi={...compiInicial(c.sexo||"M"),attrs:mkAttrsNivel(CHINO.nivel,CHINO.estilo)};
   c.quimica=CHINO.quim;c.compiMoral=70;c.compiPlan="auto";c._crisisPareja=null;
@@ -382,6 +385,64 @@ function mostrarRuptura(c){
   });
 }
 // Panel de objetivos de la temporada con su progreso (barra + estado).
+/* ================================================================
+   EL ÚLTIMO BAILE · interfaz: anunciar la última temporada, vivirla como una
+   gira de despedida y cerrar la carrera con la pantalla de legado.
+================================================================ */
+// Panel del jugador: botón para anunciar la retirada (o el aviso de que ya
+// está anunciada). Solo aparece cuando la edad lo permite.
+function pintarUltimoBaile(){
+  const box=document.getElementById("ultimoBaile"); if(!box) return;
+  const c=G&&G.carrera; if(!c){ box.innerHTML=""; return; }
+  if(c.ultimoBaile){
+    const quedan=SEMANAS_TEMP-semanaTemp()+1;
+    box.innerHTML=`<div class="opcion" style="border-color:var(--oro)">
+      <b style="color:var(--oro)">${t("ub_titulo")}</b>
+      <div class="d">${t("ub_activo",{n:quedan})}</div></div>`;
+    return;
+  }
+  if(!puedeRetirarse(c)){ box.innerHTML=""; return; }
+  box.innerHTML=`<div class="opcion">
+    <b>${t("ub_puedes")}</b><div class="d">${t("ub_puedes_d",{edad:c.edad})}</div>
+    <button style="width:100%;margin-top:6px" onclick="anunciarUltimoBaile()">${t("ub_anunciar")}</button></div>`;
+}
+function anunciarUltimoBaile(){
+  const c=G&&G.carrera; if(!c||!puedeRetirarse(c)) return;
+  if(!confirm(t("ub_confirmar"))) return;
+  c.ultimoBaile=temporada();
+  fansAdd(3000,t("ub_fan_motivo"));
+  noticia("retirada",t("not_ub_t",{nombre:c.nombre}),t("not_ub_s",{t:temporada()}),miParejaProt());
+  avisa(t("ub_av_anuncio"));
+  post("gala");
+  guardar(); pintarCarrera();
+}
+// Cierre definitivo: calcula el legado, lo muestra y archiva la partida.
+function retirarse(){
+  const c=G&&G.carrera; if(!c) return;
+  const L=legadoDe(c,G.world);
+  c.retirado=true;
+  try{ lsDel(SLOTS.carrera); }catch(e){}
+  const fila=(k,v)=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px solid var(--borde)"><span style="color:var(--gris)">${k}</span><b>${v}</b></div>`;
+  const ov=document.getElementById("legadoModal")||(()=>{const d=document.createElement("div");d.id="legadoModal";d.style.cssText="position:fixed;inset:0;background:rgba(8,10,14,.96);z-index:90;display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto";document.body.appendChild(d);return d;})();
+  ov.innerHTML=`<div class="card" style="max-width:460px;width:100%">
+    <h3 style="margin-top:0;color:var(--oro)">${t("leg_titulo")}</h3>
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
+      ${avatarSVG({n:c.nombre,sexo:c.sexo,_ropa:c._ropa||c.color,ava:c.ava,edad:c.edad},64)}
+      <div><div style="font-size:15px;font-weight:700">${c.nombre}</div>
+      <div class="foot" style="text-align:left">${t("leg_rango_"+L.rango)}</div></div>
+    </div>
+    <div style="font-size:12px;margin-bottom:10px">
+      ${fila(t("leg_temporadas"),L.temporadas)}
+      ${fila(t("leg_titulos"),L.titulos)}
+      ${fila(t("leg_majors"),L.majors)}
+      ${fila(t("leg_n1"),L.n1)}
+      ${fila(t("leg_mejor"),"#"+L.mejorPuesto)}
+      ${L.rival?fila(t("leg_rival"),`${L.rival.nombre} (${L.rival.v}-${L.rival.d})`):""}
+    </div>
+    <div class="foot" style="text-align:left;line-height:1.6;margin-bottom:10px">${t("leg_cierre_"+L.rango,{nombre:c.nombre,edad:L.edad})}</div>
+    <button class="pri" style="width:100%" onclick="quitarEl(document.getElementById('legadoModal'));G=null;irA('menu');pintarMenu();">${t("leg_volver")}</button>
+  </div>`;
+}
 function pintarObjetivos(){
   const box=document.getElementById("objTemp"); if(!box) return;
   const c=G.carrera; if(!c) return;
@@ -440,7 +501,7 @@ function pintarCarrera(){
     const cst=Object.keys(ent().staff||{}).reduce((x,k)=>x+((ent().staff[k]&&ent().staff[k].sal)||0),0);
     document.getElementById("staffCoste").textContent=t("staff_coste",{cst});
   }
-  if(tabActiva==="jugador"){pintarJugador();renderHitos(document.getElementById("hitos"));renderRivalidades(document.getElementById("rivalidades"));}
+  if(tabActiva==="jugador"){pintarJugador();pintarUltimoBaile();renderParejas(document.getElementById("parejasHist"));renderHitos(document.getElementById("hitos"));renderRivalidades(document.getElementById("rivalidades"));}
   if(tabActiva==="ranking"){renderRanking(document.getElementById("tablaRk"));renderClubes(document.getElementById("tablaClubes"));renderN1(document.getElementById("n1hist"));renderRecords(document.getElementById("records"));}
   if(tabActiva==="diario"){renderNoticias(document.getElementById("feedNoti"));renderDiario(document.getElementById("diario"),document.getElementById("palmares"));renderSocial(document.getElementById("social"));renderTrayectoria(document.getElementById("trayec"));}
 }
@@ -705,7 +766,7 @@ function pintarJugador(){
   if(c.sponsor){
     const s=c.sponsor;
     const d=document.createElement("div");d.className="opcion";
-    d.innerHTML=`<b>${t("patro_contrato",{marca:s.marca})}</b> ${s.tier?`<span class="pill" style="color:${s.tier===4?"var(--oro)":s.tier===3?"#9B59D0":s.tier===2?"#4FA3D8":"var(--gris)"}">${tierTxt(s.tier)}</span>`:""}${s.sec?`<div class="d" style="font-style:italic">${s.sec}</div>`:""}<div class="d">${t("patro_detalle",{sem:s.sem,bonus:s.bonus,obj:s.objetivo,n:s.tRest})}${miPuesto()>s.objetivo?` <span style="color:var(--rojo)">${t("patro_no_cumples",{p:miPuesto()})}</span>`:` <span style="color:var(--verde)">${t("patro_cumples",{p:miPuesto()})}</span>`}</div>${(s.primas&&s.primas.length)?`<div class="d">${t("patro_primas")} ${s.primas.map(pr=>`${(s.primasCobradas&&s.primasCobradas[pr[0]])?"✔":"○"} ${pr[1]} <b style="color:var(--lima)">+${pr[2]}€</b>`).join(" · ")}</div>`:""}`;
+    d.innerHTML=`<b>${t("patro_contrato",{marca:s.marca})}</b> ${s.tier?`<span class="pill" style="color:${s.tier===4?"var(--oro)":s.tier===3?"#9B59D0":s.tier===2?"#4FA3D8":"var(--gris)"}">${tierTxt(s.tier)}</span>`:""}${s.sec?`<div class="d" style="font-style:italic">${t(s.sec)}</div>`:""}<div class="d">${t("patro_detalle",{sem:s.sem,bonus:s.bonus,obj:s.objetivo,n:s.tRest})}${miPuesto()>s.objetivo?` <span style="color:var(--rojo)">${t("patro_no_cumples",{p:miPuesto()})}</span>`:` <span style="color:var(--verde)">${t("patro_cumples",{p:miPuesto()})}</span>`}</div>${(s.primas&&s.primas.length)?`<div class="d">${t("patro_primas")} ${s.primas.map(pr=>`${(s.primasCobradas&&s.primasCobradas[pr[0]])?"✔":"○"} ${pr[1]} <b style="color:var(--lima)">+${pr[2]}€</b>`).join(" · ")}</div>`:""}`;
     st.appendChild(d);
   } else {
     const d=document.createElement("div");d.className="foot";d.style.textAlign="left";
@@ -719,7 +780,7 @@ function pintarJugador(){
   }
   (c.ofertasPatro||[]).forEach((of,oi)=>{
     const d=document.createElement("div");d.className="opcion";
-    d.innerHTML=`<b>${t("patro_oferta",{marca:of.marca})}</b> ${of.tier?`<span class="pill" style="color:${of.tier===4?"var(--oro)":of.tier===3?"#9B59D0":of.tier===2?"#4FA3D8":"var(--gris)"}">${tierTxt(of.tier)}</span>`:""}${of._perfil?`<span class="pill" style="color:${of._perfil==="fijo alto"?"var(--lima)":"var(--oro)"}">${t(of._perfil==="fijo alto"?"patro_perfil_fijo":"patro_perfil_obj")}</span>`:""}${of.sec?`<div class="d" style="font-style:italic">${of.sec}</div>`:""}<div class="d">${t("patro_of_detalle",{sem:of.sem,bonus:of.bonus,obj:of.objetivo,n:of.tRest})}${(of.primas&&of.primas.length)?`<br>${t("patro_of_primas")} ${of.primas.map(pr=>`${pr[1]} +${pr[2]}€`).join(" · ")}`:""}</div>`;
+    d.innerHTML=`<b>${t("patro_oferta",{marca:of.marca})}</b> ${of.tier?`<span class="pill" style="color:${of.tier===4?"var(--oro)":of.tier===3?"#9B59D0":of.tier===2?"#4FA3D8":"var(--gris)"}">${tierTxt(of.tier)}</span>`:""}${of._perfil?`<span class="pill" style="color:${of._perfil==="fijo alto"?"var(--lima)":"var(--oro)"}">${t(of._perfil==="fijo alto"?"patro_perfil_fijo":"patro_perfil_obj")}</span>`:""}${of.sec?`<div class="d" style="font-style:italic">${t(of.sec)}</div>`:""}<div class="d">${t("patro_of_detalle",{sem:of.sem,bonus:of.bonus,obj:of.objetivo,n:of.tRest})}${(of.primas&&of.primas.length)?`<br>${t("patro_of_primas")} ${of.primas.map(pr=>`${pr[1]} +${pr[2]}€`).join(" · ")}`:""}</div>`;
     const b=document.createElement("button");b.className="pri";b.style.width="100%";
     b.textContent=c.sponsor?t("patro_firmar_sust",{marca:c.sponsor.marca}):t("patro_firmar");
     b.onclick=()=>{c.sponsor={...of};c.ofertasPatro=[];noticia("contrato",t("patro_not_t",{marca:of.marca,quien:nombreEntidad().replace("★ ","")}),t("patro_not_s",{tier:tierTxt(of.tier),sem:of.sem,obj:of.objetivo}));avisa(t("patro_av_firma",{marca:of.marca,tier:tierTxt(of.tier),sem:of.sem,obj:of.objetivo}));fansAdd(of.tier>=3?300:60,t("fan_patro"));guardar();pintarCarrera();};
@@ -779,6 +840,9 @@ function ficharPareja(ci,acuerdo){
   post("fichaje");
   fansAdd(cand.origen==="circuito"?200:40,cand.origen==="circuito"?t("fan_bombazo"):null);
   const ac=acuerdo||{};
+  const _etF=cierraEtapaPareja(c,temporada(),"fichaje");
+  if(_etF){ c.parejasHist=(c.parejasHist||[]); c.parejasHist.push(_etF); }
+  c._parejaDesde=temporada(); c._parejaTitulos=0;
   c.compi={id:"m"+Date.now(),n:cand.n,pais:cand.pais,estilo:cand.estilo,perso:cand.perso,attrs:{...cand.attrs},rasgos:(cand.rasgos?cand.rasgos.slice():undefined),
     lado:(ac.suLado===0||ac.suLado===1)?ac.suLado:undefined, _acuerdo:{objetivo:ac.objetivoRanking||null,reparto:ac.reparto||50}};
   if(ac.tuLado===0||ac.tuLado===1) c.lado=ac.tuLado;   // si cediste el lado, te recolocas
@@ -870,14 +934,38 @@ function clasificaRiv(h2){
   if(wr>=.75) return {tag:"CLIENTE",emo:"😏",col:"var(--verde)"};
   return null;
 }
+// Historia de tus parejas: con quién jugaste, cuánto y qué ganasteis juntos.
+function renderParejas(el){
+  if(!el) return;
+  const c=G&&G.carrera; if(!c){ el.innerHTML=""; return; }
+  const hist=(c.parejasHist||[]).slice();
+  const actual={n:c.compi?c.compi.n:"—",desde:(c._parejaDesde==null?1:c._parejaDesde),hasta:temporada(),
+    temps:Math.max(1,temporada()-(c._parejaDesde==null?1:c._parejaDesde)+1),titulos:c._parejaTitulos|0,actual:true};
+  const filas=hist.concat([actual]);
+  const mejor=mejorPareja(filas);
+  el.innerHTML=filas.map(x=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid var(--borde);font-size:11.5px">
+      <span>${x.actual?"▸ ":""}<b>${x.n}</b> <span style="color:var(--gris2)">T${x.desde}${x.temps>1?`-${x.hasta}`:""}</span>${mejor&&mejor.n===x.n&&(x.titulos|0)>0?' <span style="color:var(--oro)">★</span>':""}</span>
+      <span style="color:${(x.titulos|0)>0?"var(--oro)":"var(--gris2)"}">${x.titulos|0} 🏆</span>
+    </div>`).join("");
+}
 function renderRivalidades(el){
   const e=ent();
+  // el archirrival va primero y con cartel propio: no es una fila más
+  let cab="";
+  if(e.nemesis){
+    const h2=(e.h2h||{})[e.nemesis.id]||{v:0,d:0};
+    cab=`<div class="opcion" style="border-color:#E05656;margin-bottom:7px">
+      <b style="color:#E05656">${t("nem_titulo")}</b>
+      <div style="font-size:13px;font-weight:700;margin:2px 0">${e.nemesis.nombre}</div>
+      <div class="d">${t("nem_detalle",{n:e.nemesis.elim|0,desde:e.nemesis.desde,v:h2.v|0,d:h2.d|0})}</div>
+    </div>`;
+  }
   const filas=Object.entries(e.h2h||{})
     .map(([id,h2])=>({id,...h2,tot:h2.v+h2.d,cl:clasificaRiv(h2)}))
     .filter(x=>x.tot>=2&&x.n)
     .sort((a,b)=>b.tot-a.tot).slice(0,6);
-  if(!filas.length){ el.innerHTML=`<div class="foot" style="text-align:left">${t("pan_sin_rivales")}</div>`; return; }
-  el.innerHTML=filas.map(x=>`
+  if(!filas.length){ el.innerHTML=cab+`<div class="foot" style="text-align:left">${t("pan_sin_rivales")}</div>`; return; }
+  el.innerHTML=cab+filas.map(x=>`
     <div style="display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--borde)">
       <div style="font-size:11.5px">${x.cl?`<span style="color:${x.cl.col};font-weight:700">${x.cl.emo} ${x.cl.tag}</span> · `:""}${x.n}
         <div style="font-size:9.5px;color:var(--gris2)">${x.tot} cruces${x.alta?` · ${x.alta} en semis o más`:""}</div>
@@ -1240,11 +1328,38 @@ function avanzarSemanaCarrera(){
     c.calRes={}; c.wildcards=2;
     const cumplidos=(c.objetivos||[]).filter(o=>o.hecho).length, totalObj=(c.objetivos||[]).length;
     c.edad++;evolucionaMundo();
+    // EL ÚLTIMO BAILE · el cuerpo empieza a pasar factura: lo explosivo se va
+    // antes que el toque, así el jugador se reconvierte solo.
+    const perdido=aplicaDeclive(c.attrs,c.edad);
+    if(perdido>0) avisa(t("ub_declive",{n:perdido,edad:c.edad}));
+    if(c.compi&&c.compi.attrs&&(c.compi.edad=(c.compi.edad||c.edad)+1)>=EDAD_DECLIVE) aplicaDeclive(c.compi.attrs,c.compi.edad);
     c.pts=Math.round(c.pts*.55);
     avisa(t("av_cierre",{t:temporada()-1,pos:posFin,pts:ptsFin,tit:titsT,ok:cumplidos,total:totalObj,edad:c.edad}));
     if(totalObj&&cumplidos<totalObj) c.compiMoral=clamp((c.compiMoral??65)-(totalObj-cumplidos)*3,5,95);
+    // EL ACUERDO: lo que le prometiste al ficharle se cobra al cierre
+    const acu=evaluaAcuerdoCompi(c,posFin);
+    if(acu){
+      c.compiMoral=clamp((c.compiMoral??65)+acu.delta,5,95);
+      avisa(acu.cumplido?t("par_acuerdo_ok",{n:c.compi.n,meta:acu.meta,pos:acu.puesto})
+                        :t("par_acuerdo_no",{n:c.compi.n,meta:acu.meta,pos:acu.puesto}));
+      if(!acu.cumplido) noticia("ruptura",t("not_par_acuerdo_t",{n:c.compi.n}),t("not_par_acuerdo_s",{meta:acu.meta,pos:acu.puesto}));
+    }
+    // LA EDAD: tu compañero también cuelga la pala algún día
+    if(c.compi&&compiSeRetira(c.compi)){
+      const etapa=cierraEtapaPareja(c,temporada()-1,"retirada");
+      if(etapa){ c.parejasHist=(c.parejasHist||[]); c.parejasHist.push(etapa); }
+      const ex=c.compi.n;
+      noticia("retirada",t("not_par_retiro_t",{n:ex}),t("not_par_retiro_s",{edad:c.compi.edad||36,temps:etapa?etapa.temps:1,tits:etapa?etapa.titulos:0}));
+      avisa(t("par_retiro",{n:ex,edad:c.compi.edad||36}));
+      c.compi={...compiInicial(c.sexo||"M"),attrs:mkAttrsNivel(CHINO.nivel,CHINO.estilo)};
+      c.quimica=CHINO.quim; c.compiMoral=70; c.compiPlan="auto";
+      c._parejaDesde=temporada(); c._parejaTitulos=0;
+    }
     c.objetivos=mkObjetivosTemporada(c,miPuesto());   // metas para la nueva temporada
     cierreTemporadaCarrera();
+    // ¿se cierra el arco? La temporada anunciada ha terminado, o el cuerpo dice basta.
+    if(c.ultimoBaile&&temporada()>c.ultimoBaile){ setTimeout(retirarse,700); return; }
+    if(retiroForzado(c)&&!c.ultimoBaile){ avisa(t("ub_av_forzado",{edad:c.edad})); setTimeout(retirarse,700); return; }
   }
   ofertaStaffSemanal();
   chequeaHitos();

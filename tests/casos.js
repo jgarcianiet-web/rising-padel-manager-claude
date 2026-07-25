@@ -852,6 +852,147 @@ comprueba("Idiomas: t() traduce y cae con red de seguridad", () => {
   return "traduce, fallback de idioma y de clave";
 });
 
+comprueba("El último baile: declive diferenciado, oficio y legado", () => {
+  // 1) antes de los 31 no declina nadie
+  const at = () => ({ fondo: 70, globo: 70, chiquita: 70, volea: 70, dejada: 70, bandeja: 70, vibora: 70, remate: 70, pared: 70 });
+  const joven = at();
+  exige(aplicaDeclive(joven, 27) === 0, "un jugador de 27 no debería declinar");
+  // 2) lo explosivo cae ANTES y MÁS que el toque (Monte Carlo con rnd real)
+  let expl = 0, toque = 0;
+  for (let i = 0; i < 400; i++) {
+    const a = at(); aplicaDeclive(a, 35);
+    expl += (70 - a.remate) + (70 - a.vibora) + (70 - a.bandeja) + (70 - a.volea);
+    toque += (70 - a.chiquita) + (70 - a.dejada) + (70 - a.globo) + (70 - a.fondo);
+  }
+  exige(expl > toque * 1.5, `lo explosivo debería caer bastante más que el toque (${expl} vs ${toque})`);
+  // 3) el declive se acelera con la edad
+  let d33 = 0, d41 = 0;
+  for (let i = 0; i < 300; i++) { const a = at(), b = at(); d33 += aplicaDeclive(a, 33); d41 += aplicaDeclive(b, 41); }
+  exige(d41 > d33 * 1.4, `a los 41 se debería perder mucho más que a los 33 (${d41} vs ${d33})`);
+  // 4) OFICIO: sin temporadas no hace nada; con carrera larga reduce el error en presión alta
+  exige(factorOficio({ hist: [] }, .9) === 1, "sin temporadas no debería haber oficio");
+  exige(factorOficio({ hist: new Array(12).fill({}) }, .2) === 1, "sin presión el oficio no debería actuar");
+  const fo = factorOficio({ hist: new Array(12).fill({}) }, 1);
+  exige(fo < 1 && fo >= .75, "el oficio debería reducir el error entre 0 y 25%: " + fo);
+  // 5) puertas de la retirada
+  exige(!puedeRetirarse({ edad: 30 }), "a los 30 no se puede anunciar la retirada");
+  exige(puedeRetirarse({ edad: 34 }), "a los 34 sí se puede");
+  exige(!puedeRetirarse({ edad: 34, ultimoBaile: 3 }), "no se puede anunciar dos veces");
+  exige(retiroForzado({ edad: 45 }) && !retiroForzado({ edad: 40 }), "el retiro forzado no cae donde debe");
+  // 6) legado: rangos y rival más repetido
+  const leyenda = legadoDe({ edad: 38, hist: [{ pos: 1 }], palmares: [], recMajors: 6, h2h: {} }, { n1hist: [{ yo: true }, { yo: true }, { yo: true }] });
+  exige(leyenda.rango === "leyenda" && leyenda.n1 === 3, "no reconoce una leyenda: " + leyenda.rango);
+  const modesto = legadoDe({ edad: 35, hist: [{ pos: 44 }], palmares: [], recMajors: 0, h2h: {} }, { n1hist: [] });
+  exige(modesto.rango === "promesa", "no clasifica una carrera modesta: " + modesto.rango);
+  const conRival = legadoDe({ edad: 35, hist: [{ pos: 12 }], palmares: ["a", "b", "c"], h2h: { 5: { v: 2, d: 1, n: "Poca" }, 9: { v: 4, d: 5, n: "Mucha" } } }, { n1hist: [] });
+  exige(conRival.rival && conRival.rival.nombre === "Mucha" && conRival.rival.n === 9, "no identifica al rival más repetido");
+  exige(conRival.mejorPuesto === 12, "no calcula el mejor puesto");
+  return `explosivo ${expl} vs toque ${toque}; oficio ${fo.toFixed(2)}; rangos ok`;
+});
+
+comprueba("Archirrival: se declara al eliminarte, manda en la presión y cierra el legado", () => {
+  // hace falta ELIMINAR, no solo ganar: 5 derrotas normales no bastan sin eliminaciones
+  exige(candidatoNemesis({ 1: { v: 0, d: 5, n: "Solo derrotas" } }) === null, "no debería declararse sin eliminaciones");
+  exige(candidatoNemesis({ 1: { v: 1, d: 2, elim: 2, n: "Casi" } }) === null, "con 2 eliminaciones aún no");
+  const c1 = candidatoNemesis({ 1: { v: 1, d: 3, elim: 3, n: "Justo" } });
+  exige(c1 && c1.nombre === "Justo" && c1.elim === 3, "a las 3 eliminaciones debería declararse");
+  // desempate: gana quien más te ha eliminado; a igualdad, quien lo hizo en fases altas
+  const c2 = candidatoNemesis({ 1: { v: 0, d: 4, elim: 4, n: "Cuatro" }, 2: { v: 0, d: 9, elim: 3, altaElim: 3, n: "Tres" } });
+  exige(c2.nombre === "Cuatro", "debería ganar quien más elimina: " + c2.nombre);
+  const c3 = candidatoNemesis({ 1: { v: 0, d: 4, elim: 3, altaElim: 0, n: "Rondas bajas" }, 2: { v: 0, d: 4, elim: 3, altaElim: 2, n: "Fases altas" } });
+  exige(c3.nombre === "Fases altas", "a igualdad debería pesar la fase alta: " + c3.nombre);
+  // no se destrona al archirrival actual si el nuevo no le supera
+  const carrera = { h2h: { 1: { v: 0, d: 4, elim: 4, n: "Actual" }, 2: { v: 0, d: 3, elim: 3, n: "Aspirante" } }, nemesis: { id: "1", elim: 4 } };
+  exige(nuevoNemesis(carrera) === null, "un aspirante con menos eliminaciones no debería destronar");
+  carrera.h2h[2].elim = 5;
+  exige(nuevoNemesis(carrera).nombre === "Aspirante", "con más eliminaciones sí debería destronar");
+  // presión: solo contra él, y crece con las eliminaciones
+  exige(presionNemesis(carrera, "9") === 0, "no debería haber presión extra contra otro rival");
+  const p4 = presionNemesis({ nemesis: { id: "1", elim: 4 } }, "1");
+  const p6 = presionNemesis({ nemesis: { id: "1", elim: 6 } }, "1");
+  exige(p4 > 0 && p6 > p4 && p6 <= .14, `la presión debería crecer y estar acotada (${p4} → ${p6})`);
+  // el legado cierra con el archirrival aunque otro se haya cruzado más veces
+  const L = legadoDe({ edad: 36, hist: [{ pos: 8 }], palmares: ["a"], h2h: { 1: { v: 1, d: 4, n: "Nemesis" }, 2: { v: 9, d: 9, n: "Muy visto" } }, nemesis: { id: "1", nombre: "Nemesis" } }, { n1hist: [] });
+  exige(L.rival.nombre === "Nemesis" && L.rival.nemesis === true, "el legado debería cerrar con el archirrival: " + L.rival.nombre);
+  return `declarado a las ${NEMESIS_ELIM} eliminaciones; presión ${p4.toFixed(2)}→${p6.toFixed(2)}`;
+});
+
+comprueba("Superliga: la invitación llega sola a partir del segundo año", () => {
+  // el primer año no llega nunca, por muy bueno que seas
+  exige(probInvitacionSL(60, 1, 0) === 0, "no debería haber invitación en la temporada 1");
+  exige(evaluaInvitacionSL({}, 1, () => 0) === null, "la temporada 1 nunca invita");
+  // a partir del segundo, la probabilidad sube con el prestigio
+  const bajo = probInvitacionSL(0, 2, 0), alto = probInvitacionSL(60, 2, 0);
+  exige(alto > bajo && bajo > 0, `el prestigio debería pesar (${bajo} vs ${alto})`);
+  // y con los años de espera, y si ya dijiste que no, insisten
+  exige(probInvitacionSL(30, 6, 0) > probInvitacionSL(30, 2, 0), "esperar años debería subir la probabilidad");
+  exige(probInvitacionSL(30, 3, 2) > probInvitacionSL(30, 3, 0), "tras rechazar deberían insistir más");
+  exige(probInvitacionSL(60, 12, 5) <= .85, "la probabilidad debe estar acotada");
+  // no se invita a quien ya está dentro ni si hay una carta sobre la mesa
+  exige(evaluaInvitacionSL({ enSuperliga: true }, 5, () => 0) === null, "no debería invitar a quien ya juega la Superliga");
+  exige(evaluaInvitacionSL({ invitacionSL: { pendiente: true } }, 5, () => 0) === null, "no debería duplicar la invitación pendiente");
+  // con rnd forzado sí llega, y trae la temporada
+  const inv = evaluaInvitacionSL({}, 4, () => 0);
+  exige(inv && inv.pendiente === true && inv.temporada === 4, "la invitación no llega con rnd favorable");
+  // el club se convierte en equipo: 6 jugadores, 3 parejas y fuerza real
+  const mk = n => ({ n, attrs: { fondo: 70, globo: 70, chiquita: 70, volea: 70, dejada: 70, bandeja: 70, vibora: 70, remate: 70, pared: 70 } });
+  const sl = clubASuperliga({ nombre: "Mi Club", color: "#fff", dinero: 30000, plantilla: [mk("a"), mk("b"), mk("c")] });
+  exige(sl.plantilla.length === 6, "debería completar hasta 6 jugadores: " + sl.plantilla.length);
+  exige(sl.alin.length === 3 && sl.equipos[0].n === "Mi Club" && sl.equipos[0].tuyo === true, "el equipo propio no se monta bien");
+  exige(sl.caja === 30000 && sl.desdeClub && sl.desdeClub.nombre === "Mi Club", "no arrastra caja ni procedencia");
+  return `T1 imposible; prestigio ${bajo.toFixed(2)}→${alto.toFixed(2)}; club convertido a 3 parejas`;
+});
+
+comprueba("La pareja como personaje: acuerdo, retirada e historia común", () => {
+  // sin acuerdo firmado no hay nada que exigir
+  exige(evaluaAcuerdoCompi({ compi: { n: "X" } }, 10) === null, "sin acuerdo no debería evaluar nada");
+  // cumplirlo sube la moral; incumplirlo la baja, y más cuanto más lejos quedaste
+  const ok = evaluaAcuerdoCompi({ compi: { _acuerdo: { objetivo: 15 } } }, 9);
+  exige(ok.cumplido && ok.delta > 0, "cumplir el acuerdo debería subir la moral");
+  const malRoce = evaluaAcuerdoCompi({ compi: { _acuerdo: { objetivo: 15 } } }, 18);
+  const malLejos = evaluaAcuerdoCompi({ compi: { _acuerdo: { objetivo: 15 } } }, 40);
+  exige(!malRoce.cumplido && malRoce.delta < 0, "incumplir debería bajar la moral");
+  exige(malLejos.delta < malRoce.delta, `quedarse lejos debería doler más (${malLejos.delta} vs ${malRoce.delta})`);
+  exige(malLejos.delta >= -20, "el castigo debe estar acotado");
+  // retirada: imposible antes de los 35, segura a edades altas
+  exige(!compiSeRetira({ edad: 33 }, () => 0), "un compañero de 33 no debería retirarse");
+  exige(compiSeRetira({ edad: 36 }, () => 0), "con rnd favorable a los 36 sí");
+  exige(!compiSeRetira({ edad: 36 }, () => .99), "con rnd desfavorable a los 36 no");
+  let ret38 = 0, ret42 = 0;
+  for (let i = 0; i < 400; i++) { if (compiSeRetira({ edad: 38 })) ret38++; if (compiSeRetira({ edad: 42 })) ret42++; }
+  exige(ret42 > ret38, `la retirada debería ser más probable a los 42 (${ret42} vs ${ret38})`);
+  // etapa de pareja: se cierra con sus años y títulos
+  const et = cierraEtapaPareja({ compi: { n: "Chino" }, _parejaDesde: 2, _parejaTitulos: 3, quimica: 80 }, 5, "ruptura");
+  exige(et.n === "Chino" && et.desde === 2 && et.hasta === 5 && et.temps === 4 && et.titulos === 3, "la etapa no se cierra bien: " + JSON.stringify(et));
+  // la mejor pareja es la que más títulos dio; a igualdad, la más duradera
+  const mejor = mejorPareja([{ n: "A", titulos: 2, temps: 6 }, { n: "B", titulos: 5, temps: 2 }, { n: "C", titulos: 5, temps: 4 }]);
+  exige(mejor.n === "C", "no elige la mejor pareja: " + mejor.n);
+  return `acuerdo ${ok.delta}/${malLejos.delta}; retiro 38→${ret38} 42→${ret42}; etapa de ${et.temps} temporadas`;
+});
+
+comprueba("Idiomas: los catálogos de datos guardan CLAVES, no frases", () => {
+  // los catálogos que se pintan deben referenciar claves i18n existentes en los
+  // 5 idiomas; si alguien mete una frase suelta, esto lo caza
+  const revisa = (nombre, claves) => claves.forEach(k => {
+    exige(typeof k === "string", `${nombre}: entrada que no es clave`);
+    exige(I18N.es[k] !== undefined, `${nombre}: clave inexistente «${k}»`);
+    ["en", "fr", "de", "it"].forEach(l => exige(I18N[l][k], `${nombre}: falta ${k} en ${l}`));
+  });
+  revisa("FRASES_STAFF", Object.values(FRASES_STAFF).flat());
+  revisa("SPOT_TIPOS", SPOT_TIPOS);
+  revisa("LESIONES", LESIONES.map(l => l.k));
+  revisa("HITOS_CARRERA", HITOS_CARRERA.map(h => "hito_ca_" + h.id));
+  revisa("HITOS_CLUB", HITOS_CLUB.map(h => "hito_cl_" + h.id));
+  revisa("REFORMAS", Object.keys(REFORMAS).flatMap(k => ["ref_" + k, "ref_" + k + "_d"]));
+  revisa("ATTR_KEYS", ATTR_KEYS.map(k => "at_" + k));
+  revisa("MARCAS (sectores)", [...new Set(MARCAS.map(m => m.sec))]);
+  revisa("PRIMAS_CAT", [...new Set(Object.values(PRIMAS_CAT).flat().map(p => "prima_" + p[0]))]);
+  revisa("TUTO", TUTO.carrera.concat(TUTO.club).flat());
+  // y ningún sector de marca puede haber quedado como frase en español
+  exige(MARCAS.every(m => /^sec_\d+$/.test(m.sec)), "alguna marca guarda el sector como texto en vez de clave");
+  return `${MARCAS.length} marcas, ${LESIONES.length} lesiones, ${HITOS_CARRERA.length + HITOS_CLUB.length} hitos y el resto de catálogos por clave`;
+});
+
 comprueba("Idiomas: catálogo completo y sin claves huérfanas en los 5 idiomas", () => {
   // toda clave definida en español existe en los otros 4 y no está vacía
   const claves = Object.keys(I18N.es);

@@ -237,6 +237,8 @@ function pintarClubM(){
     G=null; irA("menu"); pintarMenu(); return;
   }
   const cl=G.clubG;
+  if(cl.invitacionSL&&cl.invitacionSL.pendiente&&typeof document!=="undefined"&&document.body&&!document.getElementById("slInvitModal"))
+    setTimeout(()=>mostrarInvitacionSL(),400);
   document.getElementById("topCtx").innerHTML=`<b>${t("ctx_temporada")} ${temporada()}</b> · S${semanaTemp()}/${SEMANAS_TEMP} · ${cl.sexo==="F"?t("ctx_circuito_f"):t("ctx_circuito_m")}<br>${cl.nombre} · 🎟×${cl.wildcards||0}`;
   document.getElementById("cmSem").textContent="S"+semanaTemp();
   document.getElementById("cmRank").textContent="#"+miPuesto();
@@ -528,7 +530,7 @@ function pintarCmClub(){
   if(cl.sponsorOferta&&(!cl.sponsor||cl.sponsor.marca!==cl.sponsorOferta.marca)){
     const of=cl.sponsorOferta;
     const dS=document.createElement("div");dS.className="opcion";
-    dS.innerHTML=`<b>🏟 ${of.marca}</b> <span class="pill">${tierTxt(of.tier)}</span><div class="d">${t("patro_club_oferta",{sec:of.sec,sem:of.sem})}</div>`;
+    dS.innerHTML=`<b>🏟 ${of.marca}</b> <span class="pill">${tierTxt(of.tier)}</span><div class="d">${t("patro_club_oferta",{sec:t(of.sec),sem:of.sem})}</div>`;
     const b=document.createElement("button");b.className="pri";b.style.width="100%";b.textContent=t("patro_club_firmar");
     b.onclick=()=>{cl.sponsor={...of};cl.sponsorOferta=null;noticia("contrato",t("not_patro_club_t",{marca:of.marca,club:cl.nombre}),t("not_patro_club_s",{tier:tierTxt(of.tier).toLowerCase()}));avisa(t("patro_club_av",{marca:of.marca,sem:of.sem}));fansAdd(200,t("fan_patro_club"));guardar();pintarClubM();};
     dS.appendChild(b);cS.appendChild(dS);
@@ -689,6 +691,15 @@ function avanzarSemanaClub(){
       } else {
         avisa(t("clb_junta_aviso",{obj:J.objetivo,pos:posFin}));
         post("junta");
+      }
+    }
+    // LA INVITACIÓN: a partir del segundo año puede llegar sin avisar
+    if(typeof evaluaInvitacionSL==="function"){
+      const inv=evaluaInvitacionSL(cl,temporada(),null);
+      if(inv){
+        cl.invitacionSL=inv;
+        noticia("contrato",t("not_sl_invit_t",{club:cl.nombre}),t("not_sl_invit_s"));
+        avisa(t("sl_av_llega"));
       }
     }
     J.objetivo=Math.max(3,Math.round(Math.min(posFin,J.objetivo)*.85));
