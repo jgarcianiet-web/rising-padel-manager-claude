@@ -19,6 +19,9 @@ const IDIOMAS=[
 const IDIOMA_DEF="es";
 const I18N={
   es:{
+    staff_av_impago:"💸 No has podido pagar a {n} ({sal}€/sem) y se marcha.",
+    staff_impago_t:"{n} rompe el contrato por impago",
+    staff_impago_s:"{n} deja de ejercer de {rol}: llevaba semanas sin cobrar y ha preferido irse antes que seguir fiando.",
     clb_venta_forzosa:"La junta vende a {n} por {monto}€ para tapar el agujero. Nadie te ha preguntado.",
     clb_venta_forzosa_t:"Venta forzosa",
     clb_quiebra:"No queda nadie que vender y la caja sigue en rojo. La junta ya no tiene paciencia.",
@@ -2223,6 +2226,9 @@ const I18N={
     ctx_circuito_fip:"circuito Continental",
   },
   en:{
+    staff_av_impago:"💸 You couldn't pay {n} ({sal}€/wk) and they walk away.",
+    staff_impago_t:"{n} terminates contract over unpaid wages",
+    staff_impago_s:"{n} stops working as {rol}: weeks without pay, and they'd rather leave than keep working on credit.",
     clb_venta_forzosa:"The board sells {n} for €{monto} to plug the hole. Nobody asked you.",
     clb_venta_forzosa_t:"Forced sale",
     clb_quiebra:"There's nobody left to sell and the account is still red. The board has run out of patience.",
@@ -4427,6 +4433,9 @@ const I18N={
     ctx_circuito_fip:"Continental tour",
   },
   fr:{
+    staff_av_impago:"💸 Tu n'as pas pu payer {n} ({sal}€/sem) et il/elle s'en va.",
+    staff_impago_t:"{n} rompt le contrat pour salaires impayés",
+    staff_impago_s:"{n} cesse d'exercer comme {rol} : plusieurs semaines sans salaire, et préfère partir plutôt que de travailler à crédit.",
     clb_venta_forzosa:"La direction vend {n} pour {monto} € pour boucher le trou. Personne ne t'a demandé.",
     clb_venta_forzosa_t:"Vente forcée",
     clb_quiebra:"Il n'y a plus personne à vendre et la caisse reste dans le rouge. La direction n'a plus de patience.",
@@ -6631,6 +6640,9 @@ const I18N={
     ctx_circuito_fip:"circuit Continental",
   },
   de:{
+    staff_av_impago:"💸 Du konntest {n} ({sal}€/Wo.) nicht bezahlen — Abgang.",
+    staff_impago_t:"{n} kündigt wegen ausstehender Gehälter",
+    staff_impago_s:"{n} arbeitet nicht mehr als {rol}: wochenlang kein Gehalt, und lieber gehen als weiter auf Kredit arbeiten.",
     clb_venta_forzosa:"Der Vorstand verkauft {n} für {monto} €, um das Loch zu stopfen. Gefragt hat dich niemand.",
     clb_venta_forzosa_t:"Notverkauf",
     clb_quiebra:"Es ist niemand mehr zu verkaufen und die Kasse bleibt rot. Der Vorstand hat keine Geduld mehr.",
@@ -8835,6 +8847,9 @@ const I18N={
     ctx_circuito_fip:"Continental-Tour",
   },
   it:{
+    staff_av_impago:"💸 Non hai potuto pagare {n} ({sal}€/sett.) e se ne va.",
+    staff_impago_t:"{n} rescinde il contratto per stipendi non pagati",
+    staff_impago_s:"{n} smette di fare il/la {rol}: settimane senza stipendio, e preferisce andarsene piuttosto che lavorare a credito.",
     clb_venta_forzosa:"Il consiglio vende {n} per {monto}€ per tappare il buco. Nessuno ti ha chiesto niente.",
     clb_venta_forzosa_t:"Vendita forzata",
     clb_quiebra:"Non c'è più nessuno da vendere e la cassa resta in rosso. Il consiglio ha finito la pazienza.",

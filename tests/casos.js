@@ -3818,3 +3818,112 @@ comprueba("Energía: entrenar y competir caben en la misma semana", () => {
   exige(semanaTrabajo < regen, `una semana de entrenamiento cuesta ${semanaTrabajo} y solo se recuperan ${regen}`);
   return `semana de torneo ${semanaTorneo} · semana de trabajo ${semanaTrabajo} · recuperación ${regen}`;
 });
+
+comprueba("Carrera: el staff sin cobrar se marcha (regresión: deuda infinita)", () => {
+  /* El staff cobraba a crédito para siempre. Medido con el banco de carreras,
+     un perfil que fichaba a los tres del mercado en cuanto tenía 5.000€
+     terminaba seis temporadas a −117.636€ jugando igual de bien: la caja
+     dejaba de ser un recurso y fichar dejaba de ser una decisión. */
+  const c = nuevaCarrera("agresivo");
+  c.staff = { entrenador: mkStaff("entrenador", 3), fisio: mkStaff("fisio", 3), fisico: mkStaff("fisico", 3) };
+  const nom = Object.keys(c.staff).reduce((s, k) => s + c.staff[k].sal, 0);
+  // con un agujero pequeño aguantan: hay un mes de cuerda para reaccionar
+  c.dinero = -Math.round(nom * 1.5);
+  impagoStaff(c);
+  exige(Object.keys(c.staff).filter(k => c.staff[k]).length === 3,
+    "el staff se marcha a la primera semana en rojo: no hay margen para reaccionar");
+  // con el agujero hecho se marcha el mejor pagado, y SOLO él: una semana mala
+  // no puede costarte la estructura entera
+  c.dinero = -Math.round(nom * 6);
+  const caro = Object.keys(c.staff).sort((a, b) => c.staff[b].sal - c.staff[a].sal)[0];
+  impagoStaff(c);
+  exige(!c.staff[caro], "no se marcha el mejor pagado");
+  exige(Object.keys(c.staff).filter(k => c.staff[k]).length === 2,
+    "se cae toda la estructura en la misma semana: no queda margen de reacción");
+  // y semana a semana, con la caja arruinada, la sangría termina parando
+  c.dinero = -999999;
+  for (let s = 0; s < 6; s++) impagoStaff(c);
+  exige(Object.keys(c.staff).filter(k => c.staff[k]).length === 0, "queda staff cobrando con la caja arruinada");
+  return "nómina " + nom + "€/sem · aguanta a −" + Math.round(nom * 1.5) + "€ · se rompe a −" + Math.round(nom * 6) + "€";
+});
+
+comprueba("Motor: ningún estilo gana siempre (regresión: el constructor barría)", () => {
+  /* EL FALLO MÁS GRAVE QUE HA TENIDO EL JUEGO. A igualdad de nivel, el estilo
+     `constructor` ganaba entre el 93% y el 98% a los otros cuatro, y el
+     `bandejero` el 33% a todos. Con eso, elegir estilo al crearte, fichar por
+     estilo en el club y todo el sistema de identidades y antídotos eran
+     decoración: el partido lo decidía quién tenía más `dejada`.
+     La causa era la dejada (win .32, más que un remate) sumada a que el globo
+     SIEMPRE echaba de la red al rival, con lo que la bola alta en la red no
+     ocurría nunca y bandeja/víbora/remate eran código muerto. */
+  nuevaCarrera("agresivo");
+  const E = Object.keys(ESTILOS);
+  const mkPar = (e, niv) => {
+    const jug = [
+      { n: "A", estilo: e, perso: "frio", conf: 55, attrs: mkAttrsNivel(niv, e), sexo: "M" },
+      { n: "B", estilo: e, perso: "frio", conf: 55, attrs: mkAttrsNivel(niv, e), sexo: "M" }];
+    asignaLadosPareja(jug);
+    return { nombre: e, atNet: false, jug };
+  };
+  const N = 24;
+  const medias = E.map(a => {
+    let tot = 0;
+    E.forEach(b => {
+      let v = 0;
+      for (let i = 0; i < N; i++) { rndSemilla(2100 + i, 2100 + i); if (quickMatch(mkPar(a, 60), mkPar(b, 60)).gane) v++; }
+      tot += 100 * v / N;
+    });
+    return Math.round(tot / E.length);
+  });
+  const peor = Math.min(...medias), mejor = Math.max(...medias);
+  // banda ancha a propósito: con 24 partidos por celda el ruido es de ±10, así
+  // que esto NO afina el equilibrio, caza el desastre (33% contra 88%)
+  exige(mejor <= 72, "un estilo gana de más a igualdad de nivel: " + E[medias.indexOf(mejor)] + " " + mejor + "%");
+  exige(peor >= 28, "un estilo es una trampa a igualdad de nivel: " + E[medias.indexOf(peor)] + " " + peor + "%");
+  return E.map((e, i) => e.slice(0, 4) + " " + medias[i] + "%").join(" · ");
+});
+
+comprueba("Motor: el globo contra la red se puede castigar (bandeja y remate existen)", () => {
+  /* `chooseShot` ofrece ["bandeja","vibora","remate","remate3","remate4"] solo
+     con `atNet && high`, y esa situación no llegaba a darse: el globo echaba
+     SIEMPRE de la red. Medido antes del arreglo: en 60 partidos, un bandejero
+     no pegaba UNA bandeja y un rematador ni un remate; jugaban el partido
+     entero con sus peores atributos. */
+  nuevaCarrera("agresivo");
+  const mkPar = (e, niv) => {
+    const jug = [
+      { n: "A", estilo: e, perso: "frio", conf: 55, attrs: mkAttrsNivel(niv, e), sexo: "M" },
+      { n: "B", estilo: e, perso: "frio", conf: 55, attrs: mkAttrsNivel(niv, e), sexo: "M" }];
+    asignaLadosPareja(jug);
+    return { nombre: e, atNet: false, jug };
+  };
+  let bandejas = 0, remates = 0;
+  for (let i = 0; i < 20; i++) {
+    rndSemilla(3300 + i, 3300 + i);
+    quickMatch(mkPar("bandejero", 60), mkPar("defensivo", 60));
+    const s = stats[0];
+    ["wShot", "eShot"].forEach(k => {
+      bandejas += (s[k].bandeja || 0);
+      remates += (s[k].remate || 0) + (s[k].remate3 || 0) + (s[k].remate4 || 0) + (s[k].vibora || 0);
+    });
+  }
+  exige(bandejas > 0, "un bandejero no pega una sola bandeja en 20 partidos: la bola alta en la red no ocurre");
+  exige(remates > 0, "no se remata ni se pega una víbora en 20 partidos");
+  // y el globo tiene que seguir sirviendo para algo: no puede pasar nunca
+  const src = String(buildPoint);
+  exige(/globoPasa/.test(src) && /pPasa/.test(src), "el globo ha vuelto a ser todo o nada");
+  return bandejas + " bandejas · " + remates + " bolas altas atacadas en 20 partidos";
+});
+
+comprueba("Motor: la dejada no es el mejor golpe del juego", () => {
+  /* Con win .32 la dejada ganaba el punto más veces que un remate (.27)
+     arriesgando poco más que una víbora, y encima dejaba al rival descolocado.
+     El 78% de los puntos que cerraba un constructor morían en dejada. */
+  exige(SHOTS.dejada.win < SHOTS.remate.win, "la dejada cierra más puntos que un remate");
+  exige(SHOTS.dejada.err > SHOTS.vibora.err, "la dejada arriesga menos que una víbora");
+  // y en la red hay más de dos respuestas, o vuelve a ser una moneda al aire
+  const src = String(chooseShot);
+  const m = src.match(/else if\(ctx\.atNet\)\s*cands=\[([^\]]+)\]/);
+  exige(m && m[1].split(",").length >= 3, "en la red solo hay dos golpes posibles: gana siempre quien tenga más dejada");
+  return "dejada win " + SHOTS.dejada.win + " vs remate " + SHOTS.remate.win + " · " + (m ? m[1] : "?");
+});

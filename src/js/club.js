@@ -1108,6 +1108,15 @@ function avanzarSemanaClub(){
   const regen=24+(cl.reformas.gym?4:0)+(cl.staff.fisico?4:0);
   cl.plantilla.forEach((j,idx)=>{
     j.energia=clamp(j.energia+regen,0,100);
+    /* LA CONFIANZA SE ENFRÍA HACIA EL CENTRO. Sin esto era un trinquete de un
+       solo sentido: cada derrota resta 4 y nada devolvía nunca nada, así que
+       una mala racha dejaba a la segunda pareja clavada en 15 para siempre
+       —medido: conf 23 en la temporada 2 y ahí seguía en la 5—. Y encima era
+       una asimetría, porque las parejas del mundo se rehacen de cero en cada
+       eliminatoria y llegan siempre a 55: tus jugadores cargaban con las
+       cicatrices y los rivales no. Una mala racha tiene que doler unas
+       semanas, no marcarte la carrera. */
+    j.conf=clamp(j.conf+(j.conf<55?2:j.conf>55?-1:0),15,95);
     if(cl.reformas.residencia) j.conf=clamp(j.conf+1,15,95);
     if(cl.staff.psico&&j.conf<50) j.conf=clamp(j.conf+2,15,95);
     if((cl.staff.fisio||cl.reformas.medico)&&j.lesion&&rnd()<(cl.staff.fisio&&cl.reformas.medico?.5:.3)){j.lesion.sem--;if(j.lesion.sem<=0){const s=curarLesion(j);avisa(`El fisio adelanta el alta de ${j.n}.`+(s?` (mermado -${s.pct}%, ${s.sem} sem)`:""));}}

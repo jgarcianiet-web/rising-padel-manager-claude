@@ -129,6 +129,30 @@ function despedirStaff(rol){
   avisa(t("staff_av_adios",{n:st.n,sal:st.sal}));
   guardar(); pintarTodo();
 }
+/* Nadie trabaja gratis, y una deuda sin consecuencia no es una decisión.
+   Medido con el banco de carreras: un perfil que fichaba a los tres del
+   mercado en cuanto tenía 5.000€ terminaba seis temporadas a −117.636€ sin
+   que pasara absolutamente nada —el staff seguía cobrando a crédito para
+   siempre—. Ahora hay un mes de cuerda (cuatro nóminas) y, pasado eso, se
+   marcha el mejor pagado. Se avisa antes con `av_fijos`, así que perder al
+   entrenador es culpa tuya, no una sorpresa.
+
+   **Uno por semana, no todos de golpe.** Con un bucle, quitar al mejor pagado
+   encoge la nómina y con ella el límite, así que el siguiente también se pasa
+   de raya y se cae toda la estructura en la misma semana. Marchándose de uno
+   en uno, la caja tiene siete días para respirar entre bajas y la reacción del
+   jugador todavía sirve para algo. */
+const IMPAGO_GRACIA=4;
+function impagoStaff(c){
+  const roles=Object.keys(c.staff||{}).filter(k=>c.staff[k]);
+  const nom=roles.reduce((s,k)=>s+(c.staff[k].sal||0),0);
+  if(!nom||c.dinero>=-Math.max(1200,nom*IMPAGO_GRACIA)) return;
+  const rol=roles.sort((a,b)=>(c.staff[b].sal||0)-(c.staff[a].sal||0))[0];
+  const st=c.staff[rol];
+  c.staff[rol]=null;
+  avisa(t("staff_av_impago",{n:st.n,sal:st.sal}));
+  noticia("fichaje",t("staff_impago_t",{n:st.n}),t("staff_impago_s",{n:st.n,rol:t("rol_"+rol).toLowerCase()}));
+}
 function pintarTodo(){
   if(G.modo==="carrera") pintarCarrera(); else pintarClubM();
   // la guía de las primeras semanas mira el estado después de cada repintado
@@ -1825,6 +1849,7 @@ function avanzarSemanaCarrera(){
   const vida=40+(c.pro?180:0)+(miPuesto()<=15?180:0);
   c.dinero-=Math.min(vida,Math.max(0,c.dinero));  // no puedes gastar lo que no tienes: vives al día
   c.dinero-=Object.keys(c.staff||{}).reduce((s2,k)=>s2+((c.staff[k]&&c.staff[k].sal)||0),0);
+  impagoStaff(c);
   if(!(c.staff&&c.staff.psico)){
     // la moral se desgasta sola según la afinidad de la pareja: si os entendéis,
     // aguanta; si no, se erosiona. El leal aguanta más; el ambicioso mal clasificado, menos.

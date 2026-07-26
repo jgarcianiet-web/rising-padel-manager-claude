@@ -5,7 +5,15 @@ const ATTR_KEYS=["fondo","globo","chiquita","volea","dejada","bandeja","vibora",
 const ESTILOS={
   defensivo:{nombre:"Defensivo",desc:"Globos, paredes y paciencia infinita.",attrs:{fondo:46,globo:55,chiquita:48,volea:34,dejada:36,bandeja:34,vibora:30,remate:30,pared:55}},
   agresivo:{nombre:"Agresivo",desc:"Presión constante, víboras y riesgo.",attrs:{fondo:40,globo:30,chiquita:34,volea:48,dejada:36,bandeja:48,vibora:52,remate:50,pared:34}},
-  bandejero:{nombre:"Especialista en bandejas",desc:"Domina la red sin regalar nada.",attrs:{fondo:42,globo:42,chiquita:40,volea:46,dejada:38,bandeja:57,vibora:50,remate:38,pared:40}},
+  /* El bandejero era el estilo más PLANO de los cinco (media 43,7 con pico 57)
+     y su golpe insignia es el de menos recompensa del juego. Resultado medido:
+     32% de victorias a igualdad de nivel contra cualquiera, y sus dos mayores
+     sangrías eran la dejada y la chiquita —golpes que no son suyos y que jugaba
+     igual porque nada se lo impedía—. Ahora es lo que dice ser: control desde
+     arriba (bandeja y víbora altas) y malo soltando la bola corta, para que
+     `a³` le quite esos golpes de la mano. La media se mantiene, así que no
+     gana nivel: cambia de forma. */
+  bandejero:{nombre:"Especialista en bandejas",desc:"Domina la red sin regalar nada.",attrs:{fondo:40,globo:42,chiquita:34,volea:50,dejada:30,bandeja:60,vibora:56,remate:40,pared:40}},
   rematador:{nombre:"Rematador",desc:"Si la bola sube, se acaba el punto.",attrs:{fondo:38,globo:30,chiquita:34,volea:44,dejada:34,bandeja:48,vibora:42,remate:58,pared:32}},
   constructor:{nombre:"Constructor",desc:"Chiquitas, dejadas y cabeza fría.",attrs:{fondo:50,globo:46,chiquita:55,volea:42,dejada:54,bandeja:36,vibora:32,remate:30,pared:44}},
 };

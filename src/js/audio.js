@@ -189,13 +189,42 @@ function buildPoint(server){
     }
 
     const inc=incomingFor(shotKey,1-eq,opp);
+    /* EL GLOBO CONTRA LA RED: O LOS PASA, O LES REGALA LA BOLA ARRIBA.
+       Antes el globo SIEMPRE echaba de la red al rival, y esa línea se llevaba
+       por delante medio juego: la situación «bola alta estando en la red» —la
+       única que abre las candidatas ["bandeja","vibora","remate",…]— no podía
+       ocurrir nunca, así que ese trozo de `chooseShot` era código muerto.
+       Medido: en 60 partidos un bandejero no pegaba UNA bandeja y un rematador
+       ni un remate; jugaban los puntos con sus peores atributos y ganaban el
+       29% y el 36% a igualdad de nivel, mientras el que menos fallaba se lo
+       llevaba todo.
+
+       Ahora el globo se mide contra la defensa aérea del rival: si es bueno,
+       los pasa y te quedas la red; si se queda corto, se la dejas alta y te la
+       van a pegar. Eso devuelve el bucle que ES el pádel —globo, bandeja,
+       globo, bandeja— y le pone al globo el riesgo que le faltaba. */
+    let globoPasa=null;
+    if(["globo","globoRapido"].includes(shotKey)&&opp.atNet){
+      const q=pl.attrs.globo||55;
+      const def=Math.max(opp.jug[0].attrs.bandeja||50,opp.jug[1].attrs.bandeja||50);
+      /* Y un globo se sube desde donde te dejan subirlo. Éste es el pago de la
+         BANDEJA: no gana puntos (win .10, la recompensa más baja del juego),
+         gana la posición —te mantiene arriba y obliga al de atrás a levantar
+         la bola incómodo, hasta que uno sale corto y se acaba—. Sin este
+         término el bandejero era el peor estilo con diferencia (33% a igualdad
+         de nivel) porque elegía siempre la más segura de las tres bolas altas
+         y la más segura no pagaba nada. */
+      const pPasa=clamp(.46+(q-def)/150,.22,.78)-(shotKey==="globoRapido"?.08:0)-(ctx.pressure||0)*.35;
+      globoPasa=rnd()<pPasa;
+      if(!globoPasa){ inc.ctx={atNet:true,high:true,afterGlass:false,pressure:.15}; inc.c=contactPoint(1-eq,false); inc.vuelo="volea"; }
+    }
     let nIdx=inc.c.x<5?0:1;
     if(inc.ctx.high||Math.abs(inc.c.x-5)<1.7){
       const val=j=>inc.ctx.high?opp.jug[j].attrs.remate+opp.jug[j].attrs.bandeja:opp.jug[j].attrs[opp.atNet?"volea":"fondo"]*2;
       const best=val(0)>=val(1)?0:1;
       if(best!==nIdx&&val(best)-val(1-best)>24){nIdx=best;inc.ctx.mia=true;}
     }
-    if(["globo","globoRapido"].includes(shotKey)&&opp.atNet){
+    if(globoPasa){
       opp.atNet=false;team.atNet=true;
       ev.push({team:eq,jug,shotKey,com:com+" · "+TXT_RED,from:contact,to:inc.c,vuelo:inc.vuelo,net:[A.atNet,B.atNet],recvIdx:nIdx});
     } else {

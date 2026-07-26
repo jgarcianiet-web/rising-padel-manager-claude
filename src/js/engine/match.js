@@ -11,8 +11,16 @@ const SHOTS = {
   globoRapido:{label:"sh_globoRapido",err:.11,win:.07,attr:"globo"},
   chiquita:{label:"sh_chiquita",err:.10,win:.04,attr:"chiquita"},
   volea:{label:"sh_volea",err:.09,win:.15,attr:"volea"},
-  dejada:{label:"sh_dejada",err:.16,win:.32,attr:"dejada"},
-  bandeja:{label:"sh_bandeja",err:.08,win:.10,attr:"bandeja"},
+  /* OJO CON LA DEJADA. Con win .32 era el mejor golpe del juego —ganaba el
+     punto más veces que un remate (.27) arriesgando poco más que una víbora—
+     y además, si no lo ganaba, dejaba al rival descolocado (`_scr`, ×1,7 en el
+     siguiente). Medido: el 78% de los puntos que cerraba el `constructor`
+     morían en dejada, y ese estilo ganaba el 93-98% a todos los demás a
+     igualdad de nivel. El partido entero era «quién tiene más dejada».
+     Una dejada es un golpe de riesgo que ROBA la iniciativa, no que cierra
+     el punto: el premio está en el desajuste que provoca, no en el winner. */
+  dejada:{label:"sh_dejada",err:.20,win:.15,attr:"dejada"},
+  bandeja:{label:"sh_bandeja",err:.07,win:.11,attr:"bandeja"},
   vibora:{label:"sh_vibora",err:.13,win:.18,attr:"vibora"},
   remate:{label:"sh_remate",err:.15,win:.27,attr:"remate"},
   remate3:{label:"sh_remate3",err:.24,win:.48,attr:"remate"},
@@ -25,7 +33,7 @@ const AGRESIVOS=["vibora","remate","remate3","remate4","bajada","dejada"];
 const STYLE_BIAS = {
   defensivo:{globo:2.0,globoRapido:1.3,chiquita:1.5,fondo:1.2,bandeja:1.2,vibora:.4,remate:.3,remate3:.15,remate4:.15,dejada:.7,volea:1,saque:1,bajada:.7},
   agresivo:{globo:.3,globoRapido:.5,chiquita:.6,fondo:1.1,bandeja:1.0,vibora:1.5,remate:1.7,remate3:1.4,remate4:1.4,dejada:.9,volea:1.2,saque:1,bajada:1.6},
-  bandejero:{globo:.9,globoRapido:1,chiquita:1.1,fondo:1,bandeja:2.0,vibora:1.7,remate:.7,remate3:.5,remate4:.5,dejada:1,volea:1.2,saque:1,bajada:1},
+  bandejero:{globo:.9,globoRapido:1,chiquita:.8,fondo:1,bandeja:2.0,vibora:1.7,remate:.7,remate3:.5,remate4:.5,dejada:.7,volea:1.2,saque:1,bajada:1},
   rematador:{globo:.4,globoRapido:.7,chiquita:.6,fondo:1,bandeja:1.3,vibora:1.0,remate:2.0,remate3:1.7,remate4:1.7,dejada:.8,volea:1.1,saque:1,bajada:1.8},
   constructor:{globo:1.2,globoRapido:1.1,chiquita:1.7,fondo:1.4,bandeja:1.0,vibora:.8,remate:.6,remate3:.4,remate4:.4,dejada:1.8,volea:1.1,saque:1,bajada:.9},
 };
@@ -62,7 +70,10 @@ function factorPerso(pl){
 function chooseShot(pl,ctx,opp){
   let cands=[];
   if(ctx.atNet&&ctx.high) cands=["bandeja","vibora","remate","remate3","remate4"];
-  else if(ctx.atNet) cands=["volea","dejada"];
+  // En la red con bola baja hay tres respuestas, no dos. Con solo volea y
+  // dejada, cada bola en la red era una moneda entre las dos y ganaba siempre
+  // quien tuviera más dejada; la bola a los pies es la tercera opción real.
+  else if(ctx.atNet) cands=["volea","dejada","chiquita"];
   else if(ctx.high) cands=["bajada","globo"];
   else cands=["fondo","globo","globoRapido","chiquita"];
   const bias=STYLE_BIAS[pl.estilo]||STYLE_BIAS.constructor;
@@ -72,7 +83,7 @@ function chooseShot(pl,ctx,opp){
     let w=a*a*a*(bias[k]||1);
     if(opp.atNet&&(k==="globo"||k==="globoRapido")) w*=1.7;
     if(opp.atNet&&k==="chiquita") w*=1.4;
-    if(!opp.atNet&&k==="dejada") w*=1.6;
+    if(!opp.atNet&&k==="dejada") w*=1.25;
     if(!opp.atNet&&(k==="globo"||k==="globoRapido")) w*=.35;
     if(AGRESIVOS.includes(k)) w*=fp.aggr;
     return {k,w:Math.max(w,.02)};
@@ -191,7 +202,12 @@ function incomingFor(shotKey,recvIdxTeam,recvTeam){
   }
   const glass=deepGlass||(shotKey==="saque"&&rnd()<.35);
   const high=glass&&rnd()<.18;
-  const press={vibora:.5,remate:.6,bandeja:.3,bajada:.5,volea:.3}[shotKey]||.15;
+  /* La BANDEJA aprieta tanto como una víbora. No cierra el punto —para eso
+     están el remate y la víbora— pero cae larga y te deja pegado al fondo:
+     su trabajo es que el de abajo tenga que levantar la bola incómodo otra
+     vez. Con .3 no compensaba elegirla nunca teniendo bola alta, y el estilo
+     entero (`bandejero`) era el peor del juego por goleada. */
+  const press={vibora:.5,remate:.6,bandeja:.5,bajada:.5,volea:.3}[shotKey]||.15;
   return {ctx:{atNet:false,high,afterGlass:glass,pressure:press},c:contactPoint(recvIdxTeam,true),vuelo:glass?"pared":"bote"};
 }
 /* Frases del narrador: claves i18n. Se resuelven al construir el comentario. */

@@ -55,11 +55,18 @@ function copRondas(n){
   return rondas.concat(rondas.map(par=>par.map(([a,b])=>[b,a])));
 }
 /* Monta la competición de la temporada. El índice 0 del grupo eres tú. */
-/* Fuerza de UNA pareja. No es la media de los dos: una pareja con un hueco vale
-   menos que dos jugadores parejos de la misma media, porque el rival juega al
-   flojo. Medido en la Copa: 67+54 (media 60) perdía 0-2 una y otra vez contra
-   parejas equilibradas de 61. El más flojo pesa el doble. */
-function copFuerzaPar(a,b){ return Math.round((Math.max(a,b)+2*Math.min(a,b))/3); }
+/* Fuerza de UNA pareja. No es la media de los dos: manda el BUENO, y cuenta el
+   doble. Un crack con un compañero discreto rinde más que dos medianías de la
+   misma media, porque el bueno toca muchas más bolas decisivas.
+
+   Esto estaba justo al revés («el más flojo pesa el doble»), y no por capricho:
+   la medición que lo justificaba se hizo con el motor roto, cuando el partido
+   lo decidía quién tenía más `dejada` y un especialista en cualquier otra cosa
+   parecía un lastre. Vuelto a medir con el motor arreglado, a media 55 contra
+   una pareja equilibrada 55/55: 58/52 gana el 55%, 62/48 el 56%, 66/44 el 74%
+   y 70/40 el 79%. Es decir, apilar SUMA. Si vuelves a tocar esta fórmula,
+   vuelve a sacar esa tabla antes. */
+function copFuerzaPar(a,b){ return Math.round((2*Math.max(a,b)+Math.min(a,b))/3); }
 /* Fuerza de un club NPC: la de su MEJOR pareja, que es la que decide el primer
    punto de la eliminatoria. */
 function copFuerzaClub(cl,idx){

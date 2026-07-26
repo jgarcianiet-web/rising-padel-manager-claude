@@ -48,6 +48,65 @@ tier de patrocinador, tabla de récords). Si necesitas una variable ahí, lláma
   se encontraron el panel de Semana, la pantalla de fundar club y la analítica,
   que los tests de claves no veían.
 
+## El motor: cinco estilos y ninguna respuesta correcta
+
+Esto es lo que sostiene todo lo demás. Si el partido tiene una jugada que gana
+siempre, da igual lo bien montados que estén el mercado, la Copa o la pareja:
+son adornos alrededor de una moneda trucada. Y lo estuvo mucho tiempo.
+
+**Lo que pasaba.** A igualdad de nivel, el estilo `constructor` ganaba entre el
+93% y el 98% a los otros cuatro, y el `bandejero` el 33% a todos. Elegir estilo
+al crearte, fichar por estilo en el club, las identidades y sus antídotos: todo
+mentía. El partido lo decidía una sola cosa, quién tenía más `dejada`.
+
+Dos causas, y la segunda es la gorda:
+
+1. **La dejada era el mejor golpe del juego** (`win .32`, más que un remate
+   `.27`, arriesgando poco más que una víbora) y encima dejaba al rival
+   descolocado (`_scr`, ×1,7 en el golpe siguiente). El 78% de los puntos que
+   cerraba un constructor morían en dejada. Ahora es `.20/.15`: un golpe de
+   riesgo que **roba la iniciativa**, no que cierra el punto.
+2. **El globo SIEMPRE echaba de la red al rival**, sin medirse con nada. Con
+   eso, «bola alta estando en la red» —la única situación que abre las
+   candidatas `["bandeja","vibora","remate",…]`— no podía ocurrir jamás, y ese
+   trozo de `chooseShot` era **código muerto**. Medido: en 60 partidos un
+   bandejero no pegaba UNA bandeja y un rematador ni un remate; jugaban el
+   partido entero con sus peores atributos. Ahora el globo se mide contra la
+   defensa aérea rival (`pPasa`): si es bueno los pasa, y si se queda corto les
+   deja la bola arriba. Eso devuelve el bucle que **es** el pádel —globo,
+   bandeja, globo, bandeja— y le pone al globo el riesgo que le faltaba.
+
+Hoy los cinco estilos están entre el 47% y el 57% de media, y hay contras de
+verdad: el bandejero se come al constructor, el constructor al defensivo, el
+defensivo al agresivo y el rematador al defensivo. `tests/casos.js` no deja que
+ninguno se salga de la banda 28-72 (banda ancha a propósito: con 24 partidos por
+celda el ruido es de ±10, así que **no afina el equilibrio, caza el desastre**).
+
+### Cómo se mide esto
+
+La matriz de estilos, siempre: cinco por cinco, mismo nivel, N partidos por
+celda **reiniciando la semilla en cada uno con `rndSemilla(sem,sem)`**. Y cuando
+una celda sale rara, el desglose por golpe: `stats[eq].wShot` y `stats[eq].eShot`
+sobreviven a `quickMatch`, así que se puede contar de dónde salen los puntos de
+cada lado. Fue ese desglose el que enseñó la dejada y el que enseñó que la
+bandeja no aparecía ni una vez.
+
+**Cuidado con dar por buena una medición vieja.** Dos reglas de este repo se
+habían calibrado con el motor roto y estaban del revés: `copFuerzaPar` daba
+doble peso al jugador flojo («el rival juega al flojo») cuando en realidad
+apilar SUMA —a media 55, una pareja 70/40 gana el 79% a una 55/55—, y el estilo
+`bandejero` era plano porque parecía equilibrado. Si tocas el motor, **vuelve a
+sacar todas las tablas**, no solo la del cambio.
+
+### La confianza se enfría hacia el centro
+
+`j.conf` bajaba 4 por derrota y no la subía nada: una mala racha dejaba a la
+segunda pareja del club clavada en 15 para siempre (medido: conf 23 en la
+temporada 2 y ahí seguía en la 5). Y era una asimetría, porque las parejas del
+mundo se rehacen de cero en cada eliminatoria y llegan siempre a 55 —tus
+jugadores cargaban con las cicatrices y los rivales no—. Ahora relaja hacia 55
+cada semana en el cierre del club. Doler unas semanas, sí; marcar la carrera, no.
+
 ## El torneo tiene cuadro
 
 `tournament.js` construye un cuadro final de 16 con siembra por puntos de
@@ -361,6 +420,19 @@ convertirse en decisiones. Dos reglas al tocarlas:
 Los efectos están enganchados donde se decide: `costeViaje`, `pickLesion`,
 `decaeMerma`, `cargaPoso`, `precisionStaff`, `fansAdd`, el tier de patrocinio y
 el `rivBoost` del partido.
+
+### Y nadie trabaja gratis
+
+Una deuda sin consecuencia no es una decisión. El staff cobraba a crédito para
+siempre: medido con el banco de carreras, un perfil que fichaba a los tres del
+mercado en cuanto tenía 5.000€ terminaba seis temporadas a **−117.636€** jugando
+exactamente igual de bien. `impagoStaff` da un mes de cuerda (cuatro nóminas) y,
+pasado eso, se marcha el mejor pagado. Con eso el mismo perfil termina en +2.469€.
+
+Dos cosas: se avisa antes con `av_fijos`, así que perder al entrenador es culpa
+tuya y no una sorpresa; y se va **uno por semana**, no todos de golpe —con un
+bucle, quitar al mejor pagado encoge la nómina y con ella el límite, así que el
+siguiente también se pasa de raya y se te cae la estructura entera el mismo día—.
 
 ## Las primeras semanas tienen que contar algo
 
