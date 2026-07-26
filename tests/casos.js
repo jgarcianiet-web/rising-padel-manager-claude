@@ -3686,18 +3686,23 @@ comprueba("Copa: los rivales son de tu división (regresión: eran los mejores)"
   const cl = fundarClub();
   const L = copAsegura(cl);
   const mia = copFuerzaTuya(cl);
-  const fuerzas = L.grupo.map(i => copFuerzaClub(cl, i));
+  /* El derbi entra siempre, sea del nivel que sea: una liga sin el vecino no es
+     una liga. Se aparta para juzgar el resto del grupo. */
+  const derbi = cl.derbi && cl.derbi.club;
+  const vecinos = L.grupo.filter(i => i !== derbi);
+  const fuerzas = vecinos.map(i => copFuerzaClub(cl, i));
   const dist = fuerzas.map(f => Math.abs(f - mia));
-  // ninguno debería estar a más de 20 puntos de nivel de tu club
   exige(Math.max(...dist) <= 20, "hay un rival a " + Math.max(...dist) + " puntos de nivel: " + fuerzas.join(","));
-  // y son los siete más cercanos que hay en el mundo
-  const todas = CLUBES_NPC.map((_, i) => Math.abs(copFuerzaClub(cl, i) - mia)).sort((a, b) => a - b);
-  exige(Math.max(...dist) <= todas[COP_CLUBES - 2] + 1, "no coge los más cercanos");
+  // y son los más cercanos que hay en el mundo, salvo el derbi
+  const todas = CLUBES_NPC.map((_, i) => i).filter(i => i !== derbi)
+    .map(i => Math.abs(copFuerzaClub(cl, i) - mia)).sort((a, b) => a - b);
+  exige(Math.max(...dist) <= todas[vecinos.length - 1] + 1,
+    "no coge los más cercanos: " + dist.join(",") + " frente a " + todas.slice(0, vecinos.length).join(","));
   // al crecer el club, la división también sube
   cl.plantilla.forEach(j => ATTR_KEYS.forEach(k => j.attrs[k] = 90));
   cl.copa = null;
   const L2 = copAsegura(cl);
-  const f2 = L2.grupo.map(i => copFuerzaClub(cl, i));
+  const f2 = L2.grupo.filter(i => i !== derbi).map(i => copFuerzaClub(cl, i));
   exige(f2.reduce((s, x) => s + x, 0) > fuerzas.reduce((s, x) => s + x, 0),
     "subir de nivel no te sube de división: " + f2.join(",") + " vs " + fuerzas.join(","));
   return `tu club ${mia} · rivales ${fuerzas.join("/")} → al subir a 90: ${f2.join("/")}`;
