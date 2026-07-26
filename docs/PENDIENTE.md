@@ -41,9 +41,39 @@ entrenamiento no resoluble, economía con sumideros, agencia táctica y feedback
 en partido, competición propia del club, jerarquía dramática y primer tramo de
 carrera dirigido. Cada una con su sección en CLAUDE.md y sus pruebas.
 
-Lo siguiente ya no es una lista cerrada: toca **jugar carreras largas y medir**
-—y regenerar las capturas y el tráiler de la tienda, que son de antes de todo
-esto y ya no enseñan el juego que hay.
+Lo siguiente ya no es una lista cerrada: toca **jugar carreras largas y medir**.
+
+### Lo que apareció al medirlas (y ya está arreglado)
+
+Jugar carreras y temporadas de club completas, sin trucar energía ni dinero,
+sacó a la luz cosas que ninguna prueba de claves ni de interfaz veía:
+
+- **El motor estaba roto de raíz.** A igualdad de nivel, el estilo
+  `constructor` ganaba el 93-98% a los otros cuatro y el `bandejero` el 33% a
+  todos. La causa: la dejada era el mejor golpe del juego, y el globo echaba
+  siempre de la red al rival, con lo que la bola alta en la red no ocurría
+  nunca y bandeja/víbora/remate eran código muerto. Arreglado y con pruebas;
+  la explicación larga está en CLAUDE.md («El motor: cinco estilos y ninguna
+  respuesta correcta»).
+- **La deuda no tenía consecuencia.** El staff cobraba a crédito para siempre:
+  seis temporadas a −117.636€ jugando igual de bien.
+- **La confianza era un trinquete de un solo sentido** en el club, y encima
+  asimétrico: tus jugadores cargaban las cicatrices y los rivales llegaban
+  siempre a 55.
+
+### Lo que queda abierto de esto
+
+- **Regenerar las capturas y el tráiler.** Además de ser de antes de las ocho
+  prioridades, los números que enseñan (puesto, títulos, marcadores) los
+  produjo el motor roto. Es el mismo comando: `tools/capturas.js` y
+  `tools/trailer.js`.
+- **Varianza del club en la fundación.** Con una plantilla fundada a conciencia
+  el primer año sale bien (8 de 10 eliminatorias medidas, socios contentos y
+  caja creciendo) y en el segundo subes de división y se aprieta, que es lo que
+  se busca. Pero el mercado inicial son ocho agentes al azar y un mal reparto
+  todavía puede dejarte sin una primera pareja competitiva. Conviene medir
+  varias fundaciones seguidas y decidir si el mercado inicial necesita un
+  suelo.
 
 ---
 
