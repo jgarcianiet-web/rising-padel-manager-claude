@@ -531,6 +531,14 @@ function entrarPartida(){
     if(cl.wildcards===undefined) cl.wildcards=2;
     irA("clubm"); pintarClubM();
   }
+  /* Ranking por ventana de 52 semanas: las partidas anteriores no traen el
+     historial, así que se les reparte lo que tuvieran. Se hace aquí, una vez,
+     antes de pintar nada que lea el ranking. */
+  if(typeof rkAsegura==="function"){
+    (G.world&&G.world.parejas||[]).forEach(p=>rkAsegura(p));
+    const _e=ent(); if(_e) rkAsegura(_e);
+    if(G.world&&G.world._rkSem===undefined&&_e) G.world._rkSem=_e.semana;
+  }
   // La guía se retoma donde estaba: quien recarga a mitad del tutorial no lo pierde.
   if(typeof guiaEmpieza==="function") guiaEmpieza(G.modo==="carrera"?"carrera":"club");
   guardar();

@@ -99,7 +99,40 @@ Tres cosas que hay que respetar al tocar el código:
 `tests/estatico.js` lo hace cumplir: falla si aparece un `Math.random` sin
 marcar en un fichero de simulación, o si alguien vuelve a tapar `rnd`.
 
-## El ranking se gana jugando, no existiendo
+## El ranking: ventana de 52 semanas, como la FIP
+
+Cada torneo reparte puntos y **esos puntos valen un año**. Al cumplirse las 52
+semanas se caen: si el año pasado ganaste el torneo de esta semana, hoy lo
+defiendes. Eso es lo que hace que el ranking se mueva todas las semanas en vez
+de dar un salto artificial en diciembre.
+
+Se guarda un **anillo de 52 casillas** por pareja (`x.rk`), lo ganado en cada
+semana del año, y `x.pts` es la suma cacheada. De ahí las cuatro funciones de
+`state.js`:
+
+- `rkAnota(x, semana, pts)` — puntúa con fecha. **Nunca asignes `x.pts` a
+  mano**: la siguiente operación lo recalcula desde el anillo y tu número
+  desaparece.
+- `rkCaduca(x, semana)` / `caducaSemanaRanking(semana)` — pasa la escoba al
+  empezar la semana. Va guardada con `G.world._rkSem` porque entrar y salir de
+  la partida no puede costarte puntos.
+- `rkDefiende(x, semana)` — lo que te juegas esta semana. Es lo que pinta el
+  panel y el KPI.
+- `rkAsegura(x)` — migración: a una partida vieja se le reparte su `pts` por las
+  52 casillas para que no se le caiga todo de golpe.
+
+`tests/estatico.js` falla si alguien vuelve a meter el recorte del 55% al
+cerrar temporada.
+
+### La previa no puntúa
+
+`loserIdx` es para el dinero y `loserPtsIdx` para los puntos, y devuelve −1 en
+las fases de previa. Con la previa puntuando, entrar en la clasificatoria de una
+Corona y perder el primer partido daba 100 puntos, más que ganar un Continental
+Plata entero (80): presentarse a perder era la estrategia óptima y se medía
+—48-196 sin un título daba el puesto 3—.
+
+## El circuito puntúa como puntúas tú
 
 `simCircuito` (en `state.js`) reparte cada semana los puntos de los torneos del
 calendario, y solo entre las parejas que los juegan. Tres reglas que hay que

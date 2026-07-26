@@ -2638,7 +2638,9 @@ comprueba("Maestros: los ocho mejores pueden jugarlos (regresión: reventaba)", 
   // dejaba la fase vacía y la pantalla del torneo petaba al buscar rival. No se
   // veía porque con el ranking viejo nadie llegaba nunca al top 8.
   const c = nuevaCarrera();
-  c.pts = 999999; c.dinero = 90000; c.energia = 100; c.pro = true;
+  // los puntos entran por la ventana del ranking, no asignando c.pts a mano
+  rkAnota(c, c.semana, 999999);
+  c.dinero = 90000; c.energia = 100; c.pro = true;
   let semTF = -1;
   for (let s = 1; s <= SEMANAS_TEMP; s++) if (slotSemana(s).premier === 7) { semTF = s; break; }
   exige(semTF > 0, "el calendario no tiene semana de Maestros");
@@ -2673,3 +2675,76 @@ comprueba("Maestros: los ocho mejores pueden jugarlos (regresión: reventaba)", 
   exige(c.pts - ptsAntes === CATS[7].pts[0], `el campeón se llevó ${c.pts - ptsAntes} y toca ${CATS[7].pts[0]}`);
   return "cuartos, semis y final con ocho parejas · " + CATS[7].pts[0] + " puntos";
 });
+
+/* Ranking por ventana de 52 semanas (como la FIP) -------------------------
+   Cada resultado vale un año y luego se cae. Lo de antes —acumular y recortar
+   un 45% al cerrar temporada— dejaba el ranking quieto once meses y le daba un
+   salto artificial en diciembre. */
+comprueba("Ranking: un resultado vale exactamente 52 semanas", () => {
+  const x = { pts: 0 };
+  rkAsegura(x);
+  rkAnota(x, 10, 1000);
+  exige(x.pts === 1000, "no sumó al anotarlo: " + x.pts);
+  // durante el año siguiente sigue ahí
+  [11, 30, 61].forEach(w => { rkCaduca(x, w); exige(x.pts === 1000, `se cayó antes de tiempo en la semana ${w}: ${x.pts}`); });
+  // y en la misma semana del año siguiente, se cae
+  const cae = rkCaduca(x, 10 + RK_SEMANAS);
+  exige(cae === 1000, "no devolvió lo que se cae: " + cae);
+  exige(x.pts === 0, "los puntos siguen ahí un año después: " + x.pts);
+  return "1000 puntos vivos 52 semanas y ni una más";
+});
+
+comprueba("Ranking: defender es real (repetir mantiene, fallar hunde)", () => {
+  const bueno = { pts: 0 }, malo = { pts: 0 };
+  rkAsegura(bueno); rkAsegura(malo);
+  // los dos ganan el torneo de la semana 5 del año 1
+  rkAnota(bueno, 5, 1000); rkAnota(malo, 5, 1000);
+  exige(bueno.pts === malo.pts, "no empiezan iguales");
+  // un año después: uno repite el título, el otro cae en primera ronda
+  const sem = 5 + RK_SEMANAS;
+  rkCaduca(bueno, sem); rkAnota(bueno, sem, 1000);
+  rkCaduca(malo, sem); rkAnota(malo, sem, 50);
+  exige(bueno.pts === 1000, "repetir el título debería dejarte igual: " + bueno.pts);
+  exige(malo.pts === 50, "fallar debería hundirte: " + malo.pts);
+  exige(bueno.pts > malo.pts, "defender no sirve de nada");
+  return "repetir: 1000 → 1000 · fallar: 1000 → 50";
+});
+
+comprueba("Ranking: lo que defiendes se puede saber antes de jugar", () => {
+  const c = nuevaCarrera();
+  rkAsegura(c);
+  c.rk = rkNuevo();
+  c.pts = 0;
+  rkAnota(c, 7, 300);
+  exige(rkDefiende(c, 7) === 300, "no dice lo que defiendes esa semana");
+  exige(rkDefiende(c, 7 + RK_SEMANAS) === 300, "la ventana no es de un año");
+  exige(rkDefiende(c, 8) === 0, "dice que defiendes puntos de otra semana");
+  return "300 puntos a defender en la semana 7";
+});
+
+comprueba("Ranking: entrar y salir de la partida no cuesta puntos", () => {
+  const c = nuevaCarrera();
+  rkAnota(c, c.semana, 500);
+  const antes = c.pts;
+  // caducar la misma semana dos veces (recargar, repintar) no puede robar nada
+  caducaSemanaRanking(c.semana);
+  const trasUna = c.pts;
+  caducaSemanaRanking(c.semana);
+  caducaSemanaRanking(c.semana);
+  exige(c.pts === trasUna, `caducó de más al repetir: ${trasUna} → ${c.pts}`);
+  exige(antes - trasUna === 500 || trasUna === antes, "la primera caducidad hizo algo raro");
+  return "la escoba pasa una vez por semana";
+});
+
+comprueba("Ranking: los guardados antiguos reciben su historial sin perder puntos", () => {
+  const viejo = { pts: 5200 };          // partida de antes: solo el total
+  rkAsegura(viejo);
+  exige(Array.isArray(viejo.rk) && viejo.rk.length === RK_SEMANAS, "no le puso ventana");
+  exige(viejo.pts === 5200, "la migración le cambió los puntos: " + viejo.pts);
+  exige(rkSuma(viejo) === 5200, "la ventana no suma lo que decía el total");
+  // y se reparte, no se amontona en una semana (si no, se caería todo de golpe)
+  const maximo = Math.max(...viejo.rk);
+  exige(maximo < 5200 / 4, "se amontonó en una semana: se caería todo de golpe");
+  return "5200 puntos repartidos por el año, sin saltos";
+});
+

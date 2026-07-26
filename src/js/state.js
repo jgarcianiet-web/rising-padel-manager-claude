@@ -327,6 +327,80 @@ function mkWorld(){
 // con "Cannot read properties of null" en cuanto alguno se usaba desde ahí.
 function ent(){ return G?(G.modo==="carrera"?G.carrera:G.clubG):null; }
 /* ================================================================
+   EL RANKING ES UNA VENTANA DE 52 SEMANAS
+
+   Así funcionan la FIP y Premier Pádel, y así se mueve el ranking de verdad:
+   cada torneo reparte puntos, esos puntos **valen un año**, y al cumplirse las
+   52 semanas se caen. Lo que estaba antes —acumular todo el año y recortar un
+   45% de golpe al cerrar temporada— no se parece a nada: el ranking se quedaba
+   quieto once meses y daba un salto artificial en diciembre.
+
+   Con la ventana pasan las dos cosas que hacen interesante un ranking:
+
+   - **Se defiende.** Si el año pasado ganaste el torneo de esta semana, esos
+     puntos se caen HOY. Repetir resultado te deja igual; hacerlo peor te
+     hunde aunque hayas ganado partidos.
+   - **Se mueve todas las semanas**, no una vez al año.
+
+   Guardarlo entero (cada resultado con su fecha) engordaría la partida por 180
+   parejas; se guarda un anillo de 52 casillas por pareja —lo ganado en cada
+   semana del año— que es justo lo que hace falta para caducar y para saber qué
+   defiendes. `pts` sigue existiendo como suma cacheada, así que todo lo que ya
+   leía `pts` sigue funcionando igual.
+================================================================ */
+const RK_SEMANAS=52;
+function rkSlot(semanaAbs){ return ((Math.max(1,semanaAbs|0)-1)%RK_SEMANAS); }
+function rkNuevo(){ return new Array(RK_SEMANAS).fill(0); }
+function rkSuma(x){ return (x.rk||[]).reduce((a,b)=>a+(b|0),0); }
+/* Las partidas antiguas traen `pts` y ninguna historia. Se reparte lo que
+   tuvieran por las 52 casillas: así su ranking no salta de golpe y a lo largo
+   del año siguiente van defendiendo lo que traían. */
+function rkAsegura(x){
+  if(!x) return null;
+  if(!Array.isArray(x.rk)||x.rk.length!==RK_SEMANAS){
+    const total=x.pts|0, cacho=Math.floor(total/RK_SEMANAS);
+    x.rk=rkNuevo();
+    for(let i=0;i<RK_SEMANAS;i++) x.rk[i]=cacho;
+    x.rk[0]+=total-cacho*RK_SEMANAS;
+  }
+  x.pts=rkSuma(x);
+  return x.rk;
+}
+/* Anota puntos en la semana en que se ganan. */
+function rkAnota(x,semanaAbs,pts){
+  if(!x||!pts) return;
+  rkAsegura(x);
+  x.rk[rkSlot(semanaAbs)]+=pts|0;
+  x.pts=rkSuma(x);
+}
+/* Qué se defiende esta semana: lo que se ganó en la misma semana del año pasado. */
+function rkDefiende(x,semanaAbs){
+  if(!x) return 0;
+  rkAsegura(x);
+  return x.rk[rkSlot(semanaAbs)]|0;
+}
+/* Caduca la semana: se cae lo del año pasado. Devuelve cuánto se ha perdido. */
+function rkCaduca(x,semanaAbs){
+  if(!x) return 0;
+  rkAsegura(x);
+  const i=rkSlot(semanaAbs), cae=x.rk[i]|0;
+  x.rk[i]=0;
+  x.pts=rkSuma(x);
+  return cae;
+}
+/* Pasa la escoba por todo el circuito al empezar una semana. Se hace una sola
+   vez por semana (`_rkSem` lo marca), porque entrar y salir de la partida no
+   puede costarte puntos. */
+function caducaSemanaRanking(semanaAbs){
+  if(!G||!G.world) return 0;
+  if(G.world._rkSem===semanaAbs) return 0;
+  G.world._rkSem=semanaAbs;
+  (G.world.parejas||[]).forEach(p=>rkCaduca(p,semanaAbs));
+  const e=ent();
+  return e?rkCaduca(e,semanaAbs):0;
+}
+
+/* ================================================================
    EL CIRCUITO PUNTÚA COMO PUNTÚAS TÚ
 
    Durante mucho tiempo esto daba puntos a TODAS las parejas del mundo cada
@@ -370,10 +444,11 @@ function _reparteTorneo(ci,sx,excluir,yaInscritos){
   const inscritos=yaInscritos||_inscritosTorneo(ci,sx,excluir);
   if(inscritos.length<4) return null;
   const orden=inscritos.map(p=>({p,f:nivelPareja(p)+R(-7,7)})).sort((a,b)=>b.f-a.f);
+  const sem=ent()?ent().semana:1;
   let i=0;
   CUADRO_PLAZAS.forEach((plazas,k)=>{
     const pts=cat.pts[k]||0;
-    for(let j=0;j<plazas&&i<orden.length;j++,i++) orden[i].p.pts+=pts;
+    for(let j=0;j<plazas&&i<orden.length;j++,i++) rkAnota(orden[i].p,sem,pts);
   });
   return orden[0].p;
 }
@@ -429,16 +504,16 @@ function accionesDeClub(w,noticias){
     if(mercado==="rico"){
       // ficha una estrella emergente (no consagrada) de otro club
       const obj=w.parejas.filter(p=>p.club!==ci&&!p.retiraT&&!p.pro&&nivelPareja(p)>=66).sort((a,b)=>nivelPareja(b)-nivelPareja(a))[0];
-      if(obj){ obj.club=ci; obj.pts=Math.round((obj.pts||0)*1.15+200); noticias.push(`💰 ${cl.n} da un golpe de efecto y ficha a ${obj.nombre}.`); }
+      if(obj){ obj.club=ci; rkAnota(obj,ent().semana,Math.round((obj.pts||0)*.15+200)); noticias.push(t("mun_golpe_efecto",{club:cl.n,pareja:obj.nombre})); }
     } else if(mercado==="cantera"){
       // hace crecer a su joven promesa
       const joven=mios.filter(p=>p.edad<=23).sort((a,b)=>b.pts-a.pts)[0]||mios.slice().sort((a,b)=>a.edad-b.edad)[0];
-      if(joven){ joven.jug.forEach(j=>{ if(j.attrs){ const k=pick(ATTR_KEYS); j.attrs[k]=clamp(j.attrs[k]+3,25,96); } }); joven.pts=Math.round((joven.pts||0)*1.1+120); noticias.push(`🌱 La cantera del ${cl.n} da un salto: crece ${joven.nombre}.`); }
+      if(joven){ joven.jug.forEach(j=>{ if(j.attrs){ const k=pick(ATTR_KEYS); j.attrs[k]=clamp(j.attrs[k]+3,25,96); } }); rkAnota(joven,ent().semana,Math.round((joven.pts||0)*.1+120)); noticias.push(t("mun_cantera_salto",{club:cl.n,pareja:joven.nombre})); }
     } else if(mercado==="vendedor"){
       // no puede retener a su mejor pareja: la traspasa a un club rico
       const estrella=mios.slice().sort((a,b)=>nivelPareja(b)-nivelPareja(a))[0];
       const ricos=[]; for(let d=0;d<CLUBES_NPC.length;d++){ if(d!==ci&&mercadoDeClub(d)==="rico") ricos.push(d); }
-      if(estrella&&ricos.length){ const dest=pick(ricos); estrella.club=dest; noticias.push(`📉 ${cl.n} no puede retener a ${estrella.nombre}: se marcha a ${CLUBES_NPC[dest].n}.`); }
+      if(estrella&&ricos.length){ const dest=pick(ricos); estrella.club=dest; noticias.push(t("mun_no_retiene",{club:cl.n,pareja:estrella.nombre,destino:CLUBES_NPC[dest].n})); }
     }
   }
 }
@@ -499,7 +574,8 @@ function evolucionaMundo(){
   // 1) envejecimiento: los jóvenes crecen, los veteranos declinan (fuerte a partir de 33)
   w.parejas.forEach(p=>{
     p.edad++;
-    p.pts=Math.round(p.pts*.55);
+    // los puntos ya no se recortan al cerrar: cada resultado caduca a las 52
+    // semanas de haberse conseguido, como en la FIP
     p.jug.forEach(j=>{
       for(let i=0;i<2;i++){
         const k=pick(ATTR_KEYS);
@@ -535,7 +611,7 @@ function evolucionaMundo(){
     [a.jug[1],b.jug[1]]=[b.jug[1],a.jug[1]];
     a.nombre=`${a.jug[0].n}/${a.jug[1].n}`;
     b.nombre=`${b.jug[0].n}/${b.jug[1].n}`;
-    noticias.push(`💥 Bombazo del mercado: ${a.jug[0].n} rompe con ${sale} y jugará con ${entra}.`);
+    noticias.push(t("mun_bombazo",{jug:a.jug[0].n,sale,entra}));
     noticia("ruptura",t("not_ruptura_npc_t",{jug:a.jug[0].n,sale}),t("not_ruptura_npc_s",{entra}),{jug:[{n:a.jug[0].n,sexo:a.sexo},{n:sale,sexo:a.sexo}]});
   }
   // 5) debuts: jóvenes que entran al circuito hasta reponer el plantel (a veces, una perla)
@@ -547,8 +623,9 @@ function evolucionaMundo(){
     j1.attrs=mkAttrsNivel(nivel,j1._est); j2.attrs=mkAttrsNivel(nivel,j2._est);
     const p={id:w.nextId++,nombre:`${j1.n}/${j2.n}`,jug:[j1,j2],edad:Math.round(R(18,21)),pro:perla,sexo:sx,
       pts:Math.max(0,Math.round((nivel-40)*(nivel-40)*R(.8,1.4))),club:clubAlAzar(),atNet:false};
+    rkAsegura(p);   // los puntos con los que llega se reparten por el año
     w.parejas.push(p);
-    noticias.push(perla?`🚀 Debuta ${p.nombre}, la pareja joven de la que todos hablan (${nivel}).`:`🚀 Debut en el circuito: ${p.nombre}.`);
+    noticias.push(perla?t("mun_debut_perla",{pareja:p.nombre,nivel}):t("mun_debut",{pareja:p.nombre}));
     if(perla) noticia("debut",t("not_perla_t",{nombre:p.nombre}),t("not_perla_s",{nivel}));
   }
   // 6) movimientos de club según su personalidad (fichan, forman cantera, venden)
@@ -627,7 +704,16 @@ function colAttr(v){
        : v>=32?"#8B94A7"   // flojo
        :       "#6C7488";  // muy flojo
 }
+/* En qué escalón del reparto caes al perder en la fase `f`. La previa cobra
+   dinero como una primera ronda —viajar cuesta y hay que comer— pero NO
+   puntúa: en la FIP y en Premier Pádel los puntos son del cuadro final.
+
+   Con la previa puntuando pasaba esto: entrar en la previa de una Corona,
+   perder el primer partido y llevarte 100 puntos era mejor negocio que ganar
+   un Continental Plata entero (80). Presentarse a perder era la estrategia
+   óptima, y se notaba: 48-196 sin un solo título daba el puesto 3. */
 function loserIdx(f){return f>=2?(6-f):5;}
+function loserPtsIdx(f){return f>=2?(6-f):-1;}
 function calHtml(){
   const st=semanaTemp(), res=ent().calRes||{};
   // tira de temporada: 40 semanas de un vistazo

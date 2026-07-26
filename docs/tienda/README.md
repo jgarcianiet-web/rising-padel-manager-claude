@@ -187,7 +187,7 @@ En itch.io conviene marcar también: *Made with no engine*, *Singleplayer*,
 
 - **Capturas:** `NODE_PATH=$PWD/node_modules node tools/capturas.js <idioma>`.
   Juega una carrera de verdad con semilla fija (`TIENDA-1`) —once temporadas,
-  del puesto 86 al 2, seis Coronas, 471-93— y fotografía las nueve pantallas a
+  del puesto 91 al nº1 del mundo, 30 títulos— y fotografía las nueve pantallas a
   1920×1080. Tarda unos cinco minutos.
 
   Dos decisiones que conviene no deshacer: se fotografía con la **maqueta densa**

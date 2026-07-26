@@ -513,7 +513,11 @@ function pintarCarrera(){
   document.getElementById("tabJugador").innerHTML=`${t("nav_jugador")}${nOf?` <span style="color:var(--lima)">●</span>`:""}`;
   document.getElementById("kSem").textContent="S"+semanaTemp();
   document.getElementById("kRank").textContent="#"+miPuesto();
-  document.getElementById("kPts").textContent=c.pts;
+  /* Los puntos, y debajo lo que se defiende esta semana. Es la información que
+     convierte el ranking en algo que se lee: sin ella, ganar 300 puntos parece
+     siempre bueno aunque el año pasado hicieras 1000 en este mismo torneo. */
+  const _def=typeof rkDefiende==="function"?rkDefiende(c,c.semana):0;
+  document.getElementById("kPts").innerHTML=`${c.pts}${_def?` <span style="font-size:calc(9px * var(--esc));color:var(--rojo)" title="${t("sem_defiendes",{n:_def})}">−${_def}</span>`:""}`;
   document.getElementById("kDin").textContent=c.dinero+"€";
   const kE=document.getElementById("kEne");
   kE.textContent=c.energia;
@@ -589,6 +593,17 @@ function pintarSemana(){
   document.getElementById("semTitulo").innerHTML=c.lesion?`${t("sem_baja")} · <em>${c.lesion.n} (${c.lesion.sem} ${t("sem_abrev")})</em>`:`${t("kpi_semana")} ${semanaTemp()} · <em>${diaNombre(dia-1).toUpperCase()}</em>`+(c.merma?` · <span style="color:#E0A030">${t("sem_mermado")} -${c.merma.pct}% (${c.merma.sem} ${t("sem_abrev")})</span>`:"");
   pintarObjetivos();
   const td=document.getElementById("torneosDisp");td.innerHTML="";
+  /* Lo primero de la semana: qué te juegas en el ranking. Defender 1000 puntos
+     cambia por completo la lectura del mismo torneo. */
+  if(typeof rkDefiende==="function"){
+    const def=rkDefiende(c,c.semana);
+    const av=document.createElement("div");
+    av.className="foot"; av.style.textAlign="left"; av.style.marginBottom="6px";
+    av.innerHTML=def>0
+      ? `<span style="color:var(--oro)">${t("sem_defiendes",{n:def})}</span>`
+      : t("sem_defiendes_no");
+    td.appendChild(av);
+  }
   // tira lunes-domingo
   const ds=document.createElement("div");ds.className="diastrip";
   for(let d=1;d<=7;d++){
@@ -1401,6 +1416,11 @@ function avanzarSemanaCarrera(){
     avisa(t("spot_av_oferta",{marca:c.sponsor.marca,tipo:t(c._spot.tipo),pago,fans:fansB}));
   }
   c.semana++;
+  /* Empieza semana nueva: se cae lo que se ganó en esta misma semana del año
+     pasado. Va aquí, antes de que se juegue nada, para que el torneo de esta
+     semana entre en la casilla ya vacía. */
+  const cae=caducaSemanaRanking(c.semana);
+  if(cae>0) avisa(t("av_defiende_cae",{n:cae}));
   if(c.lesion){
     c.lesion.sem--;
     if(c.lesion.sem<=0){
@@ -1465,7 +1485,6 @@ function avanzarSemanaCarrera(){
     const perdido=aplicaDeclive(c.attrs,c.edad);
     if(perdido>0) avisa(t("ub_declive",{n:perdido,edad:c.edad}));
     if(c.compi&&c.compi.attrs&&(c.compi.edad=(c.compi.edad||c.edad)+1)>=EDAD_DECLIVE) aplicaDeclive(c.compi.attrs,c.compi.edad);
-    c.pts=Math.round(c.pts*.55);
     avisa(t("av_cierre",{t:temporada()-1,pos:posFin,pts:ptsFin,tit:titsT,ok:cumplidos,total:totalObj,edad:c.edad}));
     if(totalObj&&cumplidos<totalObj) c.compiMoral=clamp((c.compiMoral??65)-(totalObj-cumplidos)*3,5,95);
     // EL ACUERDO: lo que le prometiste al ficharle se cobra al cierre

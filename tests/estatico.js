@@ -20,6 +20,26 @@ module.exports = function pruebasEstaticas() {
   };
   const exige = (c, m) => { if (!c) throw new Error(m || "no se cumple lo esperado"); };
 
+  /* El ranking va por ventana de 52 semanas, como la FIP: cada resultado
+     caduca un año después de conseguirse. El recorte de un 45% al cerrar
+     temporada era lo contrario —el ranking quieto once meses y un salto en
+     diciembre— y volver a meterlo rompería la defensa de puntos sin que
+     ninguna prueba de comportamiento lo notara. */
+  comprueba("Ranking: nadie recorta los puntos al cerrar temporada", () => {
+    const objetivo = ["src/js/state.js", "src/js/career.js", "src/js/club.js"];
+    const malos = [];
+    objetivo.forEach(f => {
+      leer(f).split("\n").forEach((l, i) => {
+        if (/^\s*\/\//.test(l)) return;                       // comentarios, no
+        if (/\bpts\s*=\s*Math\.round\([^)]*\*\s*\.?0?\.55\)/.test(l)) malos.push(`${f}:${i + 1}`);
+      });
+    });
+    exige(!malos.length, "recorte de temporada en " + malos.join(", "));
+    // y la ventana tiene que seguir siendo de un año
+    exige(/const RK_SEMANAS\s*=\s*52\b/.test(leer("src/js/state.js")), "la ventana del ranking ya no son 52 semanas");
+    return "los puntos caducan por fecha, no por decreto";
+  });
+
   /* El juego se vende empaquetado y tiene que funcionar sin conexión. Cualquier
      URL remota en el HTML o el CSS significa que algo se ve mal (o no se ve) en
      cuanto el jugador no tiene red. Ya pasó con las cuatro tipografías de

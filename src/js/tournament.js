@@ -896,15 +896,16 @@ function finPartido(){
   // (un solo punto para carrera y club) y, en carrera, la comisión del representante.
   const neto=(x)=>{x=ecoIngreso(x);const r=G.modo==="carrera"&&G.carrera.staff&&G.carrera.staff.rep;return r?Math.round(x*(1-(r.com||15)/100)):x;};
   if(!gane){
-    const idx=loserIdx(f);
-    e.pts+=torneo.pts[idx]||0;e.dinero+=neto(torneo.premio[idx]||0);
-    rival.pts+=torneo.pts[Math.max(0,idx-1)]||0;
-    avisa(t("aviso_eliminados",{fase:faseNombre(f).toLowerCase(),torneo:torneo.nombre,pts:torneo.pts[idx]||0,din:neto(torneo.premio[idx]||0),resto:G.modo==="carrera"?t("aviso_resto_semana"):""})+(seLesiona?` ⚠ ${lesionTxt}.`:""));
+    const idx=loserIdx(f), idxP=loserPtsIdx(f);
+    const ptsGan=idxP<0?0:(torneo.pts[idxP]||0);
+    rkAnota(e,e.semana,ptsGan);e.dinero+=neto(torneo.premio[idx]||0);
+    if(idxP>=0) rkAnota(rival,e.semana,torneo.pts[Math.max(0,idxP-1)]||0);
+    avisa(t("aviso_eliminados",{fase:faseNombre(f).toLowerCase(),torneo:torneo.nombre,pts:ptsGan,din:neto(torneo.premio[idx]||0),resto:G.modo==="carrera"?t("aviso_resto_semana"):""})+(seLesiona?` ⚠ ${lesionTxt}.`:""));
     cerrarTorneo();return;
   }
-  rival.pts+=torneo.pts[loserIdx(f)]||0;
+  { const _ip=loserPtsIdx(f); if(_ip>=0) rkAnota(rival,e.semana,torneo.pts[_ip]||0); }
   if(f===5){
-    e.pts+=torneo.pts[0];e.dinero+=neto(torneo.premio[0]);
+    rkAnota(e,e.semana,torneo.pts[0]);e.dinero+=neto(torneo.premio[0]);
     e.palmares.push(`${torneo.nombre} (T${temporada()})`);
   if(G.modo==="club") clubPalma(-1,`${torneo.nombre} (T${temporada()})`);   // -1 = tu club (se ignora, ya está en e.palmares)
     if(torneo.premierT) e._campPremSem=semanaTemp();
@@ -937,7 +938,7 @@ function finPartido(){
   }
   if(seLesiona){
     const idx=loserIdx(f+1);
-    e.pts+=torneo.pts[idx]||0;e.dinero+=neto(torneo.premio[idx]||0);
+    rkAnota(e,e.semana,torneo.pts[idx]||0);e.dinero+=neto(torneo.premio[idx]||0);
     noticia("lesion",t("not_retirada_t"),t("not_retirada_s",{lesion:lesionTxt,torneo:torneo.nombre}),miParejaProt());
     post("lesion");
     avisa(t("aviso_retirada",{lesion:lesionTxt,pts:torneo.pts[idx]||0}));

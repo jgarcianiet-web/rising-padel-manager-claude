@@ -454,7 +454,7 @@ function simTorneoParejaB(ci){
     }
   }
   const pts=Math.round((cat.pts[idxPts]||0)*.5), premio=cat.premio[idxPts]||0;  // la pareja B puntúa al 50% para el club
-  cl.pts+=pts; cl.dinero+=premio;
+  rkAnota(cl,cl.semana,pts); cl.dinero+=premio;
   if(titulo){
     cl.palmares.push(`${catNombre(cat)} — pareja B (T${temporada()})`);
     noticia("titulo",t("not_parejab_t",{cat:catNombre(cat)}),t("not_parejab_s",{p1:parB[0].n,p2:parB[1].n,pts,premio}));
@@ -907,6 +907,8 @@ function avanzarSemanaClub(){
   simCircuito(cl._rivalesSemana);cl._rivalesSemana=[];
   prensaSemanal();
   cl.semana++;
+  const _cae=caducaSemanaRanking(cl.semana);
+  if(_cae>0) avisa(t("av_defiende_cae",{n:_cae}));
   const regen=10+(cl.reformas.gym?4:0)+(cl.staff.fisico?4:0);
   cl.plantilla.forEach((j,idx)=>{
     j.energia=clamp(j.energia+regen,0,100);
@@ -1005,7 +1007,7 @@ function avanzarSemanaClub(){
     cl.junta=J;
     avisa(t("clb_junta_nuevo",{obj:J.objetivo}));
     evolucionaMundo();
-    cl.pts=Math.round(cl.pts*.55);
+    // los puntos caducan solos a las 52 semanas: no hay recorte de cierre
     cl.plantilla.forEach(j=>{
       j.edad++;
       for(let i=0;i<2;i++){
