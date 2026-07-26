@@ -83,7 +83,9 @@ function slotSemana(st){
 function costeViaje(ci){
   const slot=slotSemana(semanaTemp());
   const base=(CATS[ci].premier&&slot.premier===ci)?(TRAVEL[slot.region]||180):30;
-  const bruto=G.modo==="club"?Math.round(base*1.5):base;
+  let bruto=G.modo==="club"?Math.round(base*1.5):base;
+  // tener el centro de entrenamiento en esa región es llegar casi de casa
+  if(G.modo==="carrera"&&typeof invViajeX==="function") bruto*=invViajeX(G.carrera,slot.region);
   // un vuelo perdido o una gira internacional se pagan aquí
   return Math.round((typeof evNum==="function")?evNum("viaje",bruto):bruto);
 }
@@ -1421,6 +1423,12 @@ function intentaLesion(port,tieneFisio){
   if(rnd()>=r) return null;
   const les=pickLesion(clamp(1-(port.energia==null?100:port.energia)/40,0,1));
   if(tieneFisio) les.sem=Math.max(1,les.sem-1);
+  /* La clínica no evita la lesión: acorta la baja, que es lo que se compra. En
+     carrera cubre a los dos, que para eso es tuya. */
+  if(G.modo==="carrera"&&typeof invLesionDurX==="function"){
+    const x=invLesionDurX(G.carrera);
+    if(x<1) les.sem=Math.max(1,Math.round(les.sem*x));
+  }
   port.fragil=(port.fragil||0)+1;
   return les;
 }
@@ -1433,7 +1441,11 @@ function curarLesion(port){
 }
 // Enfría la merma una semana; la elimina cuando se agota.
 function decaeMerma(port){
-  if(port.merma){ port.merma.sem--; if(port.merma.sem<=0) port.merma=null; }
+  if(!port.merma) return;
+  // con clínica la secuela se disipa en varias semanas de golpe
+  const pasos=(G.modo==="carrera"&&port===G.carrera&&typeof invMermaPasos==="function")?invMermaPasos(port):1;
+  port.merma.sem-=pasos;
+  if(port.merma.sem<=0) port.merma=null;
 }
 // La moral pesa en la pista: 5..95 → ajuste de confianza -11..+7.
 function moralAjusteConf(moral){

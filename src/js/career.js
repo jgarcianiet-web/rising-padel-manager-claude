@@ -532,6 +532,7 @@ function pintarCarrera(){
     renderMercadoStaff(document.getElementById("mercadoStaff"));
     const cst=Object.keys(ent().staff||{}).reduce((x,k)=>x+((ent().staff[k]&&ent().staff[k].sal)||0),0);
     document.getElementById("staffCoste").textContent=t("staff_coste",{cst});
+    pintarInversiones();
   }
   if(tabActiva==="jugador"){pintarJugador();pintarUltimoBaile();renderParejas(document.getElementById("parejasHist"));renderHitos(document.getElementById("hitos"));renderRivalidades(document.getElementById("rivalidades"));}
   if(tabActiva==="ranking"){renderRanking(document.getElementById("tablaRk"));renderClubes(document.getElementById("tablaClubes"));renderN1(document.getElementById("n1hist"));renderRecords(document.getElementById("records"));}
@@ -576,7 +577,9 @@ function pintarEventosSemana(td, disponible, motivoNo){
     const slotE=slotSemana(semanaTemp());
     const sede=(cat.premier&&slotE.premier===ci)?`${slotE.ciudad}`:t("sem_sede_nacional");
     const viaje=costeViaje(ci);
-    d.innerHTML=`<b>${catNombre(cat)}</b> ${tag} <span class="pill">📍 ${sede}</span> <span class="pill">${t("sem_viaje",{n:viaje})}</span> <span class="pill">${t("sem_campeon",{n:cat.premio[0]})}</span><div class="d">${modo}</div>`;
+    // si tienes el centro plantado ahí, el viaje ya sale más barato: que se vea
+    const enCasa=(typeof invRegion==="function")&&slotE.region&&invRegion(ent())===slotE.region;
+    d.innerHTML=`<b>${catNombre(cat)}</b> ${tag} <span class="pill">📍 ${sede}</span>${enCasa?` <span class="pill" style="color:var(--lima)">${t("sem_en_casa")}</span>`:""} <span class="pill">${t("sem_viaje",{n:viaje})}</span> <span class="pill">${t("sem_campeon",{n:cat.premio[0]})}</span><div class="d">${modo}</div>`;
     const b=document.createElement("button");
     b.className=cat.premier?"pri":"azul";b.style.width="100%";
     const sinCaja=ent().dinero<viaje;
@@ -770,6 +773,89 @@ function pintarEntreno(){
   cp.appendChild(sel);
   pintarCtxEntreno();
   pintarEstadoFisico();
+}
+/* Dónde metes el dinero. Solo tiene sentido cuando sobra, y por eso el panel se
+   explica solo: coste de entrada, mantenimiento y qué cambia cada nivel. */
+function pintarInversiones(){
+  const c=G.carrera, bx=document.getElementById("inversiones");
+  if(!bx||G.modo!=="carrera") return;
+  bx.innerHTML="";invAsegura(c);
+  const sub=document.createElement("div");sub.className="foot";sub.style.textAlign="left";sub.style.marginBottom="8px";
+  sub.textContent=t("inv_sub");
+  bx.appendChild(sub);
+  const gasto=invUpkeepTotal(c), renta=invRenta(c);
+  const eur=n=>Number(n||0).toLocaleString("es");
+  if(gasto||renta){
+    const bal=document.createElement("div");bal.className="chbar";bal.style.marginBottom="9px";
+    bal.innerHTML=`<span>${t("inv_balance",{gasto:eur(gasto),renta:eur(renta)})}</span><b style="color:${renta-gasto>=0?"var(--verde)":"var(--rojo)"}">${renta-gasto>=0?"+":""}${eur(renta-gasto)}€</b>`;
+    bx.appendChild(bal);
+  } else {
+    const v=document.createElement("div");v.className="foot";v.style.textAlign="left";v.style.marginBottom="9px";
+    v.textContent=t("inv_vacio");
+    bx.appendChild(v);
+  }
+  INV_IDS.forEach(id=>{
+    const niv=invNiv(c,id), d=INVERSIONES[id], precio=invPrecio(c,id);
+    const o=document.createElement("div");o.className="opcion";
+    if(niv) o.style.borderColor="var(--lima)";
+    const reg=(id==="centro"&&niv)?` <span class="pill">${t("inv_region_en",{n:t("inv_region_"+invRegion(c))})}</span>`:"";
+    o.innerHTML=`<b>${invNombre(id)}</b>${niv?` <span class="pill" style="color:var(--lima)">${t("inv_niv",{n:niv,max:INV_NIV_MAX})}</span>`:""}${reg}
+      <div class="d">${invDesc(id)}</div>
+      <div class="d" style="color:var(--azul)">${invEfecto(id,niv||1)}</div>
+      ${niv?`<div class="foot" style="text-align:left;margin:0 0 6px">${t("inv_upkeep",{n:eur(invUpkeep(c,id))})}</div>`:""}`;
+    // el centro se planta en una región: hay que elegirla antes de abrirlo
+    if(id==="centro"&&!niv){
+      const hd=document.createElement("div");hd.className="foot";hd.style.textAlign="left";hd.style.margin="4px 0 3px";
+      hd.textContent=t("inv_region_hd");
+      o.appendChild(hd);
+      const fila=document.createElement("div");fila.className="fila";
+      INV_REGIONES.forEach(rg=>{
+        const b=document.createElement("button");
+        b.className="selbtn"+((c._invRegion||INV_REGIONES[0])===rg?" on":"");
+        b.style.fontSize="11px";
+        b.textContent=t("inv_region_"+rg);
+        b.onclick=()=>{c._invRegion=rg;pintarCarrera();};
+        fila.appendChild(b);
+      });
+      o.appendChild(fila);
+    }
+    if(niv<INV_NIV_MAX){
+      const b=document.createElement("button");b.style.width="100%";b.style.marginTop="6px";
+      const puede=c.dinero>=precio;
+      b.textContent=!puede?t("inv_caro")
+        :niv?t("inv_subir",{niv:niv+1,n:eur(precio)}):t("inv_comprar",{n:eur(precio)});
+      b.disabled=!puede;
+      if(puede) b.onclick=()=>abrirInversion(id);
+      o.appendChild(b);
+    } else {
+      const p=document.createElement("div");p.className="foot";p.style.textAlign="left";p.style.color="var(--oro)";
+      p.textContent=t("inv_tope");
+      o.appendChild(p);
+    }
+    if(niv){
+      const bc=document.createElement("button");bc.style.width="100%";bc.style.marginTop="5px";
+      bc.style.background="none";bc.style.color="var(--gris)";
+      const dev=Math.round(d.coste.slice(0,niv).reduce((s,x)=>s+x,0)*.35);
+      bc.textContent=t("inv_cerrar",{n:eur(dev)});
+      bc.onclick=()=>cerrarInversion(id);
+      o.appendChild(bc);
+    }
+    bx.appendChild(o);
+  });
+}
+function abrirInversion(id){
+  const c=G.carrera; if(!c) return;
+  const precio=invPrecio(c,id);
+  if(!invCompra(c,id,c._invRegion)) return;
+  avisa(t("inv_av_abre",{n:invNombre(id),c:precio.toLocaleString("es"),s:invUpkeep(c,id).toLocaleString("es")}));
+  guardar();pintarCarrera();
+}
+function cerrarInversion(id){
+  const c=G.carrera; if(!c) return;
+  const dev=invCierra(c,id);
+  if(!dev) return;
+  avisa(t("inv_av_cierra",{n:invNombre(id),c:dev.toLocaleString("es")}));
+  guardar();pintarCarrera();
 }
 /* Dónde entrenas esta semana. Lo que convierte el entrenamiento en una decisión
    y no en un botón: cada sitio cuesta algo distinto y renuncia a algo distinto. */
@@ -1225,6 +1311,8 @@ function renderRivalidades(el){
 function fmtFans(n){return n>=1000?(n/1000).toFixed(1).replace(".0","")+"k":""+n;}
 function fansAdd(n,motivo){
   const e=ent(); if(!e) return;
+  // la agencia de imagen multiplica lo que suma, no lo que ya tienes
+  if(n>0&&G.modo==="carrera"&&typeof invFansX==="function") n=Math.round(n*invFansX(e));
   e.fans=Math.max(0,(e.fans||0)+n);
   if(n>=100&&motivo) avisa(t("av_fans",{n,motivo,total:fmtFans(e.fans)}));
 }
@@ -1642,6 +1730,10 @@ function avanzarSemanaCarrera(){
     if(!c._avisoClases){c._avisoClases=true;avisa(t("av_clases_club"));}
   } else if(c.dinero>=600) c._avisoClases=false;
   c.dinero+=ingresosSemanaCarrera();
+  // lo que ingresan y lo que cuestan las inversiones
+  const _inv=invSemana(c);
+  if(_inv.gasto>0&&c.dinero<0&&!c._avisoInv){ c._avisoInv=true; avisa(t("inv_av_ahoga",{n:_inv.gasto.toLocaleString("es")})); }
+  if(c.dinero>_inv.gasto*4) c._avisoInv=false;
   const fijos=Object.keys(c.staff||{}).reduce((x,k)=>x+((c.staff[k]&&c.staff[k].sal)||0),0);
   if(c.dinero<300&&fijos>100&&!c._avisoFijos){c._avisoFijos=true;avisa(t("av_fijos",{fijos}));}
   if(c.dinero>1500) c._avisoFijos=false;
@@ -1755,6 +1847,8 @@ function cierreTemporadaCarrera(){
   if(pos<=8&&(c.fans||0)>=6000) tier=4;   // las multinacionales quieren caras conocidas
   const rep_=c.staff&&c.staff.rep;
   if(rep_&&tier>0&&tier<4) tier=Math.min(pos<=8?4:3,tier+1);
+  // la agencia de imagen abre la puerta de las marcas grandes igual que un agente
+  if(typeof invSubeTier==="function"&&invSubeTier(c)&&tier>0&&tier<4) tier=Math.min(pos<=8?4:3,tier+1);
   if(tier>0){
     const nOf=rep_?3:pos<=20?2:2;
     const tiers=[tier]; if(tier>1) tiers.push(tier-1);
@@ -1763,6 +1857,7 @@ function cierreTemporadaCarrera(){
       const t2=tiers[c.ofertasPatro.length%tiers.length];
       const of=ofertaPatro(t2);
       if(rep_) of.sem=Math.round(of.sem*1.2);
+      if(typeof invPatroX==="function") of.sem=Math.round(of.sem*invPatroX(c));
       if(rnd()<.4){ of.sem=Math.round(of.sem*1.3); of.primas=of.primas.slice(0,1); of._perfil="fijo alto"; }
       else if(of.primas.length){ of.sem=Math.round(of.sem*.8); of._perfil="por objetivos"; }
       if(!c.ofertasPatro.some(x=>x.marca===of.marca)) c.ofertasPatro.push(of);
@@ -1949,7 +2044,8 @@ function entrenoSemanalCarrera(factor){
        golpe. Los tres son multiplicadores por debajo de 1 casi siempre, así que
        se resuelven con una moneda en vez de con una resta que dejaría todo a 0. */
     if(mio&&g>0){
-      const mult=ctx.gan*gX*adaptFactor(c,k);
+      const mult=ctx.gan*gX*adaptFactor(c,k)
+        *((typeof invCtxGanX==="function")?invCtxGanX(c,ctxEntreno(c)):1);
       let ent=g*mult;
       g=Math.floor(ent); if(rnd()<ent-g) g++;
     }

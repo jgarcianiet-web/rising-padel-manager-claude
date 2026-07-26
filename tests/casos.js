@@ -3135,3 +3135,111 @@ comprueba("Entreno: en el gimnasio no se trabaja la dejada", () => {
   exige(yo.attrs.fondo > yo2.attrs.fondo, "la forma no llega a la pista: " + yo.attrs.fondo + " vs " + yo2.attrs.fondo);
   return "gimnasio → " + k + ", y la forma se nota en pista";
 });
+
+
+/* El dinero se convierte en estructura -----------------------------------
+   Medido: hasta la octava temporada la caja aprieta, y a partir del top 10 se
+   dispara a 262.000 sin nada que hacer con ellos. Estas pruebas defienden que
+   lo que se compra cambia una decisión y que no se puede comprar todo. */
+comprueba("Inversiones: todas cuestan, se mantienen y están traducidas", () => {
+  exige(INV_IDS.length >= 5, "solo hay " + INV_IDS.length + " sitios donde meter el dinero");
+  INV_IDS.forEach(id => {
+    const d = INVERSIONES[id];
+    exige(d.coste.length === INV_NIV_MAX && d.sem.length === INV_NIV_MAX, id + " no tiene los tres niveles");
+    for (let i = 1; i < INV_NIV_MAX; i++) {
+      exige(d.coste[i] > d.coste[i - 1], id + ": subir de nivel no cuesta más");
+      exige(d.sem[i] > d.sem[i - 1], id + ": mantener el nivel alto no cuesta más");
+    }
+    [invNombre, invDesc].forEach(f => {
+      const x = f(id);
+      exige(x && !/^inv_/.test(x), id + ": sin traducir (" + x + ")");
+    });
+    for (let n = 1; n <= INV_NIV_MAX; n++) {
+      const e = invEfecto(id, n);
+      exige(e && !/^inv_/.test(e), id + " nivel " + n + ": sin efecto traducido");
+    }
+  });
+  return INV_IDS.length + " inversiones de " + INV_NIV_MAX + " niveles";
+});
+
+comprueba("Inversiones: el mantenimiento impide tenerlo todo", () => {
+  const c = nuevaCarrera();
+  invAsegura(c);
+  c.dinero = 5000000;
+  INV_IDS.forEach(id => { for (let n = 0; n < INV_NIV_MAX; n++) invCompra(c, id, "ES"); });
+  INV_IDS.forEach(id => exige(invNiv(c, id) === INV_NIV_MAX, id + " no llegó al tope"));
+  const tope = invUpkeepTotal(c);
+  /* Referencia medida con un bot: un número uno del mundo ingresa del orden de
+     3.500€ por semana. Si el mantenimiento total cupiera ahí, tenerlo todo
+     sería lo obvio y no habría decisión. */
+  exige(tope > 3500, "tenerlo todo cuesta " + tope + "€/sem: cabe en lo que ingresa un nº1");
+  // y dos o tres sí caben: si no, el sistema sería decorado
+  const c2 = nuevaCarrera(); invAsegura(c2); c2.dinero = 5000000;
+  for (let n = 0; n < INV_NIV_MAX; n++) { invCompra(c2, "centro", "ES"); invCompra(c2, "clinica"); }
+  exige(invUpkeepTotal(c2) < 3500, "ni dos al máximo caben: " + invUpkeepTotal(c2));
+  return `las cinco al máximo: ${tope}€/sem · dos al máximo: ${invUpkeepTotal(c2)}€/sem`;
+});
+
+comprueba("Inversiones: cada una cambia algo del motor", () => {
+  const c = nuevaCarrera();
+  invAsegura(c); c.dinero = 5000000; c.fans = 200000; c.staff = {};
+  // centro: viaje y rendimiento del entreno gratis
+  exige(invViajeX(c, "AM") === 1 && invCtxGanX(c, "pista") === 1, "sin centro ya hay efecto");
+  invCompra(c, "centro", "ES");
+  exige(invViajeX(c, "ES") < 1, "el centro no abarata su región");
+  exige(invViajeX(c, "AM") > 1, "instalarse lejos no se paga en ningún sitio");
+  exige(invCtxGanX(c, "pista") > 1, "el centro no mejora las horas de pista");
+  exige(invCtxGanX(c, "sparring") === 1, "el centro también regala el sparring de pago");
+  // clínica: bajas más cortas y carga que se descarga antes
+  const poso0 = invCargaPoso(c);
+  invCompra(c, "clinica");
+  exige(invLesionDurX(c) < 1, "la clínica no acorta las bajas");
+  exige(invMermaPasos(c) > 1, "la clínica no acelera las secuelas");
+  exige(invCargaPoso(c) < poso0, "la clínica no descarga antes");
+  // analítica: información
+  const p0 = precisionStaff(c);
+  invCompra(c, "analitica");
+  exige(precisionStaff(c) > p0, "la analítica no estrecha las horquillas");
+  exige(invPresionX(c) < 1, "la analítica no baja la presión del rival");
+  // academia: renta por fans
+  exige(invRenta(c) === 0, "sin academia ya renta");
+  invCompra(c, "academia");
+  const renta = invRenta(c);
+  exige(renta > 0, "la academia no renta");
+  const pobre = { fans: 2000, inv: c.inv };
+  exige(invRenta(pobre) < INVERSIONES.academia.sem[0], "la academia renta aunque no seas nadie");
+  // imagen: seguidores y contratos
+  exige(invFansX(c) === 1, "sin agencia ya multiplica");
+  invCompra(c, "imagen"); invCompra(c, "imagen");
+  exige(invFansX(c) > 1 && invPatroX(c) > 1, "la agencia no hace nada");
+  exige(invSubeTier(c), "a nivel 2 la agencia no abre las marcas grandes");
+  return `renta de la academia con 200.000 fans: ${renta}€/sem`;
+});
+
+comprueba("Inversiones: abrir, subir y cerrar mueven la caja", () => {
+  const c = nuevaCarrera();
+  invAsegura(c); c.dinero = 20000;
+  exige(!invCompra(c, "centro", "ES"), "se abre un centro sin tener el dinero");
+  c.dinero = 50000;
+  exige(invCompra(c, "centro", "AM"), "no deja abrirlo con dinero de sobra");
+  exige(c.dinero === 50000 - INVERSIONES.centro.coste[0], "no cobró el precio: " + c.dinero);
+  exige(invRegion(c) === "AM", "no guardó la región");
+  exige(invUpkeep(c, "centro") === INVERSIONES.centro.sem[0], "no cobra mantenimiento");
+  // subir de nivel mantiene la región
+  c.dinero = 200000;
+  invCompra(c, "centro");
+  exige(invNiv(c, "centro") === 2 && invRegion(c) === "AM", "subir de nivel pierde la región");
+  // cerrarla devuelve una parte, no todo
+  const antes = c.dinero, dev = invCierra(c, "centro");
+  const puesto = INVERSIONES.centro.coste[0] + INVERSIONES.centro.coste[1];
+  exige(dev > 0 && dev < puesto, "cerrar devuelve " + dev + " de " + puesto);
+  exige(c.dinero === antes + dev, "no ingresó lo devuelto");
+  exige(invNiv(c, "centro") === 0 && invUpkeepTotal(c) === 0, "sigue costando mantenimiento");
+  // el balance semanal cobra y paga
+  c.dinero = 300000; c.fans = 400000;
+  invCompra(c, "academia");
+  const caja = c.dinero, b = invSemana(c);
+  exige(b.renta > 0 && b.gasto > 0, "el balance no mueve nada");
+  exige(c.dinero === caja + b.renta - b.gasto, "la caja no cuadra con el balance");
+  return `cierre: ${dev}€ de vuelta de ${puesto}€ puestos`;
+});

@@ -387,11 +387,13 @@ function empezarPartido(ver,coach){
     document.getElementById("coms").innerHTML="";
     const esNem=G.modo==="carrera"&&G.carrera&&G.carrera.nemesis&&String(G.carrera.nemesis.id)===String(rival.id);
     if(esNem){
-      match.rivBoost=(match.rivBoost||0)+presionNemesis(G.carrera,rival.id);
+      match.rivBoost=(match.rivBoost||0)+presionNemesis(G.carrera,rival.id)
+        *((typeof invPresionX==="function")?invPresionX(G.carrera):1);
       addCom(t("com_nemesis",{rival:rival.nombre,n:G.carrera.nemesis.elim|0}),0);
     }
     if(clPre){
-      match.rivBoost=(match.rivBoost||0)+(clPre.tag==="RIVALIDAD"?.06:0);
+      match.rivBoost=(match.rivBoost||0)+(clPre.tag==="RIVALIDAD"?.06:0)
+        *((G.modo==="carrera"&&typeof invPresionX==="function")?invPresionX(G.carrera):1);
       if(clPre.tag==="BESTIA NEGRA") teams[0].jug.forEach(j=>j.conf=clamp((j.conf??55)-4,10,95));
       if(clPre.tag==="CLIENTE") teams[1].jug.forEach(j=>j.conf=clamp((j.conf??55)-3,10,95));
       addCom(`${clPre.emo} ${clPre.tag==="RIVALIDAD"?`¡Capítulo ${h2pre.v+h2pre.d+1} de la rivalidad! ${h2pre.v}-${h2pre.d} hasta hoy.`:clPre.tag==="BESTIA NEGRA"?`Vuestra bestia negra al otro lado: ${h2pre.v}-${h2pre.d}. A romper el muro.`:`Un viejo cliente: ${h2pre.v}-${h2pre.d} a favor. Que no se despierte.`}`,0);

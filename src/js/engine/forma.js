@@ -93,9 +93,13 @@ function cargaSemanal(c,sesiones){
   const mult=it==="suave"?.6:it==="intensa"?1.75:1;
   return CARGA_BASE*d.carga*mult*clamp(sesiones/5,0,1.2);
 }
+/* El poso baja con la clínica: recuperarse antes es poder entrenar más. */
+function cargaPoso(c){
+  return (typeof invCargaPoso==="function")?invCargaPoso(c):CARGA_POSO;
+}
 function cargaAplica(c,sesiones){
   frAsegura(c);
-  c.carga=clamp(Math.round(c.carga*CARGA_POSO+cargaSemanal(c,sesiones)),0,100);
+  c.carga=clamp(Math.round(c.carga*cargaPoso(c)+cargaSemanal(c,sesiones)),0,100);
   return c.carga;
 }
 /* Campana: por debajo del óptimo faltan estímulos, por encima el cuerpo no
@@ -167,7 +171,9 @@ function formaDe(c,k){
    ese es justo el punto. */
 function precisionStaff(c){
   const n=(typeof staffNiv==="function")?((staffNiv("fisico")||0)+(staffNiv("entrenador")||0)):0;
-  return clamp(n,0,8);
+  // el departamento de analítica es la otra manera de saber en qué estado estás
+  const inv=(typeof invPrecision==="function")?invPrecision(c):0;
+  return clamp(n+inv,0,8);
 }
 /* Horquilla alrededor de `v`. `esc` es lo ancha que es sin staff. */
 function banda(v,prec,esc){

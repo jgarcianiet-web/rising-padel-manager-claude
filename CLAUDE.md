@@ -283,6 +283,33 @@ media por debajo, entrenar siempre suave 10 por debajo, y varias estrategias
 sensatas (alternar cargas, pagar sparring, rotar objetivos) empatan arriba. Eso
 es lo que se busca: varios caminos buenos y dos maneras claras de hacerlo mal.
 
+## El dinero tiene que escasear también arriba
+
+`engine/inversion.js`. Medido con un bot de diez temporadas: hasta la octava la
+caja se mueve entre 14.000 y 31.000 y hay semanas en números rojos —ahí la
+economía funciona—, pero al entrar en el top 10 salta a **262.000 sin nada que
+hacer con ellos**. Un recurso que deja de escasear deja de ser una decisión, y
+con él se caen fichar staff, elegir torneo o pagar un sparring.
+
+Las cinco inversiones (centro de entrenamiento en una región, clínica,
+analítica, academia y agencia de imagen) son los sitios donde el dinero vuelve a
+convertirse en decisiones. Dos reglas al tocarlas:
+
+1. **El freno es el mantenimiento semanal, no un tope artificial.** Tenerlas las
+   cinco al máximo cuesta 5.670€/semana y un número uno del mundo ingresa del
+   orden de 3.500€: hay que elegir dos o tres. `tests/casos.js` compara esas dos
+   cifras y falla si el mantenimiento total vuelve a caber en lo que se ingresa.
+2. **Cada nivel cambia una decisión, no da «+1 a todo».** El centro al máximo
+   hace que las horas de pista rindan como un sparring de pago —o sea, deja de
+   tener sentido pagarlo—; la clínica te deja vivir en intensa; la analítica
+   sustituye al preparador como fuente de información; la academia solo sale a
+   cuenta si eres famoso; la imagen compra prestigio, que es lo que mira una
+   pareja buena antes de decirte que sí.
+
+Los efectos están enganchados donde se decide: `costeViaje`, `pickLesion`,
+`decaeMerma`, `cargaPoso`, `precisionStaff`, `fansAdd`, el tier de patrocinio y
+el `rivBoost` del partido.
+
 ## El modo club tiene cara: filosofía, junta y derbi
 
 Tres cosas que se fijan al fundar (`club.js`) y que hay que respetar:

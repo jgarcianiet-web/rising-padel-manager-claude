@@ -535,6 +535,7 @@ function entrarPartida(){
   if(typeof planAsegura==="function"&&G.modo==="carrera"&&G.carrera){
     planAsegura(G.carrera); relAsegura(G.carrera);
     if(typeof frAsegura==="function") frAsegura(G.carrera);
+    if(typeof invAsegura==="function") invAsegura(G.carrera);
     if(G.carrera._parejaDesdeSem==null) G.carrera._parejaDesdeSem=G.carrera.semana|0;
   }
   /* Ranking por ventana de 52 semanas: las partidas anteriores no traen el

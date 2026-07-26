@@ -34,14 +34,12 @@ música sobre el bruto, y darle a publicar.**
 
 ---
 
-## Camino al 9/10: las cinco prioridades que quedan
+## Camino al 9/10: las cuatro prioridades que quedan
 
-Las tres primeras (eventos sistémicos, profundidad de la pareja y entrenamiento
-no resoluble) ya están. Las demás, en el orden en que se decidieron:
+Las cuatro primeras (eventos sistémicos, profundidad de la pareja, entrenamiento
+no resoluble y economía con sumideros) ya están. Las demás, en el orden en que
+se decidieron:
 
-4. **Economía con sumideros estratégicos.** Hoy una carrera avanzada acumula
-   medio millón sin nada que hacer con él: campamento de pretemporada, analítica
-   de rivales, clínica de recuperación, base en una región, academia propia.
 5. **Agencia táctica y feedback en el partido.** Explicar qué hizo tu cambio
    («subir a la red te dio winners y te expuso al globo»), rival que se adapta a
    tus patrones, identidades tácticas que se noten sin abrir la ficha.
