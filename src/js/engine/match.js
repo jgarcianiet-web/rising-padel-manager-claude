@@ -128,9 +128,14 @@ function resolveShot(pl,shotKey,ctx,rallyLen){
   const _mio=ctx.team===0&&match&&!match.cpu;
   const _pj=(_mio&&typeof pjGolpe==="function")?pjGolpe(shotKey):null;
   if(_pj) err*=_pj.err;
+  /* Y lo que el rival ya te ha leído: un golpe que repites hasta el aburrimiento
+     deja de sorprender a nadie. */
+  const _lec=(_mio&&typeof tacLecturaX==="function")?tacLecturaX(shotKey):null;
+  if(_lec) err*=_lec.err;
   let win=Math.min(.52,s.win*q*(1+.25*q));
   if(_ev) win*=_ev.win;
   if(_pj) win*=_pj.win;
+  if(_lec) win*=_lec.win;
   if(ctx.oppDef) win*=clamp(1.25-ctx.oppDef/160,.7,1.1);   // la defensa rival llega a más bolas
   const mia2=ctx.team===0&&match&&!match.cpu;
   if(mia2&&TACT.agres==="agresiva") win*=1.22;
@@ -215,5 +220,5 @@ const F_PERSO={
 function frasePunto(mapa,modo){ const arr=mapa[modo]||mapa[Object.keys(mapa)[0]]; return pickVis(arr); }
 
 let teams=[],stats;
-function mkStats(){return {jug:[{w:0,e:0},{w:0,e:0}], tiros:0, bp:{jugados:0,ganados:0}, fatiga:[0,0], pganados:0, red:0, wShot:{}, eShot:{}, presion:{jug:0,gan:0}};}
+function mkStats(){return {jug:[{w:0,e:0},{w:0,e:0}], tiros:0, bp:{jugados:0,ganados:0}, fatiga:[0,0], pganados:0, red:0, wShot:{}, eShot:{}, uso:{}, presion:{jug:0,gan:0}};}
 

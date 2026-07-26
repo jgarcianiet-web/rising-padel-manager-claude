@@ -3243,3 +3243,88 @@ comprueba("Inversiones: abrir, subir y cerrar mueven la caja", () => {
   exige(c.dinero === caja + b.renta - b.gasto, "la caja no cuadra con el balance");
   return `cierre: ${dev}€ de vuelta de ${puesto}€ puestos`;
 });
+
+
+/* El partido te contesta ---------------------------------------------------
+   Tres reglas: abusar de un golpe deja de funcionar, cada plan lleva su cuenta
+   para que la siguiente decisión sea informada, y la etiqueta del rival sale de
+   sus atributos (nunca miente). */
+comprueba("Táctica: el rival lee al que solo sabe hacer una cosa", () => {
+  const m = { lectura: null, cpu: false };
+  const st = { uso: {} };
+  // un jugador variado: nadie le lee nada
+  ["fondo", "volea", "globo", "bandeja", "vibora", "remate"].forEach(k => { for (let i = 0; i < 6; i++) st.uso[k] = (st.uso[k] || 0) + 1; });
+  for (let g = 0; g < 8; g++) tacLee(m, st, 85);
+  exige(!m.lectura || m.lectura.nivel <= 0, "leen a alguien que varía: " + JSON.stringify(m.lectura));
+  // y ahora uno que solo pega víboras
+  const m2 = { lectura: null, cpu: false };
+  const st2 = { uso: { vibora: 40, fondo: 10, globo: 8 } };
+  const p = tacPatron(st2);
+  exige(p.golpe === "vibora" && p.cuota > .6, "no detecta el patrón: " + JSON.stringify(p));
+  let aviso = null;
+  for (let g = 0; g < 10; g++) aviso = tacLee(m2, st2, 85) || aviso;
+  exige(m2.lectura.golpe === "vibora", "no le leen la víbora");
+  exige(m2.lectura.nivel >= .9, "la lectura se queda a medias: " + m2.lectura.nivel);
+  exige(aviso === "vibora", "no avisa de que te han leído");
+  return "variando: sin lectura · 62% de víboras: lectura al " + Math.round(m2.lectura.nivel * 100) + "%";
+});
+
+comprueba("Táctica: lo leído rinde menos, y se les olvida si varías", () => {
+  const guarda = (typeof match !== "undefined") ? match : null;
+  match = { lectura: { golpe: "vibora", nivel: 1 } };
+  const leido = tacLecturaX("vibora"), otro = tacLecturaX("volea");
+  exige(otro.win === 1 && otro.err === 1, "castiga a un golpe que no te han leído");
+  exige(leido.win < 1 && leido.err > 1, "el golpe leído no se paga: " + JSON.stringify(leido));
+  exige(leido.win > .7, "la lectura decide el partido ella sola: ×" + leido.win);
+  exige(tacLecturaEstado() && tacLecturaEstado().fuerte, "no se puede saber que te tienen leído");
+  // variar lo apaga
+  const m = { lectura: { golpe: "vibora", nivel: 1 } };
+  const variado = { uso: {} };
+  ["fondo", "volea", "globo", "bandeja", "vibora", "remate", "dejada"].forEach(k => variado.uso[k] = 5);
+  for (let g = 0; g < 8; g++) tacLee(m, variado, 85);
+  exige(m.lectura.nivel === 0 && !m.lectura.golpe, "no se les olvida nunca: " + JSON.stringify(m.lectura));
+  match = guarda;
+  return `leído: win ×${leido.win.toFixed(2)} · err ×${leido.err.toFixed(2)}, y se olvida variando`;
+});
+
+comprueba("Táctica: el informe cuenta lo que dio cada plan", () => {
+  const m = {};
+  const plan = (agres, red) => ({ agres, diana: "repartir", red, clutch: "normal" });
+  // subir a la red: winners tuyos y globos en contra
+  const gana = { ev: [{ team: 0, shotKey: "volea", end: "winner" }] };
+  const globo = { ev: [{ team: 1, shotKey: "globo" }, { team: 1, shotKey: "remate", end: "winner" }] };
+  for (let i = 0; i < 6; i++) tacAnota(m, 0, gana, plan("normal", "subir"));
+  for (let i = 0; i < 4; i++) tacAnota(m, 1, globo, plan("normal", "subir"));
+  for (let i = 0; i < 5; i++) tacAnota(m, 0, gana, plan("conservadora", "normal"));
+  const inf = tacInforme(m, 4);
+  exige(inf.length === 2, "no separa los planes: " + inf.length);
+  const subir = inf.find(x => /subir/.test(x.firma));
+  exige(subir.pts === 10 && subir.gan === 6, "las cuentas no salen: " + JSON.stringify(subir));
+  exige(subir.w === 6, "no cuenta tus winners: " + subir.w);
+  exige(subir.globos === 4, "no cuenta los globos que te pasan por encima: " + subir.globos);
+  // y se cuenta en palabras, traducidas
+  const txt = tacFirmaTxt(subir.firma);
+  exige(txt && !/^tac_/.test(txt) && /\|/.test(txt) === false, "la firma no se lee: " + txt);
+  exige(tacFirmaTxt("normal|repartir|normal|normal") === t("tac_inf_plan_base"), "el plan de siempre no tiene nombre");
+  const html = tacInformeHTML(m, 4);
+  exige(html.indexOf("undefined") < 0 && !/tac_inf_/.test(html), "el informe sale sin traducir");
+  return `«${txt}»: 6 de 10 puntos, 6 winners y 4 globos por encima`;
+});
+
+comprueba("Táctica: la identidad del rival sale de sus atributos", () => {
+  const mk = (mod) => ({ jug: [0, 1].map(() => ({ attrs: Object.fromEntries(ATTR_KEYS.map(k => [k, 60 + (mod[k] || 0)])) })) });
+  exige(identidadPareja(mk({ fondo: 20, pared: 20 })) === "muro", "no reconoce un muro");
+  exige(identidadPareja(mk({ volea: 20, bandeja: 20 })) === "red", "no reconoce a los de la red");
+  exige(identidadPareja(mk({ remate: 22, vibora: 22 })) === "pegada", "no reconoce la pegada");
+  exige(identidadPareja(mk({})) === "completos", "una pareja plana debería ser «sin fisuras»");
+  // y una diferencia pequeña no es identidad: es ruido
+  exige(identidadPareja(mk({ fondo: 4, pared: 4 })) === "completos", "convierte el ruido en identidad");
+  // todas están traducidas y todas dicen qué hacer contra ellas
+  Object.keys(IDENTIDADES).concat("completos").forEach(id => {
+    [identNombre, identDesc, identContra].forEach(f => {
+      const x = f(id);
+      exige(x && !/^iden_/.test(x), id + ": sin traducir (" + x + ")");
+    });
+  });
+  return Object.keys(IDENTIDADES).length + 1 + " identidades, todas con su antídoto";
+});

@@ -283,6 +283,31 @@ media por debajo, entrenar siempre suave 10 por debajo, y varias estrategias
 sensatas (alternar cargas, pagar sparring, rotar objetivos) empatan arriba. Eso
 es lo que se busca: varios caminos buenos y dos maneras claras de hacerlo mal.
 
+## El partido te contesta: lectura, informe e identidad
+
+`engine/tactica.js`. La táctica ya cambiaba el partido, pero el partido no
+contestaba: tocabas un botón y no sabías si había servido, y el rival aguantaba
+cuarenta víboras seguidas igual de bien la última que la primera.
+
+1. **La lectura del rival** (`tacLee`, `tacLecturaX`). Al cerrar cada juego el
+   rival mira qué llevas jugado; si un golpe pasa del umbral, empieza a
+   esperarlo y ese golpe rinde menos. Se les olvida si varías.
+   **Los umbrales salen de medir, no de la intuición**: el golpe más repetido de
+   un partido real está en el 27% para una pareja completa y sube al 31-37% para
+   un muro, porque la situación de pista ya limita lo que se puede jugar. Con el
+   32%-62% de la primera versión la lectura no saltaba nunca —función muerta—;
+   con 29%-40% una pareja completa se libra (7 de 40 partidos) y un muro cae
+   (33 de 40). Si tocas `chooseShot`, vuelve a medir esa distribución.
+2. **El informe táctico** (`tacAnota`, `tacInformeHTML`). Cada combinación de
+   ajustes lleva su cuenta —puntos jugados y ganados, winners, errores y globos
+   que te pasan por encima— y se cuenta en el descanso, que es donde se decide
+   el plan del set siguiente. La firma del plan es la combinación de los cuatro
+   ajustes: cambiar cualquiera abre una línea nueva, que es lo que se compara.
+3. **La identidad del rival** (`identidadPareja`) **se lee de sus atributos**, no
+   se le pega encima: por eso la etiqueta nunca miente. Cada una lleva su
+   antídoto (`identContra`), que es lo que la convierte en una decisión y no en
+   un adorno.
+
 ## El dinero tiene que escasear también arriba
 
 `engine/inversion.js`. Medido con un bot de diez temporadas: hasta la octava la

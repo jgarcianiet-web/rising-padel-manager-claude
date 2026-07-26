@@ -149,6 +149,8 @@ function buildPoint(server){
     let _fat=0;
     if(stats&&stats[eq]){
       stats[eq].tiros++;
+      // qué golpes juegas: es el patrón que el rival acabará leyendo
+      if(typeof tacUsoAnota==="function"&&shotKey!=="saque") tacUsoAnota(stats[eq],shotKey);
       _fat=stats[eq].fatiga[hIdx];
       const coste=(shotKey==="saque"?.3:.7)+(AGRESIVOS.includes(shotKey)?.4:0)+rally*.04;
       stats[eq].fatiga[hIdx]=clamp(_fat+coste,0,100);

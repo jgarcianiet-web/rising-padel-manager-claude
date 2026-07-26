@@ -34,15 +34,12 @@ música sobre el bruto, y darle a publicar.**
 
 ---
 
-## Camino al 9/10: las cuatro prioridades que quedan
+## Camino al 9/10: las tres prioridades que quedan
 
-Las cuatro primeras (eventos sistémicos, profundidad de la pareja, entrenamiento
-no resoluble y economía con sumideros) ya están. Las demás, en el orden en que
-se decidieron:
+Las cinco primeras (eventos sistémicos, profundidad de la pareja, entrenamiento
+no resoluble, economía con sumideros y agencia táctica) ya están. Las demás, en
+el orden en que se decidieron:
 
-5. **Agencia táctica y feedback en el partido.** Explicar qué hizo tu cambio
-   («subir a la red te dio winners y te expuso al globo»), rival que se adapta a
-   tus patrones, identidades tácticas que se noten sin abrir la ficha.
 6. **Estructura competitiva propia del modo club.** Eliminatorias con varias
    parejas, alineación por rival y fatiga, cesiones, socios frente a junta.
 7. **Presentación con jerarquía dramática.** Que una final no se parezca a una

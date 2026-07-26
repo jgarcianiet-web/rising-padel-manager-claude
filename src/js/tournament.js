@@ -301,11 +301,16 @@ function pintarTorneo(){
         <button class="selbtn" style="font-size:10px;padding:3px 8px;margin-left:4px" ${ac("aplicarTacticaRec",inf.rec.agres,inf.rec.diana,inf.rec.red,inf.rec.clutch)}>${t("scout_aplicar")}</button></div>
     </div>`;
   }
-  document.getElementById("tInfo").innerHTML=`<span style="display:flex;gap:2px;margin-bottom:5px">${(r.jug||[]).map(j=>avatarSVG(j,38)).join("")}</span>Rival: <b>${r.nombre}</b>${clubR} <span class="pill">nivel ${nivelPareja(r)}</span> <span class="pill oro">#${rankingFilas().find(f=>f.id===r.id).pos}</span>${r.pro?' <span class="tagpro">PRO</span>':""}<br>
+  /* Qué clase de pareja tienes enfrente. Sale de sus atributos —los mismos que
+     ya deciden cómo juegan—, así que la etiqueta nunca miente. */
+  const _iden=(typeof identidadPareja==="function"&&r.jug)?identidadPareja(r):null;
+  const _idenHTML=_iden?`<div class="scout" style="margin:7px 0 0"><div class="scoutHd">${t("tac_riv_hd")} · ${identNombre(_iden)}</div><div style="font-size:11.5px;line-height:1.45">${identDesc(_iden)}</div><div class="scoutRec" style="margin-top:5px">${identContra(_iden)}</div></div>`:"";
+  document.getElementById("tInfo").innerHTML=`<span style="display:flex;gap:2px;margin-bottom:5px">${(r.jug||[]).map(j=>avatarSVG(j,38)).join("")}</span>Rival: <b>${r.nombre}</b>${clubR} <span class="pill">nivel ${nivelPareja(r)}</span> <span class="pill oro">#${rankingFilas().find(f=>f.id===r.id).pos}</span>${r.pro?' <span class="tagpro">PRO</span>':""}${_iden?` <span class="pill" style="color:var(--oro)">${identNombre(_iden)}</span>`:""}<br>
   <span style="font-size:11px;color:var(--gris)">${persos}</span><br>
   <span style="font-size:11px;color:var(--gris)">${h2txt}</span><br>
   <span style="font-size:11px;color:var(--gris)">${entrada}</span><br>
   <span style="font-size:11px;color:var(--gris)">${infoPropia()}</span>
+  ${_idenHTML}
   ${infoHTML}`;
   document.getElementById("tCuadro").innerHTML=pintarCuadroHTML();
 }
@@ -406,7 +411,9 @@ function empezarPartido(ver,coach){
     let setsPrev=0;
     while(!match.fin){
       PRESION=calcPresion();
-      resolverPunto(buildPoint(match.server).ganador);
+      const _pt=buildPoint(match.server);
+      if(typeof tacAnota==="function") tacAnota(match,_pt.ganador,_pt);
+      resolverPunto(_pt.ganador);
       const setsAhora=match.s[0]+match.s[1];
       if(match.autoCoach&&setsAhora>setsPrev&&!match.fin){ coachTactica(); setsPrev=setsAhora; }
     }
@@ -473,6 +480,13 @@ function resolverPunto(g){
   if(ganaJuego){
     m.p=[0,0]; m.ventaja=null; m.ventajasFallidas=0; m.golden=false;
     m.j[g]++; m.server=1-m.server; r.juego=g;
+    /* Fin de juego: el rival mira lo que llevas jugado. Si abusas de un golpe,
+       empieza a esperarlo; si has variado, se le olvida. */
+    if(!m.cpu&&typeof tacLee==="function"&&stats&&stats[0]){
+      const _niv=(teams[1]&&teams[1].nivel)||(teams[1]?Math.round((mediaAttrs(teams[1].jug[0].attrs)+mediaAttrs(teams[1].jug[1].attrs))/2):60);
+      const _av=tacLee(m,stats[0],_niv);
+      if(_av&&m.ver) addCom(t("tac_leido",{golpe:golpeNombre(_av)}),1);
+    }
     if((m.j[g]>=6&&m.j[g]-m.j[o]>=2)||m.j[g]===7){
       r.set=g;r.marcadorSet=`${m.j[0]}-${m.j[1]}`;
       m.hist.push(r.marcadorSet);
@@ -577,6 +591,14 @@ function mostrarTiempoMuerto(){
   match.pausaTM=true;
   const ov=document.getElementById("tmuerto");
   document.getElementById("tmSit").textContent=t("bc_sets",{a:match.s[0],b:match.s[1]})+" "+t(match.s[0]>match.s[1]?"bc_por_delante":match.s[0]<match.s[1]?"bc_a_remar":"bc_igualado");
+  /* El descanso es donde se decide el plan del set siguiente, así que es donde
+     hay que contar qué ha dado cada plan hasta ahora. */
+  const _inf=document.getElementById("tmInforme");
+  if(_inf&&typeof tacInformeHTML==="function"){
+    const _lec=(typeof tacLecturaEstado==="function")?tacLecturaEstado():null;
+    _inf.innerHTML=`<div class="bclabel">${t("tac_inf_hd")}</div>${tacInformeHTML(match,4)}`
+      +(_lec?`<div class="scout" style="margin-top:7px"><div class="scoutHd">${t("tac_leido_hd")}</div><div style="font-size:11.5px;line-height:1.45">${t("tac_leido_txt",{golpe:golpeNombre(_lec.golpe)})}</div></div>`:"");
+  }
   ov.classList.remove("oculto");
   const e=ent(), c=G.modo==="carrera"?G.carrera:null;
   const cierra=(msg)=>{ov.classList.add("oculto");match.pausaTM=false;addCom(msg,0);setTimeout(()=>{if(match&&match.ver&&!match.fin)jugarPuntoAnim();},600);};
@@ -711,6 +733,7 @@ function loopAnim(ts){
     if(match.ver && ofreceRevision(fin,g)){ anim=null; return; }  // espera decisión de revisión
     // ¿el punto cierra un set (sin acabar el partido)? → tiempo muerto
     const preS=[match.s[0],match.s[1]];
+    if(typeof tacAnota==="function") tacAnota(match,g,anim.punto);
     continuarTrasPunto(g);
     const cambioSet=match&&!match.fin&&(match.s[0]!==preS[0]||match.s[1]!==preS[1]);
     if(cambioSet&&match.autoCoach) coachTactica();
@@ -804,6 +827,9 @@ function analisisPartido(){
   if(pg>=6){ const pct=Math.round(red/pg*100); L.push(t(pct>=45?"ana_red_si":"ana_red_no",{pct})); }
   const pr=stats[0].presion||{jug:0,gan:0};
   if(pr.jug>=4){ const pct=Math.round(pr.gan/pr.jug*100); L.push((pct>=55?"💪 ":"🥵 ")+t("ana_presion",{gan:pr.gan,jug:pr.jug,pct})); }
+  // si te leyeron un golpe, es lo primero que hay que saber al acabar
+  const lec=(typeof tacLecturaEstado==="function")?tacLecturaEstado():null;
+  if(lec) L.push(t("tac_leido_txt",{golpe:lbl(lec.golpe)}));
   return L;
 }
 function mostrarFicha(cb){
@@ -816,6 +842,7 @@ function mostrarFicha(cb){
     <table class="rk">${filas.map(f=>{const jj=[...teams[0].jug,...teams[1].jug].find(x=>x.n===f.n);return `<tr${f.n===mvp.n?' style="color:var(--oro)"':""}><td style="font-size:11px"><span style="display:inline-block;vertical-align:middle;margin-right:4px">${avatarSVG(jj,20)}</span>${f.n===mvp.n?"★ ":""}${f.n}</td><td class="pts" style="color:var(--lima)">${f.w}W</td><td class="pts" style="color:#E05656">${f.e}E</td><td class="pts">${f.bal>0?"+":""}${f.bal}</td></tr>`;}).join("")}</table>
     <div class="foot" style="text-align:left;margin-top:7px">★ MVP del partido: <b style="color:var(--oro)">${mvp.n}</b> (${mvp.w} winners, balance ${mvp.bal>0?"+":""}${mvp.bal}).</div>
     <div class="foot" style="text-align:left;margin-top:2px">Tiros ${stats[0].tiros||0}-${stats[1].tiros||0} · Red ${stats[0].red||0}-${stats[1].red||0} · Roturas ${stats[0].bp?stats[0].bp.ganados:0}/${stats[0].bp?stats[0].bp.jugados:0}-${stats[1].bp?stats[1].bp.ganados:0}/${stats[1].bp?stats[1].bp.jugados:0} · Fatiga final ${Math.round(((stats[0].fatiga||[0,0]).reduce((a,f)=>a+f,0))/2)}-${Math.round(((stats[1].fatiga||[0,0]).reduce((a,f)=>a+f,0))/2)}</div>
+    ${(()=>{const inf=(typeof tacInformeHTML==="function")?tacInformeHTML(match,5):"";return (inf&&!/tac_inf_vacio/.test(inf)&&match.tac&&Object.keys(match.tac).length>1)?`<div style="border-top:1px solid var(--borde);margin-top:9px;padding-top:7px"><div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--oro);margin-bottom:4px">${t("tac_inf_hd")}</div>${inf}</div>`:"";})()}
     ${(()=>{const an=analisisPartido();return an.length?`<div style="border-top:1px solid var(--borde);margin-top:9px;padding-top:7px"><div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--oro);margin-bottom:4px">${t("ana_hd_tactico")}</div>${an.map(l=>`<div style="font-size:11.5px;line-height:1.5;color:var(--texto);padding:1px 0">${l}</div>`).join("")}</div>`:"";})()}
     ${match.ver?"":`<div style="border-top:1px solid var(--borde);margin-top:8px;padding-top:7px">${resumenPartido().map(l=>`<div style="font-size:11.5px;line-height:1.5;color:var(--gris);padding:1px 0">📋 ${l}</div>`).join("")}</div>`}`;
   const ov=document.getElementById("fichaP");
