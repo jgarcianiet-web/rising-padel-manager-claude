@@ -118,7 +118,13 @@ function resolveShot(pl,shotKey,ctx,rallyLen){
   // el punto quema. Solo se aplica a TU jugador (el que tiene carrera detrás).
   if(pl.me&&typeof factorOficio==="function"&&typeof G!=="undefined"&&G&&G.carrera)
     err*=factorOficio(G.carrera,typeof PRESION!=="undefined"?PRESION:0);
+  /* Eventos de circuito: la pista lenta, la pelota nueva o la altitud cambian
+     lo que le sale a cada golpe. Se consulta una bolsa ya calculada, no la
+     lista de eventos: esto se ejecuta decenas de veces por punto. */
+  const _ev=(typeof evGolpe==="function")?evGolpe(shotKey):null;
+  if(_ev) err*=_ev.err;
   let win=Math.min(.52,s.win*q*(1+.25*q));
+  if(_ev) win*=_ev.win;
   if(ctx.oppDef) win*=clamp(1.25-ctx.oppDef/160,.7,1.1);   // la defensa rival llega a más bolas
   const mia2=ctx.team===0&&match&&!match.cpu;
   if(mia2&&TACT.agres==="agresiva") win*=1.22;

@@ -83,7 +83,9 @@ function slotSemana(st){
 function costeViaje(ci){
   const slot=slotSemana(semanaTemp());
   const base=(CATS[ci].premier&&slot.premier===ci)?(TRAVEL[slot.region]||180):30;
-  return G.modo==="club"?Math.round(base*1.5):base;
+  const bruto=G.modo==="club"?Math.round(base*1.5):base;
+  // un vuelo perdido o una gira internacional se pagan aquí
+  return Math.round((typeof evNum==="function")?evNum("viaje",bruto):bruto);
 }
 const FASES=["Previa 1","Previa 2","Octavos","Cuartos","Semifinal","FINAL"];
 const DIAS=["lunes","martes","miércoles","jueves","viernes","sábado","domingo"];
@@ -1377,6 +1379,8 @@ const LESIONES=[
 // Elige una lesión ponderando por gravedad: las graves son raras y casi solo
 // aparecen cuando el riesgo es alto (energía por los suelos, fragilidad). riesgo 0..1.
 function pickLesion(riesgo){
+  // la gripe de la semana o el calendario comprimido suben el riesgo
+  if(typeof evNum==="function") riesgo=evNum("lesion",riesgo==null?.4:riesgo);
   riesgo=clamp(riesgo==null?.4:riesgo,0,1);
   const items=LESIONES.map(l=>{
     let w=l.grav===1?6:l.grav===2?3:1;

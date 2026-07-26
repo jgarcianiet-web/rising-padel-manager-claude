@@ -593,6 +593,20 @@ function pintarSemana(){
   document.getElementById("semTitulo").innerHTML=c.lesion?`${t("sem_baja")} · <em>${c.lesion.n} (${c.lesion.sem} ${t("sem_abrev")})</em>`:`${t("kpi_semana")} ${semanaTemp()} · <em>${diaNombre(dia-1).toUpperCase()}</em>`+(c.merma?` · <span style="color:#E0A030">${t("sem_mermado")} -${c.merma.pct}% (${c.merma.sem} ${t("sem_abrev")})</span>`:"");
   pintarObjetivos();
   const td=document.getElementById("torneosDisp");td.innerHTML="";
+  /* Lo que está pasando en el circuito, antes que nada: si la pista está lenta
+     o tu pareja no juega, eso decide si te inscribes. */
+  const evs=evActivos(c);
+  if(evs.length){
+    const caja=document.createElement("div");
+    caja.className="evbox";
+    caja.innerHTML=`<div class="evhd">${t("ev_hd")}</div>`+evs.map(a2=>{
+      const quedan=a2.hasta-c.semana+1;
+      return `<div class="evrow"><b>${evNombre(a2.id)}</b>
+        <span class="evdur">${quedan<=1?t("ev_ultima"):t("ev_hasta",{n:quedan})}</span>
+        <div>${evEfecto(a2.id)}</div></div>`;
+    }).join("");
+    td.appendChild(caja);
+  }
   /* Lo primero de la semana: qué te juegas en el ranking. Defender 1000 puntos
      cambia por completo la lectura del mismo torneo. */
   if(typeof rkDefiende==="function"){
@@ -1431,7 +1445,9 @@ function avanzarSemanaCarrera(){
   }
   decaeMerma(c);   // la secuela de la última lesión se va disipando
   let regen=12+(staffNiv("fisico")?2+staffNiv("fisico"):0);
-  c.energia=clamp(c.energia+regen,0,100);
+  // los eventos mandan sobre la recuperación y sobre el techo de energía
+  regen=Math.round(evNum("energia",regen));
+  c.energia=clamp(c.energia+regen,0,evNum("energiaTope",100));
   const pos_=miPuesto();
   fansAdd(Math.round((c.fans||0)*.002)+(pos_<=10?25:pos_<=20?8:1));
   if(!c._jugoTorneo&&c.dinero<600){
@@ -1460,6 +1476,8 @@ function avanzarSemanaCarrera(){
     c._avisoMoral=true;
     avisa(t("av_harto",{n:c.compi.n}));
   }
+  // eventos de circuito: lo que cambia las reglas de esta semana
+  evSemana(c,c.semana);
   // el circuito habla: rumores que nacen, se confirman o se desmienten
   semanaDeRumores(c,c.semana);
   // dilemas encadenados: primero llegan las consecuencias de decisiones pasadas...

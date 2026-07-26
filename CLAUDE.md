@@ -99,6 +99,30 @@ Tres cosas que hay que respetar al tocar el código:
 `tests/estatico.js` lo hace cumplir: falla si aparece un `Math.random` sin
 marcar en un fichero de simulación, o si alguien vuelve a tapar `rnd`.
 
+## Eventos de circuito: semanas que cambian las reglas
+
+`engine/eventos.js`. Los dilemas enriquecen la ficción; esto enriquece el bucle:
+una carrera de quince temporadas necesita que la temporada 7 no se juegue como
+la 3. Hay seis alcances —semana, torneo, racha, temporada, era y propio— y una
+regla que `tests/casos.js` hace cumplir:
+
+> **Un evento que no cambia una decisión es una noticia, no un evento.**
+
+Cada uno declara `mods` (modificadores) o `flags`, y ambos están enganchados a
+la simulación de verdad: `resolveShot` (por golpe), `costeViaje`, la
+recuperación semanal de energía, `pickLesion`, los puntos del torneo, `miTeam`
+(el suplente obligatorio), el punto de oro y el sorteo con la némesis.
+
+Dos cosas que hay que respetar al añadir uno:
+
+1. **La bolsa, no la lista.** `evRecalcula` resume todos los eventos activos en
+   un objeto plano (`_evBolsa`) y `resolveShot` consulta eso. Recorrer la lista
+   de eventos dentro del bucle de puntos —que se ejecuta decenas de veces por
+   punto— es el camino corto a que el partido vaya a tirones.
+2. **Los alcances largos pesan menos** en el sorteo (`evSortea`): un cambio de
+   normativa que dure una temporada no puede salir cada dos por tres, y los
+   `unico:true` no vuelven jamás.
+
 ## El ranking: ventana de 52 semanas, como la FIP
 
 Cada torneo reparte puntos y **esos puntos valen un año**. Al cumplirse las 52

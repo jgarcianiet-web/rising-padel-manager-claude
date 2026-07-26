@@ -2748,3 +2748,118 @@ comprueba("Ranking: los guardados antiguos reciben su historial sin perder punto
   return "5200 puntos repartidos por el año, sin saltos";
 });
 
+
+/* Eventos de circuito: semanas que cambian las reglas ----------------------
+   La regla del catálogo: un evento que no cambia una decisión es una noticia,
+   no un evento. Estas pruebas la hacen cumplir. */
+comprueba("Eventos: todos declaran efecto y todos se pueden leer", () => {
+  exige(EVENTOS.length >= 18, "solo hay " + EVENTOS.length + " eventos");
+  const ids = EVENTOS.map(e => e.id);
+  exige(ids.length === new Set(ids).size, "hay eventos con el mismo id");
+  EVENTOS.forEach(d => {
+    const tieneEfecto = (d.mods && Object.keys(d.mods).length) || (d.flags && d.flags.length) ||
+      d.mundo || d.moral != null || d.cortaSponsor || d.fansX;
+    exige(tieneEfecto, `${d.id} no cambia nada: es una noticia, no un evento`);
+    exige(EV_ALCANCES.indexOf(d.alcance) >= 0, `${d.id} tiene un alcance inventado: ${d.alcance}`);
+    exige(d.dur >= 1, `${d.id} no dura nada`);
+    [evNombre, evTexto, evEfecto].forEach(f => {
+      const x = f(d.id);
+      exige(x && !/^ev_/.test(x), `${d.id}: sin traducir (${x})`);
+    });
+  });
+  // los seis alcances están cubiertos: de una semana a varias temporadas
+  EV_ALCANCES.forEach(a => exige(EVENTOS.some(d => d.alcance === a), "no hay ningún evento de alcance " + a));
+  return EVENTOS.length + " eventos en " + EV_ALCANCES.length + " alcances, todos con efecto";
+});
+
+comprueba("Eventos: la pista lenta cambia de verdad lo que sale cada golpe", () => {
+  const c = nuevaCarrera();
+  c.eventos = []; evRecalcula(c);
+  const antes = evGolpe("globo"), antesR = evGolpe("remate");
+  exige(antes.win === 1 && antesR.win === 1, "sin eventos no debería haber modificador");
+  evActiva(c, "humedad", c.semana);
+  const conGlobo = evGolpe("globo"), conRemate = evGolpe("remate");
+  exige(conGlobo.win > 1, "el globo no mejora con pista lenta: " + conGlobo.win);
+  exige(conRemate.win < 1, "el remate no empeora con pista lenta: " + conRemate.win);
+  exige(evGolpe("fondo").err < 1, "el fondo no gana fiabilidad");
+  return `globo ×${conGlobo.win.toFixed(2)} · remate ×${conRemate.win.toFixed(2)}`;
+});
+
+comprueba("Eventos: el viaje, la energía y los puntos se mueven", () => {
+  const c = nuevaCarrera();
+  c.eventos = []; evRecalcula(c);
+  exige(evNum("viaje", 100) === 100, "sin eventos el viaje no debería cambiar");
+  evActiva(c, "vuelo", c.semana);
+  exige(evNum("viaje", 100) === 200, "el vuelo perdido no dobla el viaje: " + evNum("viaje", 100));
+  exige(evNum("energia", 12) === -4, "el vuelo perdido no cuesta energía: " + evNum("energia", 12));
+  c.eventos = []; evRecalcula(c);
+  evActiva(c, "gira", c.semana);
+  exige(evNum("ptsX", 1000) === 1150, "la gira no paga más puntos: " + evNum("ptsX", 1000));
+  exige(evNum("viaje", 100) === 180, "la gira no encarece el viaje");
+  c.eventos = []; evRecalcula(c);
+  evActiva(c, "gripe", c.semana);
+  exige(evNum("energiaTope", 100) === 58, "la gripe no limita la energía");
+  exige(evNum("lesion", 0.5) > 0.5, "la gripe no sube el riesgo de lesión");
+  return "viaje ×2, energía −16, puntos ×1,15 y techo de energía 58";
+});
+
+comprueba("Eventos: con suplente juegas con otro y sin química", () => {
+  const c = nuevaCarrera();
+  c.eventos = []; evRecalcula(c);
+  const normal = miTeam();
+  exige(normal.nombre.indexOf(c.compi.n) >= 0, "sin evento deberías jugar con tu pareja");
+  evActiva(c, "suplente", c.semana);
+  exige(evFlag("suplente"), "la bandera no se activa");
+  const conSup = miTeam();
+  exige(conSup.nombre.indexOf(c.compi.n) < 0, "sigues jugando con tu pareja: " + conSup.nombre);
+  const sup = compiSuplente(c);
+  exige(sup && sup.n, "no se generó suplente");
+  exige(mediaAttrs(sup.attrs) < mediaAttrs(c.compi.attrs), "el suplente no es peor que tu pareja");
+  // y es el mismo durante el torneo, no uno nuevo cada partido
+  exige(compiSuplente(c).n === sup.n, "el suplente cambia de nombre entre partidos");
+  return "juegas con " + sup.n + " (nivel " + mediaAttrs(sup.attrs) + " frente a " + mediaAttrs(c.compi.attrs) + ")";
+});
+
+comprueba("Eventos: caducan solos y no se solapan consigo mismos", () => {
+  const c = nuevaCarrera();
+  c.eventos = []; c.evVistos = {}; evRecalcula(c);
+  const a = evActiva(c, "comprimido", 10);
+  exige(a && a.hasta === 12, "la duración no cuadra: " + JSON.stringify(a));
+  exige(!evActiva(c, "comprimido", 10), "se activó dos veces el mismo evento");
+  exige(evCaduca(c, 12).length === 0, "caducó antes de tiempo");
+  exige(evActivos(c).length === 1, "el evento se fue solo");
+  const idos = evCaduca(c, 13);
+  exige(idos.length === 1, "no caducó al terminar");
+  exige(!evActivos(c).length, "sigue en la lista");
+  exige(evNum("energia", 12) === 12, "el efecto sigue puesto tras caducar");
+  return "tres semanas y fuera, sin solaparse";
+});
+
+comprueba("Eventos: los de temporada y era no salen cada dos por tres", () => {
+  const c = nuevaCarrera();
+  c.eventos = []; c.evVistos = { punto_oro: 5 };
+  // recién vivido, no puede repetirse
+  exige(!evDisponibles(c, 30).some(d => d.id === "punto_oro"), "un evento de temporada se repite al mes");
+  exige(evDisponibles(c, 5 + 110).some(d => d.id === "punto_oro"), "no vuelve nunca");
+  // los únicos no vuelven jamás
+  c.evVistos = { generacion: 5 };
+  c.semana = 300;
+  exige(!evDisponibles(c, 400).some(d => d.id === "generacion"), "una generación irrepetible se repitió");
+  return "descansos por alcance y los únicos, una vez";
+});
+
+comprueba("Eventos: una generación nueva llega al circuito de verdad", () => {
+  const c = nuevaCarrera();
+  c.semana = 80;
+  const antes = G.world.parejas.length;
+  const nivelAntes = Math.max(...G.world.parejas.filter(p => (p.sexo || "M") === c.sexo).map(p => nivelPareja(p)));
+  evActiva(c, "generacion", c.semana);
+  exige(G.world.parejas.length === antes + 4, `entraron ${G.world.parejas.length - antes} parejas, no 4`);
+  const nuevas = G.world.parejas.slice(-4);
+  nuevas.forEach(p => {
+    exige(p.jug && p.jug.length === 2, "pareja mal formada");
+    exige(nivelPareja(p) >= 68, "la generación irrepetible es del montón: " + nivelPareja(p));
+    exige(Array.isArray(p.rk), "la pareja nueva no tiene ventana de ranking");
+  });
+  return "4 parejas de nivel " + nuevas.map(p => nivelPareja(p)).join("/") + " (el tope era " + nivelAntes + ")";
+});

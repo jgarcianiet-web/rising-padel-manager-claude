@@ -34,6 +34,36 @@ música sobre el bruto, y darle a publicar.**
 
 ---
 
+## Camino al 9/10: las siete prioridades que quedan
+
+La primera de la lista (eventos sistémicos) ya está. Las demás, en el orden en
+que se decidieron:
+
+2. **Profundidad de la pareja.** Plan de juego conjunto que tarde semanas en
+   dominarse y que se pierda al cambiar de compañero; confianza con varios ejes
+   (deportiva, personal, ambición, reparto de protagonismo, lealtad, fatiga de
+   convivencia); y **conversaciones que inicie el jugador**, no solo dilemas que
+   llegan del sistema.
+3. **Que entrenamiento y descanso dejen de ser resolubles.** Planes semanales en
+   vez de clics diarios, rendimientos decrecientes por repetir el mismo golpe,
+   forma temporal además de atributos permanentes, e información imperfecta del
+   staff («probablemente aguante dos partidos») en vez de certezas.
+4. **Economía con sumideros estratégicos.** Hoy una carrera avanzada acumula
+   medio millón sin nada que hacer con él: campamento de pretemporada, analítica
+   de rivales, clínica de recuperación, base en una región, academia propia.
+5. **Agencia táctica y feedback en el partido.** Explicar qué hizo tu cambio
+   («subir a la red te dio winners y te expuso al globo»), rival que se adapta a
+   tus patrones, identidades tácticas que se noten sin abrir la ficha.
+6. **Estructura competitiva propia del modo club.** Eliminatorias con varias
+   parejas, alineación por rival y fatiga, cesiones, socios frente a junta.
+7. **Presentación con jerarquía dramática.** Que una final no se parezca a una
+   semana cualquiera: portada especial, ceremonia de retirada, audio contextual.
+8. **Primer tramo de carrera más dirigido.** Primera pareja con escena, primer
+   rival recurrente presentado, y un resumen a las 8-10 semanas que explique qué
+   decisiones te están definiendo.
+
+---
+
 ## Contenido: lo que sube la nota y no está hecho
 
 Por orden de retorno, según la auditoría:
@@ -44,9 +74,14 @@ Por orden de retorno, según la auditoría:
    rechazó la beca). De paso se triplicaron los otros catálogos que se leen más
    veces: posts de fans (32 → 98), frases de staff (24 → 72), usuarios del muro
    (14 → 30) y las frases del narrador (8 → 24, repartidas por final).
-2. **Eventos de temporada que no son dilemas**: el sorteo que te cruza con tu
-   archirrival en primera ronda, la lesión de tu pareja que te obliga a jugar
-   con un suplente, un cambio de normativa.
+2. ~~**Eventos de temporada que no son dilemas**~~ **Hecho.** 19 eventos de
+   circuito en seis alcances (semana, torneo, racha, temporada, era y propio),
+   todos con efecto sobre la simulación: pista lenta, vuelo perdido, gripe,
+   suplente obligatorio, público hostil, pelota nueva, altitud, crisis de
+   confianza, calendario comprimido, gira, impago del patrocinador, punto de
+   oro obligatorio, nueva puntuación, calendario reducido, generación
+   irrepetible, caída del dominador, sorteo con la némesis, la expareja en
+   prensa y el viejo entrenador contando tus patrones. Ver `engine/eventos.js`.
 3. ~~**Identidad propia del modo club**~~ **Hecho.** Filosofía que condiciona a
    quién fichas, junta con carácter, derbi con marcador y cantera con
    seguimiento de varios años (crecen hacia su techo, dejan historial y se

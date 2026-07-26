@@ -194,6 +194,13 @@ function abrirTorneo(ci,wildcard){
   torneo={cat:ci,nombre:catNombre(cat)+(_ciudad?` · ${_ciudad}`:""),premierT:cat.premier,pts:cat.pts,premio:cat.premio,base:cat.base,fase:startFase,startFase,rivales,cuadro,wildcard:!!wildcard};
   // si entras directo al cuadro final, tu primer rival ya está en el papel
   if(startFase>=CUADRO_FASE0) torneo.rivales[startFase]=rivalDelCuadro(startFase);
+  /* «El sorteo no perdona»: cuando el evento está activo, tu primer rival es
+     tu archirrival. No es decoración: cambia si te inscribes o te guardas la
+     semana. */
+  if(typeof evFlag==="function"&&evFlag("nemesis")&&ent().nemesis){
+    const nem=G.world.parejas.find(p=>p.id===ent().nemesis.id);
+    if(nem&&nem.jug) torneo.rivales[startFase]=nem;
+  }
   if(cat.premier&&startFase===2&&G.modo==="carrera"&&!G.carrera.pro){
     G.carrera.pro=true;
     noticia("hito",t("not_prof_t"),t("not_prof_s"));
@@ -300,6 +307,17 @@ function pintarTorneo(){
   ${infoHTML}`;
   document.getElementById("tCuadro").innerHTML=pintarCuadroHTML();
 }
+/* Con el evento «suplente» tu pareja no puede jugar el torneo: juegas con
+   alguien de la lista de espera, peor y sin química. Es el evento que más
+   cambia una semana, porque obliga a replantear si merece la pena ir. */
+function compiSuplente(c){
+  if(!c._suplente){
+    const niv=Math.max(38,mediaAttrs(c.compi.attrs)-Math.round(R(8,16)));
+    const j=mkAgente(niv-2,niv+2,c.sexo||"M");
+    c._suplente={n:j.n,pais:j.pais,estilo:j.estilo,perso:j.perso,attrs:j.attrs,lado:j.lado};
+  }
+  return c._suplente;
+}
 function miTeam(){
   if(G.modo==="carrera"){
     const c=G.carrera;
@@ -309,10 +327,16 @@ function miTeam(){
     const miLado=(c.lado===0||c.lado===1)?c.lado:0;
     const yo={n:c.nombre,estilo:c.estilo,perso:c.perso,conf:c.conf,attrs:mk(c.attrs,fYo),me:true,sexo:c.sexo,ava:c.ava,_ropa:c._ropa||c.color,lado:miLado};
     // la moral del compañero se traduce en confianza real sobre la pista
-    const compi={n:c.compi.n,estilo:c.compi.estilo,perso:c.compi.perso,conf:clamp(55+moralAjusteConf(c.compiMoral),15,95),attrs:mk(c.compi.attrs,fBase),sexo:c.sexo,lado:1-miLado};
+    const sup=(typeof evFlag==="function"&&evFlag("suplente"))?compiSuplente(c):null;
+    const fuente=sup||c.compi;
+    // el suplente llega sin química: se juega con la de un primer día
+    const fCompi=sup?factorForma(c.energia,15,null):fBase;
+    const compi={n:fuente.n,estilo:fuente.estilo,perso:fuente.perso,
+      conf:sup?45:clamp(55+moralAjusteConf(c.compiMoral),15,95),
+      attrs:mk(fuente.attrs,fCompi),sexo:c.sexo,lado:1-miLado};
     ME_COLOR=c.color;TEAM0_COLOR="#4FA3D8";
     const jug=c.lado===0?[yo,compi]:[compi,yo];
-    return {nombre:`${c.nombre}/${c.compi.n}`,jug,atNet:false};
+    return {nombre:`${c.nombre}/${fuente.n}`,jug,atNet:false};
   }
   const cl=G.clubG,al=alineacion(),q=quimActual(cl);
   if(!al){ return {nombre:cl.nombre||"Tu club",jug:[{n:"—",attrs:mkAttrsNivel(40,"agresivo"),perso:"frio",sexo:cl.sexo},{n:"—",attrs:mkAttrsNivel(40,"defensivo"),perso:"frio",sexo:cl.sexo}],atNet:false}; }
@@ -418,6 +442,10 @@ function resolverPunto(g){
   // (deuce→ventaja→deuce→ventaja→deuce), se pasa a punto de oro (un punto decide).
   const o=1-g;
   let ganaJuego=false;
+  // temporada con punto de oro obligatorio: el 40-40 lo decide un punto, sin
+  // ventajas. Sube la varianza de toda la temporada, y eso cambia a qué
+  // torneos merece la pena ir siendo favorito.
+  if(!m.golden&&typeof evFlag==="function"&&evFlag("oro")&&m.p[g]===3&&m.p[o]===3) m.golden=true;
   if(m.golden){
     ganaJuego=true;                              // star point: el punto decide el juego
   } else if(m.p[g]===3 && m.p[o]===3){
@@ -897,7 +925,8 @@ function finPartido(){
   const neto=(x)=>{x=ecoIngreso(x);const r=G.modo==="carrera"&&G.carrera.staff&&G.carrera.staff.rep;return r?Math.round(x*(1-(r.com||15)/100)):x;};
   if(!gane){
     const idx=loserIdx(f), idxP=loserPtsIdx(f);
-    const ptsGan=idxP<0?0:(torneo.pts[idxP]||0);
+    // una temporada con puntuación nueva o una gira reparten distinto
+    const ptsGan=idxP<0?0:Math.round(evNum("ptsX",torneo.pts[idxP]||0));
     rkAnota(e,e.semana,ptsGan);e.dinero+=neto(torneo.premio[idx]||0);
     if(idxP>=0) rkAnota(rival,e.semana,torneo.pts[Math.max(0,idxP-1)]||0);
     avisa(t("aviso_eliminados",{fase:faseNombre(f).toLowerCase(),torneo:torneo.nombre,pts:ptsGan,din:neto(torneo.premio[idx]||0),resto:G.modo==="carrera"?t("aviso_resto_semana"):""})+(seLesiona?` ⚠ ${lesionTxt}.`:""));
@@ -905,7 +934,7 @@ function finPartido(){
   }
   { const _ip=loserPtsIdx(f); if(_ip>=0) rkAnota(rival,e.semana,torneo.pts[_ip]||0); }
   if(f===5){
-    rkAnota(e,e.semana,torneo.pts[0]);e.dinero+=neto(torneo.premio[0]);
+    rkAnota(e,e.semana,Math.round(evNum("ptsX",torneo.pts[0])));e.dinero+=neto(torneo.premio[0]);
     e.palmares.push(`${torneo.nombre} (T${temporada()})`);
   if(G.modo==="club") clubPalma(-1,`${torneo.nombre} (T${temporada()})`);   // -1 = tu club (se ignora, ya está en e.palmares)
     if(torneo.premierT) e._campPremSem=semanaTemp();
