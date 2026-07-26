@@ -19,6 +19,7 @@ const IDIOMAS=[
 const IDIOMA_DEF="es";
 const I18N={
   es:{
+    cop_taquilla:"Taquilla de la eliminatoria: +{n}€.",
     arr_pac_elegir:"Decírselo así",
     arr_par_hd:"Tu primera pareja",
     arr_par_txt:"{n} lleva desde los doce en el mismo club. No va a ser el mejor jugador con el que juegues, pero es el que está aquí hoy, a las siete de la mañana, con la bolsa hecha. Antes de la primera bola, hay que decirle algo.",
@@ -2219,6 +2220,7 @@ const I18N={
     ctx_circuito_fip:"circuito Continental",
   },
   en:{
+    cop_taquilla:"Gate receipts for the tie: +€{n}.",
     arr_pac_elegir:"Say it like that",
     arr_par_hd:"Your first partner",
     arr_par_txt:"{n} has been at the same club since they were twelve. Not the best player you'll ever play with, but the one who's here today at seven in the morning with the bag packed. Before the first ball, you owe them a word.",
@@ -4419,6 +4421,7 @@ const I18N={
     ctx_circuito_fip:"Continental tour",
   },
   fr:{
+    cop_taquilla:"Recette de la rencontre : +{n} €.",
     arr_pac_elegir:"Le dire comme ça",
     arr_par_hd:"Ton premier partenaire",
     arr_par_txt:"{n} est dans le même club depuis ses douze ans. Ce ne sera pas le meilleur joueur avec qui tu joueras, mais c'est celui qui est là aujourd'hui, à sept heures, sac prêt. Avant la première balle, il faut lui dire quelque chose.",
@@ -6619,6 +6622,7 @@ const I18N={
     ctx_circuito_fip:"circuit Continental",
   },
   de:{
+    cop_taquilla:"Zuschauereinnahmen: +{n} €.",
     arr_pac_elegir:"So sagen",
     arr_par_hd:"Dein erster Partner",
     arr_par_txt:"{n} ist seit dem zwölften Lebensjahr im selben Club. Nicht der beste Partner, den du je haben wirst, aber der, der heute um sieben mit gepackter Tasche da steht. Vor dem ersten Ball schuldest du ihm ein Wort.",
@@ -8819,6 +8823,7 @@ const I18N={
     ctx_circuito_fip:"Continental-Tour",
   },
   it:{
+    cop_taquilla:"Incasso della sfida: +{n}€.",
     arr_pac_elegir:"Dirglielo così",
     arr_par_hd:"Il tuo primo compagno",
     arr_par_txt:"{n} sta nello stesso club da quando aveva dodici anni. Non sarà il miglior giocatore con cui giocherai, ma è quello che oggi alle sette è qui, con la borsa pronta. Prima della prima palla, qualcosa gli devi dire.",

@@ -696,6 +696,8 @@ function jugarEliminatoria(jor){
   if(!acta) return;
   const derbi=copEsDerbi(cl,acta.rival);
   const soc=socTrasEliminatoria(cl,acta,derbi);
+  const taq=copTaquilla(cl,acta);
+  if(taq){ cl.dinero+=taq; avisa(t("cop_taquilla",{n:taq.toLocaleString("es")})); }
   if(derbi) anotaDerbi(cl,{club:cl.copa.grupo[acta.rival-1]},acta.gane);
   acta._verSem=cl.semana;
   const rival=copNombreDe(cl,acta.rival);
@@ -1108,9 +1110,14 @@ function avanzarSemanaClub(){
   cl.dinero-=salariosSemana()-cesionAhorro(cl);
   if(cl.dinero<0) avisa(`⚠ Caja en números rojos (${cl.dinero}€). Los premios y socios tendrán que salvarte.`);
   if((cl.semana-1)%SEMANAS_TEMP===0){
-    // la Copa se cierra antes que nada: es la competición del club
-    if(cl.copa&&cl.copa.temp===temporada()){
-      const pos=copPuesto(cl), premio=copPremio(pos);
+    /* La Copa se cierra antes que nada: es la competición del club. OJO con la
+       comparación: aquí `cl.semana` ya se ha incrementado, así que `temporada()`
+       devuelve la NUEVA, y la copa que hay que cerrar es la de la anterior. Con
+       `===temporada()` no se cerraba nunca: ni campeón, ni premio, ni título. */
+    if(cl.copa&&cl.copa.temp===temporada()-1){
+      // la tabla se lee de ESA copa, no por la vía normal: pedirla reconstruiría
+      // la competición a cero justo antes de mirar quién ha ganado
+      const pos=copPuestoDe(cl,cl.copa), premio=copPremio(pos);
       cl.dinero+=premio;
       if(pos===1){
         cl.palmares.push(t("cop_palmares",{t:temporada()}));

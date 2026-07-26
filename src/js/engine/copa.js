@@ -55,15 +55,31 @@ function copRondas(n){
   return rondas.concat(rondas.map(par=>par.map(([a,b])=>[b,a])));
 }
 /* Monta la competición de la temporada. El índice 0 del grupo eres tú. */
+/* Fuerza de un club NPC: el nivel medio de sus dos mejores parejas. */
+function copFuerzaClub(cl,idx){
+  const sx=cl.sexo||"M";
+  const p=G.world.parejas.filter(x=>x.club===idx&&(x.sexo||"M")===sx)
+    .sort((a,b)=>nivelPareja(b)-nivelPareja(a)).slice(0,2);
+  if(!p.length) return 55;
+  return Math.round(p.reduce((s,x)=>s+nivelPareja(x),0)/p.length);
+}
+/* Nivel de tu club: las dos mejores parejas que puedes poner. */
+function copFuerzaTuya(cl){
+  const j=(cl.plantilla||[]).slice().sort((a,b)=>mediaAttrs(b.attrs)-mediaAttrs(a.attrs)).slice(0,4);
+  if(j.length<2) return 50;
+  return Math.round(j.reduce((s,x)=>s+mediaAttrs(x.attrs),0)/j.length);
+}
 function copCrea(cl){
-  const rivales=[], usados=new Set();
-  // los siete rivales salen del mundo, no de la nada: son clubes del circuito
-  let guard=0;
-  while(rivales.length<COP_CLUBES-1&&guard++<200){
-    const i=clubAlAzar();
-    if(usados.has(i)) continue;
-    usados.add(i); rivales.push(i);
-  }
+  const rivales=[];
+  /* Los siete rivales son los de TU DIVISIÓN, no siete al azar. Con el sorteo
+     aleatorio te tocaban los mejores clubes del circuito desde la primera
+     temporada: medido con un bot de cinco años, el club terminaba octavo las
+     cinco, perdiendo todas las eliminatorias. Una competición que no se puede
+     ganar el primer año no es una competición, es un peaje. */
+  const mia=copFuerzaTuya(cl);
+  const orden=CLUBES_NPC.map((_,i)=>i)
+    .sort((a,b)=>Math.abs(copFuerzaClub(cl,a)-mia)-Math.abs(copFuerzaClub(cl,b)-mia));
+  orden.slice(0,COP_CLUBES-1).forEach(i=>rivales.push(i));
   // el derbi entra siempre: una liga sin el vecino no es una liga
   const d=cl&&cl.derbi&&cl.derbi.club;
   if(d!=null&&rivales.indexOf(d)<0){ rivales[rivales.length-1]=d; }
@@ -193,13 +209,21 @@ function copAnota(cl,acta,j){
     T[per].p++; T[per].pf+=1; T[per].pc+=2;
   });
 }
-/* Clasificación ordenada, con tu club marcado. */
-function copTabla(cl){
-  const L=copAsegura(cl);
-  return L.tabla.map((f,i)=>({...f, i, yo:i===0, nombre:copNombreDe(cl,i), color:copColorDe(cl,i)}))
+/* Clasificación ordenada, con tu club marcado.
+   `copTablaDe` lee UNA copa concreta sin pasar por `copAsegura`. Hace falta al
+   cerrar la temporada: allí la semana ya ha avanzado y pedir la tabla por la vía
+   normal reconstruía la competición a cero justo antes de mirar quién había
+   ganado —con lo que el campeón siempre eras tú, con cero puntos—. */
+function copTablaDe(cl,L){
+  if(!L) return [];
+  const nom=i=>i===0?cl.nombre:((CLUBES_NPC[L.grupo[i-1]]||{}).n||"—");
+  const col=i=>i===0?cl.color:((CLUBES_NPC[L.grupo[i-1]]||{}).color||"#8A96A8");
+  return L.tabla.map((f,i)=>({...f, i, yo:i===0, nombre:nom(i), color:col(i)}))
     .sort((a,b)=>b.pts-a.pts||(b.pf-b.pc)-(a.pf-a.pc)||b.pf-a.pf);
 }
-function copPuesto(cl){ return copTabla(cl).findIndex(f=>f.yo)+1; }
+function copTabla(cl){ return copTablaDe(cl,copAsegura(cl)); }
+function copPuestoDe(cl,L){ return copTablaDe(cl,L).findIndex(f=>f.yo)+1; }
+function copPuesto(cl){ return copPuestoDe(cl,copAsegura(cl)); }
 function copJugadas(cl){ const L=copAsegura(cl); return Object.keys(L.jugadas).length; }
 /* Premio de final de temporada por puesto. El campeón cobra y llena el club. */
 function copPremio(pos){ return Math.round(Math.max(0,(COP_CLUBES+1-clamp(pos||8,1,COP_CLUBES))*2600)); }
@@ -241,6 +265,18 @@ function socTrasEliminatoria(cl,acta,derbi){
   socMueve(cl,dn,dh);
   acta.socios=dn;
   return dn;
+}
+
+/* La taquilla de la jornada. La Copa exige cuatro jugadores sanos —el doble de
+   masa salarial que antes— y hasta aquí no pagaba nada hasta el cierre de
+   temporada: el club se arruinaba por competir. Una eliminatoria en casa llena
+   el club, y eso es dinero. */
+const COP_TAQUILLA=1.15;      // € por socio en un partido en casa
+function copTaquilla(cl,acta){
+  if(!acta||!acta.casa) return 0;
+  socAsegura(cl);
+  const x=(acta.gane?1.25:1)*(1+.006*cl.humorSocios);
+  return Math.round(cl.socios*COP_TAQUILLA*x);
 }
 
 /* ---------------- cesiones ---------------- */

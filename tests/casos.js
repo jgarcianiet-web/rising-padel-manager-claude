@@ -3636,3 +3636,85 @@ comprueba("Arranque: el balance lee la partida, no rellena", () => {
   exige(arrEscenaPendiente(c) === null, "las escenas del arranque vuelven más tarde");
   return L.length + " líneas, todas leídas del estado";
 });
+
+comprueba("Copa: la temporada se cierra y paga (regresión: no se cerraba nunca)", () => {
+  /* El cierre comparaba `cl.copa.temp === temporada()`, pero al llegar ahí la
+     semana ya se ha incrementado y `temporada()` es la NUEVA: la condición era
+     falsa siempre y la Copa no daba ni campeón, ni premio, ni título. Cinco
+     temporadas de bot terminaron con la tabla a cero sin que nadie lo notara. */
+  const cl = fundarClub();
+  const L = copAsegura(cl);
+  exige(L.temp === temporada(), "la copa no nace en la temporada en curso");
+  // la comparación del cierre es contra la temporada anterior
+  const src = String(avanzarSemanaClub);
+  exige(/copa\.temp\s*===\s*temporada\(\)\s*-\s*1/.test(src),
+    "el cierre de la Copa no compara con la temporada anterior: volverá a no cerrarse nunca");
+  // y el premio existe y crece hacia arriba de la tabla
+  exige(copPremio(1) > copPremio(4) && copPremio(4) > copPremio(8), "el premio no premia acabar arriba");
+  exige(copPremio(1) > 15000, "ganar la Copa paga menos que un torneo pequeño: " + copPremio(1));
+  return "campeón " + copPremio(1) + "€ · 4º " + copPremio(4) + "€ · último " + copPremio(8) + "€";
+});
+
+comprueba("Copa: jugar en casa da taquilla, y fuera no", () => {
+  /* La Copa pide cuatro jugadores sanos —el doble de masa salarial— y no pagaba
+     nada hasta el cierre: el club se arruinaba por competir. Medido con un bot
+     de cinco temporadas, la caja acababa en −490.000€. */
+  const cl = fundarClub();
+  socAsegura(cl);
+  const casa = { casa: true, gane: true, mio: 2, suyo: 0 };
+  const fuera = { casa: false, gane: true, mio: 2, suyo: 0 };
+  exige(copTaquilla(cl, fuera) === 0, "jugar fuera da taquilla");
+  const t1 = copTaquilla(cl, casa);
+  exige(t1 > 0, "jugar en casa no da taquilla");
+  // gana más el que gana, y el que tiene la grada contenta
+  const perdida = copTaquilla(cl, { casa: true, gane: false, mio: 0, suyo: 2 });
+  exige(t1 > perdida, "ganar en casa no llena más que perder");
+  cl.humorSocios = 95; const contentos = copTaquilla(cl, casa);
+  cl.humorSocios = 5; const hartos = copTaquilla(cl, casa);
+  exige(contentos > hartos, "el humor de la grada no se nota en la taquilla");
+  // y escala con el tamaño del club
+  cl.humorSocios = 60; cl.socios = 4000;
+  exige(copTaquilla(cl, casa) > t1 * 5, "un club grande no recauda más que uno pequeño");
+  return `${t1}€ con ${SOC_BASE} socios · ${copTaquilla(cl, casa)}€ con 4.000`;
+});
+
+comprueba("Copa: los rivales son de tu división (regresión: eran los mejores)", () => {
+  /* Con el sorteo al azar te tocaban los mejores clubes del circuito desde la
+     primera temporada: cinco años de bot, octavo las cinco y todas las
+     eliminatorias perdidas. Una competición que no se puede ganar el primer año
+     no es una competición. */
+  const cl = fundarClub();
+  const L = copAsegura(cl);
+  const mia = copFuerzaTuya(cl);
+  const fuerzas = L.grupo.map(i => copFuerzaClub(cl, i));
+  const dist = fuerzas.map(f => Math.abs(f - mia));
+  // ninguno debería estar a más de 20 puntos de nivel de tu club
+  exige(Math.max(...dist) <= 20, "hay un rival a " + Math.max(...dist) + " puntos de nivel: " + fuerzas.join(","));
+  // y son los siete más cercanos que hay en el mundo
+  const todas = CLUBES_NPC.map((_, i) => Math.abs(copFuerzaClub(cl, i) - mia)).sort((a, b) => a - b);
+  exige(Math.max(...dist) <= todas[COP_CLUBES - 2] + 1, "no coge los más cercanos");
+  // al crecer el club, la división también sube
+  cl.plantilla.forEach(j => ATTR_KEYS.forEach(k => j.attrs[k] = 90));
+  cl.copa = null;
+  const L2 = copAsegura(cl);
+  const f2 = L2.grupo.map(i => copFuerzaClub(cl, i));
+  exige(f2.reduce((s, x) => s + x, 0) > fuerzas.reduce((s, x) => s + x, 0),
+    "subir de nivel no te sube de división: " + f2.join(",") + " vs " + fuerzas.join(","));
+  return `tu club ${mia} · rivales ${fuerzas.join("/")} → al subir a 90: ${f2.join("/")}`;
+});
+
+comprueba("Copa: la tabla del cierre es la de la temporada que acaba", () => {
+  /* `copPuesto` pasa por `copAsegura`, que reconstruye la competición si ha
+     cambiado la temporada. Al cerrar, la semana ya ha avanzado: pedir la tabla
+     por la vía normal la borraba y el campeón salía siendo siempre tú con cero
+     puntos. `copTablaDe` lee la copa que se le da y no reconstruye nada. */
+  const cl = fundarClub();
+  const L = copAsegura(cl);
+  L.tabla[0].pts = 3; L.tabla[3].pts = 30;   // tú tercero, otro campeón
+  exige(copPuestoDe(cl, L) > 1, "con 3 puntos frente a 30 sales primero");
+  // y con la temporada ya avanzada sigue leyendo la copa vieja
+  cl.semana += SEMANAS_TEMP;
+  exige(copPuestoDe(cl, L) > 1, "al cambiar de temporada la tabla se borra antes de leerla");
+  exige(copPuesto(cl) === 1, "la vía normal debería haber empezado una copa nueva");
+  return "cierre y copa nueva, cada uno con su tabla";
+});
