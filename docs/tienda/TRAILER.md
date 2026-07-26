@@ -1,10 +1,10 @@
-# Tráiler de treinta segundos
+# Tráiler de treinta y cinco segundos
 
 Sin voz en off y sin música con derechos. La estructura es la que funciona en
 managers: **enseña la simulación primero**, porque es lo que la gente duda que
 exista, y deja la promesa emocional para el final.
 
-`tools/trailer.js` graba estos treinta segundos en vídeo (`.webm`) jugando de
+`tools/trailer.js` graba estos treinta y cinco segundos en vídeo (`.webm`) jugando de
 verdad, con semilla fija. Lo que el script **no** hace es poner los rótulos ni
 la música: eso son cinco minutos en cualquier editor, y va aquí escrito para que
 se monte igual siempre.
@@ -17,11 +17,12 @@ se monte igual siempre.
 |---|--------|-----------|---------------------|
 | 1 | 0:00 – 0:05 | Un punto entero en directo: la pista, la bola moviéndose, la retransmisión escribiéndose a la derecha. Termina en winner. | — (que hable la pantalla) |
 | 2 | 0:05 – 0:09 | El informe del ojeador. El cursor pulsa «aplicar plan» y los botones de táctica cambian solos. | **Lee al rival antes de jugarlo** |
-| 3 | 0:09 – 0:13 | Un dilema a pantalla completa. Se lee el título y las dos opciones, y se elige una. | **Cada decisión vuelve** |
-| 4 | 0:13 – 0:17 | El periódico: portada, titular de rumor, columna de mercado. | **El circuito habla antes de que pase** |
-| 5 | 0:17 – 0:21 | La pestaña Ranking subiendo, y el gráfico de evolución de la sala de trofeos con la línea trepando de #91 a un puesto alto. | **Empiezas el 91 del mundo** |
-| 6 | 0:21 – 0:25 | La vitrina de la sala de trofeos, con los títulos, y el bloque de «con quién lo hiciste». | **Te retiras cuando el cuerpo diga basta** |
-| 7 | 0:25 – 0:30 | Fundido a negro, logo del juego, precio y dónde. | **Rising Pádel Manager · 6 € · itch.io**<br>*Español · English · Français · Deutsch · Italiano* |
+| 3 | 0:09 – 0:13 | El panel de la pareja: el plan conjunto rodándose, los seis ejes de la relación y las conversaciones que puedes abrir. | **Tu pareja no es una estadística** |
+| 4 | 0:13 – 0:17 | Un dilema a pantalla completa. Se lee el título y las dos opciones, y se elige una. | **Cada decisión vuelve** |
+| 5 | 0:17 – 0:21 | El periódico: portada, titular de rumor, columna de mercado. | **El circuito habla antes de que pase** |
+| 6 | 0:21 – 0:25 | La pestaña Ranking subiendo, y el gráfico de evolución de la sala de trofeos con la línea trepando de #91 a un puesto alto. | **Empiezas el 91 del mundo** |
+| 7 | 0:25 – 0:29 | La vitrina de la sala de trofeos, con los títulos, y el bloque de «con quién lo hiciste». | **Te retiras cuando el cuerpo diga basta** |
+| 8 | 0:29 – 0:34 | Fundido a negro, logo del juego, precio y dónde. | **Rising Pádel Manager · 6 € · itch.io**<br>*Español · English · Français · Deutsch · Italiano* |
 
 ## Reglas de montaje
 
@@ -33,7 +34,7 @@ se monte igual siempre.
 4. **Sin voz en off.** Cuesta dinero, envejece mal y hay que rehacerla en cinco
    idiomas.
 5. **La versión de quince segundos** para redes es la misma quitando los planos
-   2 y 4, y alargando el 1 a siete segundos.
+   2, 3 y 5, y alargando el 1 a siete segundos.
 
 ## Música
 

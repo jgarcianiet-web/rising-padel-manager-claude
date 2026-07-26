@@ -27,7 +27,11 @@ const ANCHO = 1280, ALTO = 720, DENSIDAD = 1.5;
    inventa el estado, para que las capturas enseñen números coherentes. */
 /* El juego abre modales por su cuenta —anuario de temporada, legado, negociación—
    y cualquiera de ellos tapa la captura y bloquea los clics. */
-const MODALES = ["anuarioModal", "legadoModal", "dilModal", "ruptModal", "negModal", "clubModal", "modoModal"];
+/* Cualquier modal que el juego abra por su cuenta tapa la captura y bloquea los
+   clics. Al añadir uno nuevo al juego, hay que añadirlo aquí o el bot se queda
+   colgado en la semana 3 (pasó con las escenas del arranque). */
+const MODALES = ["anuarioModal", "legadoModal", "dilModal", "ruptModal", "negModal", "clubModal", "modoModal",
+                 "arrModal", "celebraModal", "tmuerto"];
 const BORRA_MODALES = "__limpiaModales();";
 
 const SEMBRAR = (semanas) => `
@@ -42,7 +46,12 @@ const SEMBRAR = (semanas) => `
     c.dinero = Math.max(c.dinero, 5000);
     c.energia = Math.max(c.energia, 75);
     if (!c.planJug || c.planJug === "auto") c.planJug = "auto";
-    for (let d = 0; d < 3; d++) { try { entrenarDia(); } catch (e) {} }
+    /* Se entrena como se entrena bien desde que existe la carga acumulada: las
+       cinco sesiones de la semana y la intensidad ajustada al poso que llevas.
+       Con tres sesiones el cuerpo se queda por debajo del óptimo y la carrera
+       sale quince puntos de media por debajo —y una captura de eso no vende. */
+    if (typeof cargaEstado === "function") c.intens = c.carga > 70 ? "suave" : c.carga < 40 ? "intensa" : "normal";
+    for (let d = 0; d < 5; d++) { try { entrenarDia(); } catch (e) {} }
     if (!torneo) {
       const pos = miPuesto();
       /* Al torneo más gordo en el que se pueda competir de verdad: sube mucho
@@ -60,8 +69,25 @@ const SEMBRAR = (semanas) => `
       if (ok && ok.onclick) { const f = ok.onclick; ok.onclick = null; f(); }
     }
     if (c.dilemaActivo) aplicarOpcionDilema(c, 0, c.semana);
+    /* Las escenas del arranque se responden solas: si no, el bot se queda
+       esperando un clic que nadie va a dar. */
+    if (typeof arrEscenaPendiente === "function") {
+      const esc = arrEscenaPendiente(c);
+      if (esc === "pareja") { arrPacto(c, "serio"); arrMarca(c, "pareja"); }
+      else if (esc) { if (esc === "rival") arrEligeRival(c); arrMarca(c, esc); }
+    }
+    /* Y se juega con lo que el juego ofrece hoy: un plan de pareja que se rueda,
+       un sitio donde entrenar y, cuando hay caja, estructura. Sin esto los
+       paneles nuevos salen vacíos en la foto. */
+    if (typeof planElige === "function" && w === 8) planElige(c, "red");
+    if (typeof ctxElige === "function") ctxElige(c, c.dinero > 20000 ? "sparring" : "pista");
+    if (typeof invCompra === "function" && w > 120) {
+      ["centro", "clinica", "analitica"].some(id => (invPrecio(c, id) && c.dinero - invPrecio(c, id) > 40000) ? invCompra(c, id, "ES") : false);
+    }
     // dos palancas que usa cualquier jugador: mejorar de pareja y tener técnico
-    if (w % 26 === 12) {
+    // se deja de cambiar de pareja al final: el plan conjunto tarda meses en
+    // rodarse y cambiar de compañero se lleva el 82% por delante
+    if (w % 26 === 12 && w < ${semanas} - 90) {
       c.mercadoP = mkMercadoParejas();
       let mejor = -1, tope = mediaAttrs(c.compi.attrs) + 3;
       (c.mercadoP || []).forEach((cd, i) => { const n = mediaAttrs(cd.attrs); if (n > tope) { mejor = i; tope = n; } });
@@ -127,31 +153,41 @@ const limpiarPrimeraVez = (p) => p.evaluate(() => __limpiaModales());
   await clic("#tabSemana"); await p.waitForTimeout(350);
   await foto(1, "semana");
 
-  // 2 · la ficha del jugador con sus atributos y su trayectoria
+  // 2 · entrenar: dónde trabajas y lo que el cuerpo técnico te estima en horquillas
+  await clic("#tabEntreno"); await p.waitForTimeout(400);
+  await foto(2, "entreno");
+
+  // 3 · la pareja: el plan conjunto, los seis ejes y las conversaciones
   await clic("#tabJugador"); await p.waitForTimeout(400);
-  await foto(2, "jugador");
+  await p.evaluate(() => { const e = document.getElementById("parejaPlan"); if (e) e.scrollIntoView({ block: "start" }); });
+  await p.waitForTimeout(350);
+  await foto(3, "pareja");
 
-  // 3 · el periódico
+  // 4 · la ficha del jugador con sus atributos y su trayectoria
+  await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(300);
+  await foto(4, "jugador");
+
+  // 5 · el periódico
   await clic("#tabDiario"); await p.waitForTimeout(400);
-  await foto(3, "periodico");
+  await foto(5, "periodico");
 
-  // 4 · el ranking del circuito
+  // 6 · el ranking del circuito
   await clic("#tabRanking"); await p.waitForTimeout(400);
-  await foto(4, "ranking");
+  await foto(6, "ranking");
 
-  // 5 · la sala de trofeos
+  // 7 · la sala de trofeos
   await p.evaluate(() => abrirTrofeos()); await p.waitForTimeout(500);
-  await foto(5, "trofeos");
+  await foto(7, "trofeos");
   await p.evaluate(() => cerrarTrofeos()); await p.waitForTimeout(200);
 
-  // 6 · el cuadro del torneo y el informe del ojeador
+  // 8 · el cuadro del torneo, lo que te juegas y quién tienes enfrente
   await p.evaluate(() => { const c = G.carrera; c.dinero = 9000; c.energia = 95;
     for (let i = 3; i >= 0 && !torneo; i--) { try { abrirTorneo(i); } catch (e) {} }
     if (torneo) { pintarTorneo(); irA("torneo"); } });
   await p.waitForTimeout(500);
-  await foto(6, "torneo");
+  await foto(8, "torneo");
 
-  // 7 · un partido en directo, con la retransmisión escrita
+  // 9 · un partido en directo, con la retransmisión escrita
   await p.evaluate(() => {
     empezarPartido(true);
     const ok = document.getElementById("fichaOk");
@@ -164,9 +200,9 @@ const limpiarPrimeraVez = (p) => p.evaluate(() => __limpiaModales());
     if (typeof draw === "function") { resize(); draw(); }
   });
   await p.waitForTimeout(600);
-  await foto(7, "partido");
+  await foto(9, "partido");
 
-  // 8 · un dilema: la decisión que el juego te pone delante
+  // 10 · un dilema: la decisión que el juego te pone delante
   await p.evaluate(() => {
     irA("club");
     const c = G.carrera;
@@ -175,10 +211,11 @@ const limpiarPrimeraVez = (p) => p.evaluate(() => __limpiaModales());
     mostrarDilema(c);
   });
   await p.waitForTimeout(400);
-  const f8 = path.join(DESTINO, "08-dilema.png");
-  await p.screenshot({ path: f8 }); console.log("  ✓ 08-dilema.png");
+  const f8 = path.join(DESTINO, "10-dilema.png");
+  await p.screenshot({ path: f8 }); console.log("  ✓ 10-dilema.png");
 
-  // 9 · el modo club: identidad y academia
+  // 11 · el modo club: la eliminatoria de la Copa de Clubes, que es donde se
+  // decide la jornada (alineación contra el rival, cruce y desempate)
   await p.evaluate(() => {
     __limpiaModales();
     G = null; sexoClubSel = "M"; colorClubSel = "#C6F53C"; filoClubSel = "cantera";
@@ -193,14 +230,19 @@ const limpiarPrimeraVez = (p) => p.evaluate(() => __limpiaModales());
     const j2 = mkAgente(46, 52, cl.sexo); j2.edad = 16; j2.pot = 74; j2.aniosCan = 0; j2.ilusion = 78; j2.hist = [];
     cl.cantera = [j, j2];
     cl.derbi = { club: 0, v: 3, d: 1 };
+    // cuatro jugadores sanos para que la eliminatoria enseñe las dos parejas
+    while (cl.plantilla.length < 5) cl.plantilla.push({ ...cl.plantilla[0], n: mkAgente(50, 60, cl.sexo).n, attrs: { ...mkAgente(50, 62, cl.sexo).attrs }, energia: 100, conf: 58, lesion: null });
     guiaCierra();
-    cmTab = "club"; pintarClubM();
-    ["semana","plantilla","clubpan","ranking","diario"].forEach(x => { const e = document.getElementById("cm-" + x); if (e) e.classList.toggle("oculto", x !== "clubpan"); });
-    document.getElementById("cmTabClub").classList.add("on");
-    document.getElementById("cmTabSemana").classList.remove("on");
+    // llevar la semana hasta la primera jornada de Copa
+    if (typeof copJornadaDe === "function") {
+      let g = 0;
+      while (!copJornadaDe(cl, semanaTemp()) && g++ < 30) { cl._accion = "descanso"; avanzarSemanaClub(); __limpiaModales(); }
+    }
+    cmTab = "semana"; pintarClubM();
+    ["semana","plantilla","clubpan","ranking","diario"].forEach(x => { const e = document.getElementById("cm-" + x); if (e) e.classList.toggle("oculto", x !== "semana"); });
   });
   await p.waitForTimeout(500);
-  await foto(9, "club");
+  await foto(11, "club");
 
   console.log(errs.length ? "ERRORES: " + errs.slice(0, 3).join(" | ") : "sin errores de página");
   await b.close();

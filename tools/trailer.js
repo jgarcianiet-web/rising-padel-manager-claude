@@ -21,11 +21,14 @@ const IDIOMA = process.argv[2] || "es";
 const DESTINO = path.join(RAIZ, "docs/tienda/trailer");
 const ANCHO = 1280, ALTO = 720;
 
-const MODALES = ["anuarioModal", "legadoModal", "dilModal", "ruptModal", "negModal", "clubModal", "modoModal"];
+/* Al añadir un modal nuevo al juego hay que añadirlo aquí: si no, se cuela en
+   el plano o bloquea el bot que siembra la partida. */
+const MODALES = ["anuarioModal", "legadoModal", "dilModal", "ruptModal", "negModal", "clubModal", "modoModal",
+                 "arrModal", "celebraModal", "tmuerto"];
 
 /* Cada plano dura lo que dice el guion. Se respeta al segundo porque un plano
    corto en un juego de leer no enseña nada. */
-const PLANOS = { punto: 5000, ojeador: 4000, dilema: 4000, diario: 4000, ranking: 4000, trofeos: 4000, cierre: 5000 };
+const PLANOS = { punto: 5000, ojeador: 4000, pareja: 4000, dilema: 4000, diario: 4000, ranking: 4000, trofeos: 4000, cierre: 5000 };
 
 const esperar = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -37,12 +40,25 @@ const SEMBRAR = (semanas) => {
     const c = G.carrera;
     for (let w = 0; w < semanas; w++) {
       c.dinero = Math.max(c.dinero, 5000); c.energia = Math.max(c.energia, 75);
-      for (let d = 0; d < 3; d++) { try { entrenarDia(); } catch (e) {} }
+      // las cinco sesiones y la intensidad según la carga: es lo que hace que la
+      // carrera del tráiler sea la de un número uno y no la de un jugador medio
+      if (typeof cargaEstado === "function") c.intens = c.carga > 70 ? "suave" : c.carga < 40 ? "intensa" : "normal";
+      for (let d = 0; d < 5; d++) { try { entrenarDia(); } catch (e) {} }
       const niv = Math.round((mediaAttrs(c.attrs) + mediaAttrs(c.compi.attrs)) / 2);
       for (let i = 7; i >= 0 && !torneo; i--) { if ((CATS[i].base || 44) - niv > 8) continue; try { abrirTorneo(i); } catch (e) {} }
       while (torneo) { empezarPartido(false); const ok = document.getElementById("fichaOk"); if (ok && ok.onclick) { const f = ok.onclick; ok.onclick = null; f(); } }
       if (c.dilemaActivo) aplicarOpcionDilema(c, 0, c.semana);
-      if (w % 26 === 12) {
+      // las escenas del arranque se responden solas: esperan un clic que aquí no llega
+      if (typeof arrEscenaPendiente === "function") {
+        const esc = arrEscenaPendiente(c);
+        if (esc === "pareja") { arrPacto(c, "serio"); arrMarca(c, "pareja"); }
+        else if (esc) { if (esc === "rival") arrEligeRival(c); arrMarca(c, esc); }
+      }
+      if (typeof planElige === "function" && w === 8) planElige(c, "red");
+      if (typeof invCompra === "function" && w > 120) {
+        ["centro", "clinica", "analitica"].some(id => (invPrecio(c, id) && c.dinero - invPrecio(c, id) > 40000) ? invCompra(c, id, "ES") : false);
+      }
+      if (w % 26 === 12 && w < semanas - 90) {
         c.mercadoP = mkMercadoParejas();
         let mejor = -1, tope = mediaAttrs(c.compi.attrs) + 3;
         (c.mercadoP || []).forEach((cd, i) => { const n = mediaAttrs(cd.attrs); if (n > tope) { mejor = i; tope = n; } });
@@ -182,7 +198,17 @@ const ARRANQUE = ([l, ids]) => {
   await p.evaluate(() => { const b2 = document.querySelector('[data-ac="aplicarTacticaRec"]'); if (b2) b2.click(); });
   await esperar(PLANOS.ojeador - 1200);
 
-  // ---- 3 · un dilema (0:09 – 0:13)
+  // ---- 3 · la pareja: el plan conjunto y los seis ejes (0:09 – 0:13)
+  await limpiar();
+  await p.evaluate(() => {
+    irA("club");
+    if (typeof tabActiva !== "undefined") tabActiva = "jugador";
+    const b2 = document.getElementById("tabJugador"); if (b2 && b2.onclick) b2.onclick();
+    const e2 = document.getElementById("parejaEjes"); if (e2) e2.scrollIntoView({ block: "center" });
+  });
+  await esperar(PLANOS.pareja);
+
+  // ---- 4 · un dilema (0:13 – 0:17)
   await limpiar();
   await p.evaluate(() => {
     irA("club");
@@ -194,24 +220,24 @@ const ARRANQUE = ([l, ids]) => {
   await p.evaluate(() => { const b2 = document.querySelector('#dilModal button[data-op="1"]'); if (b2) b2.click(); });
   await esperar(900);
 
-  // ---- 4 · el periódico (0:13 – 0:17)
+  // ---- 5 · el periódico (0:17 – 0:21)
   await limpiar();
   await p.click("#tabDiario");
   await esperar(PLANOS.diario);
 
-  // ---- 5 · el ranking (0:17 – 0:21)
+  // ---- 6 · el ranking (0:21 – 0:25)
   await limpiar();
   await p.click("#tabRanking");
   await esperar(PLANOS.ranking);
 
-  // ---- 6 · la sala de trofeos (0:21 – 0:25)
+  // ---- 7 · la sala de trofeos (0:25 – 0:29)
   await limpiar();
   await p.evaluate(() => abrirTrofeos());
   await esperar(1600);
   await p.evaluate(() => { const g = document.querySelector("#trofeos .card"); if (g) g.scrollTop = 260; });
   await esperar(PLANOS.trofeos - 1600);
 
-  // ---- 7 · cierre (0:25 – 0:30)
+  // ---- 8 · cierre (0:29 – 0:34)
   await p.evaluate(() => {
     cerrarTrofeos();
     const tapa = document.createElement("div");
