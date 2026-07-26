@@ -250,6 +250,33 @@ de red por debajo de no tener plan. Hoy los cinco planes valen entre +3 y +5
 puntos de victoria sobre «sin plan», y `tests/casos.js` no deja bajar ningún
 `golpeTodo.err` de 0,95.
 
+## El presupuesto de energía: la trampa que casi hunde el juego
+
+Antes de tocar cualquier número de entrenamiento, lee esto.
+
+La energía es un **presupuesto semanal**: lo que gastas entrenando y compitiendo
+frente a lo que recuperas. Si no cuadra, no pasa algo malo: pasa lo peor, que es
+que **entrenar deja de ser la jugada correcta**. Medido con `banco.js` (carreras
+completas, sin trucar energía ni dinero) con los números viejos —4 por sesión,
+11 por partido, 12 de recuperación—:
+
+- el que entrenaba cinco días vivía a **1 de energía** y jugó dos partidos en
+  dos temporadas;
+- el que entrenaba dos días y competía **terminaba mejor que los otros dos**;
+- **ninguna de las tres formas de jugar ganó un solo título en diez
+  temporadas.**
+
+Los números de ahora: sesión 2/3/5, partido 7, recuperación semanal 26 (más el
+preparador). En club: sesión 7/12/19, partido 7, eliminatoria 10, recuperación
+24.
+
+**La regla:** cualquier cambio a costes de energía, a las ganancias de
+entrenamiento o a los multiplicadores de `engine/forma.js` hay que medirlo con
+una carrera completa **sin fijar energía ni dinero**. El bot de las capturas los
+fija (`c.energia=Math.max(c.energia,75)`) y por eso llegaba al número uno con 29
+títulos mientras un jugador real se quedaba en el puesto 100: ese bot no vale
+para equilibrar, solo para hacer fotos.
+
 ## Entrenar no tiene respuesta correcta
 
 `engine/forma.js` existe para que no haya una jugada que gane siempre. Cuatro
@@ -399,6 +426,31 @@ desempate. Tres reglas que la sostienen:
    armario y lo que hace que ceder a alguien tenga precio.
 3. **Las jornadas caen en semanas sin premier** (`copSemanasLibres`). Sí
    coinciden con Continentales, y ahí es donde la fatiga empieza a decidir.
+
+### La economía del club, y por qué la juzga la Copa
+
+Tres cosas que se midieron y hubo que corregir, todas de la misma familia:
+
+1. **Los salarios estaban fuera de escala.** A media×8 semanal, cuatro
+   jugadores de nivel 52 costaban 1.664€/semana contra unos 765€ de ingresos:
+   un club recién fundado perdía 900€ cada semana hiciera lo que hiciera. Hoy
+   son media×4,5, el presupuesto fundacional son 22.000€ (la Copa pide cuatro
+   jugadores, no dos) y la base semanal del club son 420€, porque un club vive
+   de sus pistas y su bar aunque no tenga prestigio.
+2. **La deuda tiene suelo.** Por debajo de ocho semanas de salarios la junta
+   vende al mejor que no sea titular —nunca por debajo de cuatro jugadores, que
+   es dejarte sin segunda pareja— y si no queda a quién vender, se le acaba la
+   paciencia. Antes se llegaba a −480.000€ sin que pasara nada.
+3. **La junta juzga la COPA, no el ranking individual.** Pedirle a un club
+   recién fundado el top 30 del circuito —cuando su pareja A es de nivel 55— era
+   destituirlo en la primera evaluación hiciera lo que hiciera. Los `obj0` son
+   puestos de la Copa (3º a 6º) y la paciencia tiene un suelo de dos temporadas.
+
+Y una que no se veía y costaba partidos: **`teamDePareja` no copiaba el lado de
+pista ni los rasgos**. Lo que no está en ese objeto no existe para el motor, y
+las parejas del mundo sí los llevan: la combinación drive+revés vale un 5% y
+jugar en tu lado natural hasta un 6% por golpe. Parejas de nivel equivalente
+perdían 0-2 una y otra vez.
 
 ### Los socios son el otro jefe
 

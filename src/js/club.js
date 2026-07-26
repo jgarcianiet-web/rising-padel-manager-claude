@@ -105,11 +105,15 @@ function fichable(cl,j){ return afinidadFilo(cl,j)>-2; }
 
 /* Carácter de la junta. `margen` son las temporadas de cuerda; `dureza` cuánto
    aprieta el objetivo cada año; `prima` lo que paga por cumplirlo. */
+/* El objetivo es un PUESTO EN LA COPA, no en el ranking mundial. La junta de un
+   club juzga al club por su competición; pedirle el top 30 del circuito
+   individual a un club recién fundado —cuya pareja A es de nivel 55— era
+   despedirlo en la primera evaluación hiciera lo que hiciera. */
 const JUNTAS={
-  paciente:  {n:"cjun_paciente_n",  d:"cjun_paciente_d",  margen:3,dureza:.92,prima:1,   obj0:38},
-  corto:     {n:"cjun_corto_n",     d:"cjun_corto_d",     margen:1,dureza:.80,prima:1.8, obj0:28},
-  tacana:    {n:"cjun_tacana_n",    d:"cjun_tacana_d",    margen:2,dureza:.88,prima:.65, obj0:34,mirasueldos:true},
-  ambiciosa: {n:"cjun_ambiciosa_n", d:"cjun_ambiciosa_d", margen:2,dureza:.78,prima:1.4, obj0:30},
+  paciente:  {n:"cjun_paciente_n",  d:"cjun_paciente_d",  margen:3,dureza:.92,prima:1,   obj0:6},
+  corto:     {n:"cjun_corto_n",     d:"cjun_corto_d",     margen:1,dureza:.80,prima:1.8, obj0:3},
+  tacana:    {n:"cjun_tacana_n",    d:"cjun_tacana_d",    margen:2,dureza:.88,prima:.65, obj0:5,mirasueldos:true},
+  ambiciosa: {n:"cjun_ambiciosa_n", d:"cjun_ambiciosa_d", margen:2,dureza:.78,prima:1.4, obj0:4},
 };
 function juntaClub(cl){ const k=cl&&cl.junta&&cl.junta.car; return JUNTAS[k]?k:"paciente"; }
 function juntaNombre(k){ return t((JUNTAS[k]||JUNTAS.paciente).n); }
@@ -118,7 +122,14 @@ function juntaDesc(k){ return t((JUNTAS[k]||JUNTAS.paciente).d); }
    contrata. Su objetivo de partida y su paciencia salen de su carácter. */
 function mkJunta(){
   const car=pick(Object.keys(JUNTAS)), J=JUNTAS[car];
-  return {car,objetivo:J.obj0,paciencia:J.margen};
+  /* El primer objetivo se mide DESDE DONDE EMPIEZAS, no en abstracto. Un club
+     recién fundado entra por el puesto 91 con jugadores de nivel 55: pedirle el
+     top 28 el primer año es despedirlo en la primera evaluación hagas lo que
+     hagas. Ahora el objetivo es un puesto de la Copa —su competición— y
+     `dureza` lo aprieta cada temporada, que es donde tiene que doler. */
+  /* Y siempre al menos dos temporadas de cuerda: fundar un club y que te
+     destituyan en la primera evaluación no es exigencia, es no dejarte jugar. */
+  return {car,objetivo:J.obj0,paciencia:Math.max(2,J.margen)};
 }
 /* El club rival del primer día. Sale de los clubes del circuito y se queda
    para siempre: el marcador del derbi es de las pocas cosas que un club
@@ -288,7 +299,10 @@ function pintarFilosClub(){
   <div class="foot" style="text-align:left;margin-top:3px">${t("cfil_ayuda")}</div>`;
 }
 function setFiloClub(k){ if(!FILOS_CLUB[k]) return; filoClubSel=k; prepararCrearClub(); }
-const PRESUP_CLUB=12000;
+/* La Copa pide cuatro jugadores sanos para poner dos parejas. Con 12.000 —el
+   presupuesto de cuando bastaban dos— fundar con cuatro te dejaba en −732€ el
+   primer día. */
+const PRESUP_CLUB=22000;
 function pintarMercadoInicial(){
   const el=document.getElementById("mercadoInicial");el.innerHTML="";
   let gasto=plantillaTmp.reduce((s,j)=>s+costeFichajeCl({filo:filoClubSel},j),0);
@@ -386,7 +400,11 @@ function repararAlin(){
 }
 function alineacion(){ repararAlin(); return parejaDe(G.clubG&&G.clubG.alin); }
 function alineacionB(){return G.clubG&&G.clubG.alinB?parejaDe(G.clubG.alinB):null;}
-function salarioDe(j){return Math.round(mediaAttrs(j.attrs)*8);}
+/* Salario semanal de un jugador de club. Estaba en media×8: cuatro jugadores
+   de nivel 52 costaban 1.664€/semana contra unos ingresos de 765€, así que un
+   club recién fundado perdía 900€ todas las semanas desde el minuto uno y no
+   había forma de salir. Un Continental Bronce entero paga 1.000€. */
+function salarioDe(j){return Math.round(mediaAttrs(j.attrs)*4.5);}
 function staffSalarios(){
   const cl=G.clubG;
   return Object.keys(cl.staff||{}).reduce((s2,k)=>s2+((cl.staff[k]&&cl.staff[k].sal)||0),0);
@@ -406,14 +424,29 @@ function quickMatch(tA,tB){
   match=null;
   return {gane,marcador};
 }
+/* Pasa una pareja del club al motor de partidos.
+
+   OJO CON LO QUE SE COPIA. Este objeto es lo único que ve `resolveShot`: lo que
+   no se ponga aquí, para el motor no existe. Durante mucho tiempo se dejaba
+   fuera el LADO de pista y los RASGOS, y eso era una desventaja sistemática
+   frente a las parejas del mundo, que sí los llevan: la combinación drive+revés
+   vale un 5% (`quimicaLado`) y jugar en tu lado natural hasta un 6% por golpe
+   (`ladoNatural`), más lo que aporte cada rasgo. Medido en la Copa: parejas de
+   nivel equivalente perdían 0-2 una y otra vez. */
 function teamDePareja(par){
   const cl=G.clubG, q=quimDe(cl,par.map(j=>cl.plantilla.indexOf(j)));
   const mkJ=(j)=>{
     const f=(0.86+0.14*(j.energia/100))*(0.94+0.12*(q/100));
     const o={};ATTR_KEYS.forEach(k=>o[k]=Math.round(j.attrs[k]*f));
-    return {n:j.n,estilo:j.estilo,perso:j.perso,conf:j.conf,attrs:o,_ref:j};
+    const lado=(j.lado===0||j.lado===1)?j.lado:ladoPorAttrs(j.attrs,j.estilo);
+    return {n:j.n,estilo:j.estilo,perso:j.perso,conf:j.conf,attrs:o,
+      lado, rasgos:(j.rasgos?j.rasgos.slice():undefined), sexo:j.sexo||cl.sexo, _ref:j};
   };
-  return {nombre:G.clubG.nombre+" B",jug:[mkJ(par[0]),mkJ(par[1])],atNet:false};
+  /* Y los dos lados se reparten: si los dos son del mismo, el segundo se
+     coloca en el otro, que es lo que haría cualquiera al formar la pareja. */
+  const a=mkJ(par[0]), b=mkJ(par[1]);
+  if(a.lado===b.lado) b.lado=1-a.lado;
+  return {nombre:G.clubG.nombre+" B",jug:[a,b],atNet:false};
 }
 function simTorneoParejaB(ci){
   const cl=G.clubG, cat=CATS[ci], parB=alineacionB();
@@ -430,7 +463,7 @@ function simTorneoParejaB(ci){
   while(fase<6){
     const rival=rivalDeFase(cat.base,fase,usados);
     const res=quickMatch(teamDePareja(parB),rival);
-    parB.forEach(j=>{j.energia=clamp(j.energia-11,0,100);j.conf=clamp(j.conf+(res.gane?3:-4),15,95);});
+    parB.forEach(j=>{j.energia=clamp(j.energia-7,0,100);j.conf=clamp(j.conf+(res.gane?3:-4),15,95);});
     const qk=quimKeyP(idxPar);
     cl.quims[qk]=clamp((cl.quims[qk]??40)+2,10,95);
     rival.pts+=cat.pts[loserIdx(fase)]||0;
@@ -1023,7 +1056,7 @@ function entrenaUnoClub(j,factor){
   if(factor<1&&rnd()>factor+.25) g=0;
   if(g>0){ const rf=rasgosEntreno(j); if(rf>1&&rnd()<rf-1) g++; else if(rf<1&&rnd()<1-rf) g=Math.max(0,g-1); }   // talento / entrena mal
   j.attrs[k]=clamp(v+g,20,Math.min(96,(j.pot||96)+4));
-  if(factor===1) j.energia=clamp(j.energia-(it==="suave"?10:it==="intensa"?26:17),0,100);
+  if(factor===1) j.energia=clamp(j.energia-(it==="suave"?7:it==="intensa"?19:12),0,100);
   if(factor===1&&it==="intensa"&&rnd()<.05&&!j.lesion){
     j.lesion={n:"sobrecarga por exceso de entrenamiento",k:"les_sobre",sem:1};
     return `${j.n} ${k}+${g}⚠`;
@@ -1068,7 +1101,11 @@ function avanzarSemanaClub(){
   cl.semana++;
   const _cae=caducaSemanaRanking(cl.semana);
   if(_cae>0) avisa(t("av_defiende_cae",{n:_cae}));
-  const regen=10+(cl.reformas.gym?4:0)+(cl.staff.fisico?4:0);
+  /* Mismo presupuesto que en carrera: con 10 de recuperación, un jugador que
+     entrena (17) y juega una eliminatoria (13) vivía a cero de energía, se caía
+     de `copDisponibles` y el club perdía las jornadas sin jugarlas. Medido:
+     0 de 20 eliminatorias con cuatro jugadores sanos en plantilla. */
+  const regen=24+(cl.reformas.gym?4:0)+(cl.staff.fisico?4:0);
   cl.plantilla.forEach((j,idx)=>{
     j.energia=clamp(j.energia+regen,0,100);
     if(cl.reformas.residencia) j.conf=clamp(j.conf+1,15,95);
@@ -1087,7 +1124,10 @@ function avanzarSemanaClub(){
   fansAdd(Math.round((Math.round((cl.fans||0)*.002)+(posC_<=10?25:posC_<=20?8:1))*(cl.reformas.gradas?2.2:1)));
   // Ingresos semanales. La tienda convierte afición en caja (el doble de lo que
   // ya rendían los seguidores), así que cuanto más grande es el club más renta.
-  cl.dinero+=120+Math.round(prestigioClub()*10)+(cl.reformas.techada?150:0)
+  /* Un club vive de sus pistas y su bar todas las semanas, tenga prestigio o
+     no. Con 120€ de base un club recién fundado perdía 350€/semana haga lo que
+     haga, y ninguna decisión podía arreglarlo. */
+  cl.dinero+=420+Math.round(prestigioClub()*10)+(cl.reformas.techada?150:0)
     +Math.round((cl.fans||0)*(cl.reformas.tienda?.03:.01));
   if(cl.sponsor) cl.dinero+=cl.sponsor.sem;
   // el patrocinador principal aparece/mejora con el prestigio
@@ -1109,6 +1149,33 @@ function avanzarSemanaClub(){
   cesionSemana(cl).forEach(({j,k})=>avisa(t("ces_vuelve",{n:j.n,g:atNombre(k)})));
   cl.dinero-=salariosSemana()-cesionAhorro(cl);
   if(cl.dinero<0) avisa(`⚠ Caja en números rojos (${cl.dinero}€). Los premios y socios tendrán que salvarte.`);
+  /* La deuda no puede crecer sola para siempre. A partir de cierto agujero la
+     junta interviene: primero vende al mejor que no sea titular, y si aun así
+     no se sanea, te destituye. Antes se llegaba a −480.000€ sin que pasara
+     nada, y eso convierte la economía en un adorno. */
+  const _tope=-Math.max(6000,salariosSemana()*8);
+  if(cl.dinero<_tope){
+    const _fuera=cl.plantilla
+      .map((j,i)=>({j,i}))
+      .filter(x=>!cl.alin.includes(x.i)&&!(cl.alinB&&cl.alinB.includes(x.i))&&!x.j.cedido)
+      // nunca por debajo de los cuatro que la Copa necesita: vender hasta
+      // dejarte sin segunda pareja es empujar al club al pozo, no salvarlo
+      .filter(()=>cl.plantilla.length>4)
+      .sort((a,b)=>mediaAttrs(b.j.attrs)-mediaAttrs(a.j.attrs))[0];
+    if(_fuera){
+      const monto=valorClausula(_fuera.j);
+      cl.dinero+=monto;
+      cl.plantilla.splice(_fuera.i,1);
+      cl.alin=cl.alin.map(a=>a>_fuera.i?a-1:a);
+      if(cl.alinB){ cl.alinB=cl.alinB.filter(x=>x!==_fuera.i).map(a=>a>_fuera.i?a-1:a); if(cl.alinB.length<2) cl.alinB=null; }
+      socMueve(cl,-40,-8);
+      avisa(t("clb_venta_forzosa",{n:_fuera.j.n,monto:monto.toLocaleString("es")}));
+      noticia("venta",t("clb_venta_forzosa_t"),t("clb_venta_forzosa",{n:_fuera.j.n,monto:monto.toLocaleString("es")}));
+    } else if(cl.junta){
+      cl.junta.paciencia=Math.min(cl.junta.paciencia,1);
+      if(!cl._avisoQuiebra){ cl._avisoQuiebra=true; avisa(t("clb_quiebra")); }
+    }
+  }
   if((cl.semana-1)%SEMANAS_TEMP===0){
     /* La Copa se cierra antes que nada: es la competición del club. OJO con la
        comparación: aquí `cl.semana` ya se ha incrementado, así que `temporada()`
@@ -1129,7 +1196,10 @@ function avanzarSemanaClub(){
         avisa(t("cop_fin_pos",{pos,n:COP_CLUBES,premio}));
       }
     }
-    const posFin=miPuesto(), ptsFin=cl.pts;
+    /* Lo que se juzga es el puesto en la Copa de la temporada que acaba, leído
+       de esa copa (no por la vía normal, que la reconstruiría a cero). */
+    const posFin=(cl.copa&&typeof copPuestoDe==="function")?copPuestoDe(cl,cl.copa):miPuesto();
+    const ptsFin=cl.pts;
     const titsT=cl.palmares.filter(x=>x.includes(`(T${temporada()-1})`)).length;
     cl.hist=(cl.hist||[]); cl.hist.push({t:temporada()-1,pos:posFin,pts:ptsFin,tit:titsT});
     cl.calRes={}; cl.wildcards=2;
@@ -1188,7 +1258,7 @@ function avanzarSemanaClub(){
         avisa(t("sl_av_llega"));
       }
     }
-    J.objetivo=Math.max(3,Math.round(Math.min(posFin,J.objetivo)*CAR.dureza));
+    J.objetivo=Math.max(1,Math.round(Math.min(posFin,J.objetivo)*CAR.dureza));
     cl.junta=J;
     avisa(t("clb_junta_nuevo",{obj:J.objetivo}));
     evolucionaMundo();

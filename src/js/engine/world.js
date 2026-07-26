@@ -1408,10 +1408,18 @@ function factorForma(energia,quimica,merma){
   return f;
 }
 // Probabilidad de lesión tras un partido según energía y fragilidad (historial).
-function riesgoLesionPost(energia,fragil,tieneFisio){
+/* El riesgo no puede depender SOLO de quedarse sin energía: al cuadrar el
+   presupuesto energético nadie volvía a bajar de 35 y las lesiones
+   desaparecieron del juego —con ellas, el fisio, la clínica y media razón de
+   ser de la carga acumulada—. Medido: 0% de semanas lesionado en tres formas
+   distintas de jugar durante seis temporadas. Ahora el suelo lo pone el poso de
+   meses (`c.carga`), que es lo que de verdad rompe a un deportista. */
+function riesgoLesionPost(energia,fragil,tieneFisio,carga){
   const en=energia==null?100:energia;
-  let base = en<20 ? .30 : (en<35 ? .06 : 0);   // muy justo de fuerzas → riesgo real
-  base += Math.min(.15,(fragil||0)*.03);        // cada lesión previa te hace más frágil
+  let base = en<20 ? .30 : (en<35 ? .06 : .012);   // muy justo de fuerzas → riesgo real
+  const cg=(carga==null)?0:carga;
+  if(cg>62) base+=(cg-62)/100*.09;               // vivir pasado de vueltas se paga
+  base += Math.min(.15,(fragil||0)*.03);          // cada lesión previa te hace más frágil
   if(tieneFisio) base*=.5;
   return clamp(base,0,.5);
 }
@@ -1419,7 +1427,7 @@ function riesgoLesionPost(energia,fragil,tieneFisio){
 // Devuelve la lesión (y sube su fragilidad) o null. Muta port.fragil.
 function intentaLesion(port,tieneFisio){
   const fragilEf=Math.max(0,(port.fragil||0)+rasgosLesionAjuste(port));   // rasgos: propenso/hierro
-  const r=kLesion(riesgoLesionPost(port.energia,fragilEf,tieneFisio));    // la dificultad modula el riesgo médico
+  const r=kLesion(riesgoLesionPost(port.energia,fragilEf,tieneFisio,port.carga));  // la dificultad modula el riesgo médico
   if(rnd()>=r) return null;
   const les=pickLesion(clamp(1-(port.energia==null?100:port.energia)/40,0,1));
   if(tieneFisio) les.sem=Math.max(1,les.sem-1);

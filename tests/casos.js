@@ -278,8 +278,18 @@ comprueba("Lesiones y moral: gravedad, secuela, fragilidad y moral en pista", ()
   for (let i = 0; i < 200; i++) { fr.energia = 5; fr.lesion = null; if (intentaLesion(fr, false)) veces++; }
   exige(veces > 0, "con energía a 5 no se lesiona nunca");
   exige(fr.fragil > 0, "lesionarse no aumenta la fragilidad");
-  // con energía llena y sin fragilidad, el riesgo es nulo
-  exige(riesgoLesionPost(100, 0, false) === 0, "no debería haber riesgo de lesión con energía llena");
+  /* Con energía llena y sin poso el riesgo es residual, pero no cero: si lo
+     fuera, al cuadrar el presupuesto de energía nadie volvería a lesionarse
+     nunca —medido: 0% de semanas lesionado en seis temporadas y tres formas de
+     jugar— y con las lesiones se caen el fisio, la clínica y media razón de ser
+     de la carga acumulada. Lo que rompe a un deportista sano es el poso. */
+  const sano = riesgoLesionPost(100, 0, false, 0);
+  const fundido = riesgoLesionPost(15, 0, false, 0);
+  const pasado = riesgoLesionPost(100, 0, false, 95);
+  exige(sano > 0 && sano < .03, "con energía llena el riesgo debería ser residual: " + sano);
+  exige(fundido > sano * 8, "quedarse sin fuerzas no dispara el riesgo");
+  exige(pasado > sano * 2, "vivir pasado de vueltas no rompe a nadie: " + pasado);
+  exige(riesgoLesionPost(100, 0, true, 95) < pasado, "el fisio no protege al que arrastra carga");
   // la moral pesa en la pista: alta suma confianza, baja resta
   exige(moralAjusteConf(90) > 0 && moralAjusteConf(20) < 0, "la moral no ajusta la confianza en pista");
   return `graves ${graves}/${N} (riesgo alto) vs ${gravesBajo}/${N} (bajo); ${veces}/200 lesiones con energía a 5`;
@@ -2264,7 +2274,18 @@ comprueba("Club: la junta tiene carácter y no todas aprietan igual", () => {
   exige(corto.obj0 < paciente.obj0, "la cortoplacista debería pedir más desde el principio");
   cars.forEach(k => exige(juntaNombre(k) && !/^cjun_/.test(juntaNombre(k)), "junta sin traducir: " + k));
   // el sorteo devuelve siempre un carácter válido y su margen
-  for (let i = 0; i < 30; i++) { const J = mkJunta(); exige(JUNTAS[J.car], "mkJunta inventó un carácter: " + J.car); exige(J.paciencia === JUNTAS[J.car].margen, "la paciencia no sale del carácter"); }
+  /* La paciencia sale del carácter, pero con un suelo de dos temporadas:
+     fundar un club y ser destituido en la primera evaluación no es exigencia,
+     es no dejar jugar. La cortoplacista sigue dando menos cuerda que las demás
+     en cuanto la primera temporada pasa. */
+  for (let i = 0; i < 30; i++) {
+    const J = mkJunta();
+    exige(JUNTAS[J.car], "mkJunta inventó un carácter: " + J.car);
+    exige(J.paciencia === Math.max(2, JUNTAS[J.car].margen), "la paciencia no sale del carácter");
+    exige(J.paciencia >= 2, "te pueden destituir tras la primera temporada");
+  }
+  // y el objetivo es un puesto de SU competición, no del ranking individual
+  cars.forEach(k => exige(JUNTAS[k].obj0 <= COP_CLUBES, k + " pide un puesto que no existe en la Copa: " + JUNTAS[k].obj0));
   return cars.length + " juntas con margen, dureza y prima propios";
 });
 
@@ -3722,4 +3743,78 @@ comprueba("Copa: la tabla del cierre es la de la temporada que acaba", () => {
   exige(copPuestoDe(cl, L) > 1, "al cambiar de temporada la tabla se borra antes de leerla");
   exige(copPuesto(cl) === 1, "la vía normal debería haber empezado una copa nueva");
   return "cierre y copa nueva, cada uno con su tabla";
+});
+
+
+/* La economía del club tiene que poder cuadrar -----------------------------
+   Medido con un bot de cinco temporadas: fundar con cuatro jugadores dejaba la
+   caja en −732€ el primer día y el club perdía 900€/semana desde el minuto uno,
+   sin suelo (se llegó a −480.000€ sin que pasara nada). */
+comprueba("Club: fundar con la plantilla que pide la Copa deja caja", () => {
+  const cl = fundarClub();
+  // el presupuesto tiene que dar para cuatro jugadores del mercado inicial
+  const cuatro = mercadoTmp ? mercadoTmp.slice(0, 4) : [];
+  exige(PRESUP_CLUB >= 20000, "el presupuesto fundacional no da para cuatro: " + PRESUP_CLUB);
+  // y los salarios tienen que estar en escala con lo que se ingresa
+  const j = { attrs: Object.fromEntries(ATTR_KEYS.map(k => [k, 52])) };
+  const sal4 = salarioDe(j) * 4;
+  /* Referencia: un Continental Bronce entero paga 1.000€ y las cuotas de 400
+     socios contentos rondan los 640€/semana. Cuatro salarios no pueden costar
+     el doble de todo lo que entra. */
+  exige(sal4 < 1200, "cuatro salarios cuestan " + sal4 + "€/semana: fuera de escala");
+  return `presupuesto ${PRESUP_CLUB}€ · cuatro salarios de nivel 52: ${sal4}€/sem`;
+});
+
+comprueba("Club: la deuda tiene suelo y consecuencia", () => {
+  const cl = fundarClub();
+  socAsegura(cl);
+  while (cl.plantilla.length < 5) cl.plantilla.push({ ...cl.plantilla[0], n: "R" + cl.plantilla.length, attrs: { ...cl.plantilla[0].attrs }, energia: 100, conf: 55, lesion: null });
+  const antes = cl.plantilla.length;
+  // un agujero que la junta no puede tolerar
+  cl.dinero = -200000;
+  cl._accion = "descanso";
+  avanzarSemanaClub();
+  exige(cl.plantilla.length < antes || cl.dinero > -200000,
+    "con la caja hundida no pasa nada: sigue con " + cl.plantilla.length + " jugadores y " + cl.dinero + "€");
+  // y si no queda a quién vender, la junta se queda sin paciencia
+  const cl2 = fundarClub();
+  cl2.dinero = -300000;
+  const pac = cl2.junta.paciencia;
+  cl2._accion = "descanso";
+  avanzarSemanaClub();
+  exige(cl2.junta.paciencia <= pac, "la junta no se inmuta con el club arruinado");
+  return "venta forzosa por encima del agujero, y la junta pierde la paciencia si no queda nadie";
+});
+
+
+/* El presupuesto de energía ------------------------------------------------
+   Medido con carreras completas SIN trucar energía ni dinero: con los números
+   viejos (4 por sesión, 11 por partido, 12 de recuperación) el que entrenaba
+   cinco días vivía a 1 de energía y jugó dos partidos en dos temporadas, el que
+   apenas entrenaba terminaba mejor que los demás, y ninguna forma de jugar ganó
+   un título en diez temporadas. */
+comprueba("Energía: entrenar y competir caben en la misma semana", () => {
+  const c = nuevaCarrera();
+  c.staff = {};
+  // lo que cuesta una semana de trabajo normal
+  const gasto = (it, ses) => { c.intens = it; c.energia = 100; c.dia = 1; for (let i = 0; i < ses; i++) entrenarDia(); return 100 - c.energia; };
+  const cinco = gasto("normal", 5);
+  const cincoIntensa = gasto("intensa", 5);
+  exige(cinco < 20, "cinco sesiones normales cuestan " + cinco + " de energía");
+  exige(cincoIntensa > cinco, "la intensa no cuesta más que la normal");
+  // y lo que se recupera
+  c.energia = 40; c.dia = 1; c.lesion = null;
+  const antes = c.energia;
+  avanzarSemanaCarrera();
+  const regen = c.energia - antes + cinco * 0;   // la semana ya no entrena aquí
+  exige(regen >= 20, "la recuperación semanal es de " + regen + ": no da ni para entrenar");
+  /* La cuenta que importa, con el reparto real de una semana: si compites, los
+     días se van en partidos y entrenas dos; si no, entrenas cinco. Ninguna de
+     las dos puede salir en números rojos de energía, o el óptimo pasa a ser no
+     entrenar —que es exactamente lo que medimos que pasaba—. */
+  const semanaTorneo = gasto("normal", 2) + 3 * 7;
+  const semanaTrabajo = cinco;
+  exige(semanaTorneo <= regen + 4, `una semana de torneo cuesta ${semanaTorneo} y solo se recuperan ${regen}`);
+  exige(semanaTrabajo < regen, `una semana de entrenamiento cuesta ${semanaTrabajo} y solo se recuperan ${regen}`);
+  return `semana de torneo ${semanaTorneo} · semana de trabajo ${semanaTrabajo} · recuperación ${regen}`;
 });

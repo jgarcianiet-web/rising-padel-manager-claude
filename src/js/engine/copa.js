@@ -28,7 +28,7 @@
 
 const COP_CLUBES=8;                 // tu club y siete rivales
 const COP_PTS_VICT=3;
-const COP_ENERGIA=13;               // lo que cuesta jugar un partido de la eliminatoria
+const COP_ENERGIA=10;               // lo que cuesta jugar un partido de la eliminatoria
 const COP_MIN_ENERGIA=25;           // por debajo de esto no se sale a jugar
 
 /* ---------------- calendario ---------------- */
@@ -55,19 +55,26 @@ function copRondas(n){
   return rondas.concat(rondas.map(par=>par.map(([a,b])=>[b,a])));
 }
 /* Monta la competición de la temporada. El índice 0 del grupo eres tú. */
-/* Fuerza de un club NPC: el nivel medio de sus dos mejores parejas. */
+/* Fuerza de UNA pareja. No es la media de los dos: una pareja con un hueco vale
+   menos que dos jugadores parejos de la misma media, porque el rival juega al
+   flojo. Medido en la Copa: 67+54 (media 60) perdía 0-2 una y otra vez contra
+   parejas equilibradas de 61. El más flojo pesa el doble. */
+function copFuerzaPar(a,b){ return Math.round((Math.max(a,b)+2*Math.min(a,b))/3); }
+/* Fuerza de un club NPC: la de su MEJOR pareja, que es la que decide el primer
+   punto de la eliminatoria. */
 function copFuerzaClub(cl,idx){
   const sx=cl.sexo||"M";
   const p=G.world.parejas.filter(x=>x.club===idx&&(x.sexo||"M")===sx)
-    .sort((a,b)=>nivelPareja(b)-nivelPareja(a)).slice(0,2);
-  if(!p.length) return 55;
-  return Math.round(p.reduce((s,x)=>s+nivelPareja(x),0)/p.length);
+    .sort((a,b)=>nivelPareja(b)-nivelPareja(a))[0];
+  if(!p||!p.jug||p.jug.length<2) return 55;
+  return copFuerzaPar(mediaAttrs(p.jug[0].attrs),mediaAttrs(p.jug[1].attrs));
 }
-/* Nivel de tu club: las dos mejores parejas que puedes poner. */
+/* Y la tuya: la mejor pareja que puedes poner hoy, medida igual. */
 function copFuerzaTuya(cl){
-  const j=(cl.plantilla||[]).slice().sort((a,b)=>mediaAttrs(b.attrs)-mediaAttrs(a.attrs)).slice(0,4);
+  const j=(cl.plantilla||[]).filter(x=>!x.cedido).slice()
+    .sort((a,b)=>mediaAttrs(b.attrs)-mediaAttrs(a.attrs));
   if(j.length<2) return 50;
-  return Math.round(j.reduce((s,x)=>s+mediaAttrs(x.attrs),0)/j.length);
+  return copFuerzaPar(mediaAttrs(j[0].attrs),mediaAttrs(j[1].attrs));
 }
 function copCrea(cl){
   const rivales=[];
@@ -76,7 +83,10 @@ function copCrea(cl){
      temporada: medido con un bot de cinco años, el club terminaba octavo las
      cinco, perdiendo todas las eliminatorias. Una competición que no se puede
      ganar el primer año no es una competición, es un peaje. */
-  const mia=copFuerzaTuya(cl);
+  /* La división se busca UN PUNTO POR DEBAJO de tu mejor pareja: un club recién
+     fundado tiene que poder ganar alguna eliminatoria el primer año, y jugar
+     contra tus iguales exactos con una plantilla corta es perder siempre. */
+  const mia=copFuerzaTuya(cl)-3;
   const orden=CLUBES_NPC.map((_,i)=>i)
     .sort((a,b)=>Math.abs(copFuerzaClub(cl,a)-mia)-Math.abs(copFuerzaClub(cl,b)-mia));
   orden.slice(0,COP_CLUBES-1).forEach(i=>rivales.push(i));

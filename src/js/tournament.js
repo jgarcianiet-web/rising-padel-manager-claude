@@ -946,7 +946,7 @@ function finPartido(){
   if(G.modo==="carrera"){
     const c=G.carrera;
     const misW=stats[0].jug[c.lado].w;
-    c.energia=clamp(c.energia-11,0,100);
+    c.energia=clamp(c.energia-7,0,100);
     c.conf=clamp(c.conf+(gane?5:-6),15,95);
     c.quimica=clamp(c.quimica+2,10,95);
     c.racha=(c.racha||[]).concat(gane?"V":"D").slice(-5);
@@ -973,7 +973,7 @@ function finPartido(){
     cl.quims[qk]=clamp((cl.quims[qk]??40)+2,10,95);
     teams[0].jug.forEach((jv,i)=>{
       const j=jv._ref;
-      j.energia=clamp(j.energia-11,0,100);
+      j.energia=clamp(j.energia-7,0,100);
       j.conf=clamp(j.conf+(gane?4:-5),15,95);
       const w=stats[0].jug[i].w;
       if((gane&&rnd()<.25)||w>=6){

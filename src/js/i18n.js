@@ -19,6 +19,9 @@ const IDIOMAS=[
 const IDIOMA_DEF="es";
 const I18N={
   es:{
+    clb_venta_forzosa:"La junta vende a {n} por {monto}€ para tapar el agujero. Nadie te ha preguntado.",
+    clb_venta_forzosa_t:"Venta forzosa",
+    clb_quiebra:"No queda nadie que vender y la caja sigue en rojo. La junta ya no tiene paciencia.",
     cop_taquilla:"Taquilla de la eliminatoria: +{n}€.",
     arr_pac_elegir:"Decírselo así",
     arr_par_hd:"Tu primera pareja",
@@ -2220,6 +2223,9 @@ const I18N={
     ctx_circuito_fip:"circuito Continental",
   },
   en:{
+    clb_venta_forzosa:"The board sells {n} for €{monto} to plug the hole. Nobody asked you.",
+    clb_venta_forzosa_t:"Forced sale",
+    clb_quiebra:"There's nobody left to sell and the account is still red. The board has run out of patience.",
     cop_taquilla:"Gate receipts for the tie: +€{n}.",
     arr_pac_elegir:"Say it like that",
     arr_par_hd:"Your first partner",
@@ -4421,6 +4427,9 @@ const I18N={
     ctx_circuito_fip:"Continental tour",
   },
   fr:{
+    clb_venta_forzosa:"La direction vend {n} pour {monto} € pour boucher le trou. Personne ne t'a demandé.",
+    clb_venta_forzosa_t:"Vente forcée",
+    clb_quiebra:"Il n'y a plus personne à vendre et la caisse reste dans le rouge. La direction n'a plus de patience.",
     cop_taquilla:"Recette de la rencontre : +{n} €.",
     arr_pac_elegir:"Le dire comme ça",
     arr_par_hd:"Ton premier partenaire",
@@ -6622,6 +6631,9 @@ const I18N={
     ctx_circuito_fip:"circuit Continental",
   },
   de:{
+    clb_venta_forzosa:"Der Vorstand verkauft {n} für {monto} €, um das Loch zu stopfen. Gefragt hat dich niemand.",
+    clb_venta_forzosa_t:"Notverkauf",
+    clb_quiebra:"Es ist niemand mehr zu verkaufen und die Kasse bleibt rot. Der Vorstand hat keine Geduld mehr.",
     cop_taquilla:"Zuschauereinnahmen: +{n} €.",
     arr_pac_elegir:"So sagen",
     arr_par_hd:"Dein erster Partner",
@@ -8823,6 +8835,9 @@ const I18N={
     ctx_circuito_fip:"Continental-Tour",
   },
   it:{
+    clb_venta_forzosa:"Il consiglio vende {n} per {monto}€ per tappare il buco. Nessuno ti ha chiesto niente.",
+    clb_venta_forzosa_t:"Vendita forzata",
+    clb_quiebra:"Non c'è più nessuno da vendere e la cassa resta in rosso. Il consiglio ha finito la pazienza.",
     cop_taquilla:"Incasso della sfida: +{n}€.",
     arr_pac_elegir:"Dirglielo così",
     arr_par_hd:"Il tuo primo compagno",

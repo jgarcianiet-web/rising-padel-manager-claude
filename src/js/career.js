@@ -1743,7 +1743,12 @@ function guardaPosiciones(){
 function entrenarDia(){
   const c=G.carrera, it=c.intens||"normal";
   c._sesEntreno=(c._sesEntreno||0)+1;
-  c.energia=clamp(c.energia-(it==="suave"?3:it==="intensa"?6:4),0,100);
+  /* El coste de una sesión y la recuperación semanal son un presupuesto: si no
+     cuadran, entrenar te deja sin energía para competir y el óptimo pasa a ser
+     NO entrenar. Medido con el banco de carreras: con 4 por sesión y 12 de
+     recuperación, el que entrenaba cinco días vivía a 1 de energía y jugaba dos
+     partidos en dos temporadas. */
+  c.energia=clamp(c.energia-(it==="suave"?2:it==="intensa"?5:3),0,100);
   avanzarDia();
 }
 function descansarDia(){
@@ -1799,7 +1804,7 @@ function avanzarSemanaCarrera(){
     else avisa(t("les_recup",{n:lesNombre(c.lesion),sem:c.lesion.sem}));
   }
   decaeMerma(c);   // la secuela de la última lesión se va disipando
-  let regen=12+(staffNiv("fisico")?2+staffNiv("fisico"):0);
+  let regen=26+(staffNiv("fisico")?2+staffNiv("fisico"):0);
   // los eventos mandan sobre la recuperación y sobre el techo de energía
   regen=Math.round(evNum("energia",regen));
   c.energia=clamp(c.energia+regen,0,evNum("energiaTope",100));
