@@ -3005,3 +3005,133 @@ comprueba("Pareja: las conversaciones cuestan, esperan y pueden salir mal", () =
   exige(c.dinero === din0 - 900, "el psicólogo no se cobra: " + (din0 - c.dinero));
   return CHARLAS.length + " conversaciones con precio, espera y riesgo";
 });
+
+
+/* Entrenar deja de ser resoluble -----------------------------------------
+   La regla: no puede haber una jugada que gane siempre. Machacar el mismo
+   golpe rinde cada vez menos, la carga tiene un punto bueno del que se sale
+   por arriba y por abajo, y el sitio donde entrenas renuncia a algo. */
+comprueba("Entreno: cada contexto cuesta y renuncia a algo", () => {
+  const ids = Object.keys(CTX_ENTRENO);
+  exige(ids.length >= 6, "solo hay " + ids.length + " sitios donde entrenar");
+  ids.forEach(id => {
+    const d = CTX_ENTRENO[id];
+    exige(typeof d.gan === "number" && typeof d.carga === "number", id + " no declara ganancia ni carga");
+    // gratis y sin inconveniente sería la respuesta correcta siempre
+    const barato = !d.coste;
+    const renuncia = d.gan < 1 || d.sinTorneo || d.fisico;
+    exige(!barato || renuncia || id === "pista", id + " es gratis y no renuncia a nada: gana siempre");
+    [ctxNombre, ctxDesc, ctxEfecto].forEach(f => {
+      const x = f(id);
+      exige(x && !/^ctx_/.test(x), id + ": sin traducir (" + x + ")");
+    });
+  });
+  // la concentración cierra el circuito esa semana
+  const c = nuevaCarrera();
+  exige(!ctxBloqueaTorneo(c), "sin elegir nada ya te deja fuera del circuito");
+  ctxElige(c, "stage");
+  exige(ctxBloqueaTorneo(c), "la concentración no te deja fuera del circuito");
+  return ids.length + " sitios, todos con su renuncia";
+});
+
+comprueba("Entreno: machacar el mismo golpe rinde cada vez menos", () => {
+  const c = nuevaCarrera();
+  frAsegura(c);
+  exige(adaptFactor(c, "volea") === 1, "el golpe fresco ya viene trillado");
+  for (let i = 0; i < 3; i++) { adaptTrabaja(c, "volea"); adaptDescansa(c, "volea"); }
+  const tres = adaptFactor(c, "volea");
+  for (let i = 0; i < 4; i++) { adaptTrabaja(c, "volea"); adaptDescansa(c, "volea"); }
+  const siete = adaptFactor(c, "volea");
+  exige(tres < 1 && siete < tres, "no baja el rendimiento: " + tres + " / " + siete);
+  exige(siete <= .45, "siete semanas seguidas y aún rinde al " + Math.round(siete * 100) + "%");
+  // y lo que se deja de tocar se desentumece
+  const antes = adaptLee(c, "volea");
+  for (let i = 0; i < 6; i++) adaptDescansa(c, "fondo");
+  exige(adaptLee(c, "volea") < antes, "abandonar el golpe no lo devuelve a fresco");
+  return "de ×1,00 a ×" + siete.toFixed(2) + " en siete semanas seguidas";
+});
+
+comprueba("Entreno: la carga tiene un punto bueno y dos maneras de fallarlo", () => {
+  const c = nuevaCarrera();
+  frAsegura(c);
+  c.carga = CARGA_OPT;
+  const optimo = cargaGanX(c);
+  c.carga = 5;   const parado = cargaGanX(c);
+  c.carga = 98;  const pasado = cargaGanX(c);
+  exige(optimo > parado && optimo > pasado, "el óptimo no es el óptimo");
+  exige(parado < .6 && pasado < .6, "fallar la carga no cuesta nada: " + parado + " / " + pasado);
+  exige(cargaEstado({ carga: 5 }) === "parado" && cargaEstado({ carga: 98 }) === "pasado", "los estados no cuadran");
+  // pasarse además rompe cuerpos
+  c.carga = 40; const sano = cargaLesionX(c);
+  c.carga = 95; const roto = cargaLesionX(c);
+  exige(sano === 1 && roto > 1.5, "pasarse de carga no sube el riesgo: " + roto);
+  // y la carga se acumula despacio y se va despacio
+  c.carga = 0; ctxElige(c, "pista"); c.intens = "intensa";
+  cargaAplica(c, 5); const s1 = c.carga;
+  cargaAplica(c, 5); const s2 = c.carga;
+  exige(s1 > 0 && s2 > s1, "no se acumula");
+  c.intens = "normal"; ctxElige(c, "casa");
+  cargaAplica(c, 0); const s3 = c.carga;
+  exige(s3 < s2, "no baja al parar");
+  return `óptimo ×${optimo.toFixed(2)} · parado ×${parado.toFixed(2)} · pasado ×${pasado.toFixed(2)}, y ×${roto.toFixed(2)} de lesión`;
+});
+
+comprueba("Entreno: la forma es temporal y el ritmo se pierde parado", () => {
+  const c = nuevaCarrera();
+  frAsegura(c);
+  exige(formaDe(c, "volea") === 0, "se nace con forma");
+  formaSube(c, "volea", 3);
+  exige(formaDe(c, "volea") === 3, "no coge forma");
+  exige(formaMejor(c) === "volea", "no detecta el golpe fino");
+  for (let i = 0; i < 3; i++) formaEnfria(c);
+  exige(formaDe(c, "volea") === 0, "la forma no se enfría: " + formaDe(c, "volea"));
+  // y no se desborda ni por arriba ni por abajo
+  for (let i = 0; i < 40; i++) formaSube(c, "volea", 3);
+  exige(formaDe(c, "volea") === FORMA_TOPE, "la forma se desborda");
+  // ritmo: competir da, parar quita, y se paga en la cabeza
+  c.ritmo = 55;
+  exige(ritmoAjusteConf(c) === 0, "en el punto de partida ya ajusta");
+  for (let i = 0; i < 4; i++) ritmoSemana(c, true);
+  const alto = ritmoAjusteConf(c);
+  exige(alto > 0 && ritmoEstado(c) === "lanzado", "competir no da ritmo: " + c.ritmo);
+  for (let i = 0; i < 14; i++) ritmoSemana(c, false);
+  exige(ritmoAjusteConf(c) < 0 && ritmoEstado(c) === "frio", "parar no enfría: " + c.ritmo);
+  return `±${alto} de confianza por el ritmo, y se pierde en ${Math.ceil((100 - 25) / RITMO_PIERDE)} semanas paradas`;
+});
+
+comprueba("Entreno: el cuerpo técnico da horquillas, no números", () => {
+  const c = nuevaCarrera();
+  frAsegura(c);
+  c.staff = {};
+  exige(precisionStaff(c) === 0, "sin staff ya hay precisión");
+  const ciego = banda(50, 0, 13);
+  exige(ciego.hi - ciego.lo >= 20, "sin nadie la horquilla es estrecha: " + JSON.stringify(ciego));
+  const conStaff = banda(50, 8, 13);
+  exige(conStaff.hi - conStaff.lo < ciego.hi - ciego.lo, "el staff no estrecha la horquilla");
+  exige(conStaff.lo <= 50 && conStaff.hi >= 50, "la horquilla no contiene el valor real");
+  // el pronóstico también es una horquilla, y baja cuando el golpe está trillado
+  const fresco = pronosticoEntreno(c, "volea");
+  exige(fresco.hi > fresco.lo, "el pronóstico es un número exacto");
+  for (let i = 0; i < 6; i++) { adaptTrabaja(c, "volea"); adaptDescansa(c, "volea"); }
+  const trillado = pronosticoEntreno(c, "volea");
+  exige(trillado.hi < fresco.hi, "el pronóstico ignora la adaptación");
+  return `sin staff ±${(ciego.hi - ciego.lo) / 2}, con staff ±${(conStaff.hi - conStaff.lo) / 2}`;
+});
+
+comprueba("Entreno: en el gimnasio no se trabaja la dejada", () => {
+  const c = nuevaCarrera();
+  frAsegura(c);
+  const ent_ = { n: "—", niv: 0, esp: [] };
+  exige(golpeReal(c, "dejada", ent_, CTX_ENTRENO.pista) === "dejada", "en pista no respeta tu plan");
+  const k = golpeReal(c, "dejada", ent_, CTX_ENTRENO.gimnasio);
+  exige(ATTR_FISICOS.indexOf(k) >= 0, "el gimnasio entrena la dejada: " + k);
+  // y la forma llega a la pista
+  c.forma = {}; formaSube(c, "fondo", 5);
+  const eq = miTeam();
+  const yo = eq.jug.find(j => j.me);
+  c.forma = {};
+  const eq2 = miTeam();
+  const yo2 = eq2.jug.find(j => j.me);
+  exige(yo.attrs.fondo > yo2.attrs.fondo, "la forma no llega a la pista: " + yo.attrs.fondo + " vs " + yo2.attrs.fondo);
+  return "gimnasio → " + k + ", y la forma se nota en pista";
+});

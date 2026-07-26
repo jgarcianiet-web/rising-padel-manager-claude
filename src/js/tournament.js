@@ -172,6 +172,8 @@ function pintarCuadroHTML(){
 function abrirTorneo(ci,wildcard){
   const cat=CATS[ci];
   if(G.modo==="club"){ repararAlin(); if(!alineacion()){ avisa(t("aviso_sin_plantilla")); return; } }
+  // irse de concentración es renunciar a competir esa semana: ese es su precio
+  if(G.modo==="carrera"&&typeof ctxBloqueaTorneo==="function"&&ctxBloqueaTorneo(G.carrera)){ avisa(t("ent_stage_bloquea")); return; }
   let ent2=entradaEn(ci);
   if(ent2===-1){ if(wildcard&&!cat.tf) ent2=0; else return; }
   const viaje=costeViaje(ci);
@@ -324,8 +326,13 @@ function miTeam(){
     const fBase=factorForma(c.energia,c.quimica,null);   // energía + química
     const fYo=factorForma(c.energia,c.quimica,c.merma);  // tú, además, con la secuela de tu última lesión
     const mk=(attrs,fac)=>{const o={};ATTR_KEYS.forEach(k=>o[k]=Math.round(attrs[k]*fac));return o;};
+    // tú además llevas la forma del golpe: lo que trabajaste hace dos semanas
+    // sale mejor hoy, y lo que abandonaste, peor
+    const mkYo=(attrs,fac)=>{const o={};ATTR_KEYS.forEach(k=>o[k]=Math.round(clamp(attrs[k]+(typeof formaDe==="function"?formaDe(c,k):0),20,99)*fac));return o;};
     const miLado=(c.lado===0||c.lado===1)?c.lado:0;
-    const yo={n:c.nombre,estilo:c.estilo,perso:c.perso,conf:c.conf,attrs:mk(c.attrs,fYo),me:true,sexo:c.sexo,ava:c.ava,_ropa:c._ropa||c.color,lado:miLado};
+    // el ritmo de competición se cobra donde se nota: en la cabeza
+    const confYo=clamp(c.conf+(typeof ritmoAjusteConf==="function"?ritmoAjusteConf(c):0),5,95);
+    const yo={n:c.nombre,estilo:c.estilo,perso:c.perso,conf:confYo,attrs:mkYo(c.attrs,fYo),me:true,sexo:c.sexo,ava:c.ava,_ropa:c._ropa||c.color,lado:miLado};
     // la moral del compañero se traduce en confianza real sobre la pista
     const sup=(typeof evFlag==="function"&&evFlag("suplente"))?compiSuplente(c):null;
     const fuente=sup||c.compi;

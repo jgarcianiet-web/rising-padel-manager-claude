@@ -768,6 +768,85 @@ function pintarEntreno(){
   sel.value=c.compiPlan||"auto";
   sel.onchange=()=>{c.compiPlan=sel.value;guardar();};
   cp.appendChild(sel);
+  pintarCtxEntreno();
+  pintarEstadoFisico();
+}
+/* Dónde entrenas esta semana. Lo que convierte el entrenamiento en una decisión
+   y no en un botón: cada sitio cuesta algo distinto y renuncia a algo distinto. */
+function pintarCtxEntreno(){
+  const c=G.carrera, bx=document.getElementById("entCtx");
+  if(!bx) return;
+  bx.innerHTML="";
+  frAsegura(c);
+  const hd=document.createElement("div");hd.className="phead";hd.textContent=t("ent_ctx_hd");
+  bx.appendChild(hd);
+  const actual=ctxEntreno(c);
+  Object.keys(CTX_ENTRENO).forEach(id=>{
+    const d=CTX_ENTRENO[id], es=id===actual;
+    const o=document.createElement("div");o.className="opcion";
+    if(es) o.style.borderColor="var(--lima)";
+    o.innerHTML=`<b>${ctxNombre(id)}</b>${es?` <span class="pill" style="color:var(--lima)">${t("pj_actual")}</span>`:""}
+      <div class="d">${ctxDesc(id)}</div>
+      <div class="d" style="color:var(--azul);margin-bottom:${es?"0":"6px"}">${ctxEfecto(id)}</div>`;
+    if(!es){
+      const b=document.createElement("button");b.style.width="100%";
+      b.textContent=t("pj_elegir");
+      b.disabled=!!d.coste&&c.dinero<d.coste;
+      if(!b.disabled) b.onclick=()=>elegirCtxEntreno(id);
+      else b.textContent=t("ent_ctx_caro");
+      o.appendChild(b);
+    }
+    bx.appendChild(o);
+  });
+}
+function elegirCtxEntreno(id){
+  const c=G.carrera; if(!c) return;
+  // no se puede uno ir a la montaña con un torneo a medias
+  if(CTX_ENTRENO[id]&&CTX_ENTRENO[id].sinTorneo&&torneo){ avisa(t("ent_stage_no")); return; }
+  if(!ctxElige(c,id)) return;
+  if(CTX_ENTRENO[id].fisico&&c.planJug&&c.planJug!=="auto"&&ATTR_FISICOS.indexOf(c.planJug)<0) avisa(t("ent_gim_no"));
+  guardar();pintarCarrera();
+}
+/* El parte del cuerpo técnico. Nunca da un número exacto: da horquillas, y la
+   horquilla se estrecha cuanto mejor sea tu staff. Pagar un preparador es pagar
+   por saber en qué estado estás. */
+function pintarEstadoFisico(){
+  const c=G.carrera, bx=document.getElementById("entEstado");
+  if(!bx) return;
+  bx.innerHTML="";
+  frAsegura(c);
+  const prec=precisionStaff(c);
+  /* La barra dibuja la HORQUILLA, no el valor: se pinta de `lo` a `hi`. Sería
+     absurdo contar el dato en palabras y regalarlo en píxeles. */
+  const linea=(lbl,txt,v,col,nota)=>{
+    const b=banda(v,prec,13), lo=clamp(b.lo,0,100), an=Math.max(3,clamp(b.hi,0,100)-lo);
+    const d=document.createElement("div");d.style.marginBottom="9px";
+    d.innerHTML=`<div class="arow"><span class="k" style="text-transform:none">${lbl}</span><span class="v" style="color:${col}">${txt}</span></div>
+      <div class="abar"><i style="margin-left:${lo}%;width:${an}%;background:${col}"></i></div>
+      ${nota?`<div class="foot" style="text-align:left;margin-top:0">${nota}</div>`:""}`;
+    return d;
+  };
+  const est=cargaEstado(c), colC=est==="bien"?"var(--verde)":est==="pasado"?"var(--rojo)":est==="parado"?"var(--gris)":"var(--oro)";
+  bx.appendChild(linea(t("ent_carga"),`${t("car_"+est)} · ${bandaTxt(c.carga,prec,13)}`,c.carga,colC));
+  const rit=ritmoEstado(c), colR=rit==="lanzado"?"var(--verde)":rit==="frio"?"var(--rojo)":"var(--oro)";
+  bx.appendChild(linea(t("ent_ritmo"),`${t("rit_"+rit)} · ${bandaTxt(c.ritmo,prec,13)}`,c.ritmo,colR));
+  // adaptación al golpe que estás trabajando
+  const k=golpeReal(c,c.planJug,entrenadorActual(),ctxDatos(c));
+  const ad=adaptLee(c,k), colA=ad>=70?"var(--rojo)":ad>=40?"var(--oro)":"var(--verde)";
+  bx.appendChild(linea(`${t("ent_adapt")} · ${atNombre(k)}`,bandaTxt(ad,prec,13),ad,colA,
+    ad>=65?t("ent_adapt_alta"):""));
+  // pronóstico de la semana, en horquilla
+  const pr=document.createElement("div");pr.className="foot";pr.style.textAlign="left";pr.style.marginTop="8px";
+  if(prec<=0) pr.textContent=t("ent_pron_ciego");
+  else { const p=pronosticoEntreno(c,k); pr.textContent=t("ent_pron",{lo:p.lo,hi:p.hi,g:atNombre(k)}); }
+  bx.appendChild(pr);
+  // forma por golpe: dónde estás fino y dónde oxidado
+  const mej=formaMejor(c), peo=formaPeor(c);
+  const fr=document.createElement("div");fr.className="foot";fr.style.textAlign="left";fr.style.marginTop="4px";
+  fr.textContent=(formaLee(c,mej)<=0&&formaLee(c,peo)>=0)
+    ? t("frm_plano")
+    : `${formaLee(c,mej)>0?t("frm_mejor",{g:atNombre(mej)}):""} ${formaLee(c,peo)<0?t("frm_peor",{g:atNombre(peo)}):""}`.trim();
+  bx.appendChild(fr);
 }
 function pintarJugador(){
   const c=G.carrera;
@@ -1522,10 +1601,13 @@ function avanzarSemanaCarrera(){
   const factor=Math.min(1,(c._sesEntreno||0)/5);
   c._sesEntreno=0;
   const it=c.intens||"normal";
+  frAsegura(c);
   if(!c.lesion&&factor>0){
     const log=entrenoSemanalCarrera(factor);
     if(log) avisa(t("av_entrenos",{it:({suave:t("ent_suave"),normal:t("ent_normal"),intensa:t("ent_intensa")})[it]||it,log}));
   }
+  // el contexto de entreno se cobra y deja sus efectos propios
+  cierraSemanaEntreno(c,factor);
   simCircuito(c._rivalesSemana);c._rivalesSemana=[];
   prensaSemanal();
   if(c.sponsor&&!c._spot&&rnd()<(c.sponsor.tier>=3?.14:.08)){
@@ -1808,12 +1890,52 @@ function prensaSemanal(){
     if(star) noticia("circuito",t(pick(["not_circuito_v1","not_circuito_v2","not_circuito_v3","not_circuito_v4"])),t("not_circuito_star_s",{star:star.nombre}));
   }
 }
+/* Cierra la semana de trabajo: cobra el sitio donde has entrenado, deja sus
+   efectos, mueve la carga acumulada, enfría la forma y actualiza el ritmo de
+   competición. Va después del entrenamiento porque la carga que te frena hoy es
+   la que arrastrabas, no la que acabas de meterte. */
+function cierraSemanaEntreno(c,factor){
+  frAsegura(c);
+  const d=ctxDatos(c), id=ctxEntreno(c);
+  const ses=Math.round(clamp(factor,0,1)*5);
+  if(d.coste&&ses>0){
+    const cobro=Math.round(d.coste*clamp(factor,.35,1));
+    if(c.dinero>=cobro){
+      c.dinero-=cobro;
+      avisa(t("ent_ctx_cobro",{ctx:ctxNombre(id),n:cobro}));
+    } else {
+      c.ctxEnt=CTX_DEF;                       // sin caja se entrena donde siempre
+      avisa(t("ent_ctx_caro"));
+    }
+  }
+  if(d.energia) c.energia=clamp(c.energia+d.energia,0,100);
+  if(d.quimica) c.quimica=clamp(c.quimica+d.quimica,0,100);
+  if(d.presion) c.conf=clamp(c.conf+d.presion,5,95);
+  const antes=cargaEstado(c);
+  cargaAplica(c,ses);
+  formaEnfria(c);
+  ritmoSemana(c,!!c._jugoTorneo);
+  const ahora=cargaEstado(c);
+  if(ahora!==antes&&ahora==="pasado") avisa(t("car_av_pasado"));
+  if(ahora!==antes&&ahora==="parado") avisa(t("car_av_parado"));
+}
+/* El golpe que se trabaja de verdad: en el gimnasio no se entrena la dejada,
+   por mucho que sea lo que tengas apuntado en el plan. */
+function golpeReal(atleta,plan,ent_,ctx){
+  const k=golpePlan(atleta,plan,ent_);
+  if(ctx&&ctx.fisico&&ATTR_FISICOS.indexOf(k)<0){
+    return ATTR_FISICOS.slice().sort((a,b)=>atleta.attrs[a]-atleta.attrs[b])[0];
+  }
+  return k;
+}
 function entrenoSemanalCarrera(factor){
   if(factor<=0) return null;
   const c=G.carrera, it=c.intens||"normal", ent_=entrenadorActual();
+  frAsegura(c);
+  const ctx=ctxDatos(c), gX=cargaGanX(c);
   const res=[];
-  const sesion=(atleta,plan,edad)=>{
-    const k=golpePlan(atleta,plan,ent_);
+  const sesion=(atleta,plan,edad,mio)=>{
+    const k=golpeReal(atleta,plan,ent_,ctx);
     const v=atleta.attrs[k];
     let g=v<55?2:v<70?1:(rnd()<.5?1:0);
     if(ent_.esp.includes(k)&&rnd()<(.3+.08*(ent_.niv||2))) g+=1;   // el especialista exprime su tema
@@ -1823,12 +1945,27 @@ function entrenoSemanalCarrera(factor){
     if(factor<1&&g>0&&rnd()>factor) g=Math.max(0,g-1);
     if(factor<1&&rnd()>factor+.25) g=0;         // semana de torneo: poco tiempo de pista de entreno
     if(g>0){ const rf=rasgosEntreno(atleta); if(rf>1&&rnd()<rf-1) g++; else if(rf<1&&rnd()<1-rf) g=Math.max(0,g-1); }   // talento / entrena mal
+    /* Lo nuevo: el sitio, la carga que arrastras y lo trillado que tengas ese
+       golpe. Los tres son multiplicadores por debajo de 1 casi siempre, así que
+       se resuelven con una moneda en vez de con una resta que dejaría todo a 0. */
+    if(mio&&g>0){
+      const mult=ctx.gan*gX*adaptFactor(c,k);
+      let ent=g*mult;
+      g=Math.floor(ent); if(rnd()<ent-g) g++;
+    }
     atleta.attrs[k]=clamp(v+g,20,95);
+    if(mio){
+      adaptTrabaja(c,k);         // este golpe queda trillado…
+      adaptDescansa(c,k);        // …y los demás se desentumecen
+      formaSube(c,k,g>0?3:2);    // pero sale mejor las próximas semanas
+    }
     return `${atNombre(k)} ${g>0?"+"+g:"·"}`;
   };
-  res.push(t("ent_tu")+": "+sesion(c,c.planJug,c.edad));
+  res.push(t("ent_tu")+": "+sesion(c,c.planJug,c.edad,true));
   res.push(`${c.compi.n}: `+sesion(c.compi,c.compiPlan));
-  if(factor>=.8&&it==="intensa"&&rnd()<.06&&!c.lesion){
+  // la sobrecarga ya no es solo cuestión de intensidad: es del poso de meses
+  const riesgo=.06*cargaLesionX(c)*(ctx.lesionX||1);
+  if(factor>=.8&&it==="intensa"&&rnd()<riesgo&&!c.lesion){
     c.lesion={n:"sobrecarga por exceso de entrenamiento",k:"les_sobre",sem:1};
     res.push(t("les_sobre_log"));
   }

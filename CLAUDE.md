@@ -250,6 +250,39 @@ de red por debajo de no tener plan. Hoy los cinco planes valen entre +3 y +5
 puntos de victoria sobre «sin plan», y `tests/casos.js` no deja bajar ningún
 `golpeTodo.err` de 0,95.
 
+## Entrenar no tiene respuesta correcta
+
+`engine/forma.js` existe para que no haya una jugada que gane siempre. Cuatro
+sistemas que se pelean entre ellos:
+
+1. **Contexto** (`CTX_ENTRENO`): pista, casa, sparring, gimnasio, vídeo y
+   concentración. Regla al añadir uno: **si es gratis, tiene que renunciar a
+   algo** (menos ganancia, sin competir esa semana, solo golpes físicos). Un
+   sitio gratis y sin inconveniente es la respuesta correcta para siempre, y
+   `tests/casos.js` lo rechaza.
+2. **Adaptación** (`c.adapt`): trabajar el mismo golpe lo sube 17 y baja 5 el
+   resto. Siete semanas seguidas con la volea la dejan rindiendo al 40%.
+3. **Carga acumulada** (`c.carga`): un filtro con poso 0,80, cuyo estado estable
+   es 5× lo que entra cada semana. `CARGA_BASE` sale de ahí (`CARGA_OPT/5`) para
+   que una semana normal en pista quede rondando el óptimo. **Ojo al tocar los
+   multiplicadores de intensidad**: con la intensa a 1,35 todo el mundo se
+   quedaba clavado en «bien» y el sistema no mordía; a 1,75, «siempre intensa»
+   te deja pasado de vueltas y con ×1,5 de riesgo de lesión.
+4. **Forma y ritmo**: `c.forma` es por golpe, temporal (se enfría 1 por semana)
+   y se aplica en `miTeam` sobre el atributo; `c.ritmo` sube 13 compitiendo y
+   baja 6 parado, y se cobra en la confianza, que es donde se nota no tener
+   partidos en las piernas.
+
+**El cuerpo técnico da horquillas, no números** (`banda`, `bandaTxt`,
+`pronosticoEntreno`): la precisión sale de `staffNiv("fisico")+staffNiv("entrenador")`.
+Y la barra dibuja la horquilla —de `lo` a `hi`, flotando— en vez del valor: no
+tiene sentido ocultar el dato en el texto y regalarlo en píxeles.
+
+Medido con bots de 200 semanas: fijarse en un solo golpe termina 17 puntos de
+media por debajo, entrenar siempre suave 10 por debajo, y varias estrategias
+sensatas (alternar cargas, pagar sparring, rotar objetivos) empatan arriba. Eso
+es lo que se busca: varios caminos buenos y dos maneras claras de hacerlo mal.
+
 ## El modo club tiene cara: filosofía, junta y derbi
 
 Tres cosas que se fijan al fundar (`club.js`) y que hay que respetar:

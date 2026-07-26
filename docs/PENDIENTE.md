@@ -34,20 +34,11 @@ música sobre el bruto, y darle a publicar.**
 
 ---
 
-## Camino al 9/10: las siete prioridades que quedan
+## Camino al 9/10: las cinco prioridades que quedan
 
-La primera de la lista (eventos sistémicos) ya está. Las demás, en el orden en
-que se decidieron:
+Las tres primeras (eventos sistémicos, profundidad de la pareja y entrenamiento
+no resoluble) ya están. Las demás, en el orden en que se decidieron:
 
-2. **Profundidad de la pareja.** Plan de juego conjunto que tarde semanas en
-   dominarse y que se pierda al cambiar de compañero; confianza con varios ejes
-   (deportiva, personal, ambición, reparto de protagonismo, lealtad, fatiga de
-   convivencia); y **conversaciones que inicie el jugador**, no solo dilemas que
-   llegan del sistema.
-3. **Que entrenamiento y descanso dejen de ser resolubles.** Planes semanales en
-   vez de clics diarios, rendimientos decrecientes por repetir el mismo golpe,
-   forma temporal además de atributos permanentes, e información imperfecta del
-   staff («probablemente aguante dos partidos») en vez de certezas.
 4. **Economía con sumideros estratégicos.** Hoy una carrera avanzada acumula
    medio millón sin nada que hacer con él: campamento de pretemporada, analítica
    de rivales, clínica de recuperación, base en una región, academia propia.
