@@ -34,14 +34,12 @@ música sobre el bruto, y darle a publicar.**
 
 ---
 
-## Camino al 9/10: las tres prioridades que quedan
+## Camino al 9/10: las dos prioridades que quedan
 
-Las cinco primeras (eventos sistémicos, profundidad de la pareja, entrenamiento
-no resoluble, economía con sumideros y agencia táctica) ya están. Las demás, en
-el orden en que se decidieron:
+Las seis primeras (eventos sistémicos, profundidad de la pareja, entrenamiento
+no resoluble, economía con sumideros, agencia táctica y competición propia del
+club) ya están. Las demás, en el orden en que se decidieron:
 
-6. **Estructura competitiva propia del modo club.** Eliminatorias con varias
-   parejas, alineación por rival y fatiga, cesiones, socios frente a junta.
 7. **Presentación con jerarquía dramática.** Que una final no se parezca a una
    semana cualquiera: portada especial, ceremonia de retirada, audio contextual.
 8. **Primer tramo de carrera más dirigido.** Primera pareja con escena, primer

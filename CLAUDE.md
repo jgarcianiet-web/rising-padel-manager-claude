@@ -335,6 +335,39 @@ Los efectos están enganchados donde se decide: `costeViaje`, `pickLesion`,
 `decaeMerma`, `cargaPoso`, `precisionStaff`, `fansAdd`, el tier de patrocinio y
 el `rivBoost` del partido.
 
+## El club tiene competición propia: la Copa de Clubes
+
+`engine/copa.js`. Antes el modo club era una carrera con dos parejas: todo
+—plantilla, cantera, filosofía, junta— colgaba de torneos individuales que no
+eran del club. **Ojo, no confundir con `engine/liga.js`**: la Superliga es otro
+modo, con plantilla propia y un motor de fuerzas abstractas. La Copa se juega
+con tus jugadores y con el motor de partidos de verdad (`quickMatch`).
+
+Ocho equipos, ida y vuelta, y cada jornada una eliminatoria a dos partidos con
+desempate. Tres reglas que la sostienen:
+
+1. **La jornada son tres decisiones, no un botón.** Repartir a los cuatro
+   (`copAlineacionAuto(cl,reparte)`: apilar a los dos mejores o hacer dos
+   parejas parejas), emparejar contra sus dos parejas (de tú a tú o cruzadas) y
+   elegir quién sale al desempate sabiendo la energía que le quedará.
+2. **En los dos primeros partidos nadie repite.** Sin cuatro jugadores sanos el
+   segundo punto se pierde en la mesa: es lo que obliga a tener fondo de
+   armario y lo que hace que ceder a alguien tenga precio.
+3. **Las jornadas caen en semanas sin premier** (`copSemanasLibres`). Sí
+   coinciden con Continentales, y ahí es donde la fatiga empieza a decidir.
+
+### Los socios son el otro jefe
+
+`cl.socios` y `cl.humorSocios`. La junta mira la clasificación; los socios
+miran el derbi, la cantera y a quién vendes. Pagan cuota **todas las semanas** y
+lo que pagan depende de su humor (`socIngreso`), así que enfadarlos cuesta caja,
+no solo ambiente. Ganar suma, barrer suma más, perder en casa duele el doble y
+el derbi multiplica lo que pase.
+
+Las **cesiones** son la alternativa a vender: no cobras, pero no lo pierdes y
+vuelve mejorado (`cesionSemana`). Solo se puede ceder al que sobra de verdad, y
+ceder a un canterano enfada a la grada.
+
 ## El modo club tiene cara: filosofía, junta y derbi
 
 Tres cosas que se fijan al fundar (`club.js`) y que hay que respetar:

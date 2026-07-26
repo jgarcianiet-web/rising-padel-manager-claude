@@ -3328,3 +3328,172 @@ comprueba("Táctica: la identidad del rival sale de sus atributos", () => {
   });
   return Object.keys(IDENTIDADES).length + 1 + " identidades, todas con su antídoto";
 });
+
+
+/* La Copa de Clubes: el modo club tiene competición propia -----------------
+   Hasta aquí el club era una carrera con dos parejas: todo colgaba de torneos
+   individuales. Estas pruebas defienden que la eliminatoria es una decisión
+   (alineación contra el rival y fatiga) y que los socios son un segundo jefe. */
+comprueba("Copa: el calendario es de verdad, ida y vuelta y sin premier", () => {
+  const cl = fundarClub();
+  const L = copAsegura(cl);
+  exige(L.grupo.length === COP_CLUBES - 1, "el grupo no tiene siete rivales: " + L.grupo.length);
+  exige(new Set(L.grupo).size === L.grupo.length, "hay un club repetido en el grupo");
+  exige(L.cal.length === (COP_CLUBES - 1) * 2, "no es ida y vuelta: " + L.cal.length + " jornadas");
+  // cada equipo juega una vez por jornada
+  L.cal.forEach((j, i) => {
+    const vistos = j.par.flat();
+    exige(vistos.length === COP_CLUBES, "la jornada " + i + " no empareja a todos");
+    exige(new Set(vistos).size === COP_CLUBES, "alguien juega dos veces en la jornada " + i);
+  });
+  // ida y vuelta: el mismo cruce con el campo cambiado
+  const ida = L.cal.slice(0, COP_CLUBES - 1).map(j => j.par.map(p => p.join(">")).sort().join("|"));
+  const vue = L.cal.slice(COP_CLUBES - 1).map(j => j.par.map(p => p.slice().reverse().join(">")).sort().join("|"));
+  exige(ida.join("#") === vue.join("#"), "la vuelta no invierte la ida");
+  // ninguna jornada cae en semana de premier: bastante tiene el club
+  L.cal.forEach(j => exige(slotSemana(j.sem).premier === undefined, "hay jornada en semana de premier: " + j.sem));
+  return L.cal.length + " jornadas en semanas libres, ida y vuelta";
+});
+
+comprueba("Copa: sin cuatro jugadores sanos se pierde un punto sin jugarlo", () => {
+  const cl = fundarClub();
+  copAsegura(cl);
+  exige(cl.plantilla.length === 2, "el club de prueba debería tener dos jugadores");
+  exige(copAlineacionAuto(cl).length === 1, "con dos jugadores solo hay una pareja");
+  // con cuatro sanos ya hay dos parejas, y nadie se repite
+  while (cl.plantilla.length < 4) cl.plantilla.push({ ...cl.plantilla[0], n: "R" + cl.plantilla.length, energia: 100, conf: 55, lesion: null });
+  const dos = copAlineacionAuto(cl);
+  exige(dos.length === 2, "con cuatro sanos deberían salir dos parejas");
+  const nombres = dos.flat().map(j => j.n);
+  exige(new Set(nombres).size === 4, "un jugador aparece en las dos parejas: " + nombres.join(","));
+  // el lesionado y el fundido no cuentan
+  cl.plantilla[0].lesion = { n: "x", sem: 2 };
+  cl.plantilla[1].energia = 10;
+  exige(copDisponibles(cl).length === 2, "cuenta a lesionados o fundidos: " + copDisponibles(cl).length);
+  exige(copAlineacionAuto(cl).length === 1, "alinea a quien no puede jugar");
+  return "cuatro sanos → dos parejas · lesionado y fundido fuera";
+});
+
+comprueba("Copa: la eliminatoria se juega, cuesta energía y mueve la tabla", () => {
+  const cl = fundarClub();
+  const L = copAsegura(cl);
+  while (cl.plantilla.length < 4) cl.plantilla.push({ ...cl.plantilla[0], n: "R" + cl.plantilla.length, energia: 100, conf: 55, lesion: null });
+  cl.plantilla.forEach(j => { j.energia = 100; ATTR_KEYS.forEach(k => j.attrs[k] = 92); });
+  // buscamos una jornada en la que juegues tú
+  let jor = -1;
+  for (let i = 0; i < L.cal.length; i++) if (L.cal[i].par.some(p => p[0] === 0 || p[1] === 0)) { jor = i; break; }
+  exige(jor >= 0, "no hay ninguna jornada tuya");
+  const mias = copAlineacionAuto(cl);
+  const acta = copJuega(cl, jor, mias, 0, 0);
+  exige(acta, "la eliminatoria no se resolvió");
+  exige(acta.mio + acta.suyo >= 2, "no se jugaron los dos partidos: " + JSON.stringify(acta.partidos));
+  exige(acta.mio !== acta.suyo, "una eliminatoria no puede acabar en empate: " + acta.mio + "-" + acta.suyo);
+  exige(cl.plantilla.every(j => j.energia < 100), "jugar no cansó a nadie");
+  // la tabla recoge el resultado y toda la jornada
+  const T = L.tabla;
+  exige(T[0].g + T[0].p === 1, "tu club no tiene la eliminatoria anotada");
+  const jugados = T.reduce((s, f) => s + f.g + f.p, 0);
+  exige(jugados === COP_CLUBES, "no se resolvió la jornada entera: " + jugados);
+  exige(T.reduce((s, f) => s + f.pts, 0) === COP_PTS_VICT * (COP_CLUBES / 2), "los puntos de la jornada no cuadran");
+  // y no se puede volver a jugar
+  exige(!copJuega(cl, jor, mias, 0, 0), "la eliminatoria se puede jugar dos veces");
+  exige(copPuesto(cl) >= 1 && copPuesto(cl) <= COP_CLUBES, "el puesto se va de rango");
+  return `${acta.mio}-${acta.suyo} · ${acta.partidos.length} partidos · toda la jornada resuelta`;
+});
+
+comprueba("Copa: el cruce decide contra quién juega tu mejor pareja", () => {
+  const cl = fundarClub();
+  const L = copAsegura(cl);
+  while (cl.plantilla.length < 4) cl.plantilla.push({ ...cl.plantilla[0], n: "R" + cl.plantilla.length, energia: 100, conf: 55, lesion: null });
+  let jor = -1;
+  for (let i = 0; i < L.cal.length; i++) if (L.cal[i].par.some(p => p[0] === 0 || p[1] === 0)) { jor = i; break; }
+  const cruceP = L.cal[jor].par.find(p => p[0] === 0 || p[1] === 0);
+  const iRival = cruceP[0] === 0 ? cruceP[1] : cruceP[0];
+  const suyas = copParejasRival(cl, iRival);
+  exige(suyas.length === 2, "el rival no presenta dos parejas");
+  exige(nivelPareja(suyas[0]) >= nivelPareja(suyas[1]), "sus parejas no vienen ordenadas por nivel");
+  const mias = copAlineacionAuto(cl);
+  const acta = copJuega(cl, jor, mias, 1, 0);   // cruzadas
+  const primero = acta.partidos[0];
+  exige(primero.rival === suyas[1].nombre, "cruzando, tu pareja 1 debería jugar contra su 2: " + primero.rival);
+  return "cruzadas: tu 1 contra su 2";
+});
+
+comprueba("Copa: los socios son el otro jefe y pagan la cuota", () => {
+  const cl = fundarClub();
+  socAsegura(cl);
+  const base = cl.socios, ing0 = socIngreso(cl);
+  exige(base > 0 && ing0 > 0, "el club nace sin socios");
+  // ganar suma, ganar barriendo suma más, y el derbi lo multiplica
+  const acta = (mio, suyo, casa) => ({ mio, suyo, casa, gane: mio > suyo, partidos: [] });
+  const c2 = fundarClub(); socAsegura(c2);
+  const s0 = c2.socios;
+  socTrasEliminatoria(c2, acta(2, 0, true), false);
+  const barrido = c2.socios - s0;
+  const c3 = fundarClub(); socAsegura(c3);
+  const s3 = c3.socios;
+  socTrasEliminatoria(c3, acta(2, 1, true), false);
+  const sufrido = c3.socios - s3;
+  exige(sufrido > 0, "ganar sufriendo no suma socios");
+  exige(barrido > sufrido, `barrer (+${barrido}) no vale más que ganar sufriendo (+${sufrido})`);
+  // perder en casa duele más que perder fuera
+  const c4 = fundarClub(); socAsegura(c4); socTrasEliminatoria(c4, acta(0, 2, true), false);
+  const c5 = fundarClub(); socAsegura(c5); socTrasEliminatoria(c5, acta(0, 2, false), false);
+  exige(c4.socios < c5.socios, "perder en casa no duele más que perder fuera");
+  // y el derbi multiplica lo que pase
+  const c6 = fundarClub(); socAsegura(c6); socTrasEliminatoria(c6, acta(2, 0, true), true);
+  exige(c6.socios - s0 > barrido, "el derbi no pesa más que una jornada normal");
+  // un socio harto no paga igual que uno entregado
+  cl.humorSocios = 5; const pobre = socIngreso(cl);
+  cl.humorSocios = 95; const rico = socIngreso(cl);
+  exige(pobre < rico * .75, "el humor de la grada no se nota en la caja: " + pobre + " vs " + rico);
+  exige(socEstado({ humorSocios: 95, socios: 1 }) === "entregados" && socEstado({ humorSocios: 5, socios: 1 }) === "hartos", "los estados no cuadran");
+  return `barrido en el derbi: +${c6.socios - s0} socios · cuota ${pobre}€ hartos vs ${rico}€ entregados`;
+});
+
+comprueba("Copa: ceder libera ficha y devuelve al jugador mejorado", () => {
+  const cl = fundarClub();
+  copAsegura(cl); socAsegura(cl);
+  const j = cl.plantilla[0];
+  exige(!cesionPosible(cl, j), "se puede ceder con la plantilla justa");
+  while (cl.plantilla.length < 6) cl.plantilla.push({ ...cl.plantilla[0], n: "R" + cl.plantilla.length, energia: 100, conf: 55, lesion: null, attrs: { ...cl.plantilla[0].attrs } });
+  const sobra = cl.plantilla[5];
+  exige(cesionPosible(cl, sobra), "con plantilla larga no deja ceder");
+  const antes = ATTR_KEYS.reduce((s, k) => s + sobra.attrs[k], 0);
+  exige(cesionHaz(cl, sobra), "no cedió");
+  exige(sobra.cedido && sobra.cedido.hasta === (cl.semana | 0) + CES_SEMANAS, "la cesión no tiene fecha de vuelta");
+  exige(copDisponibles(cl).indexOf(sobra) < 0, "el cedido sigue disponible para la eliminatoria");
+  exige(cesionAhorro(cl) > 0, "ceder no ahorra ficha");
+  // no vuelve antes de tiempo
+  cl.semana += CES_SEMANAS - 1;
+  exige(cesionSemana(cl).length === 0, "vuelve antes de tiempo");
+  cl.semana += 1;
+  const vuelven = cesionSemana(cl);
+  exige(vuelven.length === 1, "no vuelve nunca");
+  exige(!sobra.cedido, "vuelve pero sigue marcado como cedido");
+  exige(ATTR_KEYS.reduce((s, k) => s + sobra.attrs[k], 0) > antes, "vuelve igual que se fue");
+  return "cedido " + CES_SEMANAS + " semanas, vuelve mejorado y con la ficha ahorrada";
+});
+
+comprueba("Copa: apilar o repartir cambia quién juega con quién", () => {
+  const cl = fundarClub();
+  copAsegura(cl);
+  // cuatro jugadores de nivel escalonado
+  const niveles = [90, 80, 70, 60];
+  cl.plantilla = niveles.map((n, i) => ({
+    ...cl.plantilla[0], n: "J" + n, energia: 100, conf: 55, lesion: null,
+    attrs: Object.fromEntries(ATTR_KEYS.map(k => [k, n])),
+  }));
+  const apila = copAlineacionAuto(cl, false);
+  const reparte = copAlineacionAuto(cl, true);
+  const nivPar = par => Math.round((mediaAttrs(par[0].attrs) + mediaAttrs(par[1].attrs)) / 2);
+  exige(nivPar(apila[0]) === 85 && nivPar(apila[1]) === 65, "apilar no junta a los dos mejores: " + apila.map(nivPar));
+  exige(nivPar(reparte[0]) === 75 && nivPar(reparte[1]) === 75, "repartir no equilibra: " + reparte.map(nivPar));
+  // apilar da una pareja más fuerte y otra más débil; repartir, dos iguales
+  exige(nivPar(apila[0]) > nivPar(reparte[0]), "apilar no hace más fuerte a la primera");
+  exige(nivPar(apila[1]) < nivPar(reparte[1]), "apilar no hace más débil a la segunda");
+  // con tres disponibles no hay nada que repartir: solo sale una pareja
+  cl.plantilla[3].lesion = { n: "x", sem: 1 };
+  exige(copAlineacionAuto(cl, true).length === 1, "con tres jugadores inventa una segunda pareja");
+  return "apilar 85/65 · repartir 75/75";
+});

@@ -494,10 +494,10 @@ function pintarClubM(){
   kD.textContent=cl.dinero+"€";
   kD.style.color=cl.dinero<0?"var(--rojo)":cl.dinero<200?"var(--oro)":"";
   document.getElementById("cmSal").textContent="-"+salariosSemana()+"€";
-  if(cmTab==="semana") pintarCmSemana();
+  if(cmTab==="semana"){ pintarCmSemana(); pintarCopa(); }
   if(cmTab==="plantilla") pintarCmPlantilla();
   if(cmTab==="club") pintarCmClub();
-  if(cmTab==="ranking"){renderRanking(document.getElementById("cmTablaRk"));renderClubes(document.getElementById("cmTablaClubes"));renderN1(document.getElementById("cmN1hist"));renderRecords(document.getElementById("cmRecords"));}
+  if(cmTab==="ranking"){pintarCopaTabla();renderRanking(document.getElementById("cmTablaRk"));renderClubes(document.getElementById("cmTablaClubes"));renderN1(document.getElementById("cmN1hist"));renderRecords(document.getElementById("cmRecords"));}
   if(cmTab==="diario"){renderNoticias(document.getElementById("cmFeedNoti"));renderDiario(document.getElementById("cmDiario"),document.getElementById("cmPalmares"));renderSocial(document.getElementById("cmSocial"));renderTrayectoria(document.getElementById("cmTrayec"));}
 }
 function pintarCmSemana(){
@@ -583,6 +583,137 @@ function pintarCmSemana(){
   en.appendChild(btnAll);
   document.getElementById("cmCalendario").innerHTML=calHtml();
 }
+
+/* ================================================================
+   LA COPA DE CLUBES EN PANTALLA
+
+   La decisión de la jornada se toma aquí: ves sus dos parejas, colocas las
+   tuyas y eliges si vas de tú a tú o cruzas. Y de paso decides a quién guardas
+   para el desempate, sabiendo lo que le va a quedar de energía.
+================================================================ */
+function pintarCopa(){
+  const cl=G.clubG, bx=document.getElementById("cmCopa");
+  if(!bx||!cl) return;
+  bx.innerHTML="";
+  const jor=copJornadaDe(cl,semanaTemp());
+  const acta=(cl.copa&&cl.copa.ultima&&cl.copa.ultima._verSem===cl.semana)?cl.copa.ultima:null;
+  if(!jor&&!acta) return;
+  const card=document.createElement("div");card.className="card";
+  if(acta){
+    card.innerHTML=`<h3>${t("cop_acta_hd")} · <em>${acta.mio}-${acta.suyo}</em></h3>`
+      +acta.partidos.map(pt=>pt.wo
+        ? `<div class="brief" style="color:var(--rojo)">${t("cop_wo",{rival:pt.rival})}</div>`
+        : `<div class="brief"><b style="color:${pt.gane?"var(--verde)":"var(--rojo)"}">${pt.marcador}</b> ${pt.mios.join(" + ")} — ${pt.rival}${pt.desempate?` <span class="pill">${t("cop_pt_des")}</span>`:""}</div>`
+      ).join("");
+    bx.appendChild(card);
+    return;
+  }
+  const derbi=copEsDerbi(cl,jor.rival);
+  card.innerHTML=`<h3>${t("cop_hd")} · <em>${t("cop_jor",{n:jor.jor+1,rival:copNombreDe(cl,jor.rival)})}</em> ${derbi?`<span class="pill" style="color:var(--rojo)">${t("cop_derbi")}</span>`:""} <span class="pill">${t(jor.casa?"cop_casa":"cop_fuera")}</span></h3>
+    <div class="foot" style="text-align:left;margin-bottom:8px">${t("cop_sub")}</div>`;
+  // sus parejas, con la identidad táctica que ya sabe leer el juego
+  const suyas=copParejasRival(cl,jor.rival);
+  const sus=document.createElement("div");
+  sus.innerHTML=`<div class="phead">${t("cop_ellos")}</div>`
+    +suyas.map((p,i)=>{
+      const id=(typeof identidadPareja==="function"&&p.jug&&p.jug.length>1)?identidadPareja(p):null;
+      return `<div class="brief"><b>${i+1}.</b> ${p.nombre} <span class="pill">${t("clb_nivel_n",{n:nivelPareja(p)})}</span>${id?` <span class="pill" style="color:var(--oro)">${identNombre(id)}</span>`:""}</div>`;
+    }).join("");
+  card.appendChild(sus);
+  // las tuyas
+  const mias=copAlineacionAuto(cl,!!cl._copReparte);
+  const disp=copDisponibles(cl).length;
+  const mis=document.createElement("div");mis.style.marginTop="9px";
+  mis.innerHTML=`<div class="phead">${t("cop_tuyas")}</div>`
+    +(mias.length?mias.map((par,i)=>`<div class="brief"><b>${i+1}.</b> ${par.map(j=>`${j.n} <span style="color:var(--gris2)">(${mediaAttrs(j.attrs)}·EN ${j.energia})</span>`).join(" + ")}</div>`).join("")
+      :`<div class="brief" style="color:var(--rojo)">${t("cop_nadie")}</div>`);
+  if(mias.length===1) mis.innerHTML+=`<div class="foot" style="text-align:left;color:var(--oro)">${t("cop_sin_gente",{n:disp})}</div>`;
+  card.appendChild(mis);
+  if(mias.length){
+    // reparto: apilar a los dos mejores o hacer dos parejas parejas
+    if(disp>=4){
+      const hdR=document.createElement("div");hdR.className="foot";hdR.style.textAlign="left";hdR.style.margin="9px 0 3px";
+      hdR.textContent=t("cop_rep_hd");
+      card.appendChild(hdR);
+      const fR=document.createElement("div");fR.className="fila";
+      [0,1].forEach(rp=>{
+        const b=document.createElement("button");
+        b.className="selbtn"+(((cl._copReparte?1:0)===rp)?" on":"");
+        b.style.fontSize="11px";
+        b.textContent=t("cop_rep_"+rp);
+        b.onclick=()=>{cl._copReparte=!!rp;pintarClubM();};
+        fR.appendChild(b);
+      });
+      card.appendChild(fR);
+      const dR=document.createElement("div");dR.className="foot";dR.style.textAlign="left";dR.style.marginTop="3px";
+      dR.textContent=t("cop_rep_"+(cl._copReparte?1:0)+"_d");
+      card.appendChild(dR);
+    }
+    // cruce
+    const hd=document.createElement("div");hd.className="foot";hd.style.textAlign="left";hd.style.margin="9px 0 3px";
+    hd.textContent=t("cop_cruce_hd");
+    card.appendChild(hd);
+    const fila=document.createElement("div");fila.className="fila";
+    [0,1].forEach(cr=>{
+      const b=document.createElement("button");
+      b.className="selbtn"+(((cl._copCruce|0)===cr)?" on":"");
+      b.style.fontSize="11px";
+      b.textContent=t("cop_cruce_"+cr);
+      b.onclick=()=>{cl._copCruce=cr;pintarClubM();};
+      fila.appendChild(b);
+    });
+    card.appendChild(fila);
+    const d=document.createElement("div");d.className="foot";d.style.textAlign="left";d.style.marginTop="3px";
+    d.textContent=t("cop_cruce_"+((cl._copCruce|0))+"_d");
+    card.appendChild(d);
+    // desempate
+    if(mias.length>1){
+      const hd2=document.createElement("div");hd2.className="foot";hd2.style.textAlign="left";hd2.style.margin="9px 0 3px";
+      hd2.textContent=t("cop_des_hd");
+      card.appendChild(hd2);
+      const f2=document.createElement("div");f2.className="fila";
+      mias.forEach((par,i)=>{
+        const b=document.createElement("button");
+        b.className="selbtn"+(((cl._copDes|0)===i)?" on":"");
+        b.style.fontSize="11px";
+        b.textContent=par.map(j=>j.n).join(" + ");
+        b.onclick=()=>{cl._copDes=i;pintarClubM();};
+        f2.appendChild(b);
+      });
+      card.appendChild(f2);
+    }
+  }
+  const b=document.createElement("button");b.className="pri";b.style.width="100%";b.style.marginTop="9px";
+  b.textContent=t("cop_jugar");
+  b.onclick=()=>jugarEliminatoria(jor.jor);
+  card.appendChild(b);
+  bx.appendChild(card);
+}
+function jugarEliminatoria(jor){
+  const cl=G.clubG; if(!cl) return;
+  const mias=copAlineacionAuto(cl,!!cl._copReparte);
+  const acta=copJuega(cl,jor,mias,cl._copCruce|0,cl._copDes|0);
+  if(!acta) return;
+  const derbi=copEsDerbi(cl,acta.rival);
+  const soc=socTrasEliminatoria(cl,acta,derbi);
+  if(derbi) anotaDerbi(cl,{club:cl.copa.grupo[acta.rival-1]},acta.gane);
+  acta._verSem=cl.semana;
+  const rival=copNombreDe(cl,acta.rival);
+  avisa(t(acta.gane?"cop_gana":"cop_pierde",{a:acta.mio,b:acta.suyo,rival,soc:Math.abs(soc)}));
+  noticia(acta.gane?"titulo":"ruptura",
+    t("cop_hd")+" · "+t("cop_res",{marc:`${acta.mio}-${acta.suyo}`,rival}),
+    acta.partidos.filter(p=>!p.wo).map(p=>`${p.marcador} ${p.mios.join("+")}`).join(" · "));
+  guardar(); pintarClubM();
+}
+function pintarCopaTabla(){
+  const cl=G.clubG, el=document.getElementById("cmCopaTabla");
+  if(!el||!cl) return;
+  const filas=copTabla(cl);
+  el.innerHTML=`<tr class="hd"><td>#</td><td>${t("sl_col_club")}</td><td class="pts">${t("cop_col_j")}</td><td class="pts">${t("cop_col_g")}</td><td class="pts">${t("cop_col_p")}</td><td class="pts">Pts</td></tr>`
+    +filas.map((f,i)=>`<tr class="${f.yo?"yo":i===0?"top":""}"><td class="pos">${i+1}</td><td><span style="color:${f.color}">●</span> ${f.nombre}</td><td class="pts">${f.g+f.p}</td><td class="pts">${f.g}</td><td class="pts">${f.p}</td><td class="pts">${f.pts}</td></tr>`).join("");
+  const pie=document.getElementById("cmCopaPie");
+  if(pie) pie.textContent=t("cop_tabla_pie",{j:copJugadas(cl),n:cl.copa.cal.length,pos:copPuesto(cl),clubes:COP_CLUBES});
+}
 function pintarCmPlantilla(){
   const cl=G.clubG,el=document.getElementById("cm-plantilla");el.innerHTML="";
   // alineación
@@ -623,6 +754,13 @@ function pintarCmPlantilla(){
       cl.alin=[cl.alin[1],idx];
       guardar();pintarClubM();
     };
+    // cesión: al que no juega se le presta. Ahorras ficha y él crece, pero no lo tienes.
+    if(j.cedido){
+      const ced=document.createElement("div");ced.className="foot";ced.style.flex="1";ced.style.textAlign="right";ced.style.color="var(--oro)";
+      ced.textContent=t("ces_cedido",{club:(CLUBES_NPC[j.cedido.club]||{n:"—"}).n,n:Math.max(0,j.cedido.hasta-(cl.semana|0))});
+      row.appendChild(nom);row.appendChild(ced);alCard.appendChild(row);
+      return;
+    }
     const bB=document.createElement("button");bB.textContent="B";bB.className=enB?"selbtn on":"selbtn";bB.style.flex=".4";
     bB.onclick=()=>{
       if(enA) return;
@@ -663,7 +801,25 @@ function pintarCmPlantilla(){
       <div class="foot" style="text-align:left;margin-top:6px;color:${est.col<0?"var(--rojo)":est.col>0?"var(--verde)":"var(--gris)"}">${est.clave==="salir"?"🚪":est.clave==="exige"?"😠":est.clave==="dudas"?"🤔":"🙂"} ${est.txt}</div>
       ${chipRasgos(j)?`<div style="margin-top:4px">${chipRasgos(j)}</div>`:""}
       <div class="attrs" style="margin-top:10px">${attrHtml(j.attrs)}</div>`;
-    if(cl.plantilla.length>2&&!cl.alin.includes(idx)&&!(cl.alinB&&cl.alinB.includes(idx))){
+    /* Ceder es la alternativa a vender: no cobras, pero no lo pierdes y vuelve
+       mejor. Solo se puede con el que sobra de verdad. */
+    if(j.cedido){
+      const cd=document.createElement("div");cd.className="foot";cd.style.textAlign="left";cd.style.color="var(--oro)";cd.style.marginTop="8px";
+      cd.textContent=t("ces_cedido",{club:(CLUBES_NPC[j.cedido.club]||{n:"—"}).n,n:Math.max(0,j.cedido.hasta-(cl.semana|0))});
+      d.appendChild(cd);
+    } else if(!cl.alin.includes(idx)&&!(cl.alinB&&cl.alinB.includes(idx))){
+      const bc=document.createElement("button");bc.style.width="100%";bc.style.marginTop="8px";
+      const puede=cesionPosible(cl,j);
+      bc.textContent=puede?t("ces_ceder",{n:CES_SEMANAS}):t("ces_no");
+      bc.disabled=!puede;
+      if(puede) bc.onclick=()=>{
+        if(!cesionHaz(cl,j)) return;
+        avisa(t("ces_av",{n:j.n,sem:CES_SEMANAS}));
+        guardar();pintarClubM();
+      };
+      d.appendChild(bc);
+    }
+    if(cl.plantilla.length>2&&!j.cedido&&!cl.alin.includes(idx)&&!(cl.alinB&&cl.alinB.includes(idx))){
       const b=document.createElement("button");b.style.width="100%";b.style.marginTop="10px";
       b.textContent=t("clb_traspasar",{n:mediaAttrs(j.attrs)*4});
       b.onclick=()=>{
@@ -732,7 +888,7 @@ function pintarCmClub(){
   c1.innerHTML=`<h3>${cl.nombre} · <em>finanzas</em></h3>
     <div class="meta" style="margin-top:0">
       <div class="chip">Prestigio <b>${pre}</b></div>
-      <div class="chip">Socios <b>+${socios}€/sem</b></div>
+      <div class="chip">${t("soc_hd")} <b>${(socAsegura(cl),cl.socios)}</b> <span style="color:var(--gris2)">${t("soc_"+socEstado(cl))}</span> <b style="color:var(--lima)">+${socIngreso(cl)}€/sem</b></div>
       <div class="chip">Salarios <b>-${salariosSemana()}€/sem</b></div>
       <div class="chip">Instalaciones <b>Nv ${cl.instal}</b></div>
       <div class="chip">Récord <b>${(cl.vd||{v:0,d:0}).v}-${(cl.vd||{v:0,d:0}).d}</b></div>
@@ -942,9 +1098,30 @@ function avanzarSemanaClub(){
       avisa(t("patro_club_av_oferta",{marca:cl.sponsorOferta.marca,tier:tierTxt(tr),sem:cl.sponsorOferta.sem}));
     }
   }
-  cl.dinero-=salariosSemana();
+  // los socios pagan cuota, y lo que pagan depende de cómo estén de contentos
+  socAsegura(cl);
+  cl.dinero+=socIngreso(cl);
+  if(cl.humorSocios<25&&!cl._avisoSoc){ cl._avisoSoc=true; avisa(t("soc_av_hartos")); }
+  if(cl.humorSocios>=45) cl._avisoSoc=false;
+  // los cedidos vuelven cuando toca, y vuelven crecidos
+  cesionSemana(cl).forEach(({j,k})=>avisa(t("ces_vuelve",{n:j.n,g:atNombre(k)})));
+  cl.dinero-=salariosSemana()-cesionAhorro(cl);
   if(cl.dinero<0) avisa(`⚠ Caja en números rojos (${cl.dinero}€). Los premios y socios tendrán que salvarte.`);
   if((cl.semana-1)%SEMANAS_TEMP===0){
+    // la Copa se cierra antes que nada: es la competición del club
+    if(cl.copa&&cl.copa.temp===temporada()){
+      const pos=copPuesto(cl), premio=copPremio(pos);
+      cl.dinero+=premio;
+      if(pos===1){
+        cl.palmares.push(t("cop_palmares",{t:temporada()}));
+        socMueve(cl,320,12);
+        avisa(t("cop_fin_campeon",{club:cl.nombre,premio}));
+        noticia("titulo",t("cop_hd"),t("cop_fin_campeon",{club:cl.nombre,premio}));
+      } else {
+        socMueve(cl,pos<=3?90:pos>=7?-120:0,pos<=3?4:pos>=7?-6:0);
+        avisa(t("cop_fin_pos",{pos,n:COP_CLUBES,premio}));
+      }
+    }
     const posFin=miPuesto(), ptsFin=cl.pts;
     const titsT=cl.palmares.filter(x=>x.includes(`(T${temporada()-1})`)).length;
     cl.hist=(cl.hist||[]); cl.hist.push({t:temporada()-1,pos:posFin,pts:ptsFin,tit:titsT});
