@@ -3,6 +3,13 @@
 ================================================================ */
 function rivalDeFase(base,fase,usados){
   const _sx=miSexo();
+  /* El primer rival de tu carrera vuelve a aparecer: es lo que convierte a una
+     pareja cualquiera en «esos». Solo las dos primeras temporadas y solo en las
+     rondas de entrada; después manda el sistema de némesis. */
+  if(G.modo==="carrera"&&typeof arrSorteaRival==="function"){
+    const rd=arrSorteaRival(G.carrera,fase);
+    if(rd&&!usados.has(rd.id)&&(rd.sexo||"M")===_sx){ usados.add(rd.id); return rd; }
+  }
   const target=base+FASE_OFFSET[fase];
   let margen=5,cand=[];
   while(cand.length<1&&margen<30){
@@ -910,6 +917,7 @@ function finPartido(){
       e.nemesis.elim=h2r.elim|0;   // el marcador del duelo se mantiene al día
     }
   }
+  if(G.modo==="carrera"&&typeof arrAnotaRival==="function") arrAnotaRival(G.carrera,rival.id,gane);
   const clAhora=clasificaRiv(h2r);
   if(clAhora&&clAhora.tag==="RIVALIDAD"&&(!clAntes||clAntes.tag!=="RIVALIDAD")){
     noticia("hito",t("not_rivalidad_t"),t("not_rivalidad_s",{yo:nombreEntidad().replace("★ ",""),rival:rival.nombre,n:h2r.v+h2r.d}));

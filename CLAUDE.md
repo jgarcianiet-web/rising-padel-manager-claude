@@ -335,6 +335,28 @@ Los efectos están enganchados donde se decide: `costeViaje`, `pickLesion`,
 `decaeMerma`, `cargaPoso`, `precisionStaff`, `fansAdd`, el tier de patrocinio y
 el `rivBoost` del partido.
 
+## Las primeras semanas tienen que contar algo
+
+`engine/arranque.js`. El arranque era el tramo más pobre: aparecías con una
+pareja que no sabías de dónde salía, jugabas contra desconocidos que no volvías
+a ver y nadie te decía en qué te estabas convirtiendo. La guía enseñaba a
+pulsar botones; esto cuenta una historia con los mismos botones.
+
+Tres escenas, y las tres leen el estado en vez de inventarse nada:
+
+1. **La primera pareja, semana 1.** No es un texto de bienvenida: cómo plantees
+   la sociedad (`ARR_PACTOS`) mueve los ejes de `engine/pareja.js` desde el
+   minuto uno y te acompaña meses. Si añades un pacto, tiene que mover ejes.
+2. **El primer rival, semana 3.** Se elige uno de tu nivel (±7) y `rivalDeFase`
+   lo trae de vuelta en las rondas de entrada durante dos temporadas
+   (`arrSorteaRival`). Después manda el sistema de némesis, que necesita varias
+   eliminaciones para arrancar; esto llena justo ese hueco.
+3. **El balance de la semana 10.** `arrBalance` construye las líneas desde
+   datos reales —récord, golpe más trabajado (`c.adapt`), atributo fuerte y
+   flojo, el eje peor de la pareja, la caja, el marcador con el primer rival y
+   el puesto—. **Si el dato no existe, la línea no se pinta**: antes eso que
+   rellenar con vaguedades.
+
 ## No todos los partidos valen lo mismo
 
 `engine/drama.js`. El juego trataba igual la primera ronda de un Continental

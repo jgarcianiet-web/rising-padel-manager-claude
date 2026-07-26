@@ -3556,3 +3556,83 @@ comprueba("Drama: la grada escala con lo que hay en juego", () => {
   exige(fuerte - flojo > .5, "la diferencia no se va a oír: " + flojo + " vs " + fuerte);
   return `grada ${flojo.toFixed(2)} en un partido menor · ${fuerte.toFixed(2)} en uno histórico`;
 });
+
+
+/* El arranque cuenta algo -------------------------------------------------
+   Las tres escenas leen el estado de la partida y una de ellas es una decisión
+   con consecuencias, no un texto de bienvenida. */
+comprueba("Arranque: el pacto con tu primera pareja mueve los ejes", () => {
+  const c = nuevaCarrera();
+  relAsegura(c);
+  exige(ARR_PACTOS.length >= 3, "hay menos de tres maneras de plantear la sociedad");
+  ARR_PACTOS.forEach(p => {
+    exige(Object.keys(p.ef).length, p.id + " no mueve nada: es un texto, no un pacto");
+    Object.keys(p.ef).forEach(k => exige(EJES.indexOf(k) >= 0, p.id + " toca un eje inventado: " + k));
+    [t("arr_pac_" + p.id), t("arr_pac_" + p.id + "_d")].forEach(x =>
+      exige(x && !/^arr_/.test(x), p.id + ": sin traducir"));
+  });
+  // y cada uno deja la relación en un sitio distinto
+  const leal = relLee(c, "lealtad"), amb = relLee(c, "ambicion");
+  exige(arrPacto(c, "serio"), "no deja pactar");
+  exige(relLee(c, "lealtad") > leal && relLee(c, "ambicion") < amb, "el pacto serio no hace lo que dice");
+  const c2 = nuevaCarrera(); relAsegura(c2);
+  arrPacto(c2, "temporal");
+  exige(relLee(c2, "lealtad") < leal && relLee(c2, "ambicion") > amb, "el pacto temporal no hace lo que dice");
+  exige(c.pactoInicial === "serio" && c2.pactoInicial === "temporal", "no se recuerda lo que prometiste");
+  return "tres pactos, tres relaciones distintas desde la semana 1";
+});
+
+comprueba("Arranque: el primer rival es de tu nivel y vuelve", () => {
+  const c = nuevaCarrera();
+  const mio = Math.round((mediaAttrs(c.attrs) + mediaAttrs(c.compi.attrs)) / 2);
+  const r = arrEligeRival(c);
+  exige(r, "no elige primer rival");
+  exige(Math.abs(nivelPareja(r) - mio) <= 7, "el primer rival no es de tu nivel: " + nivelPareja(r) + " vs " + mio);
+  exige((r.sexo || "M") === (c.sexo || "M"), "el primer rival no es de tu circuito");
+  exige(!arrEligeRival(c), "elige un primer rival nuevo cada vez que se pregunta");
+  // el sorteo lo trae en las rondas de entrada, y solo las dos primeras temporadas
+  let veces = 0;
+  for (let i = 0; i < 200; i++) if (arrSorteaRival(c, 1)) veces++;
+  exige(veces > 40 && veces < 160, "la probabilidad de que aparezca se va de madre: " + veces + "/200");
+  exige(!arrSorteaRival(c, 5), "aparece hasta en la final: eso es una némesis, no un compañero de quinta");
+  c.semana = SEMANAS_TEMP * 3 + 1;   // tercera temporada
+  exige(!arrSorteaRival(c, 1), "sigue apareciendo pasadas dos temporadas");
+  // y se lleva el marcador del duelo
+  c.semana = 5;
+  arrAnotaRival(c, r.id, true); arrAnotaRival(c, r.id, false); arrAnotaRival(c, "otro", true);
+  exige(arrRivalDebut(c).v === 1 && arrRivalDebut(c).d === 1, "el marcador del duelo no cuadra");
+  return "rival de nivel " + nivelPareja(r) + " (tú " + mio + "), aparece en " + Math.round(veces / 2) + "% de los sorteos de entrada";
+});
+
+comprueba("Arranque: el balance lee la partida, no rellena", () => {
+  const c = nuevaCarrera();
+  relAsegura(c); frAsegura(c);
+  const L = arrBalance(c);
+  exige(L.length >= 4, "el balance dice muy poco: " + L.length + " líneas");
+  L.forEach(x => exige(x.txt && !/^arr_/.test(x.txt), "sin traducir: " + x.txt));
+  // lo que dice cambia con lo que has hecho
+  exige(L.some(x => x.k === "pocos"), "sin partidos jugados debería decirlo");
+  c.vd = { v: 8, d: 2 };
+  exige(arrBalance(c).some(x => /8/.test(x.txt)), "no lee tu récord");
+  // el golpe más trabajado sale del registro de adaptación, no del aire
+  adaptTrabaja(c, "vibora"); adaptTrabaja(c, "vibora");
+  const conEntreno = arrBalance(c).find(x => x.k === "entreno");
+  exige(conEntreno && conEntreno.txt.indexOf(atNombre("vibora")) >= 0, "no dice qué has trabajado: " + (conEntreno && conEntreno.txt));
+  // y la caja se lee en tres tramos distintos
+  const caja = d => { c.dinero = d; return arrBalance(c).find(x => x.k === "caja").txt; };
+  exige(caja(100) !== caja(2000) && caja(2000) !== caja(9000), "la caja se cuenta igual con 100€ que con 9.000€");
+  // las escenas se preguntan una vez y se marcan vistas
+  c.semana = 1; c.arrVistas = {};
+  exige(arrEscenaPendiente(c) === "pareja", "la primera semana no presenta a la pareja");
+  arrMarca(c, "pareja");
+  exige(arrEscenaPendiente(c) === null, "en la semana 1 ya pide la escena del rival");
+  c.semana = ARR_SEM_RIVAL;
+  exige(arrEscenaPendiente(c) === "rival", "no presenta al rival cuando toca");
+  arrMarca(c, "rival");
+  c.semana = ARR_SEM_BALANCE;
+  exige(arrEscenaPendiente(c) === "balance", "no hace balance cuando toca");
+  arrMarca(c, "balance");
+  c.semana = 40;
+  exige(arrEscenaPendiente(c) === null, "las escenas del arranque vuelven más tarde");
+  return L.length + " líneas, todas leídas del estado";
+});

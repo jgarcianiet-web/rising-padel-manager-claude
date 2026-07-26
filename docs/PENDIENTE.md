@@ -34,15 +34,16 @@ música sobre el bruto, y darle a publicar.**
 
 ---
 
-## Camino al 9/10: la prioridad que queda
+## Camino al 9/10: hecho
 
-Las siete primeras (eventos sistémicos, profundidad de la pareja, entrenamiento
-no resoluble, economía con sumideros, agencia táctica, competición propia del
-club y jerarquía dramática) ya están. Queda:
+Las ocho prioridades están: eventos sistémicos, profundidad de la pareja,
+entrenamiento no resoluble, economía con sumideros, agencia táctica y feedback
+en partido, competición propia del club, jerarquía dramática y primer tramo de
+carrera dirigido. Cada una con su sección en CLAUDE.md y sus pruebas.
 
-8. **Primer tramo de carrera más dirigido.** Primera pareja con escena, primer
-   rival recurrente presentado, y un resumen a las 8-10 semanas que explique qué
-   decisiones te están definiendo.
+Lo siguiente ya no es una lista cerrada: toca **jugar carreras largas y medir**
+—y regenerar las capturas y el tráiler de la tienda, que son de antes de todo
+esto y ya no enseñan el juego que hay.
 
 ---
 

@@ -508,6 +508,10 @@ function mostrarDilema(c){
 function pintarCarrera(){
   const c=G.carrera;
   if(c._crisisPareja&&typeof document!=="undefined"&&document.body&&!document.getElementById("ruptModal")) setTimeout(()=>mostrarRuptura(c),350);
+  // las escenas del arranque: solo en las primeras semanas y una cada vez
+  if(typeof arrEscenaPendiente==="function"&&typeof document!=="undefined"&&document.body
+     &&!document.getElementById("arrModal")&&!document.getElementById("ruptModal")&&!document.getElementById("dilModal"))
+    setTimeout(()=>{ try{ mostrarEscenaArranque(); }catch(e){} },380);
   else if(c.dilemaActivo&&typeof document!=="undefined"&&document.body&&!document.getElementById("dilModal")) setTimeout(()=>mostrarDilema(c),350);
   document.getElementById("topCtx").innerHTML=`<b>${t("ctx_temporada")} ${temporada()}</b> · S${semanaTemp()}/${SEMANAS_TEMP} · ${c.sexo==="F"?t("ctx_circuito_f"):t("ctx_circuito_m")}<br>${c.nombre}, ${c.edad} ${t("ctx_anios")} · 🎟×${c.wildcards||0} · ${t("ctx_forma")} ${rachaHtml(c.racha)}`;
   const nOf=(c.ofertasPatro||[]).length;
@@ -936,6 +940,79 @@ function pintarEstadoFisico(){
     ? t("frm_plano")
     : `${formaLee(c,mej)>0?t("frm_mejor",{g:atNombre(mej)}):""} ${formaLee(c,peo)<0?t("frm_peor",{g:atNombre(peo)}):""}`.trim();
   bx.appendChild(fr);
+}
+
+/* ================================================================
+   LAS ESCENAS DEL ARRANQUE
+
+   Se preguntan una vez por semana y cada una se marca vista. Van en modal
+   propio porque son lo único que pasa esa semana: si compiten con la pantalla
+   de la semana, no las lee nadie.
+================================================================ */
+function arrModal(){
+  return document.getElementById("arrModal")||(()=>{
+    const d=document.createElement("div");d.id="arrModal";
+    d.style.cssText="position:fixed;inset:0;background:rgba(8,11,17,.95);z-index:84;display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto";
+    document.body.appendChild(d);return d;})();
+}
+function mostrarEscenaArranque(){
+  const c=G.carrera; if(!c) return false;
+  const k=arrEscenaPendiente(c);
+  if(!k) return false;
+  if(k==="pareja") return escenaPareja(c);
+  if(k==="rival") return escenaRival(c);
+  return escenaBalance(c);
+}
+/* 1 · quién es tu primera pareja y qué le dices */
+function escenaPareja(c){
+  const ov=arrModal();
+  ov.innerHTML=`<div class="card" style="max-width:460px;width:100%;margin:auto">
+    <h3 style="margin-top:0">${t("arr_par_hd")} · <em>${c.compi.n}</em></h3>
+    <div style="display:flex;gap:11px;align-items:center;margin-bottom:9px">
+      <div>${avatarSVG(c.compi,46)}</div>
+      <div style="font-size:calc(12.5px * var(--esc));line-height:1.5">${t("arr_par_txt",{n:c.compi.n})}</div>
+    </div>
+    <div id="arrOps"></div>
+  </div>`;
+  const ops=document.getElementById("arrOps");
+  ARR_PACTOS.forEach(p=>{
+    const d=document.createElement("div");d.className="opcion";
+    d.innerHTML=`<b>${t("arr_pac_"+p.id)}</b><div class="d" style="margin-bottom:6px">${t("arr_pac_"+p.id+"_d")}</div>`;
+    const b=document.createElement("button");b.className="pri";b.style.width="100%";
+    b.textContent=t("arr_pac_elegir");
+    b.onclick=()=>{ arrPacto(c,p.id); arrMarca(c,"pareja"); quitarEl(ov); guardar(); pintarCarrera(); };
+    d.appendChild(b);ops.appendChild(d);
+  });
+  return true;
+}
+/* 2 · el primer rival, presentado con nombre */
+function escenaRival(c){
+  const r=arrEligeRival(c)||(arrRivalDebut(c)&&G.world.parejas.find(p=>String(p.id)===String(c.rivalDebut.id)));
+  if(!r){ arrMarca(c,"rival"); return false; }
+  const rd=arrRivalDebut(c);
+  const ov=arrModal();
+  ov.innerHTML=`<div class="card" style="max-width:460px;width:100%;margin:auto">
+    <h3 style="margin-top:0">${t("arr_riv_hd")}</h3>
+    <div style="display:flex;gap:4px;margin-bottom:8px">${(r.jug||[]).map(j=>avatarSVG(j,42)).join("")}</div>
+    <div style="font-size:calc(13px * var(--esc));font-weight:700;margin-bottom:4px">${r.nombre} <span class="pill">${t("clb_nivel_n",{n:nivelPareja(r)})}</span></div>
+    <div style="font-size:calc(12.5px * var(--esc));line-height:1.5;margin-bottom:11px">${t("arr_riv_txt",{n:r.nombre})}</div>
+    <button class="pri" id="arrOk" style="width:100%">${t("arr_riv_ok")}</button>
+  </div>`;
+  document.getElementById("arrOk").onclick=()=>{ arrMarca(c,"rival"); quitarEl(ov); guardar(); pintarCarrera(); };
+  return true;
+}
+/* 3 · el balance de las diez semanas */
+function escenaBalance(c){
+  const L=arrBalance(c);
+  const ov=arrModal();
+  ov.innerHTML=`<div class="card" style="max-width:460px;width:100%;margin:auto">
+    <h3 style="margin-top:0">${t("arr_bal_hd")}</h3>
+    <div class="foot" style="text-align:left;margin-bottom:9px">${t("arr_bal_sub")}</div>
+    ${L.map(x=>`<div class="brief">${x.txt}</div>`).join("")}
+    <button class="pri" id="arrOk" style="width:100%;margin-top:10px">${t("arr_bal_ok")}</button>
+  </div>`;
+  document.getElementById("arrOk").onclick=()=>{ arrMarca(c,"balance"); quitarEl(ov); guardar(); pintarCarrera(); };
+  return true;
 }
 function pintarJugador(){
   const c=G.carrera;
