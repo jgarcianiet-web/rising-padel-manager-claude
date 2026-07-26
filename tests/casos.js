@@ -3497,3 +3497,62 @@ comprueba("Copa: apilar o repartir cambia quién juega con quién", () => {
   exige(copAlineacionAuto(cl, true).length === 1, "con tres jugadores inventa una segunda pareja");
   return "apilar 85/65 · repartir 75/75";
 });
+
+
+/* Jerarquía dramática: no todos los partidos valen lo mismo ----------------
+   La regla: el peso sale de hechos comprobables del estado de la partida. Si un
+   partido «parece» importante pero no cambia nada, no es importante. */
+comprueba("Drama: una final de Corona pesa más que una primera ronda", () => {
+  const c = nuevaCarrera();
+  const bronce = CATS[0], corona = CATS[6];
+  const p1 = pesoPartido(c, bronce, 2);      // octavos del torneo más pequeño
+  const p2 = pesoPartido(c, bronce, 5);      // su final
+  const p3 = pesoPartido(c, corona, 2);      // octavos del más grande
+  const p4 = pesoPartido(c, corona, 5);      // su final
+  exige(p1 < p2 && p1 < p3, "la ronda y la categoría no pesan: " + [p1, p2, p3].join("/"));
+  exige(p4 > p2 && p4 > p3, "la final del torneo grande no es lo que más pesa");
+  exige(pesoTier(p1) === "rutina", "una primera ronda de Bronce ya es un partidazo: " + pesoTier(p1));
+  exige(pesoTier(p4) === "historica", "la final de una Corona no llega a histórica: " + p4);
+  // los cortes están altos a propósito: si todo es grande, nada lo es
+  const medios = [CATS[2], CATS[3]].map(cat => pesoTier(pesoPartido(c, cat, 3)));
+  exige(medios.every(x => x === "rutina" || x === "seria"), "unos cuartos cualesquiera ya son «grandes»: " + medios);
+  return `Bronce 1ª ronda ${p1} · Corona final ${p4}`;
+});
+
+comprueba("Drama: lo que te juegas son hechos, no adjetivos", () => {
+  const c = nuevaCarrera();
+  const corona = CATS[6];
+  // sin palmarés, la final es tu primer título
+  const L = enJuego(c, corona, 5, null);
+  exige(L.some(x => x.k === "titulo"), "una final no pone el título en juego");
+  exige(L.some(x => x.k === "primero"), "el primer título no se nombra");
+  // con títulos ya no
+  c.palmares.push("algo");
+  exige(!enJuego(c, corona, 5, null).some(x => x.k === "primero"), "sigue diciendo que es el primero");
+  // en octavos no hay título en juego
+  exige(!enJuego(c, corona, 2, null).some(x => x.k === "titulo"), "unos octavos reparten título");
+  // la némesis y la bestia negra se reconocen
+  const riv = { id: "r1", nombre: "Rivales SA" };
+  c.nemesis = { id: "r1", elim: 2 };
+  exige(enJuego(c, corona, 3, riv).some(x => x.k === "nemesis"), "la némesis no cuenta");
+  c.nemesis = null;
+  c.h2h = { r1: { v: 0, d: 4 } };
+  exige(enJuego(c, corona, 3, riv).some(x => x.k === "bestia"), "la bestia negra no cuenta");
+  // y todo lo que se pinta está traducido
+  enJuego(c, corona, 5, riv).forEach(x => exige(x.txt && !/^dra_/.test(x.txt), "sin traducir: " + x.txt));
+  DRAMA_TIERS.forEach(k => exige(tierNombre(k) && !/^dra_/.test(tierNombre(k)), k + " sin traducir"));
+  // un partido sin nada en juego no saca cartel
+  const vacio = enJuegoHTML(c, CATS[0], 2, null);
+  exige(vacio === "", "pinta cartel sin nada que contar");
+  const lleno = enJuegoHTML(c, corona, 5, riv);
+  exige(lleno.indexOf("drama") > 0 && !/dra_/.test(lleno), "el cartel sale mal: " + lleno.slice(0, 80));
+  return enJuego(c, corona, 5, riv).length + " hechos en juego en una final con bestia negra";
+});
+
+comprueba("Drama: la grada escala con lo que hay en juego", () => {
+  const flojo = dramaGrada(10), fuerte = dramaGrada(95);
+  exige(flojo < fuerte, "la grada suena igual en todo");
+  exige(flojo >= .2 && fuerte <= 1, "la intensidad se sale del rango que acepta sfxGrada");
+  exige(fuerte - flojo > .5, "la diferencia no se va a oír: " + flojo + " vs " + fuerte);
+  return `grada ${flojo.toFixed(2)} en un partido menor · ${fuerte.toFixed(2)} en uno histórico`;
+});

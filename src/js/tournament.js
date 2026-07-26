@@ -279,6 +279,28 @@ function coachTactica(){
   const diana = Math.abs((r.jug[0]?mediaAttrs(r.jug[0].attrs):50)-(r.jug[1]?mediaAttrs(r.jug[1].attrs):50))>=5?"debil":"repartir";
   TACT.agres=agres; TACT.diana=diana;
 }
+
+/* Levantar el trofeo. Solo para los títulos que pesan de verdad (ver
+   engine/drama.js): si saliera con cualquier torneo dejaría de significar nada. */
+function celebraTitulo(){
+  if(typeof document==="undefined"||!document.body||!torneo) return;
+  const e=ent(), cat=CATS[torneo.cat];
+  const n1=G.modo==="carrera"?G.carrera.nombre:(alineacion()?alineacion()[0].n:e.nombre);
+  const n2=G.modo==="carrera"?G.carrera.compi.n:(alineacion()?alineacion()[1].n:"");
+  const ov=document.getElementById("celebraModal")||(()=>{
+    const d=document.createElement("div");d.id="celebraModal";
+    d.style.cssText="position:fixed;inset:0;background:radial-gradient(ellipse at 50% 40%,#2A2410,#07090D 75%);z-index:88;display:flex;align-items:center;justify-content:center;padding:16px;text-align:center";
+    document.body.appendChild(d);return d;})();
+  ov.innerHTML=`<div style="max-width:460px">
+    <div style="font-size:calc(52px * var(--esc));line-height:1">🏆</div>
+    <div style="font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:calc(26px * var(--esc));color:var(--oro);margin:8px 0 2px;letter-spacing:1px">${torneo.nombre}</div>
+    ${(torneo.nombre||"").indexOf(catNombre(cat))<0?`<div class="foot" style="margin:0 0 4px">${t("dra_celebra_hd",{cat:catNombre(cat)})}</div>`:""}
+    <div style="font-size:calc(15px * var(--esc));margin:10px 0 16px">${t("dra_celebra_sub",{n1,n2})}</div>
+    <button class="pri" id="celebraOk" style="width:100%">${t("dra_celebra_cerrar")}</button>
+  </div>`;
+  const b=document.getElementById("celebraOk");
+  if(b) b.onclick=()=>quitarEl(ov);
+}
 function pintarTorneo(){
   pintarPlanPartido();
   document.getElementById("tNombre").innerHTML=`${t(torneo.premierT?"circ_elite":"circ_cont")} · ${torneo.nombre} · <em>${faseNombre(torneo.fase)}</em>`;
@@ -310,6 +332,7 @@ function pintarTorneo(){
   <span style="font-size:11px;color:var(--gris)">${h2txt}</span><br>
   <span style="font-size:11px;color:var(--gris)">${entrada}</span><br>
   <span style="font-size:11px;color:var(--gris)">${infoPropia()}</span>
+  ${(typeof enJuegoHTML==="function")?enJuegoHTML(ent(),CATS[torneo.cat],torneo.fase,r):""}
   ${_idenHTML}
   ${infoHTML}`;
   document.getElementById("tCuadro").innerHTML=pintarCuadroHTML();
@@ -404,6 +427,13 @@ function empezarPartido(ver,coach){
       addCom(`${clPre.emo} ${clPre.tag==="RIVALIDAD"?`¡Capítulo ${h2pre.v+h2pre.d+1} de la rivalidad! ${h2pre.v}-${h2pre.d} hasta hoy.`:clPre.tag==="BESTIA NEGRA"?`Vuestra bestia negra al otro lado: ${h2pre.v}-${h2pre.d}. A romper el muro.`:`Un viejo cliente: ${h2pre.v}-${h2pre.d} a favor. Que no se despierte.`}`,0);
     }
     initPlayers();pintaMarcadorP();pintaChallenges();pintaTactica();
+    /* La grada del primer punto ya cuenta qué clase de partido es esto: en una
+       final llena se oye, en una primera ronda de Bronce no. */
+    if(typeof pesoPartido==="function"&&torneo){
+      const _pz=pesoPartido(ent(),CATS[torneo.cat],torneo.fase,rival);
+      match.peso=_pz;
+      if(_pz>=DRAMA_CORTES[1]) setTimeout(()=>sfxGrada(dramaGrada(_pz)),300);
+    }
     musicaOn();
     irA("partido");
     setTimeout(()=>jugarPuntoAnim(),400);
@@ -624,7 +654,7 @@ function continuarTrasPunto(g){
   const r=resolverPunto(g);
   if(match&&match.momento&&match.momento.aviso===g){
     addCom(`🔥 Parcial de ${match.momento.run} puntos seguidos de ${teams[g].nombre}: se vienen arriba.`,g);
-    sfxGrada(.5);
+    sfxGrada((typeof dramaGrada==="function")?dramaGrada(match.peso||30):.5);
   }
   if(r.set!==undefined){ sfxSet(); addCom(`■ Set para ${teams[r.set].nombre} (${r.marcadorSet}).`,r.set); }
   pintaMarcadorP();
@@ -997,6 +1027,9 @@ function finPartido(){
     }
     ent()._ultCamp=true;
     sfxTitulo();
+    /* Un título histórico no se cuenta con el mismo aviso que uno más: si el
+       partido pesaba, se levanta el trofeo en pantalla. */
+    if(typeof pesoPartido==="function"&&match&&pesoTier(match.peso||0)==="historica") celebraTitulo();
     noticia("titulo",t("not_campeones_t",{torneo:torneo.nombre}),t("not_campeones_s",{entidad:G.modo==="carrera"?G.carrera.nombre+"/"+G.carrera.compi.n:G.clubG.nombre,pts:torneo.pts[0],premio:torneo.premio[0]}),miParejaProt());
     avisa(t("aviso_campeones",{torneo:torneo.nombre,pts:torneo.pts[0],din:neto(torneo.premio[0])})+extra+(seLesiona?` ⚠ ${lesionTxt}.`:""));
     cerrarTorneo();return;

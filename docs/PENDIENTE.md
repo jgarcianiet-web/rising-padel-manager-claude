@@ -34,14 +34,12 @@ música sobre el bruto, y darle a publicar.**
 
 ---
 
-## Camino al 9/10: las dos prioridades que quedan
+## Camino al 9/10: la prioridad que queda
 
-Las seis primeras (eventos sistémicos, profundidad de la pareja, entrenamiento
-no resoluble, economía con sumideros, agencia táctica y competición propia del
-club) ya están. Las demás, en el orden en que se decidieron:
+Las siete primeras (eventos sistémicos, profundidad de la pareja, entrenamiento
+no resoluble, economía con sumideros, agencia táctica, competición propia del
+club y jerarquía dramática) ya están. Queda:
 
-7. **Presentación con jerarquía dramática.** Que una final no se parezca a una
-   semana cualquiera: portada especial, ceremonia de retirada, audio contextual.
 8. **Primer tramo de carrera más dirigido.** Primera pareja con escena, primer
    rival recurrente presentado, y un resumen a las 8-10 semanas que explique qué
    decisiones te están definiendo.

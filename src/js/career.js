@@ -574,12 +574,15 @@ function pintarEventosSemana(td, disponible, motivoNo){
       td.appendChild(d);return;
     }
     const modo=cat.tf ? t("sem_modo_tf") : ent2===2 ? t("sem_modo_directo",{pos}) : t("sem_modo_previa");
+    // si el torneo de esta semana puede acabar en algo grande, que se vea aquí
+    const _pz=(typeof pesoPartido==="function")?pesoPartido(ent(),cat,5,null):0;
+    const _tier=(typeof pesoTier==="function")?pesoTier(_pz):"rutina";
     const slotE=slotSemana(semanaTemp());
     const sede=(cat.premier&&slotE.premier===ci)?`${slotE.ciudad}`:t("sem_sede_nacional");
     const viaje=costeViaje(ci);
     // si tienes el centro plantado ahí, el viaje ya sale más barato: que se vea
     const enCasa=(typeof invRegion==="function")&&slotE.region&&invRegion(ent())===slotE.region;
-    d.innerHTML=`<b>${catNombre(cat)}</b> ${tag} <span class="pill">📍 ${sede}</span>${enCasa?` <span class="pill" style="color:var(--lima)">${t("sem_en_casa")}</span>`:""} <span class="pill">${t("sem_viaje",{n:viaje})}</span> <span class="pill">${t("sem_campeon",{n:cat.premio[0]})}</span><div class="d">${modo}</div>`;
+    d.innerHTML=`<b>${catNombre(cat)}</b> ${tag}${(_tier==="grande"||_tier==="historica")?` <span class="pill" style="color:${tierColor(_tier)}">${tierNombre(_tier)}</span>`:""} <span class="pill">📍 ${sede}</span>${enCasa?` <span class="pill" style="color:var(--lima)">${t("sem_en_casa")}</span>`:""} <span class="pill">${t("sem_viaje",{n:viaje})}</span> <span class="pill">${t("sem_campeon",{n:cat.premio[0]})}</span><div class="d">${modo}</div>`;
     const b=document.createElement("button");
     b.className=cat.premier?"pri":"azul";b.style.width="100%";
     const sinCaja=ent().dinero<viaje;

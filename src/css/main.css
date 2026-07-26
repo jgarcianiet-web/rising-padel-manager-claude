@@ -345,3 +345,11 @@ body.con-guia #toasts{bottom:calc(28px + var(--guiaAlto,72px))}
   animation:guiaLatido 1.5s ease-in-out infinite}
 @keyframes guiaLatido{0%,100%{outline-color:var(--lima)}50%{outline-color:rgba(198,245,60,.28)}}
 @media(prefers-reduced-motion:reduce){.guiaFoco{animation:none}}
+/* Jerarquía dramática: el cartel de «lo que te juegas». El color lo pone el
+   código según el peso del partido, así que aquí solo va la forma. */
+.drama{border:1px solid var(--borde);border-left-width:3px;background:rgba(255,255,255,.03);
+  padding:8px 10px;margin:8px 0;border-radius:4px}
+.dramaHd{font-family:'IBM Plex Mono',monospace;font-size:calc(9px * var(--esc));letter-spacing:2px;
+  text-transform:uppercase;margin-bottom:5px}
+.dramaLn{font-size:calc(12px * var(--esc));line-height:1.5;padding:1px 0}
+.dramaLn+.dramaLn{border-top:1px dotted var(--borde2);margin-top:3px}

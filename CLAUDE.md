@@ -335,6 +335,28 @@ Los efectos están enganchados donde se decide: `costeViaje`, `pickLesion`,
 `decaeMerma`, `cargaPoso`, `precisionStaff`, `fansAdd`, el tier de patrocinio y
 el `rivBoost` del partido.
 
+## No todos los partidos valen lo mismo
+
+`engine/drama.js`. El juego trataba igual la primera ronda de un Continental
+Bronce que la final de una Corona: mismo cartel, misma grada, misma ficha. El
+`pesoPartido` (0..100) sale de la categoría, la ronda y **lo que hay en juego de
+verdad**, y de ahí salen el cartel de «lo que te juegas», la intensidad de la
+grada y si al ganar se levanta el trofeo en pantalla.
+
+Dos reglas:
+
+1. **El peso sale de hechos comprobables del estado de la partida**, no de una
+   etiqueta puesta a mano: el título, que sea el primero, que te ponga número 1,
+   los puntos que defiendes, la némesis, la bestia negra, el último año.
+   `enJuego` devuelve esa lista y cada entrada aporta su peso. Un partido que
+   «parece» importante pero no cambia nada, no lo es, y entonces no saca cartel.
+2. **Los cortes están altos a propósito.** La primera tabla hacía «histórica»
+   cualquier final —hasta la de un Continental Bronce— y la palabra dejaba de
+   significar algo. Medido con los cortes de ahora: octavos de Bronce 10
+   (rutina), primera final de Bronce 62 (grande), final de Bronce con el
+   palmarés hecho 46 (seria), octavos de Corona 34 (seria) y final de Corona 78
+   (histórica). Si tocas los pesos, vuelve a sacar esa tabla.
+
 ## El club tiene competición propia: la Copa de Clubes
 
 `engine/copa.js`. Antes el modo club era una carrera con dos parejas: todo
