@@ -123,8 +123,14 @@ function resolveShot(pl,shotKey,ctx,rallyLen){
      lista de eventos: esto se ejecuta decenas de veces por punto. */
   const _ev=(typeof evGolpe==="function")?evGolpe(shotKey):null;
   if(_ev) err*=_ev.err;
+  /* El plan de la pareja, escalado por lo dominado que esté. Solo se aplica a
+     TU equipo: es vuestro trabajo de meses, no una regla del circuito. */
+  const _mio=ctx.team===0&&match&&!match.cpu;
+  const _pj=(_mio&&typeof pjGolpe==="function")?pjGolpe(shotKey):null;
+  if(_pj) err*=_pj.err;
   let win=Math.min(.52,s.win*q*(1+.25*q));
   if(_ev) win*=_ev.win;
+  if(_pj) win*=_pj.win;
   if(ctx.oppDef) win*=clamp(1.25-ctx.oppDef/160,.7,1.1);   // la defensa rival llega a más bolas
   const mia2=ctx.team===0&&match&&!match.cpu;
   if(mia2&&TACT.agres==="agresiva") win*=1.22;

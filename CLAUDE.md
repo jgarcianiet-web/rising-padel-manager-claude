@@ -208,6 +208,48 @@ visual: si la frase bebiera del flujo con semilla, esa moneda movería la
 simulación y dos partidas con la misma semilla dejarían de coincidir. Pasó al
 ampliar el repertorio, y la prueba de la semilla lo cazó.
 
+## La pareja es coprotagonista, no un segundo bloque de atributos
+
+`engine/pareja.js` sostiene tres cosas que van juntas y que hay que respetar al
+tocarlas.
+
+1. **El plan conjunto se domina con el tiempo.** `PLANES_PAREJA` usa los mismos
+   modificadores que los eventos, pero `pjGolpe` los aplica **escalados por
+   `dominio/100`**: un plan recién elegido no cambia nada. `planElige` pone el
+   dominio a cero y `planRompe` deja solo `PLAN_DOM_RUPTURA` (18%). Si añades un
+   plan, tiene que cambiar *qué golpes te salen*, no solo el texto.
+2. **Son seis ejes porque se arreglan de forma distinta.** `compiMoral` sigue
+   mandando en la ruptura y todo lo que ya la usaba funciona igual; los `EJES`
+   explican por qué está como está. Que no crea en tu juego se arregla ganando;
+   que esté harta de aeropuertos, no. `relSemana` mueve cada eje por su motivo, y
+   necesita leer `c._jugoTorneo` **antes** de que la semana lo apague.
+3. **Las conversaciones las empiezas tú y pueden salir mal.** Cada `CHARLA`
+   cuesta (energía o dinero), tiene enfriamiento y un `riesgo` que sube cuando el
+   eje que peor está ya está roto. Una conversación que siempre sale bien es un
+   botón de subir moral, no una decisión.
+
+Los tres sitios donde cambia el compañero (fichaje, ruptura y retirada) llaman a
+`parejaNueva(c)`: si añades un cuarto, llámalo también o la etapa nueva heredará
+los automatismos y los enfriamientos de la anterior.
+
+### Cómo se miden estas cosas (y por qué `golpeTodo:{err}` es peligroso)
+
+Un plan se ajusta **midiendo partidos, no leyendo el multiplicador**. El banco
+de pruebas que funciona monta dos parejas idénticas, fija el personaje (rasgos,
+estilo y carácter, que si no tapan el efecto) y juega N partidos por plan
+**reiniciando la semilla en cada uno con `rndSemilla(sem,sem)`** — ojo: escribir
+`G._rngS` no reinicia nada, el estado del generador es una variable de módulo.
+Con eso la comparación es pareada y 500 partidos bastan; sin eso, la horquilla se
+come cualquier diferencia por debajo de 5 puntos.
+
+La primera versión de los planes iba de 13,9% a 36,3% de victorias: la palanca
+`golpeTodo:{err}` recorta el error de **todos** los golpes, y como la mayoría de
+los puntos mueren en fallo y no en golpe ganador, un −12% ahí valía más que
+cualquier bonificación de golpe. Al revés, un +3% de error global hundía el plan
+de red por debajo de no tener plan. Hoy los cinco planes valen entre +3 y +5
+puntos de victoria sobre «sin plan», y `tests/casos.js` no deja bajar ningún
+`golpeTodo.err` de 0,95.
+
 ## El modo club tiene cara: filosofía, junta y derbi
 
 Tres cosas que se fijan al fundar (`club.js`) y que hay que respetar:

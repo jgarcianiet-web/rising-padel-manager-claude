@@ -388,6 +388,7 @@ function rompeConCompi(c){
   const protRup={jug:[{n:c.nombre,sexo:c.sexo,_ropa:"#C6F53C"},{n:ex,sexo:c.sexo}]};
   c.compi={...compiInicial(c.sexo||"M"),attrs:mkAttrsNivel(CHINO.nivel,CHINO.estilo)};
   c.quimica=CHINO.quim;c.compiMoral=70;c.compiPlan="auto";c._crisisPareja=null;
+  parejaNueva(c);
   noticia("ruptura",t("not_ruptura_t",{ex}),t("not_ruptura_s",{compi:c.sexo==="F"?"China":"Chino"}),protRup);
   avisa(t("rup_av_rompe",{ex,compi:c.sexo==="F"?"China":"Chino"}));
 }
@@ -795,6 +796,7 @@ function pintarJugador(){
     <div class="chip">${t("comp_moral")} <b style="color:${colAttr(moral)}">${moral}</b></div>
     <div class="chip">${t("comp_afinidad")} <b style="color:${colAttr(afin)}">${afin}</b></div>
     ${(()=>{const r=chipRasgos(c.compi);return r?`<div style="width:100%;margin-top:3px">${r}</div>`:"";})()}`;
+  pintarPareja();
   const mk=document.getElementById("mercado");mk.innerHTML="";
   const morAviso=document.createElement("div");
   morAviso.className="foot";morAviso.style.textAlign="left";morAviso.style.marginBottom="7px";
@@ -847,6 +849,108 @@ function pintarJugador(){
     b.onclick=()=>{c.sponsor={...of};c.ofertasPatro=[];noticia("contrato",t("patro_not_t",{marca:of.marca,quien:nombreEntidad().replace("★ ","")}),t("patro_not_s",{tier:tierTxt(of.tier),sem:of.sem,obj:of.objetivo}));avisa(t("patro_av_firma",{marca:of.marca,tier:tierTxt(of.tier),sem:of.sem,obj:of.objetivo}));fansAdd(of.tier>=3?300:60,t("fan_patro"));guardar();pintarCarrera();};
     d.appendChild(b);st.appendChild(d);
   });
+}
+/* ---------------- la pareja: plan, ejes y conversaciones ----------------
+   Las tres cosas viven en la misma tarjeta que la pareja porque son la misma
+   conversación: cómo jugáis, cómo estáis y qué piensas hacer al respecto. */
+function pintarPareja(){
+  const c=G.carrera;
+  const bxP=document.getElementById("parejaPlan"),
+        bxE=document.getElementById("parejaEjes"),
+        bxC=document.getElementById("parejaCharlas");
+  if(!bxP||!bxE||!bxC) return;
+  bxP.innerHTML="";bxE.innerHTML="";bxC.innerHTML="";
+  if(!c.compi){
+    bxP.innerHTML=`<div class="foot" style="text-align:left">${t("pj_sin_pareja")}</div>`;
+    return;
+  }
+  planAsegura(c);relAsegura(c);
+  /* --- plan de juego --- */
+  const hdP=document.createElement("div");hdP.className="phead";hdP.textContent=t("pj_plan_hd");
+  bxP.appendChild(hdP);
+  const actual=planPareja(c), dom=planDominio(c);
+  Object.keys(PLANES_PAREJA).forEach(id=>{
+    const es=id===actual;
+    const d=document.createElement("div");d.className="opcion";
+    if(es) d.style.borderColor="var(--lima)";
+    d.innerHTML=`<b>${planNombre(id)}</b>${es?` <span class="pill" style="color:var(--lima)">${t("pj_actual")}</span>`:""}
+      <div class="d">${planDesc(id)}</div>
+      <div class="d" style="color:var(--azul);margin-bottom:0">${planComo(id)}</div>`;
+    if(es){
+      if(id!=="libre"){
+        const col=dom>=70?"var(--verde)":dom>=35?"var(--oro)":"var(--rojo)";
+        const b=document.createElement("div");b.className="abar";b.style.marginTop="7px";
+        b.innerHTML=`<i style="width:${Math.max(2,dom)}%;background:${col}"></i>`;
+        d.appendChild(b);
+        const tx=document.createElement("div");tx.className="foot";tx.style.textAlign="left";tx.style.marginTop="2px";
+        tx.textContent=dom>0?t("pj_dominio",{n:dom}):t("pj_dominio_0");
+        d.appendChild(tx);
+      }
+    } else {
+      const b=document.createElement("button");b.style.width="100%";b.style.marginTop="4px";
+      b.textContent=t("pj_elegir");
+      b.onclick=()=>elegirPlanPareja(id);
+      d.appendChild(b);
+      if(dom>=25&&id!=="libre"){
+        const av=document.createElement("div");av.className="foot";av.style.textAlign="left";av.style.color="var(--oro)";
+        av.textContent=t("pj_cambiar");
+        d.appendChild(av);
+      }
+    }
+    bxP.appendChild(d);
+  });
+  /* --- los seis ejes --- */
+  const hdE=document.createElement("div");hdE.className="phead";hdE.textContent=t("pj_ejes_hd");
+  bxE.appendChild(hdE);
+  const grid=document.createElement("div");grid.className="attrs";
+  EJES.forEach(k=>{
+    const v=relLee(c,k), col=colAttr(v);
+    const cel=document.createElement("div");cel.className="acell";
+    // sin `capitalize`: los ejes tienen nombre de dos palabras y quedaría
+    // «Reparto De Protagonismo»
+    cel.innerHTML=`<div class="arow"><span class="k" style="text-transform:none">${relNombre(k)}</span><span class="v" style="color:${col}">${t("eje_"+relEstado(v))}</span></div>
+      <div class="abar"><i style="width:${Math.max(2,v)}%;background:${col}"></i></div>
+      <div class="foot" style="text-align:left;margin-top:0">${relDesc(k)}</div>`;
+    grid.appendChild(cel);
+  });
+  bxE.appendChild(grid);
+  const peor=document.createElement("div");peor.className="foot";peor.style.textAlign="left";peor.style.marginTop="7px";
+  peor.textContent=t("pj_peor",{n:relNombre(relPeor(c))});
+  bxE.appendChild(peor);
+  /* --- conversaciones --- */
+  const hdC=document.createElement("div");hdC.className="phead";hdC.textContent=t("pj_charlas_hd",{n:c.compi.n});
+  bxC.appendChild(hdC);
+  // primero las que se pueden tener hoy: la lista es larga y lo que importa es
+  // qué puedes hacer esta semana, no el catálogo completo
+  CHARLAS.slice().sort((a,b)=>(charlaDisponible(c,b.id)?1:0)-(charlaDisponible(c,a.id)?1:0)).forEach(ch=>{
+    const d=document.createElement("div");d.className="opcion";
+    const precio=[];
+    if(ch.energia) precio.push(`<span class="pill">${t("pj_coste_en",{n:ch.energia})}</span>`);
+    if(ch.dinero) precio.push(`<span class="pill" style="color:var(--lima)">${t("pj_coste_di",{n:ch.dinero})}</span>`);
+    d.innerHTML=`<b>${charlaNombre(ch.id)}</b> ${precio.join(" ")}
+      <div class="d">${charlaDesc(ch.id)}</div>
+      <div class="d" style="color:var(--gris2);margin-bottom:6px">${charlaEfecto(ch.id)}</div>`;
+    const esp=charlaEspera(c,ch.id), puede=charlaDisponible(c,ch.id);
+    const b=document.createElement("button");b.style.width="100%";
+    b.textContent=esp>0?t("pj_espera",{n:esp}):puede?t("pj_hablar"):t("pj_charla_no");
+    b.disabled=!puede;
+    if(puede) b.onclick=()=>hablarConCompi(ch.id);
+    d.appendChild(b);
+    bxC.appendChild(d);
+  });
+}
+function elegirPlanPareja(id){
+  const c=G.carrera; if(!c||!c.compi) return;
+  if(!planElige(c,id)) return;
+  avisa(t("pj_plan_ok",{n:planNombre(id)}));
+  guardar();pintarCarrera();
+}
+function hablarConCompi(id){
+  const c=G.carrera; if(!c||!c.compi) return;
+  const r=charlaHabla(c,id);
+  if(!r) return;
+  avisa(r.ok?t("pj_ok",{n:c.compi.n}):t("pj_mal",{n:c.compi.n}));
+  guardar();pintarCarrera();
 }
 // Mesa de negociación: ves lo que exige el candidato, ajustas tu oferta (ceder
 // el lado), compruebas la afinidad prevista y firmas si acepta.
@@ -908,6 +1012,7 @@ function ficharPareja(ci,acuerdo){
     lado:(ac.suLado===0||ac.suLado===1)?ac.suLado:undefined, _acuerdo:{objetivo:ac.objetivoRanking||null,reparto:ac.reparto||50}};
   if(ac.tuLado===0||ac.tuLado===1) c.lado=ac.tuLado;   // si cediste el lado, te recolocas
   c.quimica=35; c.compiMoral=70; c.compiPlan="auto";
+  parejaNueva(c);
   c.mercadoP.splice(ci,1);
   noticia("fichaje",t("not_fichaje_t",{n:cand.n}),cand.origen==="circuito"?t("not_fichaje_s_circuito",{pareja:cand.parejaNombre}):t("not_fichaje_s_libre"));
   avisa(t("mkt_av_nueva",{n:cand.n}));
@@ -1454,7 +1559,6 @@ function avanzarSemanaCarrera(){
     c.dinero+=90;
     if(!c._avisoClases){c._avisoClases=true;avisa(t("av_clases_club"));}
   } else if(c.dinero>=600) c._avisoClases=false;
-  c._jugoTorneo=false;
   c.dinero+=ingresosSemanaCarrera();
   const fijos=Object.keys(c.staff||{}).reduce((x,k)=>x+((c.staff[k]&&c.staff[k].sal)||0),0);
   if(c.dinero<300&&fijos>100&&!c._avisoFijos){c._avisoFijos=true;avisa(t("av_fijos",{fijos}));}
@@ -1476,6 +1580,11 @@ function avanzarSemanaCarrera(){
     c._avisoMoral=true;
     avisa(t("av_harto",{n:c.compi.n}));
   }
+  // la pareja: los ejes se mueven solos y el plan se afianza jugando. Va después
+  // de la moral y ANTES de apagar `_jugoTorneo`, que es lo que distingue una
+  // semana de competición de una semana en casa.
+  relSemana(c);
+  c._jugoTorneo=false;
   // eventos de circuito: lo que cambia las reglas de esta semana
   evSemana(c,c.semana);
   // el circuito habla: rumores que nacen, se confirman o se desmienten
@@ -1523,6 +1632,7 @@ function avanzarSemanaCarrera(){
       c.compi={...compiInicial(c.sexo||"M"),attrs:mkAttrsNivel(CHINO.nivel,CHINO.estilo)};
       c.quimica=CHINO.quim; c.compiMoral=70; c.compiPlan="auto";
       c._parejaDesde=temporada(); c._parejaTitulos=0;
+      parejaNueva(c);
     }
     c.objetivos=mkObjetivosTemporada(c,miPuesto());   // metas para la nueva temporada
     cierreTemporadaCarrera();

@@ -332,7 +332,7 @@ function miTeam(){
     // el suplente llega sin química: se juega con la de un primer día
     const fCompi=sup?factorForma(c.energia,15,null):fBase;
     const compi={n:fuente.n,estilo:fuente.estilo,perso:fuente.perso,
-      conf:sup?45:clamp(55+moralAjusteConf(c.compiMoral),15,95),
+      conf:sup?45:clamp(55+moralAjusteConf(c.compiMoral)+(typeof relAjusteConf==="function"?relAjusteConf(c):0),15,95),
       attrs:mk(fuente.attrs,fCompi),sexo:c.sexo,lado:1-miLado};
     ME_COLOR=c.color;TEAM0_COLOR="#4FA3D8";
     const jug=c.lado===0?[yo,compi]:[compi,yo];

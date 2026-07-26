@@ -531,6 +531,11 @@ function entrarPartida(){
     if(cl.wildcards===undefined) cl.wildcards=2;
     irA("clubm"); pintarClubM();
   }
+  // la pareja como personaje: plan conjunto y ejes de relación
+  if(typeof planAsegura==="function"&&G.modo==="carrera"&&G.carrera){
+    planAsegura(G.carrera); relAsegura(G.carrera);
+    if(G.carrera._parejaDesdeSem==null) G.carrera._parejaDesdeSem=G.carrera.semana|0;
+  }
   /* Ranking por ventana de 52 semanas: las partidas anteriores no traen el
      historial, así que se les reparte lo que tuvieran. Se hace aquí, una vez,
      antes de pintar nada que lea el ranking. */

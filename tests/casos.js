@@ -2863,3 +2863,145 @@ comprueba("Eventos: una generación nueva llega al circuito de verdad", () => {
   });
   return "4 parejas de nivel " + nuevas.map(p => nivelPareja(p)).join("/") + " (el tope era " + nivelAntes + ")";
 });
+
+
+/* La pareja como copiloto: plan, ejes y conversaciones --------------------
+   Tres reglas que sostienen todo lo demás: un plan nuevo no hace nada hasta
+   que se rueda, cambiar de compañero se lleva los automatismos, y los seis
+   ejes se mueven por motivos distintos (si no, sobraba con una barra). */
+comprueba("Pareja: cada plan declara efecto y todos están traducidos", () => {
+  const ids = Object.keys(PLANES_PAREJA);
+  exige(ids.length >= 6, "solo hay " + ids.length + " planes");
+  ids.forEach(id => {
+    const P = PLANES_PAREJA[id];
+    if (id !== "libre") {
+      const golpes = Object.keys(P.mods || {});
+      exige(golpes.length, id + " no cambia ningún golpe: es un cartel, no un plan");
+    }
+    /* El error global es la palanca más fuerte del motor: la mayoría de los
+       puntos mueren en fallo, no en winner. Un plan que recorte el error de
+       TODOS los golpes por debajo de este umbral gana solo. */
+    const gt = (P.mods || {}).golpeTodo;
+    if (gt && gt.err) exige(gt.err >= .95, id + " recorta el error global a " + gt.err + ": gana solo");
+    [planNombre, planDesc, planComo].forEach(f => {
+      const x = f(id);
+      exige(x && !/^plan_/.test(x), id + ": sin traducir (" + x + ")");
+    });
+  });
+  return ids.length + " planes, todos con efecto en pista";
+});
+
+comprueba("Pareja: un plan nuevo no se nota hasta que se rueda", () => {
+  const c = nuevaCarrera();
+  c.eventos = []; evRecalcula(c);
+  planAsegura(c);
+  exige(planPareja(c) === "libre", "no arranca sin plan");
+  exige(planElige(c, "red"), "no dejó elegir el plan");
+  exige(planDominio(c) === 0, "el plan nuevo nace ya dominado");
+  const cero = pjGolpe("volea");
+  exige(cero.win === 1 && cero.err === 1, "sin rodaje ya modifica la volea: " + JSON.stringify(cero));
+  planEntrena(c, 50);
+  const medio = pjGolpe("volea");
+  planEntrena(c, 50);
+  const pleno = pjGolpe("volea");
+  exige(medio.win > 1 && pleno.win > medio.win, "el dominio no escala: " + medio.win + " / " + pleno.win);
+  exige(Math.abs(pleno.win - PLANES_PAREJA.red.mods["golpe:volea"].win) < 1e-9,
+    "al 100% no aplica el plan entero: " + pleno.win);
+  // y el dominio tiene techo
+  planEntrena(c, 80);
+  exige(planDominio(c) === PLAN_DOM_MAX, "el dominio se pasa del tope");
+  return "volea ×1,00 → ×" + medio.win.toFixed(2) + " → ×" + pleno.win.toFixed(2);
+});
+
+comprueba("Pareja: cambiar de compañero se lleva los automatismos", () => {
+  const c = nuevaCarrera();
+  planElige(c, "muro"); planEntrena(c, 100);
+  exige(planDominio(c) === 100, "no llegó al tope");
+  planRompe(c);
+  exige(planDominio(c) === 18, "la ruptura no cuesta lo que debe: " + planDominio(c));
+  // cambiar de plan con la misma pareja también empieza de cero
+  planElige(c, "red");
+  exige(planDominio(c) === 0, "el plan nuevo hereda el rodaje del viejo");
+  // la etapa nueva se lleva además la relación y las conversaciones tenidas
+  planEntrena(c, 100);
+  relMueve(c, "lealtad", 25); c.charlas = { defender: 3 }; c.semana = 60;
+  parejaNueva(c);
+  exige(planDominio(c) === 18, "la etapa nueva no descuenta el rodaje");
+  exige(relLee(c, "lealtad") === EJE_BASE, "la lealtad se hereda del compañero anterior");
+  exige(!Object.keys(c.charlas).length, "las conversaciones del anterior siguen en enfriamiento");
+  exige(c._parejaDesdeSem === 60, "no se anota cuándo empieza la etapa");
+  return "100 → 18 al romper, 0 al cambiar de plan";
+});
+
+comprueba("Pareja: los seis ejes se mueven por motivos distintos", () => {
+  const c = nuevaCarrera();
+  relReinicia(c);
+  EJES.forEach(k => exige(typeof relLee(c, k) === "number", "falta el eje " + k));
+  exige(EJES.length === 6, "no son seis ejes: " + EJES.length);
+  // semana de torneo: gasta convivencia; semana en casa: la recupera
+  const conv0 = relLee(c, "convivencia");
+  c._jugoTorneo = true; relSemana(c);
+  const conv1 = relLee(c, "convivencia");
+  exige(conv1 < conv0, "competir no gasta convivencia");
+  c._jugoTorneo = false; relSemana(c); relSemana(c);
+  exige(relLee(c, "convivencia") > conv1, "quedarse en casa no la recupera");
+  // pero la semana en casa impacienta al ambicioso
+  const amb0 = relLee(c, "ambicion");
+  relSemana(c);
+  exige(relLee(c, "ambicion") < amb0, "no competir no le pesa a nadie");
+  // el eje peor es el que se señala
+  relMueve(c, "protagonismo", -40);
+  exige(relPeor(c) === "protagonismo", "no detecta el eje que peor está");
+  exige(relEstado(20) === "roto" && relEstado(90) === "bien", "los estados no cuadran");
+  return "convivencia " + conv0 + "→" + conv1 + " compitiendo, y sube en casa";
+});
+
+comprueba("Pareja: la confianza deportiva se nota en pista", () => {
+  const c = nuevaCarrera();
+  relReinicia(c);
+  EJES.forEach(k => c.rel[k] = EJE_BASE);
+  exige(relAjusteConf(c) === 0, "en el punto de partida ya ajusta algo");
+  relMueve(c, "deportiva", +27);
+  exige(relAjusteConf(c) === 3, "creer en tu juego no suma: " + relAjusteConf(c));
+  relMueve(c, "deportiva", -54);
+  exige(relAjusteConf(c) < 0, "que no crea en ti no resta");
+  return "±3 de confianza por el eje deportivo";
+});
+
+comprueba("Pareja: las conversaciones cuestan, esperan y pueden salir mal", () => {
+  const c = nuevaCarrera();
+  relReinicia(c);
+  CHARLAS.forEach(ch => {
+    [charlaNombre, charlaDesc, charlaEfecto].forEach(f => {
+      const x = f(ch.id);
+      exige(x && !/^chr_/.test(x), ch.id + ": sin traducir (" + x + ")");
+    });
+    const toca = Object.keys(ch.ef || {});
+    exige(toca.length, ch.id + " no mueve ningún eje");
+    toca.forEach(k => exige(EJES.indexOf(k) >= 0, ch.id + " toca un eje inventado: " + k));
+  });
+  c.semana = 40; c.energia = 90; c.dinero = 9000;
+  relMueve(c, "personal", -20);
+  exige(charlaDisponible(c, "defender"), "no se puede defender al compañero");
+  const bien = charlaHabla(c, "defender", () => 0.99);   // sale bien
+  exige(bien && bien.ok, "con la moneda a favor debería salir bien");
+  exige(bien.deltas.personal > 0, "defenderlo no sube la afinidad");
+  // enfriamiento: no se puede repetir a la semana siguiente
+  exige(!charlaDisponible(c, "defender"), "se puede repetir sin esperar");
+  exige(charlaEspera(c, "defender") === 18, "el enfriamiento no cuadra: " + charlaEspera(c, "defender"));
+  c.semana += 18;
+  exige(charlaDisponible(c, "defender"), "no vuelve a estar disponible");
+  // la que sale mal, sale mal de verdad
+  const per0 = relLee(c, "personal");
+  const mal = charlaHabla(c, "critica", () => 0);        // moneda en contra
+  exige(mal && !mal.ok, "con la moneda en contra debería salir mal");
+  exige(relLee(c, "personal") < per0, "criticarle mal no cuesta nada");
+  // y el dinero se cobra
+  const din0 = c.dinero;
+  relMueve(c, "personal", -30);   // para que cumpla la condición de media baja
+  EJES.forEach(k => c.rel[k] = 40);
+  exige(charlaDisponible(c, "psicologo"), "el psicólogo no está disponible con la relación rota");
+  charlaHabla(c, "psicologo", () => 0.99);
+  exige(c.dinero === din0 - 900, "el psicólogo no se cobra: " + (din0 - c.dinero));
+  return CHARLAS.length + " conversaciones con precio, espera y riesgo";
+});
