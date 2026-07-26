@@ -56,43 +56,6 @@ Por orden de retorno, según la auditoría:
 
 ---
 
-## Equilibrio: el ranking premia presentarse, no ganar
-
-Medido jugando de verdad (con `tools/capturas.js`, cuatro temporadas, mismo
-entrenamiento y misma mejora de pareja en los dos casos):
-
-| Estrategia | Balance | Títulos | Puesto |
-|---|---|---|---|
-| Jugar solo las categorías bajas que se pueden ganar | 226-51 | **7** | #91 → **#95** |
-| Entrar siempre al torneo más grande disponible | 89-114 | **0** | #91 → **#66** |
-
-Es decir: **una carrera con siete títulos acaba peor clasificada que una sin
-ninguno**. La causa está en dos sitios que se suman:
-
-- `simCircuito` (state.js) da puntos a **todas** las parejas del mundo cada
-  semana: `0.045·(nivel−40)² + R(−12,26)`. Una pareja de nivel 70 se lleva ~47
-  puntos semanales sin jugar contra nadie, unos 2.400 por temporada.
-- Ganar un Continental Bronce entero da **40 puntos**. Un Plata, 80. Para igualar
-  lo que una pareja de nivel 70 gana de oficio hay que ganar un torneo por
-  semana.
-
-Como los puntos de ronda de un torneo grande superan a los de ganar uno pequeño,
-la estrategia óptima es entrar donde te van a apalizar. Eso no es lo que el juego
-quiere enseñar, y encima choca con el gancho de la ficha de tienda («empiezas el
-91 y subes»): subir funciona, pero recompensa lo contrario de lo que parece.
-
-Dos arreglos posibles, sin tocar el resto:
-
-1. Que el mundo puntúe como puntúa el jugador: en vez de repartir a todos cada
-   semana, que solo puntúen las parejas que «juegan» el torneo de esa semana,
-   con el reparto real de la categoría (campeón, finalista, etc.).
-2. Subir los puntos de las categorías bajas para que ganar un torneo compense
-   frente a perder en octavos de uno grande.
-
-La primera es la buena: la segunda tapa el síntoma.
-
----
-
 ## Deuda técnica conocida
 
 - **`src/js/vendor/sql-asm.js` pesa 1,3 MB**, el 59% del juego, y es la

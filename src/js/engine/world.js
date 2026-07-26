@@ -102,9 +102,15 @@ const CATS=[
   {k:"cat_1",premier:false,base:52,cupoD:26,        pts:[80,48,28,16,8,4],         premio:[2000,1000,520,280,120,40]},
   {k:"cat_2",premier:false,base:60,cupoD:22,        pts:[150,90,55,30,15,8],       premio:[4000,2000,1000,520,240,80]},
   {k:"cat_3",premier:false,base:67,cupoD:18,        pts:[300,180,105,60,30,15],    premio:[7500,3800,1900,950,420,150]},
-  {k:"cat_4",premier:true, base:73,cupoD:20,cupoP:32,pts:[500,300,180,100,50,25],  premio:[9000,4500,2200,1100,500,180]},
-  {k:"cat_5",premier:true, base:79,cupoD:16,cupoP:26,pts:[1000,600,360,200,100,50],premio:[17000,8500,4200,2000,900,300]},
-  {k:"cat_6",premier:true, base:85,cupoD:12,cupoP:20,pts:[2000,1200,720,400,200,100],premio:[35000,17500,8800,4200,1800,500]},
+  /* `cupoP` es el corte de la previa, y es la puerta por la que se entra al
+     circuito grande. Estaba tan cerrado (32 de 92) que una pareja de nivel 73
+     clasificada en el puesto 50 no podía jugar NI la previa del torneo más
+     pequeño de su nivel: sin premier no hay puntos, y sin puntos no se sube al
+     corte. Ensanchar la previa es la rampa que faltaba; el cuadro final
+     (`cupoD`) sigue siendo igual de exigente. */
+  {k:"cat_4",premier:true, base:73,cupoD:20,cupoP:56,pts:[500,300,180,100,50,25],  premio:[9000,4500,2200,1100,500,180]},
+  {k:"cat_5",premier:true, base:79,cupoD:16,cupoP:40,pts:[1000,600,360,200,100,50],premio:[17000,8500,4200,2000,900,300]},
+  {k:"cat_6",premier:true, base:85,cupoD:12,cupoP:28,pts:[2000,1200,720,400,200,100],premio:[35000,17500,8800,4200,1800,500]},
   {k:"cat_7",premier:true, tf:true, base:87,cupoD:8,cupoP:8,pts:[1500,900,540,330,0,0],premio:[24000,12000,6000,3000,0,0]},
 ];
 /* Nombre visible de una categoría, ya traducido. Acepta el índice o la propia

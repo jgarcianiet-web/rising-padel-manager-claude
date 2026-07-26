@@ -326,28 +326,85 @@ function mkWorld(){
 // que también existen en el menú (avisos, selector de ranuras) y antes reventaba
 // con "Cannot read properties of null" en cuanto alguno se usaba desde ahí.
 function ent(){ return G?(G.modo==="carrera"?G.carrera:G.clubG):null; }
-function simCircuito(excluir){
-  G.world.parejas.forEach(p=>{
-    if(excluir.includes(p.id)) return;
-    const n=nivelPareja(p);
-    p.pts+=Math.max(0,Math.round(0.045*(n-40)*(n-40)+R(-12,26)));
-  });
-  // campeón semanal simulado del circuito → palmarés de su club
-  const slotAhora=slotSemana(semanaTemp());
-  if(slotAhora&&slotAhora.premier!==undefined&&rnd()<.9){
-    const sxs=miSexo();
-    const contendientes=[...G.world.parejas].filter(p=>(p.sexo||"M")===sxs&&!p.yo&&!excluir.includes(p.id)).sort((a,b)=>nivelPareja(b)-nivelPareja(a)).slice(0,8);
-    if(contendientes.length){
-      // el campeón sale entre los mejores con algo de azar
-      const camp=contendientes[Math.min(contendientes.length-1,Math.floor(Math.abs(R(0,2.4))))];
-      if(camp&&camp.club!==undefined){ const cid=(PREM_CAL&&PREM_CAL[semanaTemp()-1]&&PREM_CAL[semanaTemp()-1].ciudad)?" "+PREM_CAL[semanaTemp()-1].ciudad:""; clubPalma(camp.club,`${catNombre(slotAhora.premier)}${cid} (T${temporada()})`); camp._titulos=(camp._titulos||0)+1; }
-    }
+/* ================================================================
+   EL CIRCUITO PUNTÚA COMO PUNTÚAS TÚ
+
+   Durante mucho tiempo esto daba puntos a TODAS las parejas del mundo cada
+   semana: `0.045·(nivel−40)²`, que para una pareja de nivel 70 son unos 47
+   puntos semanales sin jugar contra nadie. Ganar un Continental Bronce entero
+   da 40. El efecto medido era demoledor: cuatro temporadas ganando siete
+   títulos en categorías asequibles dejaban el ranking PEOR (91 → 95) que cuatro
+   temporadas perdiendo en primera ronda de torneos grandes (91 → 66). El juego
+   premiaba presentarse, no ganar.
+
+   Ahora el mundo puntúa con la misma moneda que el jugador: cada semana se
+   juegan los torneos que hay en el calendario, se reparte el cuadro entre las
+   parejas que entran, y cobra el que llega lejos. Nadie cobra por existir.
+================================================================ */
+/* Plazas que reparte un cuadro de 32: campeón, finalista, dos semifinalistas,
+   cuatro de cuartos, ocho de octavos y dieciséis de primera ronda. Encaja con
+   los seis escalones de `cat.pts`. */
+const CUADRO_PLAZAS=[1,1,2,4,8,16];
+/* Quién se inscribe en un torneo, por categoría y sexo.
+   - Los premier van por ranking, que es como funciona un corte de verdad.
+   - Los Continental están abiertos, así que se apuntan las parejas cuyo nivel
+     encaja con la categoría: es la misma decisión que toma el jugador cuando
+     mira el calendario y elige dónde puede competir. */
+function _inscritosTorneo(ci,sx,excluir){
+  const cat=CATS[ci]; if(!cat) return [];
+  const libres=G.world.parejas.filter(p=>(p.sexo||"M")===sx&&!p.retiraT&&!excluir.includes(p.id));
+  if(cat.premier){
+    const cupo=cat.tf?8:(cat.cupoP||32);
+    return [...libres].sort((a,b)=>b.pts-a.pts).slice(0,cupo);
   }
+  const base=cat.base||44;
+  return libres.filter(p=>Math.abs(nivelPareja(p)-base)<=11)
+               .sort((a,b)=>Math.abs(nivelPareja(a)-base)-Math.abs(nivelPareja(b)-base))
+               .slice(0,32);
+}
+/* Juega el cuadro y reparte los puntos. No se simula punto a punto —son
+   decenas de partidos por semana— pero el orden no es el del ranking: se
+   siembra por nivel con ruido, así que hay campanadas. Devuelve el campeón. */
+function _reparteTorneo(ci,sx,excluir,yaInscritos){
+  const cat=CATS[ci];
+  const inscritos=yaInscritos||_inscritosTorneo(ci,sx,excluir);
+  if(inscritos.length<4) return null;
+  const orden=inscritos.map(p=>({p,f:nivelPareja(p)+R(-7,7)})).sort((a,b)=>b.f-a.f);
+  let i=0;
+  CUADRO_PLAZAS.forEach((plazas,k)=>{
+    const pts=cat.pts[k]||0;
+    for(let j=0;j<plazas&&i<orden.length;j++,i++) orden[i].p.pts+=pts;
+  });
+  return orden[0].p;
+}
+function simCircuito(excluir){
+  const slot=slotSemana(semanaTemp());
+  const sexos=["M","F"];
+  sexos.forEach(sx=>{
+    /* Una pareja, un torneo por semana: la misma regla que tienes tú. Si se
+       les dejaba jugar el grande Y el Continental, el mundo puntuaba al doble
+       de ritmo que el jugador y el ranking se quedaba veinte puestos por
+       debajo de lo que decía su nivel. Los que entran en el premier no están
+       disponibles para el Continental de esa semana. */
+    const ocupados=excluir.slice();
+    if(slot.premier!==undefined&&slot.premier!==null){
+      const inscritos=_inscritosTorneo(slot.premier,sx,excluir);
+      inscritos.forEach(p=>ocupados.push(p.id));
+      const camp=_reparteTorneo(slot.premier,sx,excluir,inscritos);
+      // el campeón del circuito se apunta el título en el palmarés de su club
+      if(camp&&sx===miSexo()&&camp.club!==undefined){
+        const cid=(PREM_CAL&&PREM_CAL[semanaTemp()-1]&&PREM_CAL[semanaTemp()-1].ciudad)?" "+PREM_CAL[semanaTemp()-1].ciudad:"";
+        clubPalma(camp.club,`${catNombre(slot.premier)}${cid} (T${temporada()})`);
+        camp._titulos=(camp._titulos||0)+1;
+      }
+    }
+    if(slot.fip!==undefined&&slot.fip!==null) _reparteTorneo(slot.fip,sx,ocupados);
+  });
   const sx=miSexo();
   const top=[...G.world.parejas].filter(p=>(p.sexo||"M")===sx).sort((a,b)=>b.pts-a.pts)[0];
   if(top&&G.world["lider_"+sx]!==top.id){
     G.world["lider_"+sx]=top.id;
-    avisa(`📰 Nuevo nº1 del circuito ${sx==="F"?"femenino":"masculino"}: ${top.nombre}.`);
+    avisa(t("av_nuevo_n1",{circuito:sx==="F"?t("pre_circ_f"):t("pre_circ_m"),nombre:top.nombre}));
   }
 }
 function mkJovenNPC(sx){

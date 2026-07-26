@@ -19,6 +19,7 @@ const IDIOMAS=[
 const IDIOMA_DEF="es";
 const I18N={
   es:{
+    av_nuevo_n1:"📰 Nuevo nº1 del circuito {circuito}: {nombre}.",
     hito_cl_canteraA:"Un canterano en la pareja A",
     hito_cl_cantera3:"Tres canteranos en el primer equipo",
     can_hd:"Academia",
@@ -1852,6 +1853,7 @@ const I18N={
     ctx_circuito_fip:"circuito Continental",
   },
   en:{
+    av_nuevo_n1:"📰 New world number 1 on the {circuito} tour: {nombre}.",
     hito_cl_canteraA:"A home-grown player in pair A",
     hito_cl_cantera3:"Three home-grown players in the first team",
     can_hd:"Academy",
@@ -3685,6 +3687,7 @@ const I18N={
     ctx_circuito_fip:"Continental tour",
   },
   fr:{
+    av_nuevo_n1:"📰 Nouveau nº1 du circuit {circuito} : {nombre}.",
     hito_cl_canteraA:"Un formé au club dans la paire A",
     hito_cl_cantera3:"Trois formés au club en équipe première",
     can_hd:"Académie",
@@ -5518,6 +5521,7 @@ const I18N={
     ctx_circuito_fip:"circuit Continental",
   },
   de:{
+    av_nuevo_n1:"📰 Neue Nummer 1 der {circuito} Tour: {nombre}.",
     hito_cl_canteraA:"Ein Eigengewächs in Paar A",
     hito_cl_cantera3:"Drei Eigengewächse in der ersten Mannschaft",
     can_hd:"Akademie",
@@ -7351,6 +7355,7 @@ const I18N={
     ctx_circuito_fip:"Continental-Tour",
   },
   it:{
+    av_nuevo_n1:"📰 Nuovo nº1 del circuito {circuito}: {nombre}.",
     hito_cl_canteraA:"Un prodotto del vivaio nella coppia A",
     hito_cl_cantera3:"Tre prodotti del vivaio in prima squadra",
     can_hd:"Accademia",

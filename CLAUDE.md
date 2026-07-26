@@ -99,6 +99,29 @@ Tres cosas que hay que respetar al tocar el código:
 `tests/estatico.js` lo hace cumplir: falla si aparece un `Math.random` sin
 marcar en un fichero de simulación, o si alguien vuelve a tapar `rnd`.
 
+## El ranking se gana jugando, no existiendo
+
+`simCircuito` (en `state.js`) reparte cada semana los puntos de los torneos del
+calendario, y solo entre las parejas que los juegan. Tres reglas que hay que
+respetar si se toca:
+
+1. **Nadie cobra por existir.** Antes esto sumaba `0.045·(nivel−40)²` a *todas*
+   las parejas cada semana: 47 puntos para una de nivel 70 sin jugar contra
+   nadie, cuando ganar un Continental Bronce entero da 40. Medido, cuatro
+   temporadas ganando siete títulos dejaban peor clasificado (91 → 95) que
+   cuatro perdiendo en primera ronda de torneos grandes (91 → 66).
+2. **Una pareja, un torneo por semana**, la misma regla que tiene el jugador.
+   Si se les deja jugar el premier *y* el Continental, el mundo puntúa al doble
+   de ritmo y el jugador se queda treinta puestos por debajo de su nivel.
+3. **`cupoP` es la rampa de entrada al circuito grande.** Estaba en 32 de 92 y
+   creaba un callejón sin salida: sin premier no hay puntos y sin puntos no se
+   llega al corte. El cuadro final (`cupoD`) sigue siendo igual de exigente.
+
+Y los **Maestros son ocho parejas que empiezan en cuartos**: `mkCuadro` les hace
+un cuadro propio (`SIEMBRA_8`, ronda 3). Con el cuadro de 16 la ronda salía
+vacía y la pantalla del torneo reventaba; no se veía porque con el ranking viejo
+nadie llegaba nunca al top 8.
+
 ## El cuaderno de dilemas tiene memoria
 
 `DILEMAS` (en `engine/world.js`) son 45 escenas con dos opciones y consecuencia

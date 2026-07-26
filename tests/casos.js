@@ -2531,3 +2531,145 @@ comprueba("Rumores: cada tipo abre la escena que le toca, y el falso ninguna", (
   exige(!outF[0].ok && !outF[0].abre, "un desmentido abrió conversación");
   return "tres escenas encadenadas al rumor que las provoca";
 });
+
+/* El ranking: puntúa quien juega y gana, no quien existe -------------------
+   Antes `simCircuito` daba puntos a TODAS las parejas del mundo cada semana
+   (0.045·(nivel−40)²): una pareja de nivel 70 se llevaba ~47 puntos semanales
+   sin jugar, y ganar un Continental Bronce entero daba 40. Medido: cuatro
+   temporadas ganando 7 títulos dejaban el ranking peor (91→95) que cuatro
+   perdiendo en primera ronda de torneos grandes (91→66). */
+function semanaConTorneos() {
+  // una semana del calendario que tenga premier Y continental
+  for (let s = 1; s <= SEMANAS_TEMP; s++) {
+    const sl = slotSemana(s);
+    if (sl.premier !== undefined && sl.premier !== null && sl.fip !== undefined) return s;
+  }
+  return 1;
+}
+
+comprueba("Ranking: nadie cobra por existir; solo puntúa quien juega", () => {
+  const c = nuevaCarrera();
+  c.semana = semanaConTorneos();
+  const sx = c.sexo || "M";
+  const mundo = G.world.parejas.filter(p => (p.sexo || "M") === sx);
+  const antes = new Map(mundo.map(p => [p.id, p.pts]));
+  simCircuito([]);
+  const subieron = mundo.filter(p => p.pts > antes.get(p.id));
+  exige(subieron.length > 0, "no puntuó nadie");
+  exige(subieron.length < mundo.length, "puntuaron TODAS las parejas: sigue pagándose por existir");
+  // dos cuadros de 32 como mucho
+  exige(subieron.length <= 64, `puntuaron ${subieron.length} parejas: más de dos cuadros`);
+  return subieron.length + " de " + mundo.length + " parejas puntúan esa semana";
+});
+
+comprueba("Ranking: el cuadro reparte como un cuadro y el campeón cobra lo suyo", () => {
+  const c = nuevaCarrera();
+  c.semana = semanaConTorneos();
+  const sl = slotSemana(semanaTemp());
+  const cat = CATS[sl.premier];
+  const sx = c.sexo || "M";
+  const mundo = G.world.parejas.filter(p => (p.sexo || "M") === sx);
+  const antes = new Map(mundo.map(p => [p.id, p.pts]));
+  simCircuito([]);
+  const ganancias = mundo.map(p => p.pts - antes.get(p.id)).filter(x => x > 0).sort((a, b) => b - a);
+  exige(ganancias[0] === cat.pts[0], `el campeón se llevó ${ganancias[0]} y la categoría paga ${cat.pts[0]}`);
+  exige(ganancias.filter(x => x === cat.pts[0]).length === 1, "hubo más de un campeón del premier");
+  // y el reparto decrece: no es una tarifa plana
+  exige(ganancias[0] > ganancias[ganancias.length - 1], "todos cobraron lo mismo");
+  return `campeón ${ganancias[0]} · último que puntúa ${ganancias[ganancias.length - 1]}`;
+});
+
+comprueba("Ranking: una pareja, un torneo por semana (como tú)", () => {
+  const c = nuevaCarrera();
+  c.semana = semanaConTorneos();
+  const sl = slotSemana(semanaTemp());
+  const tope = Math.max(CATS[sl.premier].pts[0], CATS[sl.fip].pts[0]);
+  const sx = c.sexo || "M";
+  const mundo = G.world.parejas.filter(p => (p.sexo || "M") === sx);
+  const antes = new Map(mundo.map(p => [p.id, p.pts]));
+  simCircuito([]);
+  const maxGanancia = Math.max(...mundo.map(p => p.pts - antes.get(p.id)));
+  exige(maxGanancia <= tope, `alguien se llevó ${maxGanancia} jugando los dos torneos (el tope de uno es ${tope})`);
+  return "nadie cobra por dos cuadros la misma semana";
+});
+
+comprueba("Ranking: ganar sube más que perder, a igualdad de partidos", () => {
+  // dos parejas del mismo nivel: una gana el Continental de su categoría y la
+  // otra pierde en primera ronda del premier. La que gana tiene que acabar por
+  // delante, que es justo lo que NO pasaba antes.
+  const c = nuevaCarrera();
+  const cont = CATS[1], prem = CATS[5];
+  const puntosGanando = cont.pts[0];                    // campeón del Continental
+  const puntosPerdiendo = prem.pts[5];                  // primera ronda del premier
+  exige(puntosGanando > puntosPerdiendo,
+    `ganar un ${catNombre(1)} da ${puntosGanando} y caer en primera ronda de un ${catNombre(5)} da ${puntosPerdiendo}`);
+  return `${puntosGanando} por ganar frente a ${puntosPerdiendo} por presentarse`;
+});
+
+comprueba("Ranking: la previa de la Élite pequeña se abre antes del top 32", () => {
+  // sin esto, una pareja de nivel 73 clasificada la 50 no podía jugar ni la
+  // previa del torneo más pequeño de su nivel: sin premier no hay puntos, y sin
+  // puntos no se llega al corte. Un callejón sin salida.
+  exige(CATS[4].cupoP >= 48, `la previa del ${catNombre(4)} corta en ${CATS[4].cupoP}`);
+  exige(CATS[4].cupoP > CATS[4].cupoD, "la previa no puede ser más estrecha que el cuadro final");
+  [4, 5, 6].forEach(i => exige(CATS[i].cupoP > CATS[i].cupoD, `la categoría ${i} tiene la previa mal puesta`));
+  // y el corte del cuadro final sigue siendo exigente
+  exige(CATS[4].cupoD <= 20, "el cuadro final se ha aflojado de más");
+  return `previa hasta el puesto ${CATS[4].cupoP}, cuadro final hasta el ${CATS[4].cupoD}`;
+});
+
+comprueba("Ranking: tras varias temporadas, el orden se parece al nivel", () => {
+  const c = nuevaCarrera();
+  // se simulan dos temporadas de circuito sin que el jugador juegue nada
+  for (let s = 0; s < SEMANAS_TEMP * 2; s++) { c.semana = (s % SEMANAS_TEMP) + 1; simCircuito([]); }
+  const filas = rankingFilas().filter(f => !f.yo);
+  const n = filas.length;
+  const rangoNivel = new Map([...filas].sort((a, b) => b.nivel - a.nivel).map((f, i) => [f.id, i]));
+  let sd = 0;
+  filas.forEach((f, i) => { const d = i - rangoNivel.get(f.id); sd += d * d; });
+  const rho = 1 - 6 * sd / (n * (n * n - 1));
+  exige(rho > 0.6, `el ranking no sigue al nivel: ρ=${rho.toFixed(3)}`);
+  return "ρ(puntos, nivel) = " + rho.toFixed(3) + " con " + n + " parejas";
+});
+
+comprueba("Maestros: los ocho mejores pueden jugarlos (regresión: reventaba)", () => {
+  // El cuadro de los Maestros no es el de 16 con previa: son ocho parejas y
+  // empiezan en cuartos. Como mkCuadro solo llenaba la ronda de octavos, entrar
+  // dejaba la fase vacía y la pantalla del torneo petaba al buscar rival. No se
+  // veía porque con el ranking viejo nadie llegaba nunca al top 8.
+  const c = nuevaCarrera();
+  c.pts = 999999; c.dinero = 90000; c.energia = 100; c.pro = true;
+  let semTF = -1;
+  for (let s = 1; s <= SEMANAS_TEMP; s++) if (slotSemana(s).premier === 7) { semTF = s; break; }
+  exige(semTF > 0, "el calendario no tiene semana de Maestros");
+  c.semana = semTF;
+  exige(miPuesto() <= 8, "el protagonista debería estar en el top 8: #" + miPuesto());
+  exige(entradaEn(7) === 3, "los Maestros deberían arrancar en cuartos, no en " + entradaEn(7));
+  abrirTorneo(7);
+  exige(torneo, "no se pudo abrir el torneo");
+  exige(torneo.fase === 3, "arranca en la fase " + torneo.fase);
+  const ronda = torneo.cuadro.ronda[3];
+  exige(ronda && ronda.length === 8, "el cuadro no tiene ocho casillas: " + (ronda && ronda.length));
+  exige(ronda.filter(Boolean).length === 8, "hay huecos en el cuadro de los Maestros");
+  exige(ronda.some(p => p && p.yo), "no estás en tu propio cuadro");
+  exige(torneo.rivales[3] && torneo.rivales[3].jug, "no hay rival en cuartos");
+  pintarTorneo();                                  // esto es lo que lanzaba
+  const html = pintarCuadroHTML();
+  exige(html && html.length > 40, "el cuadro no se pinta");
+  // y se juega entero, hasta el título
+  Object.keys(c.attrs).forEach(k => c.attrs[k] = 95);
+  Object.keys(c.compi.attrs).forEach(k => c.compi.attrs[k] = 95);
+  const ptsAntes = c.pts;
+  let fases = [];
+  let vueltas = 0;
+  while (torneo && vueltas++ < 6) {
+    fases.push(torneo.fase);
+    if (!torneo.rivales[torneo.fase]) throw new Error("sin rival en la fase " + torneo.fase);
+    empezarPartido(false);
+    pulsarFicha();
+  }
+  exige(fases.join(",") === "3,4,5", "el recorrido debería ser cuartos-semis-final y fue " + fases.join(","));
+  exige(c.palmares.some(x => /Maestros/.test(x)), "ganar los Maestros no deja título: " + c.palmares.join(" · "));
+  exige(c.pts - ptsAntes === CATS[7].pts[0], `el campeón se llevó ${c.pts - ptsAntes} y toca ${CATS[7].pts[0]}`);
+  return "cuartos, semis y final con ocho parejas · " + CATS[7].pts[0] + " puntos";
+});

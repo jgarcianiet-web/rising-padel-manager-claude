@@ -38,6 +38,9 @@ const CUADRO_FASE0=2;              // el cuadro final empieza en octavos
 /* Orden de siembra estándar: el 1 y el 2 en extremos opuestos, el 3 y el 4 en
    los cuartos que no les tocan, etc. Así los favoritos solo se cruzan al final. */
 const SIEMBRA_16=[0,15,8,7,4,11,12,3,2,13,10,5,6,9,14,1];
+/* Los Maestros son ocho parejas y empiezan en cuartos: su cuadro es otro. */
+const SIEMBRA_8=[0,7,4,3,2,5,6,1];
+const CUADRO_TF_FASE=3;
 
 /* Probabilidad de que A gane a B por diferencia de nivel. Doce puntos de
    diferencia dan aproximadamente un 90%: hay favoritos claros, pero la
@@ -54,6 +57,23 @@ function nomCuadro(p){ return p?(p.yo?t("cua_tu_pareja"):p.nombre):t("cua_pendie
 function mkCuadro(cat,usados){
   const sx=miSugSexo();
   const base=cat.base;
+  /* Los Maestros no son un cuadro de 16 con previa: son los ocho mejores del
+     año y arrancan en cuartos. Sin esto, entrar en ellos dejaba la ronda vacía
+     y la pantalla del torneo reventaba al buscar rival. El fallo llevaba ahí
+     desde siempre, escondido: con el ranking viejo nadie llegaba al top 8. */
+  if(cat.tf){
+    const mejores=[...G.world.parejas]
+      .filter(p=>!usados.has(p.id)&&(p.sexo||"M")===sx&&!p.retiraT)
+      .sort((a,b)=>(b.pts|0)-(a.pts|0))
+      .slice(0,7);
+    mejores.forEach(r=>usados.add(r.id));
+    const yoTF={yo:true,nivel:nivelPareja({jug:miTeam().jug}),pts:(ent().pts|0)};
+    const todosTF=mejores.map(r=>({p:r,pts:r.pts|0})).concat([{p:yoTF,pts:yoTF.pts}]);
+    todosTF.sort((a,b)=>b.pts-a.pts);
+    const casillas=new Array(8).fill(null);
+    todosTF.forEach((x,i)=>{ if(i<8) casillas[SIEMBRA_8[i]]=x.p; });
+    return {ronda:{[CUADRO_TF_FASE]:casillas}, mi:casillas.findIndex(p=>p&&p.yo), n:8, tf:true};
+  }
   // 15 rivales del nivel del torneo, de más fuerte a más flojo
   const rivales=[];
   for(let i=0;i<CUADRO_N-1;i++){

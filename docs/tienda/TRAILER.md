@@ -45,11 +45,11 @@ que luego no esté.
 
 ```sh
 NODE_PATH=$PWD/node_modules node tools/trailer.js
-# preparando la partida (sin cámara)… T11 · #29 · 3 títulos
+# preparando la partida (sin cámara)… T11 · #2 · 7 títulos
 # partida cargada de la ranura 1
 # grabando…
 # el tráiler dura 30.5 s desde que se levanta el telón
-# → docs/tienda/trailer/trailer-bruto.webm · 2821 KB
+# → docs/tienda/trailer/trailer-bruto.webm · 2740 KB
 ```
 
 Tarda unos cinco minutos: la carrera que se enseña se juega de verdad, once
@@ -67,8 +67,8 @@ temporadas, antes de encender la cámara.
    intento duraba 164 s). Ahora se juega en una ventana sin grabar, se guarda,
    y la ventana que graba abre esa partida ya hecha.
 3. **Es la misma carrera que las capturas** (semilla `TIENDA-1`): once
-   temporadas, del 91 al 29, tres Continental Platino. La ficha de tienda y el
-   tráiler cuentan lo mismo, que es lo suyo.
+   temporadas, del 86 al 2, seis Coronas. La ficha de tienda y el tráiler
+   cuentan lo mismo, que es lo suyo.
 
 El vídeo sale **en bruto y a tamaño de trabajo** (1280×720, ~2,8 MB): la idea es
 montarlo encima, no publicarlo tal cual. Si hace falta a 1080p, se cambia
