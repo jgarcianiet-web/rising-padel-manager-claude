@@ -34,6 +34,17 @@ function jugarTorneoEntero(limite) {
   while (torneo && vueltas++ < (limite || 8)) { empezarPartido(false); pulsarFicha(); }
   return vueltas;
 }
+/* Sitúa la partida en una semana en la que SE JUEGUE esa categoría. Un torneo
+   no se puede abrir cualquier semana —el circuito es un calendario— y `entradaEn`
+   lo hace cumplir, así que una prueba que quiera jugar una Corona tiene que
+   ponerse primero en una semana de Corona. */
+function semanaDeCategoria(c, ci) {
+  for (let s = 1; s <= SEMANAS_TEMP; s++) {
+    const sl = slotSemana(s);
+    if (sl.premier === ci || sl.fip === ci) { c.semana = s; return s; }
+  }
+  throw new Error("el calendario no tiene ninguna semana de la categoría " + ci);
+}
 function fundarClub() {
   G = null; sexoClubSel = "M"; colorClubSel = "#C6F53C";
   prepararCrearClub();
@@ -841,6 +852,7 @@ comprueba("Trofeos: la sala también funciona en club y sin datos", () => {
 comprueba("Cuadro: el torneo tiene un cuadro de 16 con siembra", () => {
   const c = nuevaCarrera("agresivo");
   c.pts = 99999;                       // nº1: te toca ser cabeza de serie
+  semanaDeCategoria(c, 6);             // y una semana en la que se juegue la Corona
   abrirTorneo(6);
   const cu = torneo.cuadro;
   exige(cu, "el torneo no genera cuadro");
@@ -869,6 +881,7 @@ comprueba("Cuadro: el resto del torneo también juega, ronda a ronda", () => {
     c = nuevaCarrera("agresivo");
     c.pts = 99999;
     ATTR_KEYS.forEach(k => { c.attrs[k] = 95; c.compi.attrs[k] = 95; });
+    semanaDeCategoria(c, 6);
     rndSemilla(4100 + intento * 97, 4100 + intento * 97);
     abrirTorneo(6);
     cu = torneo.cuadro;
@@ -1702,6 +1715,13 @@ function rngSemilla(seed) {
 // Simula `temporadas` de Superliga con una dificultad y semilla dadas. Devuelve
 // métricas de balance. Determinista: no depende de Math.random del entorno.
 function simulaSuperliga(dificultad, seed, temporadas) {
+  /* A GRANEL. Estas pruebas miden la economía y el objetivo de la junta a lo
+     largo de decenas de temporadas; jugar punto a punto cada eliminatoria son
+     trece mil partidos y el vm de pruebas tarda media hora. La logística está
+     ajustada contra el motor para que ambas vías digan lo mismo. */
+  return slAGranel(true, () => _simulaSuperliga(dificultad, seed, temporadas));
+}
+function _simulaSuperliga(dificultad, seed, temporadas) {
   const gPrev = G, estPrev = rndEstado();
   try {
     G = { dif: dificultad };
@@ -3964,4 +3984,77 @@ comprueba("Motor: la dejada no es el mejor golpe del juego", () => {
   const m = src.match(/else if\(ctx\.atNet\)\s*cands=\[([^\]]+)\]/);
   exige(m && m[1].split(",").length >= 3, "en la red solo hay dos golpes posibles: gana siempre quien tenga más dejada");
   return "dejada win " + SHOTS.dejada.win + " vs remate " + SHOTS.remate.win + " · " + (m ? m[1] : "?");
+});
+
+comprueba("Circuito: no puedes jugar un torneo que no toca esta semana", () => {
+  /* El corte por calendario vivía SOLO en la interfaz: `pintarEventosSemana`
+     pinta los dos torneos del slot, pero `entradaEn` miraba únicamente el
+     ranking. Cualquier código que llamara a `abrirTorneo(i)` sin pasar por la
+     pantalla podía jugar los Maestros las 52 semanas —1.500 puntos y 24.000€
+     cada una—. Lo destapó un banco de pruebas que daba 946.000€ y el número uno
+     del mundo, y era mentira entera. */
+  const c = nuevaCarrera("agresivo");
+  rkAnota(c, c.semana, 999999);        // nº1: pasa cualquier corte de ranking
+  c.dinero = 200000; c.energia = 100; c.pro = true;
+  // en una semana de Maestros se puede; en las demás no, por muy nº1 que seas
+  const semTF = semanaDeCategoria(c, 7);
+  exige(entradaEn(7) === 3, "no se puede entrar en los Maestros en su propia semana");
+  let abiertas = 0, cerradas = 0;
+  for (let s = 1; s <= SEMANAS_TEMP; s++) {
+    c.semana = s;
+    if (entradaEn(7) !== -1) abiertas++; else cerradas++;
+  }
+  exige(abiertas === 1, "los Maestros se pueden jugar " + abiertas + " semanas al año, y son una");
+  exige(cerradas === SEMANAS_TEMP - 1, "el resto del año debería estar cerrado");
+  // y abrirTorneo tampoco cuela fuera de su semana
+  c.semana = semTF === 1 ? 2 : 1;
+  torneo = null;
+  abrirTorneo(7);
+  exige(!torneo, "abrirTorneo abre los Maestros en una semana que no toca");
+  // lo que sí toca, se abre
+  const ci = slotSemana(c.semana).fip;
+  abrirTorneo(ci);
+  exige(torneo, "no se puede abrir el torneo que sí se juega esta semana");
+  torneo = null;
+  return "los Maestros, 1 semana de " + SEMANAS_TEMP + " · el resto del calendario, cerrado";
+});
+
+comprueba("Superliga: tus eliminatorias se juegan con el motor de verdad", () => {
+  /* Era el único modo que no pasaba por el motor: lo resolvía TODO con
+     `probPunto` sobre una «fuerza» escalar, así que ahí dentro no existían los
+     estilos, ni la táctica, ni el bucle globo-bandeja, ni los planes, ni los
+     lados, ni los rasgos. Un modo entero al margen de lo que hace bueno al
+     juego. Ahora sigue el patrón de la Copa y del cuadro: los tuyos se juegan,
+     los de los clubes del ordenador se resuelven (24 por jornada). */
+  rndSemilla(3131, 3131);
+  const sl = mkSuperliga("Test SC", 62, "#fff");
+  sl.plantilla = mkPlantillaSuperliga();
+  sl.alin = [[0, 1], [2, 3], [4, 5]];
+  sincronizaClubSL(sl);
+  const tu = sl.equipos.findIndex(e => e.tuyo);
+  const riv = sl.equipos.findIndex(e => !e.tuyo);
+  // los rivales del ordenador tienen jugadores de verdad, no solo un número
+  sl.equipos.filter(e => !e.tuyo).forEach(e => {
+    exige(e.plantilla && e.plantilla.length === 6, "un club de la Superliga no tiene plantilla");
+    exige(e.alin && e.alin.length === 3, "un club de la Superliga no tiene sus tres parejas");
+  });
+  // y su fuerza declarada cuadra con la de sus parejas: si no, la logística que
+  // resuelve sus otros cruces y el motor que los juega contra ti dirían cosas distintas
+  sl.equipos.filter(e => !e.tuyo).slice(0, 6).forEach(e => {
+    const fs = e.alin.map(par => fuerzaParejaSL(e.plantilla, par)).sort((a, b) => b - a);
+    exige(Math.abs(fs[1] - e.fuerza) <= 8, `el club ${e.n} dice fuerza ${e.fuerza} y su 2ª pareja es ${fs[1]}`);
+  });
+  const mio = resuelveCruceEquipos(slEq(sl, tu), slEq(sl, riv));
+  exige(mio.jugado, "tu eliminatoria no se juega con el motor");
+  exige(mio.marcadores && mio.marcadores.length === 3, "no salen los tres marcadores de tu eliminatoria");
+  exige(mio.marcadores.every(m => /^\d+-\d+$/.test(m)), "los marcadores no son de partidos jugados: " + mio.marcadores.join(" "));
+  const ajeno = resuelveCruceEquipos(sl.equipos[1], sl.equipos[2]);
+  exige(!ajeno.jugado, "los cruces entre clubes del ordenador se simulan punto a punto: son 24 por jornada");
+  // y el atajo a granel apaga también los tuyos, que es para lo que existe
+  const granel = slAGranel(true, () => resuelveCruceEquipos(slEq(sl, tu), slEq(sl, riv)));
+  exige(!granel.jugado, "el modo a granel sigue jugando los partidos");
+  // competir desgasta: es lo que hace que la plantilla corta pese
+  const en = sl.plantilla.map(j => j.energia);
+  exige(en.some(x => x < 100), "jugar la eliminatoria no cansa a nadie");
+  return "tu cruce " + mio.gA + "-" + mio.gB + " (" + mio.marcadores.join(" · ") + ") · el ajeno, resuelto";
 });

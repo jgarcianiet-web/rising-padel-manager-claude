@@ -9,8 +9,14 @@
 function fuerzaClubNPC(nombre){ return 48+(Math.abs(hashStr("liga:"+(nombre||"?")))%30); }
 // Las tres parejas de un club, escalonadas desde su fuerza base.
 function fuerzasTriples(base){ return [base+7,base,base-7]; }
-// Probabilidad de que A gane un punto (una pareja) frente a B según la diferencia de fuerza.
-function probPunto(fa,fb){ return 1/(1+Math.pow(10,(fb-fa)/16)); }
+/* Probabilidad de que A gane un punto (una pareja) frente a B. Esto resuelve los
+   cruces ENTRE CLUBES DEL ORDENADOR; los tuyos se juegan con el motor de verdad
+   (ver `resuelveCruceEquipos`). Su trabajo, por tanto, es predecir lo que habría
+   pasado de simularlos, y la constante sale de medir el motor: 16 daba un 82% a
+   doce puntos de diferencia cuando el motor mide un 95%, así que la liga vivía
+   en una realidad más plana que la pista. Ajustada a 9, la misma que `probGana`
+   del cuadro del torneo. */
+function probPunto(fa,fb){ return 1/(1+Math.pow(10,(fb-fa)/9)); }
 // Resuelve un cruce a 3 parejas (mejor de 3). Devuelve {ganador:0|1, gA, gB, puntos:[0|1,...]}.
 function resuelveCruce(baseA,baseB,azar){
   const r=azar||rnd, fa=fuerzasTriples(baseA), fb=fuerzasTriples(baseB);
@@ -21,12 +27,85 @@ function resuelveCruce(baseA,baseB,azar){
 // Fuerzas de las 3 parejas de un equipo: las reales si tiene alineación propia
 // (tu club), o el escalonado desde la fuerza base (clubes NPC).
 function fuerzasDeEquipo(eq){ return (eq.parejas&&eq.parejas.length===3)?eq.parejas.slice():fuerzasTriples(eq.fuerza); }
-// Resuelve un cruce entre dos EQUIPOS (usa sus 3 parejas reales o escalonadas).
+/* TUS PARTIDOS SE JUEGAN, NO SE SORTEAN.
+   La Superliga era el único modo que no pasaba por el motor: lo resolvía todo
+   con `probPunto` sobre una «fuerza» escalar, así que ahí dentro no existían
+   los estilos, ni la táctica, ni el bucle globo-bandeja, ni los planes, ni los
+   lados, ni los rasgos. Un modo entero al margen de lo que hace bueno al juego.
+
+   Ahora sigue el mismo patrón que la Copa de Clubes y que el cuadro del torneo:
+   los tres puntos de TU eliminatoria se juegan con `quickMatch` —con jugadores
+   de verdad, los tuyos y los suyos—, y los cruces entre clubes del ordenador se
+   siguen resolviendo con la logística, que son 24 partidos por jornada y no se
+   pueden simular sin que la pantalla vaya a tirones. */
+/* Simulación a granel: resuelve TODO con la logística, también tus cruces. Es
+   para medir economía y objetivos a lo largo de decenas de temporadas, donde lo
+   que se estudia no es el partido sino la caja y la junta —y donde jugar cada
+   punto son trece mil partidos y media hora de espera—. La logística está
+   ajustada contra el motor precisamente para que las dos vías digan lo mismo;
+   si alguna vez dejaran de coincidir, el que miente es este atajo. */
+let SL_A_GRANEL=false;
+function slAGranel(v,fn){
+  const antes=SL_A_GRANEL; SL_A_GRANEL=!!v;
+  try{ return fn(); } finally{ SL_A_GRANEL=antes; }
+}
 function resuelveCruceEquipos(eqA,eqB,azar){
-  const r=azar||rnd, fa=fuerzasDeEquipo(eqA), fb=fuerzasDeEquipo(eqB);
+  const r=azar||rnd;
+  const míoA=!!eqA.tuyo, míoB=!!eqB.tuyo;
+  if(!SL_A_GRANEL&&(míoA||míoB)&&typeof quickMatch==="function"&&slEquipoJugable(eqA)&&slEquipoJugable(eqB))
+    return _cruceJugado(eqA,eqB);
+  const fa=fuerzasDeEquipo(eqA), fb=fuerzasDeEquipo(eqB);
   let gA=0,gB=0; const puntos=[];
   for(let i=0;i<3;i++){ const ganaA=r()<probPunto(fa[i],fb[i]); if(ganaA)gA++; else gB++; puntos.push(ganaA?0:1); }
   return {ganador:gA>gB?0:1,gA,gB,puntos};
+}
+// ¿Tiene este equipo jugadores de verdad con los que jugar el partido?
+function slEquipoJugable(eq){ return !!(eq&&eq.plantilla&&eq.plantilla.length>=6&&eq.alin&&eq.alin.length===3); }
+/* TU plantilla vive en `sl.plantilla`, no dentro de tu objeto de equipo, así que
+   para jugar hay que juntarlos. Se hace con una VISTA y no copiando los campos
+   al equipo: si se guardaran ahí, al serializar la partida habría dos copias de
+   la misma plantilla y a la siguiente carga empezarían a divergir. La vista
+   comparte el array, así que el desgaste del partido cae sobre tus jugadores de
+   verdad. */
+function slEq(sl,i){
+  const eq=sl.equipos[i];
+  if(eq&&eq.tuyo&&sl.plantilla&&sl.alin) return Object.assign({},eq,{plantilla:sl.plantilla,alin:sl.alin});
+  return eq;
+}
+/* Pasa una pareja de la Superliga al motor. Mismo cuidado que `teamDePareja`
+   del club: lo que no se ponga aquí, para `resolveShot` no existe —el lado de
+   pista vale hasta un 6% por golpe y la combinación drive+revés un 5%—. */
+function slTeamDePareja(eq,par){
+  const pl=eq.plantilla;
+  const mkJ=(idx)=>{
+    const j=pl[idx];
+    const f=0.88+0.12*((j.energia==null?100:j.energia)/100);
+    const o={}; ATTR_KEYS.forEach(k=>o[k]=Math.round(j.attrs[k]*f));
+    const lado=(j.lado===0||j.lado===1)?j.lado:ladoPorAttrs(j.attrs,j.estilo);
+    return {n:j.n,estilo:j.estilo,perso:j.perso,conf:j.conf==null?55:j.conf,attrs:o,
+      lado,rasgos:(typeof rasgosDe==="function"?rasgosDe(j).slice():undefined),sexo:j.sexo||"M",_ref:j};
+  };
+  const a=mkJ(par[0]), b=mkJ(par[1]);
+  if(a.lado===b.lado) b.lado=1-a.lado;    // nadie forma una pareja de dos revés
+  return {nombre:eq.n,jug:[a,b],atNet:false};
+}
+// Los tres puntos, jugados de verdad. El orden es 1ª contra 1ª, 2ª contra 2ª…
+function _cruceJugado(eqA,eqB){
+  const ordena=(eq)=>eq.alin.slice().sort((x,y)=>fuerzaParejaSL(eq.plantilla,y)-fuerzaParejaSL(eq.plantilla,x));
+  const pa=ordena(eqA), pb=ordena(eqB);
+  let gA=0,gB=0; const puntos=[], marcadores=[];
+  for(let i=0;i<3;i++){
+    const res=quickMatch(slTeamDePareja(eqA,pa[i]),slTeamDePareja(eqB,pb[i]));
+    // competir cansa y deja huella: es lo que hace que la plantilla corta pese
+    [[eqA,pa[i],res.gane],[eqB,pb[i],!res.gane]].forEach(([eq,par,gano])=>{
+      par.forEach(k=>{ const j=eq.plantilla[k]; if(!j) return;
+        j.energia=clamp((j.energia==null?100:j.energia)-SL_ENERGIA,0,100);
+        j.conf=clamp((j.conf==null?55:j.conf)+(gano?4:-4),15,95); });
+    });
+    if(res.gane) gA++; else gB++;
+    puntos.push(res.gane?0:1); marcadores.push(res.marcador);
+  }
+  return {ganador:gA>gB?0:1,gA,gB,puntos,marcadores,jugado:true};
 }
 // --- plantilla y alineación de TU club ---
 // Genera una plantilla de 6 jugadores (reutiliza mkAgente del modo club).
@@ -35,10 +114,51 @@ function mkPlantillaSuperliga(){
   for(let i=0;i<6;i++){ let j,g=0; do{ j=mkAgente(52,72,"M"); }while(seen.has(j.n)&&g++<20); seen.add(j.n); a.push(j); }
   return a;
 }
-// Fuerza de una pareja (media de los dos jugadores + química de lados: drive+revés suma).
+/* Y la de un club del ordenador, montada para que sus tres parejas caigan donde
+   dice su fuerza: así el resultado de jugar contra ellos y el de la logística
+   que resuelve sus otros cruces hablan de lo mismo. */
+function mkPlantillaSLNPC(base){
+  const a=[];
+  fuerzasTriples(base).forEach(f=>{ for(let i=0;i<2;i++) a.push(mkAgente(clamp(f-2,30,92),clamp(f+2,32,94),"M")); });
+  return a;
+}
+/* Da plantilla a los clubes del ordenador que no la tengan. Va aparte para que
+   las partidas guardadas de antes de esto sigan abriendo: al entrar, los quince
+   rivales reciben la suya y la liga continúa donde estaba. */
+function slAsegura(sl){
+  if(!sl||!sl.equipos) return sl;
+  sl.equipos.forEach(eq=>{
+    if(eq.tuyo||slEquipoJugable(eq)) return;
+    eq.plantilla=mkPlantillaSLNPC(eq.fuerza||55);
+    eq.alin=[[0,1],[2,3],[4,5]];
+  });
+  return sl;
+}
+const SL_ENERGIA=9;      // lo que cuesta jugar un punto de la eliminatoria
+const SL_REGEN=22;       // y lo que se recupera entre jornada y jornada
+/* Entre jornada y jornada se descansa, pero no del todo: con seis jugadores y
+   tres parejas juegan todos cada semana, así que la plantilla corta se nota en
+   las piernas al final de la liga. Y la confianza se enfría hacia el centro,
+   como en el club: una mala racha tiene que doler unas semanas, no marcarte la
+   temporada entera (los rivales del ordenador no arrastran cicatrices). */
+function slRecupera(sl){
+  const plantillas=(sl.equipos||[]).map(eq=>eq.plantilla).concat([sl.plantilla]);
+  plantillas.forEach(pl=>{
+    (pl||[]).forEach(j=>{
+      j.energia=clamp((j.energia==null?100:j.energia)+SL_REGEN,0,100);
+      const cf=(j.conf==null?55:j.conf);
+      j.conf=clamp(cf+(cf<55?2:cf>55?-1:0),15,95);
+    });
+  });
+}
+/* Fuerza de una pareja. Manda el BUENO y cuenta el doble, igual que en la Copa
+   (`copFuerzaPar`): medido sobre el motor, apilar SUMA —a media 55, una pareja
+   70/40 gana el 79% a una 55/55—. Aquí estaba la media de los dos, que es el
+   modelo que la medición desmintió. Y la combinación drive+revés suma. */
 function fuerzaParejaSL(plantilla,par){
   const a=plantilla[par[0]],b=plantilla[par[1]]; if(!a||!b) return 55;
-  let f=(mediaAttrs(a.attrs)+mediaAttrs(b.attrs))/2;
+  const x=mediaAttrs(a.attrs), y=mediaAttrs(b.attrs);
+  let f=(2*Math.max(x,y)+Math.min(x,y))/3;
   if(a.lado!==undefined&&b.lado!==undefined) f+=(a.lado!==b.lado)?2:-3;
   return Math.round(f);
 }
@@ -119,19 +239,23 @@ function mkCalendarioLiga(n){
 function mkSuperliga(tuNombre,tuFuerza,tuColor){
   const npc=CLUBES_NPC.slice(0,15).map(c=>({n:c.n,color:c.color,fuerza:fuerzaClubNPC(c.n),tuyo:false}));
   const equipos=[{n:tuNombre||"Rising SC",color:tuColor||"#C6F53C",fuerza:tuFuerza||62,tuyo:true}].concat(npc);
-  return {equipos,calendario:mkCalendarioLiga(equipos.length),jornada:0,
+  const sl={equipos,calendario:mkCalendarioLiga(equipos.length),jornada:0,
     tabla:equipos.map(()=>({pts:0,pj:0,pg:0,pp:0,gf:0,gc:0})),fase:"liga",playoff:null,ultima:null,temporada:1,
     caja:40000,objetivo:juntaTop(8),mercado:null};
+  return slAsegura(sl);   // los quince rivales nacen con jugadores, no con un número
 }
 // Juega la jornada actual (todos los cruces), actualiza la tabla y avanza. Devuelve los resultados.
 function jugarJornadaLiga(sl,azar){
   if(sl.fase!=="liga"||sl.jornada>=sl.calendario.length) return null;
+  slAsegura(sl);
+  slRecupera(sl);
   const jor=sl.calendario[sl.jornada], res=[];
   jor.forEach(([a,b])=>{
-    const r=resuelveCruceEquipos(sl.equipos[a],sl.equipos[b],azar), ta=sl.tabla[a],tb=sl.tabla[b];
+    const r=resuelveCruceEquipos(slEq(sl,a),slEq(sl,b),azar), ta=sl.tabla[a],tb=sl.tabla[b];
     ta.pj++;tb.pj++; ta.gf+=r.gA;ta.gc+=r.gB; tb.gf+=r.gB;tb.gc+=r.gA;
     if(r.ganador===0){ ta.pg++;ta.pts+=3;tb.pp++; } else { tb.pg++;tb.pts+=3;ta.pp++; }
-    res.push({a,b,gA:r.gA,gB:r.gB});
+    // de TU eliminatoria guardamos los marcadores de verdad: son partidos jugados
+    res.push({a,b,gA:r.gA,gB:r.gB,marcadores:r.marcadores||null});
   });
   sl.jornada++; sl.ultima=res;
   if(sl.jornada>=sl.calendario.length) _iniciaPlayoffs(sl);
@@ -153,18 +277,19 @@ function _iniciaPlayoffs(sl){
 // Juega la ronda de playoff pendiente (cuartos → semis → final). Devuelve {fase, ...}.
 function jugarPlayoff(sl,azar){
   const p=sl.playoff; if(!p||sl.fase!=="playoff") return null;
+  slAsegura(sl); slRecupera(sl);
   if(p.ronda==="cuartos"){
-    const g=p.cuartos.map(([a,b])=>resuelveCruceEquipos(sl.equipos[a],sl.equipos[b],azar).ganador===0?a:b);
+    const g=p.cuartos.map(([a,b])=>resuelveCruceEquipos(slEq(sl,a),slEq(sl,b),azar).ganador===0?a:b);
     p.semis=[[g[0],g[1]],[g[2],g[3]]]; p.ronda="semis";
     return {fase:"cuartos",ganadores:g};
   }
   if(p.ronda==="semis"){
-    const g=p.semis.map(([a,b])=>resuelveCruceEquipos(sl.equipos[a],sl.equipos[b],azar).ganador===0?a:b);
+    const g=p.semis.map(([a,b])=>resuelveCruceEquipos(slEq(sl,a),slEq(sl,b),azar).ganador===0?a:b);
     p.final=g.slice(); p.ronda="final";
     return {fase:"semis",finalistas:g};
   }
   if(p.ronda==="final"){
-    const [a,b]=p.final, r=resuelveCruceEquipos(sl.equipos[a],sl.equipos[b],azar);
+    const [a,b]=p.final, r=resuelveCruceEquipos(slEq(sl,a),slEq(sl,b),azar);
     p.campeon=r.ganador===0?a:b; p.ronda="fin"; sl.fase="fin";
     return {fase:"final",campeon:p.campeon};
   }
@@ -305,7 +430,11 @@ function pintarSuperliga(){
   const slRes=document.getElementById("slResult");
   if(slRes){
     if(sl.ultima&&sl.ultima.length){
-      slRes.innerHTML=`<div class="foot" style="text-align:left;margin-bottom:3px">${t("sl_ultima")}</div>`+sl.ultima.map(m=>`<div style="font-size:11px;padding:1px 0">${nom(m.a)} <b style="color:${m.gA>m.gB?"var(--lima)":"var(--gris)"}">${m.gA}</b>–<b style="color:${m.gB>m.gA?"var(--lima)":"var(--gris)"}">${m.gB}</b> ${nom(m.b)}</div>`).join("");
+      slRes.innerHTML=`<div class="foot" style="text-align:left;margin-bottom:3px">${t("sl_ultima")}</div>`+sl.ultima.map(m=>{
+        // los tres marcadores solo existen en tu eliminatoria, que es la que se juega
+        const sets=m.marcadores?`<div class="foot" style="text-align:left;padding-left:6px">${m.marcadores.join(" · ")}</div>`:"";
+        return `<div style="font-size:11px;padding:1px 0">${nom(m.a)} <b style="color:${m.gA>m.gB?"var(--lima)":"var(--gris)"}">${m.gA}</b>–<b style="color:${m.gB>m.gA?"var(--lima)":"var(--gris)"}">${m.gB}</b> ${nom(m.b)}</div>${sets}`;
+      }).join("");
     } else slRes.innerHTML="";
   }
 }

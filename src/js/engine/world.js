@@ -131,8 +131,24 @@ function catNombre(c){
   const cat=(typeof c==="number")?CATS[c]:c;
   return cat?t(cat.k):"";
 }
+/* ¿Se juega esta categoría ESTA semana? El circuito es un calendario: cada
+   semana hay un premier y un continental, y no se puede elegir otra cosa. */
+function enCalendario(ci){
+  const slot=slotSemana(semanaTemp());
+  return slot.premier===ci||slot.fip===ci;
+}
 function entradaEn(ci){
   const cat=CATS[ci],pos=miPuesto();
+  /* EL CALENDARIO ES PARTE DEL CORTE, y hasta ahora no lo era: `entradaEn`
+     miraba solo el ranking, y el filtro por semana vivía únicamente en la
+     interfaz (`pintarEventosSemana`, que solo pinta los dos torneos del slot).
+     Con eso, cualquier código que llamara a `abrirTorneo(i)` sin pasar por la
+     pantalla podía jugar los Maestros las 52 semanas: 1.500 puntos y 24.000€
+     por semana. Lo descubrió un banco de pruebas que daba 946.000€ y el número
+     uno del mundo en la temporada 12, y que era mentira de cabo a rabo.
+     Una regla del juego no puede depender de que quien la llame se porte
+     bien. */
+  if(!enCalendario(ci)) return -1;
   if(cat.tf) return pos<=8?3:-1;      // Finals: solo top 8, arranca en cuartos
   if(cat.premier){
     if(pos<=cat.cupoD) return 2;      // directos al cuadro final

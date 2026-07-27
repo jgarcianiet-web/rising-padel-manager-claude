@@ -107,6 +107,41 @@ mundo se rehacen de cero en cada eliminatoria y llegan siempre a 55 —tus
 jugadores cargaban con las cicatrices y los rivales no—. Ahora relaja hacia 55
 cada semana en el cierre del club. Doler unas semanas, sí; marcar la carrera, no.
 
+## Lo que se juega y lo que se resuelve
+
+Tres competiciones y una sola regla, la misma en las tres: **tus partidos se
+juegan con el motor; los que no juegas tú se resuelven con una logística**. Un
+torneo son 15 cruces y una jornada de Superliga 24: simularlos punto a punto
+pondría la pantalla a tirones sin que nadie los vea.
+
+- **Torneo**: `quickMatch` para los tuyos, `probGana` para el resto del cuadro.
+- **Copa de Clubes**: `copJuega` monta tus dos puntos con `teamDePareja`; los
+  demás cruces salen de `copFuerza`.
+- **Superliga**: `resuelveCruceEquipos` juega tus tres puntos con
+  `slTeamDePareja` y resuelve los ajenos con `probPunto`.
+
+Dos cosas que hay que respetar:
+
+1. **Las dos vías tienen que decir lo mismo.** Las constantes de `probGana` y
+   `probPunto` salen de medir el motor, no de elegir un número redondo: estaban
+   en 12 y en 16 —un 91% y un 82% a doce puntos de diferencia— cuando el motor
+   mide un 95%, así que el cuadro y la liga vivían en una realidad más plana que
+   la pista. Las dos están hoy en 9. Si tocas el motor, vuelve a medirlas.
+2. **Lo que pases al motor es lo único que el motor ve.** `teamDePareja` (club)
+   y `slTeamDePareja` (Superliga) tienen que copiar el lado de pista y los
+   rasgos: el lado vale hasta un 6% por golpe y la combinación drive+revés un
+   5%. Ya pasó una vez —parejas de nivel equivalente perdían 0-2 una y otra vez
+   porque el club no copiaba ninguna de las dos cosas—.
+
+### El atajo a granel
+
+`slAGranel(true, fn)` resuelve TODO con la logística, también lo tuyo. Existe
+para las pruebas de balance, que miden la economía y el objetivo de la junta a
+lo largo de decenas de temporadas: jugar cada punto son trece mil partidos y el
+vm de pruebas se planta en media hora. **No es una optimización, es una
+declaración**: si alguna vez el resultado a granel y el jugado dejan de
+parecerse, el que miente es el atajo.
+
 ## El torneo tiene cuadro
 
 `tournament.js` construye un cuadro final de 16 con siembra por puntos de
