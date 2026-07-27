@@ -61,6 +61,34 @@ sacó a la luz cosas que ninguna prueba de claves ni de interfaz veía:
   asimétrico: tus jugadores cargaban las cicatrices y los rivales llegaban
   siempre a 55.
 
+### Segunda revisión: lo que salió al medir el motor ya arreglado
+
+- **Varios números afinados contra el motor roto se habían quedado mintiendo.**
+  Arreglados: los planes de pareja (dos valían ruido y `escudo` valía −4, o sea
+  que «protegerse» castigaba) y `probGana`, que predecía un 91% donde el motor
+  da un 95%. Los umbrales de lectura táctica sí aguantaron sin tocarlos. **La
+  lección es que hay que sospechar de TODO número calibrado antes del arreglo**:
+  aparecieron tres, pueden quedar más.
+- **Cuidado al medir con bots: `abrirTorneo(i)` no mira el calendario.** El
+  corte vive solo en la interfaz (`pintarEventosSemana` únicamente ofrece el
+  premier y el continental de esa semana). Un banco de pruebas que llame a
+  `abrirTorneo` a pelo juega los Maestros las 52 semanas, y toda la medición que
+  salga de ahí es basura —pasó, y daba 946.000€ y el nº1 en la temporada 12—.
+  Convendría que `entradaEn` comprobara también el calendario, para que la regla
+  no dependa de que quien la llame se porte bien.
+- **El arco de carrera, medido bien, funciona**: primer título a los 18,
+  competitivo a los 24, pico en el puesto 2 a los 28, y temporadas malas de
+  verdad por el camino (#2 → #9 → #7). La caja se queda acotada (~80.000€).
+- **Títulos y ranking están desacoplados, y eso está bien**, pero el contador de
+  títulos deja de significar nada: el calendario reparte 52 torneos al año y una
+  carrera termina con más de cien. Los puntos los deciden quince semanas (4
+  Coronas, 10 Élite 1 y los Maestros suman 19.500 de los 27.090 del techo); las
+  otras treinta y siete son casi irrelevantes para el ranking.
+- **El nº1 es alcanzable**: el techo del jugador son 27.090 puntos al año y el
+  nº1 del mundo se mueve entre 15.400 y 19.700. Pero en dos carreras honestas de
+  quince temporadas el tope fue el puesto 2, así que conviene comprobar que hay
+  un camino que lo consiga de verdad y no solo sobre el papel.
+
 ### Lo que queda abierto de esto
 
 - **Regenerar las capturas y el tráiler.** Además de ser de antes de las ocho
@@ -74,6 +102,22 @@ sacó a la luz cosas que ninguna prueba de claves ni de interfaz veía:
   todavía puede dejarte sin una primera pareja competitiva. Conviene medir
   varias fundaciones seguidas y decidir si el mercado inicial necesita un
   suelo.
+- **La Superliga no usa el motor de partidos.** `engine/liga.js` resuelve todo
+  con `probPunto`, una logística sobre una «fuerza» escalar: ni estilos, ni
+  táctica, ni el bucle globo-bandeja, ni planes. Es un modo entero al margen de
+  lo que hace bueno al juego, y además su modelo de fuerza de pareja (la media
+  de los dos) contradice al que se midió para la Copa (manda el bueno y cuenta
+  doble). Decidir si se engancha al motor o se asume como modo de hoja de
+  cálculo.
+- **Lesiones: el 20-24% de las semanas de una carrera larga.** Sale de un bot
+  que entrena cuatro días y compite todas las semanas sin descansar nunca, así
+  que puede ser correcto, pero no está comprobado que un jugador que gestione la
+  carga baje de ahí. Merece una medición propia.
+- **La energía ya no aprieta arriba.** Una carrera larga termina temporada tras
+  temporada con 80-100 de energía: se puede competir las 52 semanas. Es el
+  reverso del arreglo que hizo que entrenar volviera a compensar, y habría que
+  buscar el punto en que el calendario obligue a elegir sin que entrenar deje de
+  merecer la pena.
 
 ---
 
