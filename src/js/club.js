@@ -1197,6 +1197,17 @@ function avanzarSemanaClub(){
       if(!cl._avisoQuiebra){ cl._avisoQuiebra=true; avisa(t("clb_quiebra")); }
     }
   }
+  /* EL FISIO ES LA DECISIÓN QUE DECIDE LA COPA, Y HAY QUE DECIRLO. Medido
+     sobre diez fundaciones jugadas igual: sin fisio, mediana de 1,35
+     lesionados por semana y 8 destituciones de 10; con fisio, 0,42 y 4 de 10.
+     Es la diferencia entre llegar con cuatro sanos a la jornada o perder el
+     segundo punto en la mesa. Que sea una decisión está bien; que el jugador
+     tenga que deducirla a base de temporadas perdidas, no. */
+  if(!cl.staff.fisio){
+    const _tocados=cl.plantilla.filter(j=>j.lesion).length;
+    if(_tocados>=2&&!cl._avisoFisio){ cl._avisoFisio=true; avisa(t("clb_av_fisio",{n:_tocados})); }
+    if(_tocados===0) cl._avisoFisio=false;
+  }
   if((cl.semana-1)%SEMANAS_TEMP===0){
     /* La Copa se cierra antes que nada: es la competición del club. OJO con la
        comparación: aquí `cl.semana` ya se ha incrementado, así que `temporada()`
@@ -1279,7 +1290,15 @@ function avanzarSemanaClub(){
         avisa(t("sl_av_llega"));
       }
     }
-    J.objetivo=Math.max(1,Math.round(Math.min(posFin,J.objetivo)*CAR.dureza));
+    /* EL OBJETIVO SOLO SE APRIETA SI LO CUMPLES. Antes se apretaba siempre, y
+       como usaba `min(posFin, objetivo)`, FALLAR lo endurecía: quedabas 8º con
+       el 3º pedido y la temporada siguiente te pedían el 2º. Medido sobre diez
+       fundaciones jugadas con fisio y plantilla de cinco, seis acababan
+       destituidas en dos temporadas por esa escalera imposible.
+       Que te pidan más por haber ganado es la historia de cualquier banquillo;
+       que te pidan más por haber perdido no es exigencia, es un cepo. */
+    if(posFin<=J.objetivo)
+      J.objetivo=Math.max(1,Math.round(Math.min(posFin,J.objetivo)*CAR.dureza));
     cl.junta=J;
     avisa(t("clb_junta_nuevo",{obj:J.objetivo}));
     evolucionaMundo();

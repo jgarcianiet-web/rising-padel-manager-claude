@@ -312,6 +312,10 @@ button:active{transform:translateY(1px)}
 .opcion:hover{border-color:#4A5468}
 @media(min-width:760px){
   #tab-jugador,#cm-plantilla,#cm-clubpan{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start}
+  /* El aviso del último baile solo existe en la última temporada. Vacío seguía
+     ocupando su celda de la rejilla, y la columna de al lado arrancaba con un
+     hueco del tamaño de una tarjeta sin que nada lo explicara. */
+  #tab-jugador>#ultimoBaile:empty{display:none}
   #tab-jugador .card,#cm-plantilla .card,#cm-clubpan .card{margin-bottom:0}
   #scr-partido .cont{display:grid;grid-template-columns:1fr .9fr;gap:8px;align-items:stretch}
   #scr-partido .cont>.card{margin-bottom:0;min-width:0}

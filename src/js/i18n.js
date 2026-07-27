@@ -19,6 +19,7 @@ const IDIOMAS=[
 const IDIOMA_DEF="es";
 const I18N={
   es:{
+    clb_av_fisio:"🩺 Tienes {n} lesionados y ningún fisioterapeuta. La Copa pide CUATRO sanos: sin ellos el segundo punto se pierde sin jugarlo.",
     sem_paron_t:"Semana de parón en el circuito",
     sem_paron_d:"No hay torneo esta semana. Buen momento para entrenar fuerte, descansar o llegar entero al siguiente grande.",
     pal_resumen:"{grandes} títulos grandes de {total} en total",
@@ -2229,6 +2230,7 @@ const I18N={
     ctx_circuito_fip:"circuito Continental",
   },
   en:{
+    clb_av_fisio:"🩺 You have {n} injured players and no physiotherapist. The Cup needs FOUR fit players: without them the second point is lost without playing it.",
     sem_paron_t:"Off week on the tour",
     sem_paron_d:"No tournament this week. A good moment to train hard, rest, or arrive fresh at the next big one.",
     pal_resumen:"{grandes} major titles out of {total} overall",
@@ -4439,6 +4441,7 @@ const I18N={
     ctx_circuito_fip:"Continental tour",
   },
   fr:{
+    clb_av_fisio:"🩺 Tu as {n} blessés et aucun kinésithérapeute. La Coupe exige QUATRE joueurs valides : sans eux, le second point est perdu sans le jouer.",
     sem_paron_t:"Semaine de trêve sur le circuit",
     sem_paron_d:"Pas de tournoi cette semaine. Bon moment pour t'entraîner dur, souffler ou arriver frais au prochain grand rendez-vous.",
     pal_resumen:"{grandes} titres majeurs sur {total} au total",
@@ -6649,6 +6652,7 @@ const I18N={
     ctx_circuito_fip:"circuit Continental",
   },
   de:{
+    clb_av_fisio:"🩺 Du hast {n} Verletzte und keinen Physiotherapeuten. Der Pokal verlangt VIER fitte Spieler: ohne sie geht der zweite Punkt kampflos verloren.",
     sem_paron_t:"Spielfreie Woche auf der Tour",
     sem_paron_d:"Diese Woche kein Turnier. Ein guter Moment, hart zu trainieren, zu ruhen oder frisch beim nächsten großen Event anzukommen.",
     pal_resumen:"{grandes} große Titel von insgesamt {total}",
@@ -8859,6 +8863,7 @@ const I18N={
     ctx_circuito_fip:"Continental-Tour",
   },
   it:{
+    clb_av_fisio:"🩺 Hai {n} infortunati e nessun fisioterapista. La Coppa richiede QUATTRO giocatori sani: senza di loro il secondo punto si perde a tavolino.",
     sem_paron_t:"Settimana di pausa nel circuito",
     sem_paron_d:"Nessun torneo questa settimana. Buon momento per allenarti forte, riposare o arrivare intero al prossimo grande.",
     pal_resumen:"{grandes} titoli grandi su {total} in totale",
