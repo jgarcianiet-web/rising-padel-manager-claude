@@ -33,13 +33,22 @@ const PLANES_PAREJA = {
      los golpes de un punto no son voleas— y convertía el plan en una trampa. */
   red: { mods:{ "golpe:volea":{win:1.40}, "golpe:bandeja":{win:1.26}, "golpe:remate":{win:1.22},
                 "golpe:fondo":{err:1.14}, "golpe:pared":{err:1.12} } },
-  desgaste: { mods:{ "golpe:bandeja":{win:1.14,err:.92}, "golpe:globo":{win:1.08},
+  /* Los tres de abajo hubo que rehacerlos al arreglar el motor, y es el mejor
+     ejemplo de por qué un número afinado se queda mentira cuando cambia lo que
+     medía. Con el motor viejo el 85% de los puntos moría en error, así que
+     cualquier recorte de error valía oro y cualquier bonificación de golpe daba
+     igual; hoy es el 69%/31% y el reparto se ha dado la vuelta. Medidos otra
+     vez, estos tres valían +1, +1 y **−4**: dos eran ruido y el tercero, un
+     castigo por elegirlo. */
+  desgaste: { mods:{ "golpe:bandeja":{win:1.24,err:.88}, "golpe:globo":{win:1.16},
                      "golpe:remate":{win:.90}, golpeTodo:{err:.985} } },
-  reves: { mods:{ "golpe:vibora":{win:1.22}, "golpe:chiquita":{win:1.16}, "golpe:dejada":{win:1.10} } },
+  // la dejada ya no cierra puntos, así que este plan se apoya en la víbora
+  reves: { mods:{ "golpe:vibora":{win:1.34}, "golpe:chiquita":{win:1.24}, "golpe:dejada":{win:1.12} } },
   /* Cuidado con este: recortar el error de TODOS los golpes es la palanca más
-     fuerte del motor —la mayoría de los puntos mueren en error, no en winner—.
-     A .88 doblaba el porcentaje de victorias de cualquier otro plan. */
-  escudo: { mods:{ golpeTodo:{err:.965, win:.92} }, protege:true },
+     fuerte del motor, y por eso `tests/casos.js` no deja bajar de .95. Pero el
+     castigo en winners tampoco puede pasarse: a win .92 el plan salía −4 frente
+     a no tener plan, o sea que la opción «protegerse» era una trampa. */
+  escudo: { mods:{ golpeTodo:{err:.95, win:.96} }, protege:true },
 };
 const PLAN_DOM_MAX=100;
 /* Cuánto se pierde al cambiar de compañero. No es cero: algo de lo aprendido

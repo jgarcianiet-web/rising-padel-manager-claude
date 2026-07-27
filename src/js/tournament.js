@@ -49,10 +49,17 @@ const SIEMBRA_16=[0,15,8,7,4,11,12,3,2,13,10,5,6,9,14,1];
 const SIEMBRA_8=[0,7,4,3,2,5,6,1];
 const CUADRO_TF_FASE=3;
 
-/* Probabilidad de que A gane a B por diferencia de nivel. Doce puntos de
-   diferencia dan aproximadamente un 90%: hay favoritos claros, pero la
-   campanada siempre es posible. */
-function probGana(nA,nB){ return 1/(1+Math.pow(10,(nB-nA)/12)); }
+/* Probabilidad de que A gane a B por diferencia de nivel. Esto resuelve los
+   cruces del cuadro que NO juegas tú, así que su trabajo es predecir lo que
+   habría pasado de simularlos: la constante sale de medir el motor de verdad,
+   no de elegir un número redondo.
+
+   Con 12 el cuadro y el motor se contradecían —el cuadro daba un 91% a doce
+   puntos de diferencia y el motor medido da un 95%—, y esa grieta significaba
+   que las parejas del ordenador avanzaban con una lógica distinta de la que
+   sufres tú en la pista. Ajustada sobre la tabla medida (+4 → 70%, +6 → 77%,
+   +8 → 87%, +12 → 95%). Si tocas el motor, vuelve a medirla. */
+function probGana(nA,nB){ return 1/(1+Math.pow(10,(nB-nA)/9)); }
 /* Nivel de una entrada del cuadro. Tu propia entrada no es una pareja del
    mundo (no tiene .jug), así que lleva su nivel calculado dentro. */
 function nivCuadro(p){ return p?(p.yo?(p.nivel||50):nivelPareja(p)):0; }

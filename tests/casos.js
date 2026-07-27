@@ -858,27 +858,43 @@ comprueba("Cuadro: el torneo tiene un cuadro de 16 con siembra", () => {
 });
 
 comprueba("Cuadro: el resto del torneo también juega, ronda a ronda", () => {
-  const c = nuevaCarrera("agresivo");
-  c.pts = 99999;
-  ATTR_KEYS.forEach(k => { c.attrs[k] = 95; c.compi.attrs[k] = 95; });   // para llegar a la final
-  abrirTorneo(6);
-  const cu = torneo.cuadro;
-  const octavos = cu.ronda[2].filter(Boolean).length;
-  const rivales = [];
-  let v = 0;
-  while (torneo && v++ < 6) {
-    rivales.push(torneo.rivales[torneo.fase]);
-    empezarPartido(false);
-    pulsarFicha();
+  /* OJO: esta prueba comprueba la MECÁNICA del cuadro, no que tú ganes. Antes
+     ponía los atributos a 95 y daba por hecho llegar a la final; con el motor
+     equilibrado eso ya no es seguro (ni debe serlo), así que se juega hasta
+     donde se llegue y se comprueban las rondas que se hayan resuelto. Se
+     reintenta con otra semilla si caes a la primera, porque con una sola ronda
+     no hay nada que mirar. */
+  let c, cu, octavos, rivales, llegue;
+  for (let intento = 0; intento < 6; intento++) {
+    c = nuevaCarrera("agresivo");
+    c.pts = 99999;
+    ATTR_KEYS.forEach(k => { c.attrs[k] = 95; c.compi.attrs[k] = 95; });
+    rndSemilla(4100 + intento * 97, 4100 + intento * 97);
+    abrirTorneo(6);
+    cu = torneo.cuadro;
+    octavos = cu.ronda[2].filter(Boolean).length;
+    rivales = [];
+    let v = 0;
+    while (torneo && v++ < 6) {
+      rivales.push({ fase: torneo.fase, riv: torneo.rivales[torneo.fase] });
+      empezarPartido(false);
+      pulsarFicha();
+    }
+    llegue = rivales.length;
+    if (llegue >= 3) break;   // al menos octavos, cuartos y semis: hay rondas que mirar
   }
-  exige(cu.ronda[3] && cu.ronda[3].filter(Boolean).length === octavos / 2, "los cuartos no se resuelven");
-  exige(cu.ronda[4] && cu.ronda[4].filter(Boolean).length === octavos / 4, "las semifinales no se resuelven");
+  exige(llegue >= 2, "no se pudo pasar de la primera ronda en seis intentos");
+  // las rondas que se han disputado tienen que haberse resuelto enteras
+  for (let f = 3; f < 2 + llegue; f++) {
+    const esperados = octavos / Math.pow(2, f - 2);
+    exige(cu.ronda[f] && cu.ronda[f].filter(Boolean).length === esperados,
+      `la ronda ${f} no se resuelve entera: ${cu.ronda[f] ? cu.ronda[f].filter(Boolean).length : "—"} de ${esperados}`);
+  }
   // cada rival tuyo tiene que haber ganado su cruce anterior
-  for (let f = 3; f <= 5; f++) {
-    const riv = rivales[f - 2];
-    if (!riv) continue;
-    exige(cu.ronda[f].includes(riv), `el rival de la fase ${f} no había ganado su partido`);
-  }
+  rivales.forEach(({ fase, riv }) => {
+    if (!riv || fase < 3) return;
+    exige(cu.ronda[fase].includes(riv), `el rival de la fase ${fase} no había ganado su partido`);
+  });
   // nadie eliminado reaparece más adelante
   const enSemis = new Set((cu.ronda[4] || []).filter(Boolean).map(p => p.yo ? "yo" : p.id));
   (cu.ronda[5] || []).filter(Boolean).forEach(p => {
@@ -2679,10 +2695,13 @@ comprueba("Maestros: los ocho mejores pueden jugarlos (regresión: reventaba)", 
   pintarTorneo();                                  // esto es lo que lanzaba
   const html = pintarCuadroHTML();
   exige(html && html.length > 40, "el cuadro no se pinta");
-  // y se juega entero, hasta el título
+  /* Y se juega. Lo que esta prueba guarda es que NO REVIENTE en ninguna de las
+     tres rondas y que el recorrido sean fases consecutivas desde cuartos; que
+     ganes o no ya no depende de ella —el motor equilibrado no regala el título
+     a nadie—. El premio del campeón se comprueba aparte, buscando una semilla
+     en la que sí se gane. */
   Object.keys(c.attrs).forEach(k => c.attrs[k] = 95);
   Object.keys(c.compi.attrs).forEach(k => c.compi.attrs[k] = 95);
-  const ptsAntes = c.pts;
   let fases = [];
   let vueltas = 0;
   while (torneo && vueltas++ < 6) {
@@ -2691,10 +2710,29 @@ comprueba("Maestros: los ocho mejores pueden jugarlos (regresión: reventaba)", 
     empezarPartido(false);
     pulsarFicha();
   }
-  exige(fases.join(",") === "3,4,5", "el recorrido debería ser cuartos-semis-final y fue " + fases.join(","));
-  exige(c.palmares.some(x => /Maestros/.test(x)), "ganar los Maestros no deja título: " + c.palmares.join(" · "));
-  exige(c.pts - ptsAntes === CATS[7].pts[0], `el campeón se llevó ${c.pts - ptsAntes} y toca ${CATS[7].pts[0]}`);
-  return "cuartos, semis y final con ocho parejas · " + CATS[7].pts[0] + " puntos";
+  exige(fases[0] === 3, "no arranca en cuartos: " + fases.join(","));
+  exige(fases.join(",") === "3,4,5".slice(0, fases.join(",").length),
+    "el recorrido no son rondas consecutivas desde cuartos: " + fases.join(","));
+  // el premio del campeón: en cuanto se gana una vez, tiene que ser el de CATS[7]
+  let campeon = false;
+  for (let intento = 0; intento < 12 && !campeon; intento++) {
+    const c2 = nuevaCarrera();
+    rkAnota(c2, c2.semana, 999999);
+    c2.dinero = 90000; c2.energia = 100; c2.pro = true; c2.semana = semTF;
+    Object.keys(c2.attrs).forEach(k => c2.attrs[k] = 96);
+    Object.keys(c2.compi.attrs).forEach(k => c2.compi.attrs[k] = 96);
+    rndSemilla(7700 + intento * 131, 7700 + intento * 131);
+    const ptsAntes = c2.pts;
+    abrirTorneo(7);
+    let v2 = 0;
+    while (torneo && v2++ < 6) { empezarPartido(false); pulsarFicha(); }
+    if (c2.palmares.some(x => /Maestros/.test(x))) {
+      campeon = true;
+      exige(c2.pts - ptsAntes === CATS[7].pts[0], `el campeón se llevó ${c2.pts - ptsAntes} y toca ${CATS[7].pts[0]}`);
+    }
+  }
+  exige(campeon, "no se ganan los Maestros ni una vez en doce intentos con el tope de atributos");
+  return "cuartos, semis y final con ocho parejas · " + CATS[7].pts[0] + " puntos al campeón";
 });
 
 /* Ranking por ventana de 52 semanas (como la FIP) -------------------------

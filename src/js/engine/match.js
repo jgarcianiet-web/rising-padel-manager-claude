@@ -110,11 +110,34 @@ function ladoNatural(pl,shotKey){
   return 1;
 }
 function s0key(k){ return SHOTS[k]?SHOTS[k].attr:k; }
+/* EL DÍA QUE SE LEVANTA CADA PAREJA.
+   Un partido son cien y pico puntos, así que una ventaja mínima por punto se
+   convierte en una certeza al final: sin esto, +4 de nivel ganaba el 75%, +8 el
+   92% y +12 el 98%. Con esos números el ranking es un orden estricto por nivel,
+   no pasa NUNCA nada raro, y todo lo demás que el juego te deja tocar —la
+   táctica, el plan de la pareja, la forma, la confianza, que valen uno a tres
+   niveles— queda ahogado debajo. Además el propio juego se contradecía: el
+   cuadro del torneo resuelve los cruces con `probGana`, que da un 91% a esos
+   mismos 12 puntos.
+
+   Esto no enturbia la simulación: no toca ni la elección de golpe ni el modelo
+   del punto (por eso no descoloca el equilibrio de estilos). Solo reconoce que
+   una pareja no rinde igual todos los días. Se sortea UNA vez por partido y por
+   pareja, y sale del flujo con semilla, así que dos partidas iguales lo viven
+   igual. Media de dos uniformes: los días muy buenos y muy malos son raros. */
+const DIA_AMPL=.22;
+function diaDePartido(){ return 1+((rnd()+rnd())-1)*DIA_AMPL; }
 function resolveShot(pl,shotKey,ctx,rallyLen){
   const s=SHOTS[shotKey];
   const attr=(pl.attrs[s.attr]||75);
-  const ladoMod=ladoNatural(pl,shotKey)*(ctx._quimLado||1);
-  const q=clamp(((attr-35)/55)*ladoMod,.12,1.2);
+  const ladoMod=ladoNatural(pl,shotKey)*(ctx._quimLado||1)*(ctx._dia||1);
+  /* El techo de q es 1,35 y no 1,2 POR EL FACTOR DE DÍA. El atributo máximo es
+     96, o sea q=1,109: con 1,2 el tope casi nunca mordía. Al multiplicar el día
+     dentro del recorte, a una pareja de élite se le cortaban los días buenos
+     (1,109×1,22 = 1,35) pero no los malos, así que el factor de día la
+     penalizaba en neto. Medido: una pareja con todo a 95 ganaba solo el 71% a
+     una de 88, cuando sin el sesgo son 30 puntos de nivel de diferencia. */
+  const q=clamp(((attr-35)/55)*ladoMod,.12,1.35);
   const fp=factorPerso(pl);
   let err=s.err*(1.28-q*.68)*fp.err;
   // táctica del equipo del jugador (solo tu equipo la fija)

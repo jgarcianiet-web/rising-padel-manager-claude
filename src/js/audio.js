@@ -164,9 +164,16 @@ function buildPoint(server){
       com+=t(pickVis(p==="emocional" ? ((pl.conf??55)>=60?F_PERSO.emocionalAlto:F_PERSO.emocionalBajo) : (F_PERSO[p]||F_PERSO.frio)));
     } else if(s.attr&&pl.attrs[s.attr]>=85&&Math.random()<.35) com+=` (${atNombre(s.attr)} ${pl.attrs[s.attr]})`;   // azar-visual
 
-    if(opp._defQ===undefined) opp._defQ=Math.round((mediaAttrs(opp.jug[0].attrs)+mediaAttrs(opp.jug[1].attrs))/2);
-    if(team._quimLado===undefined) team._quimLado=quimicaLado(team);
-    const outcome=shotKey==="saque"?"sigue":resolveShot(pl,shotKey,{...ctx,team:eq,oppDef:opp._defQ,oppScrambling:opp._scr,_quimLado:team._quimLado,fatiga:_fat},rally);
+    /* Lo que se calcula una vez por PARTIDO va colgado de `match`, no de la
+       pareja. Una pareja del mundo es un objeto que vive en `G.world` y dura
+       toda la partida: cachearle nada encima es dejárselo puesto para siempre
+       —`_defQ` se quedaba con el nivel que tenía el día que jugasteis por
+       primera vez, aunque el mundo llevara cinco temporadas mejorando—. */
+    if(!match._cache) match._cache={dia:[diaDePartido(),diaDePartido()],defQ:[,], quim:[,]};
+    const _c=match._cache;
+    if(_c.defQ[1-eq]===undefined) _c.defQ[1-eq]=Math.round((mediaAttrs(opp.jug[0].attrs)+mediaAttrs(opp.jug[1].attrs))/2);
+    if(_c.quim[eq]===undefined) _c.quim[eq]=quimicaLado(team);
+    const outcome=shotKey==="saque"?"sigue":resolveShot(pl,shotKey,{...ctx,team:eq,oppDef:_c.defQ[1-eq],oppScrambling:opp._scr,_quimLado:_c.quim[eq],_dia:_c.dia[eq],fatiga:_fat},rally);
 
     if(outcome==="error"){
       stats[eq].jug[hIdx].e++;
