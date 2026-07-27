@@ -60,6 +60,21 @@ const CUADRO_TF_FASE=3;
    sufres tú en la pista. Ajustada sobre la tabla medida (+4 → 70%, +6 → 77%,
    +8 → 87%, +12 → 95%). Si tocas el motor, vuelve a medirla. */
 function probGana(nA,nB){ return 1/(1+Math.pow(10,(nB-nA)/9)); }
+/* LO QUE CUESTA UN PARTIDO, Y POR QUÉ SUBE CON LA RONDA.
+   Con un coste plano de 7 la energía dejaba de apretar en cuanto eras bueno:
+   medido, un jugador de nivel 86 competía 51 de las 52 semanas del año, jugaba
+   137 partidos y ganaba 20 títulos sin saltarse nada. Un profesional de verdad
+   juega veintitantos torneos, no cincuenta, y elegir la gira es media gracia
+   del juego.
+
+   Subirlo a secas era volver a la trampa de la que costó salir —con la energía
+   cara, entrenar deja de compensar y ese fue el fallo que casi hunde el modo
+   carrera—. Así que el coste escala con la RONDA: una primera ronda sigue
+   costando lo de antes y una final cuesta el doble. Con eso paga el que llega
+   lejos, que es el que se está llevando los puntos y el dinero, y no el que se
+   está construyendo. Además es lo que pasa: las rondas finales son partidos más
+   largos y contra gente que corre más. */
+function costeEnergiaPartido(fase){ return 6+2*clamp(fase|0,0,5); }
 /* Nivel de una entrada del cuadro. Tu propia entrada no es una pareja del
    mundo (no tiene .jug), así que lleva su nivel calculado dentro. */
 function nivCuadro(p){ return p?(p.yo?(p.nivel||50):nivelPareja(p)):0; }
@@ -953,7 +968,7 @@ function finPartido(){
   if(G.modo==="carrera"){
     const c=G.carrera;
     const misW=stats[0].jug[c.lado].w;
-    c.energia=clamp(c.energia-7,0,100);
+    c.energia=clamp(c.energia-costeEnergiaPartido(f),0,100);
     c.conf=clamp(c.conf+(gane?5:-6),15,95);
     c.quimica=clamp(c.quimica+2,10,95);
     c.racha=(c.racha||[]).concat(gane?"V":"D").slice(-5);
@@ -980,7 +995,7 @@ function finPartido(){
     cl.quims[qk]=clamp((cl.quims[qk]??40)+2,10,95);
     teams[0].jug.forEach((jv,i)=>{
       const j=jv._ref;
-      j.energia=clamp(j.energia-7,0,100);
+      j.energia=clamp(j.energia-costeEnergiaPartido(f),0,100);
       j.conf=clamp(j.conf+(gane?4:-5),15,95);
       const w=stats[0].jug[i].w;
       if((gane&&rnd()<.25)||w>=6){

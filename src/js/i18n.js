@@ -19,6 +19,7 @@ const IDIOMAS=[
 const IDIOMA_DEF="es";
 const I18N={
   es:{
+    pal_resumen:"{grandes} títulos grandes de {total} en total",
     staff_av_impago:"💸 No has podido pagar a {n} ({sal}€/sem) y se marcha.",
     staff_impago_t:"{n} rompe el contrato por impago",
     staff_impago_s:"{n} deja de ejercer de {rol}: llevaba semanas sin cobrar y ha preferido irse antes que seguir fiando.",
@@ -2226,6 +2227,7 @@ const I18N={
     ctx_circuito_fip:"circuito Continental",
   },
   en:{
+    pal_resumen:"{grandes} major titles out of {total} overall",
     staff_av_impago:"💸 You couldn't pay {n} ({sal}€/wk) and they walk away.",
     staff_impago_t:"{n} terminates contract over unpaid wages",
     staff_impago_s:"{n} stops working as {rol}: weeks without pay, and they'd rather leave than keep working on credit.",
@@ -4433,6 +4435,7 @@ const I18N={
     ctx_circuito_fip:"Continental tour",
   },
   fr:{
+    pal_resumen:"{grandes} titres majeurs sur {total} au total",
     staff_av_impago:"💸 Tu n'as pas pu payer {n} ({sal}€/sem) et il/elle s'en va.",
     staff_impago_t:"{n} rompt le contrat pour salaires impayés",
     staff_impago_s:"{n} cesse d'exercer comme {rol} : plusieurs semaines sans salaire, et préfère partir plutôt que de travailler à crédit.",
@@ -6640,6 +6643,7 @@ const I18N={
     ctx_circuito_fip:"circuit Continental",
   },
   de:{
+    pal_resumen:"{grandes} große Titel von insgesamt {total}",
     staff_av_impago:"💸 Du konntest {n} ({sal}€/Wo.) nicht bezahlen — Abgang.",
     staff_impago_t:"{n} kündigt wegen ausstehender Gehälter",
     staff_impago_s:"{n} arbeitet nicht mehr als {rol}: wochenlang kein Gehalt, und lieber gehen als weiter auf Kredit arbeiten.",
@@ -8847,6 +8851,7 @@ const I18N={
     ctx_circuito_fip:"Continental-Tour",
   },
   it:{
+    pal_resumen:"{grandes} titoli grandi su {total} in totale",
     staff_av_impago:"💸 Non hai potuto pagare {n} ({sal}€/sett.) e se ne va.",
     staff_impago_t:"{n} rescinde il contratto per stipendi non pagati",
     staff_impago_s:"{n} smette di fare il/la {rol}: settimane senza stipendio, e preferisce andarsene piuttosto che lavorare a credito.",

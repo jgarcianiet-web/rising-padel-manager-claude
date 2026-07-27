@@ -371,6 +371,51 @@ fija (`c.energia=Math.max(c.energia,75)`) y por eso llegaba al número uno con 2
 títulos mientras un jugador real se quedaba en el puesto 100: ese bot no vale
 para equilibrar, solo para hacer fotos.
 
+## El calendario decide, y por eso tiene huecos
+
+Un circuito con torneo todas las semanas no es un calendario, es una cinta de
+correr. Tres reglas que se sostienen entre sí:
+
+1. **Hay semanas en blanco** (`CONT_CAL` lleva `null`). Antes había un
+   Continental las 52 semanas del año: una carrera larga terminaba con **más de
+   cien títulos** y un Continental Bronce de la temporada 2 valía en el palmarés
+   lo mismo que la Corona que te hizo número uno. Los parones son los que
+   convierten «cuándo juego» en una decisión.
+2. **Un partido cuesta más cuanto más hondo llegas** (`costeEnergiaPartido`:
+   6 en previa, 16 en la final). Con un coste plano la energía dejaba de apretar
+   en cuanto eras bueno —medido: nivel 86 competía 51 semanas de 52, 137
+   partidos y 20 títulos sin saltarse nada—. Subirlo a secas era volver a la
+   trampa de que entrenar no compense; escalado por ronda, paga el que se está
+   llevando los puntos y no el que se está construyendo.
+3. **El calendario es parte del corte.** `entradaEn` lo comprueba, no solo la
+   interfaz. Ver «El circuito puntúa como puntúas tú».
+
+### El palmarés cuenta lo que importa
+
+`palmaresHTML` agrupa por categoría y **enumera los grandes uno a uno pero
+cuenta los pequeños** («Continental Bronce ×70»), con un titular de «X títulos
+grandes de Y». Noventa Bronces en fila no son un palmarés, son un muro.
+
+## Las lesiones no pueden entrar en barrena
+
+`fragil` sube 1 con cada lesión. Sumaba hasta **+0,15 sobre una base de 0,012**,
+o sea que a partir de la quinta lesión el historial pesaba trece veces más que
+la energía, la carga y el fisio juntos: la carrera entraba en espiral y no salía
+—medido, 19 lesiones en una sola temporada y 23 semanas de baja de 52—. Es el
+mismo fallo que tenía la confianza del club: un trinquete de un solo sentido.
+
+Dos cosas lo arreglan y las dos hacen falta:
+
+1. **El historial multiplica, no suma** (`×1` a `×1,6`). Sigue siendo un lastre
+   real sin comerse el resto del modelo, que es donde están las decisiones.
+2. **El cuerpo se rehace** (`curaFragilidad`): cada `FRAGIL_CURA` semanas sanas
+   seguidas te quitan una lesión vieja de encima. Cuidarse deja de ser un gesto
+   y pasa a tener premio.
+
+Y el escalón por energía baja era un precipicio (×5 por debajo de 35, ×25 por
+debajo de 20). Como competir es justo lo que te vacía, el que competía se
+autolesionaba. Hoy la pendiente es la misma pero mucho menos vertical.
+
 ## Entrenar no tiene respuesta correcta
 
 `engine/forma.js` existe para que no haya una jugada que gane siempre. Cuatro

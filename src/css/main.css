@@ -224,6 +224,13 @@ button:active{transform:translateY(1px)}
 #toasts{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:120;
   display:flex;flex-direction:column;gap:8px;align-items:stretch;
   width:min(92vw,420px);pointer-events:none}
+/* En pantalla ancha los avisos se van a la esquina. Centrados abajo tapaban el
+   panel de objetivos de la semana justo cuando más avisos salen —al cerrar la
+   semana—, y son cuatro a la vez: se leía el aviso y se perdía de vista lo que
+   el aviso decía que mirases. En estrecho siguen centrados, que es donde caben. */
+@media(min-width:1000px){
+  #toasts{left:auto;right:18px;transform:none;width:min(32vw,380px)}
+}
 .toast{background:rgba(21,27,38,.97);border:1px solid var(--borde);border-left:3px solid var(--azul);
   border-radius:8px;padding:10px 13px;font-size:calc(12.5px * var(--esc));line-height:1.4;color:var(--texto);
   box-shadow:0 8px 24px rgba(0,0,0,.45);animation:toastIn .28s cubic-bezier(.2,.8,.3,1)}

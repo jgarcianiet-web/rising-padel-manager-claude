@@ -4058,3 +4058,77 @@ comprueba("Superliga: tus eliminatorias se juegan con el motor de verdad", () =>
   exige(en.some(x => x < 100), "jugar la eliminatoria no cansa a nadie");
   return "tu cruce " + mio.gA + "-" + mio.gB + " (" + mio.marcadores.join(" · ") + ") · el ajeno, resuelto";
 });
+
+comprueba("Palmarés: los grandes se enumeran y los pequeños se cuentan", () => {
+  /* El calendario reparte torneos casi todas las semanas, así que una carrera
+     larga termina con más de cien títulos: el Diario los volcaba en una lista
+     plana de cien líneas doradas iguales y un Continental Bronce de la
+     temporada 2 ocupaba lo mismo que la Corona que te hizo número uno. */
+  const pal = [];
+  for (let i = 0; i < 70; i++) pal.push("Continental Bronce (T" + (2 + i % 12) + ")");
+  for (let i = 0; i < 9; i++) pal.push("Élite 2 · Gijón (T" + (9 + i % 6) + ")");
+  for (let i = 0; i < 2; i++) pal.push("Corona · Doha (T" + (14 + i) + ")");
+  const html = palmaresHTML(pal);
+  exige(/81/.test(html) || html.includes("81"), "el total no aparece: " + html.slice(0, 120));
+  // las Coronas van una a una, con su temporada
+  exige(html.includes("Corona · Doha (T14)"), "las Coronas no se enumeran");
+  // y los setenta Bronces se cuentan, no se listan
+  exige(/Continental Bronce\s*<b[^>]*>×70/.test(html), "los Continentales no se resumen en un recuento");
+  exige((html.match(/Continental Bronce/g) || []).length <= 2, "los Continentales se siguen listando uno a uno");
+  // sin títulos no revienta
+  exige(palmaresHTML([]).length > 0 && palmaresHTML(null).length > 0, "el palmarés vacío no se pinta");
+  return "2 Coronas enumeradas · 70 Bronces resumidos";
+});
+
+comprueba("Circuito: hay semanas en blanco y la energía las hace valer", () => {
+  /* Con un Continental las 52 semanas se podía competir siempre, y la energía
+     no apretaba: medido, un jugador de nivel 86 competía 51 semanas de 52,
+     jugaba 137 partidos y ganaba 20 títulos sin saltarse nada. */
+  let blancas = 0, conAlgo = 0;
+  for (let s = 1; s <= SEMANAS_TEMP; s++) {
+    const sl = slotSemana(s);
+    const hay = (sl.premier !== undefined && sl.premier !== null) || (sl.fip !== undefined && sl.fip !== null);
+    if (hay) conAlgo++; else blancas++;
+  }
+  exige(blancas > 0, "el circuito no tiene ni una semana de descanso");
+  exige(conAlgo >= 34, "quedan pocas semanas de competición: " + conAlgo);
+  // y una semana en blanco no deja abrir nada
+  const c = nuevaCarrera("agresivo");
+  rkAnota(c, c.semana, 999999);
+  let sinTorneo = -1;
+  for (let s = 1; s <= SEMANAS_TEMP; s++) {
+    const sl = slotSemana(s);
+    if ((sl.premier === undefined || sl.premier === null) && (sl.fip === undefined || sl.fip === null)) { sinTorneo = s; break; }
+  }
+  if (sinTorneo > 0) {
+    c.semana = sinTorneo;
+    for (let i = 0; i < CATS.length; i++) exige(entradaEn(i) === -1, "en semana de descanso se puede jugar la categoría " + i);
+  }
+  // el coste de un partido sube con la ronda: paga el que llega lejos
+  exige(costeEnergiaPartido(5) > costeEnergiaPartido(0) * 1.8,
+    "una final cuesta lo mismo que una primera ronda: la energía no aprieta arriba");
+  return blancas + " semanas en blanco · una final cuesta " + costeEnergiaPartido(5) + " y una previa " + costeEnergiaPartido(0);
+});
+
+comprueba("Lesiones: el historial pesa, pero no condena (regresión: barrena)", () => {
+  /* `fragil` subía 1 por lesión y no bajaba jamás, y sumaba hasta +0,15 sobre
+     una base de 0,012: a partir de la quinta lesión el historial pesaba trece
+     veces más que la energía, la carga y el fisio juntos. Medido con el coste
+     de energía por rondas: 19 lesiones en UNA temporada y 23 semanas de baja. */
+  const sano = riesgoLesionPost(100, 0, false, 0);
+  const roto = riesgoLesionPost(100, 12, false, 0);
+  exige(roto > sano, "arrastrar lesiones no aumenta el riesgo");
+  exige(roto < sano * 2, `el historial multiplica por ${(roto / sano).toFixed(1)} el riesgo: vuelve la barrena`);
+  // la energía sigue mandando más que el historial
+  const fundido = riesgoLesionPost(15, 0, false, 0);
+  exige(fundido > roto, "jugar fundido importa menos que el historial: los pesos están del revés");
+  // y el cuerpo se rehace con semanas sanas
+  const j = { fragil: 3, energia: 100, lesion: null };
+  for (let s = 0; s < FRAGIL_CURA; s++) curaFragilidad(j);
+  exige(j.fragil === 2, "pasar semanas sano no quita fragilidad: sigue siendo un trinquete");
+  // lesionado no cuenta como semana sana
+  const k = { fragil: 3, energia: 100, lesion: { sem: 2 } };
+  for (let s = 0; s < FRAGIL_CURA * 2; s++) curaFragilidad(k);
+  exige(k.fragil === 3, "se cura la fragilidad estando lesionado");
+  return "sano " + sano.toFixed(3) + " · con historial " + roto.toFixed(3) + " · fundido " + fundido.toFixed(3);
+});

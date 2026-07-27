@@ -672,11 +672,12 @@ function mostrarAviso(m,tipo){
   try{
     let cont=document.getElementById("toasts");
     if(!cont){ cont=document.createElement("div"); cont.id="toasts"; (document.body||document.documentElement).appendChild(cont); }
-    // no dejar que se apilen sin fin: como mucho, los 4 más recientes. El guard
+    // no dejar que se apilen sin fin: como mucho, los 3 más recientes (con 4 la
+    // pila tapaba media columna). El guard
     // y el shift explícito cubren el DOM real (HTMLCollection viva) y el DOM
     // simulado de las pruebas (array cuyo removeChild es un no-op).
     let guard=0;
-    while(cont.children&&cont.children.length>=4&&guard++<8){
+    while(cont.children&&cont.children.length>=3&&guard++<8){
       quitarEl(cont.children[0]);
       if(Array.isArray(cont.children)) cont.children.shift();
     }

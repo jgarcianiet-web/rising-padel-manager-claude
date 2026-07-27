@@ -570,7 +570,7 @@ function pintarEventosSemana(td, disponible, motivoNo){
   const slot=slotSemana(semanaTemp());
   const lista=[];
   if(slot.premier!==undefined) lista.push(slot.premier);
-  lista.push(slot.fip);
+  if(slot.fip!==undefined&&slot.fip!==null) lista.push(slot.fip);
   const pos=miPuesto();
   lista.forEach(ci=>{
     const cat=CATS[ci], ent2=entradaEn(ci);
@@ -1753,7 +1753,46 @@ function renderDiario(elD,elP){
   elD.innerHTML=e.diario.length
     ?`<div class="teletipo"><div class="thead">${t("tele_head",{circuito:miSexo()==="F"?t("pre_circ_f"):t("pre_circ_m")})}</div>${briefs}</div>`
     :`<div class="foot" style="text-align:left">${t("tele_sin")}</div>`;
-  elP.innerHTML=e.palmares.length?e.palmares.map(x=>`<div style="color:var(--oro)">🏆 ${x}</div>`).join(""):`<div>${t("pan_sin_titulos")}</div>`;
+  elP.innerHTML=palmaresHTML(e.palmares);
+}
+/* EL PALMARÉS AGRUPADO, Y LOS GRANDES PRIMERO.
+   El calendario reparte 52 torneos al año, así que una carrera larga termina
+   con más de cien títulos y esto era una lista plana de cien líneas doradas
+   idénticas: un Continental Bronce de la temporada 2 ocupaba lo mismo que la
+   Corona que te hizo número uno, y el palmarés dejaba de medir nada. Se agrupa
+   por categoría, de mayor a menor, y arriba va lo que de verdad cuenta: las
+   Coronas, los Maestros y la Élite. La sala de trofeos ya lo hacía así; era el
+   Diario el que seguía volcándolo en bruto. */
+function palmaresHTML(palmares){
+  const pal=palmares||[];
+  if(!pal.length) return `<div>${t("pan_sin_titulos")}</div>`;
+  const cat=trofeosPorCategoria(pal);
+  const grandes=cat.corona.length+cat.maestros.length+cat.elite.length;
+  const grupos=[["corona","🏆","var(--oro)"],["maestros","👑","#E6FA50"],["elite","🥇","#9B59D0"],["continental","🎾","var(--azul)"],["otros","·","var(--gris)"]];
+  const cab=`<div class="foot" style="text-align:left;margin-bottom:5px">${t("pal_resumen",{grandes,total:pal.length})}</div>`;
+  return cab+grupos.map(([k,ico,col])=>{
+    if(!cat[k].length) return "";
+    /* Los grupos gordos se cuentan, no se listan. Noventa y dos «Continental
+       Bronce (T7)» seguidos no son un palmarés, son un muro: lo que se quiere
+       saber de ahí abajo es cuántos, no cuáles. Los grandes sí van uno a uno,
+       porque cada uno tiene su historia. */
+    const cuerpo=cat[k].length>PAL_DETALLE ? resumeTitulos(cat[k]) : cat[k].join(" · ");
+    return `<div style="margin-bottom:6px">
+      <div style="font-size:calc(10px * var(--esc));color:${col};letter-spacing:.5px;margin-bottom:2px">${ico} ${t("trf_cat_"+k)} · ${cat[k].length}</div>
+      <div style="font-size:calc(11px * var(--esc));color:var(--gris);line-height:1.6">${cuerpo}</div>
+    </div>`;
+  }).join("");
+}
+const PAL_DETALLE=12;   // a partir de aquí se cuenta en vez de enumerar
+/* Agrupa títulos por su nombre sin la temporada ni la ciudad: «Bronce ×70». */
+function resumeTitulos(lista){
+  const n={};
+  lista.forEach(x=>{
+    const base=String(x).replace(/\s*·[^()]*/,"").replace(/\s*\(T\d+\)\s*$/,"").trim();
+    n[base]=(n[base]||0)+1;
+  });
+  return Object.keys(n).sort((a,b)=>n[b]-n[a])
+    .map(k=>`${k} <b style="color:var(--texto)">×${n[k]}</b>`).join(" · ");
 }
 
 function ingresosSemanaCarrera(){
@@ -1828,6 +1867,7 @@ function avanzarSemanaCarrera(){
     else avisa(t("les_recup",{n:lesNombre(c.lesion),sem:c.lesion.sem}));
   }
   decaeMerma(c);   // la secuela de la última lesión se va disipando
+  curaFragilidad(c);  // y el cuerpo se rehace si le das semanas sanas
   let regen=26+(staffNiv("fisico")?2+staffNiv("fisico"):0);
   // los eventos mandan sobre la recuperación y sobre el techo de energía
   regen=Math.round(evNum("energia",regen));

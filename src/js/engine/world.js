@@ -80,8 +80,15 @@ const PREM_CAL=(()=>{
   ev.forEach(([w,cat,ciudad,region])=>c[w-1]={cat,ciudad,region});
   return c;
 })();
+/* EL CIRCUITO TIENE SEMANAS EN BLANCO, y hasta ahora no las tenía: había un
+   Continental las 52 semanas del año, así que se podía competir siempre. Con
+   eso una carrera larga terminaba con más de CIEN títulos y el palmarés dejaba
+   de medir nada —un Continental Bronce de la temporada 2 ocupaba lo mismo que
+   la Corona que te hizo número uno—. Un circuito de verdad tiene parones, y son
+   los que convierten «cuándo juego» en una decisión: si descansas la semana en
+   blanco llegas entero al premier siguiente. Los `null` son eso. */
 const CONT_CAL=(()=>{
-  const pat=[0,1,0,2,1,0,3,1,2,0];
+  const pat=[0,1,null,2,1,0,null,3,1,2,0,null];
   return new Array(52).fill(0).map((_,i)=>pat[i%pat.length]);
 })();
 function slotSemana(st){
@@ -134,10 +141,13 @@ function catNombre(c){
 /* ¿Se juega esta categoría ESTA semana? El circuito es un calendario: cada
    semana hay un premier y un continental, y no se puede elegir otra cosa. */
 function enCalendario(ci){
+  if(ci==null) return false;
   const slot=slotSemana(semanaTemp());
   return slot.premier===ci||slot.fip===ci;
 }
 function entradaEn(ci){
+  // una semana en blanco no tiene torneo que abrir
+  if(ci==null||!CATS[ci]) return -1;
   const cat=CATS[ci],pos=miPuesto();
   /* EL CALENDARIO ES PARTE DEL CORTE, y hasta ahora no lo era: `entradaEn`
      miraba solo el ranking, y el filtro por semana vivía únicamente en la
@@ -1440,12 +1450,44 @@ function factorForma(energia,quimica,merma){
    meses (`c.carga`), que es lo que de verdad rompe a un deportista. */
 function riesgoLesionPost(energia,fragil,tieneFisio,carga){
   const en=energia==null?100:energia;
-  let base = en<20 ? .30 : (en<35 ? .06 : .012);   // muy justo de fuerzas → riesgo real
+  /* Jugar fundido tiene que doler, pero esto era un precipicio: por debajo de
+     35 el riesgo se multiplicaba por cinco y por debajo de 20 por veinticinco,
+     y como competir es lo que te vacía, el que competía entraba en una espiral
+     —medido con el coste de energía por rondas: 16 lesiones en una sola
+     temporada y 18 semanas de baja de 52—. Ahora la pendiente es la misma pero
+     mucho menos vertical: sigue siendo mala idea jugar a cero, y ya no te borra
+     la carrera por hacerlo tres veces. */
+  let base = en<20 ? .12 : (en<35 ? .03 : .012);
   const cg=(carga==null)?0:carga;
   if(cg>62) base+=(cg-62)/100*.09;               // vivir pasado de vueltas se paga
-  base += Math.min(.15,(fragil||0)*.03);          // cada lesión previa te hace más frágil
+  /* ARRASTRAR LESIONES TE HACE MÁS FRÁGIL, PERO NO TE CONDENA. Esto sumaba
+     hasta +0,15 sobre una base de 0,012: a partir de la quinta lesión el
+     historial pesaba TRECE VECES más que todo lo demás junto —la energía, la
+     carga, el fisio— y la carrera entraba en barrena, diecinueve lesiones en
+     una temporada. Como multiplicador acotado sigue siendo un lastre real (un
+     60% más de riesgo con el historial hecho) sin comerse el resto del modelo,
+     que es donde están las decisiones. */
+  base *= clamp(1+(fragil||0)*.07,1,1.6);
   if(tieneFisio) base*=.5;
   return clamp(base,0,.5);
+}
+/* EL CUERPO SE REHACE SI LE DEJAS. `fragil` sube 1 con cada lesión y hasta
+   ahora no bajaba jamás: un trinquete de un solo sentido, el mismo fallo que
+   tenía la confianza del club. Como el término vale hasta +0,15 sobre una base
+   de 0,012 —trece veces el riesgo—, en una carrera larga acabas clavado en el
+   tope y ahí te quedas: medido, el 20-24% de las semanas lesionado en las
+   últimas temporadas, hicieras lo que hicieras.
+
+   Ahora, cada tanda de semanas sanas te devuelve un punto. Con eso cuidarse
+   deja de ser un gesto y pasa a ser una decisión con premio: bajar la carga y
+   pasar un par de meses entero te quita de encima una lesión vieja. Envejecer
+   sigue pesando —eso lo lleva la edad, no esto—. */
+const FRAGIL_CURA=14;    // semanas sanas seguidas que borran una lesión vieja
+function curaFragilidad(port){
+  if(!port) return;
+  if(port.lesion){ port._sano=0; return; }
+  port._sano=(port._sano||0)+1;
+  if(port._sano>=FRAGIL_CURA&&(port.fragil||0)>0){ port.fragil--; port._sano=0; }
 }
 // Intenta lesionar a un portador (carrera o jugador de club) tras un partido.
 // Devuelve la lesión (y sube su fragilidad) o null. Muta port.fragil.

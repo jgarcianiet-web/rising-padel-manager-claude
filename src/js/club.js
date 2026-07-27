@@ -552,7 +552,7 @@ function pintarCmSemana(){
       const d=document.createElement("div");d.className="opcion";
       const bDisp=[];
       if(slot.premier!==undefined&&entradaEn(slot.premier)!==-1) bDisp.push(slot.premier);
-      if(entradaEn(slot.fip)!==-1) bDisp.push(slot.fip);
+      if(slot.fip!=null&&entradaEn(slot.fip)!==-1) bDisp.push(slot.fip);
       d.innerHTML=`<b>${t("clb_pareja_b")}</b> <span class="pill">${alB.map(j=>j.n).join(" + ")}</span> <span class="pill">${t("clb_quimica",{n:quimDe(cl,cl.alinB)})}</span><div class="d">${cl._pendB!==null?t("clb_b_inscrita",{cat:catNombre(cl._pendB)}):t("clb_b_libre")}</div>`;
       if(listosB){
         const f=document.createElement("div");f.className="fila";
@@ -1073,6 +1073,7 @@ document.getElementById("cmBtnDescanso").onclick=()=>{
     j.energia=clamp(j.energia+23,0,100);
     if(j.lesion){j.lesion.sem--;if(j.lesion.sem<=0){const s=curarLesion(j);avisa(t("les_alta_club",{n:j.n})+(s?t("les_merma_club",{pct:s.pct,sem:s.sem}):""));}}
     decaeMerma(j);
+    curaFragilidad(j);
   });
   avisa(t("clb_descanso"));
   avanzarSemanaClub();
