@@ -603,6 +603,48 @@ puntos, que es lo que obliga a tener fondo—; lo que cambió es que ahora se pu
 construir ese fondo. Si tocas `PRESUP_CLUB`, comprueba que los CINCO más baratos
 del mercado inicial siguen cabiendo: `tests/casos.js` lo exige.
 
+### Fundar no puede ser una tirada, y la junta no puede ser un cepo
+
+Dos cosas más que salieron al medir el modo club con un bot que **juega bien**
+(funda con cinco, ficha fisio lo primero, mantiene fondo de armario, no compite
+en semana de Copa y descansa si la plantilla está fundida). Con él, los que
+sobreviven ganan de 30 a 45 eliminatorias de 50 y los que caen ganan de 0 a 8 de
+20: no es varianza, son **dos poblaciones distintas**.
+
+1. **El mercado del primer día tiene suelo** (`mkMercadoFundacion`). El circuito
+   no tiene división de abajo —el club más flojo del mundo tiene una primera
+   pareja de 60—, así que una fundación con mala suerte nacía enfrentándose a
+   rivales cinco puntos por encima todas las jornadas. El suelo garantiza cuatro
+   jugadores: dos para una primera pareja al nivel del club más flojo (60) y dos
+   para sostener la segunda (54), porque la Copa se juega a **dos puntos**. El
+   mercado semanal (`cl.mercado`) sigue sin suelo ninguno: esto es para no nacer
+   muerto, no para regalar.
+2. **El fisio es LA decisión del modo club, y hay que decirlo.** Medido sobre
+   diez fundaciones con la misma semilla: sin fisio, 1,35 lesionados por semana y
+   8 destituciones de 10; con fisio, 0,42 y 4 de 10. Ahora se avisa en cuanto
+   hay dos tocados y no hay fisio, con la razón entera.
+
+### El tercer trinquete: la junta
+
+Después de la confianza del club y de la fragilidad, el mismo fallo por tercera
+vez. El objetivo de la junta se apretaba tras cada éxito (`min(posFin,obj)×dureza`)
+y **no se relajaba jamás**, así que acababa en 1º; y la paciencia se reponía al
+`margen` del carácter, que para la junta `corto` es **uno**. Combinado: ganabas la
+Copa dos años seguidos, quedabas segundo al tercero y a la calle. Medido tal cual.
+
+Tres suelos lo arreglan, y los tres son el mismo suelo escrito en tres sitios:
+
+- el objetivo **no baja del 2º** —«campeón o a la calle» no es un trabajo—;
+- cumplir repone **al menos dos temporadas** de cuerda, igual que al fundar;
+- y el objetivo **solo se aprieta si lo cumples**: que te pidan más por ganar es
+  la historia de cualquier banquillo, que te pidan más por perder es un cepo.
+
+Con todo junto, 28 fundaciones a dos temporadas: **8 destituciones (29%)**,
+mediana de 3º de 8 y un reparto sano de puestos. Si tocas la junta o el mercado
+inicial, vuelve a sacar esa tabla —y ojo: cualquier cambio que consuma más azar
+mueve la semilla, así que las fundaciones **no son comparables una a una** entre
+dos versiones; hay que mirar la distribución con muestra grande, no doce casos.
+
 ### La economía del club, y por qué la juzga la Copa
 
 Tres cosas que se midieron y hubo que corregir, todas de la misma familia:

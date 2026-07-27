@@ -87,10 +87,21 @@ comprueba("Se puede abrir 'crear club' sin partida (regresión: Script error)", 
 });
 
 comprueba("El presupuesto inicial permite fichar una pareja", () => {
-  G = null; prepararCrearClub();
-  const costes = mercadoTmp.map(j => costeFichaje(j)).sort((a, b) => a - b);
-  exige(costes[0] + costes[1] <= PRESUP_CLUB, "los dos jugadores más baratos no caben en la caja inicial");
-  return "los 2 más baratos: " + (costes[0] + costes[1]) + "€ de " + PRESUP_CLUB + "€";
+  /* Sembrado y sobre VARIOS mercados: sin semilla esto heredaba el estado que
+     le dejara la prueba anterior, así que fallaba una vez de cada diez y solo
+     a veces. Una prueba que depende de con qué mano venga el generador no
+     comprueba nada, avisa al azar. */
+  let peor = 0;
+  for (let s = 0; s < 8; s++) {
+    rndSemilla(9100 + s * 61, 9100 + s * 61);
+    G = null; mercadoTmp = null; plantillaTmp = [];
+    prepararCrearClub();
+    const costes = mercadoTmp.map(j => costeFichaje(j)).sort((a, b) => a - b);
+    const dos = costes[0] + costes[1];
+    peor = Math.max(peor, dos);
+    exige(dos <= PRESUP_CLUB, `semilla ${s}: los dos más baratos cuestan ${dos}€ y no caben en ${PRESUP_CLUB}€`);
+  }
+  return "el peor de 8 mercados: " + peor + "€ de " + PRESUP_CLUB + "€";
 });
 
 comprueba("Carrera: crear jugador y disputar un torneo", () => {
@@ -4144,13 +4155,20 @@ comprueba("Copa: el presupuesto fundacional da para CINCO, no para cuatro", () =
      puntos perdidos en la mesa coincidían EXACTAMENTE con las jornadas sin
      segunda pareja. La fuerza del club no predecía nada; lo predecía todo si
      te llegaban cuatro enteros. Eso no es una decisión, es una tirada. */
-  G = null; prepararCrearClub();
-  const costes = mercadoTmp.map(j => costeFichaje(j)).sort((a, b) => a - b);
-  const cinco = costes.slice(0, 5).reduce((a, b) => a + b, 0);
-  exige(cinco <= PRESUP_CLUB,
-    `los cinco más baratos cuestan ${cinco}€ y el presupuesto es ${PRESUP_CLUB}€: sin quinto, la Copa la decide la enfermería`);
-  // y tiene que sobrar algo para la primera semana: fundar en números rojos no vale
-  exige(PRESUP_CLUB - cinco > 1500, "fundar con cinco te deja sin caja para la primera semana");
+  // sembrado y sobre varios mercados, por lo mismo que el de la pareja
+  let peor = 0;
+  for (let s = 0; s < 8; s++) {
+    rndSemilla(9300 + s * 71, 9300 + s * 71);
+    G = null; mercadoTmp = null; plantillaTmp = [];
+    prepararCrearClub();
+    const costes = mercadoTmp.map(j => costeFichaje(j)).sort((a, b) => a - b);
+    const cinco = costes.slice(0, 5).reduce((a, b) => a + b, 0);
+    peor = Math.max(peor, cinco);
+    exige(cinco <= PRESUP_CLUB,
+      `semilla ${s}: los cinco más baratos cuestan ${cinco}€ y el presupuesto es ${PRESUP_CLUB}€: sin quinto, la Copa la decide la enfermería`);
+    exige(PRESUP_CLUB - cinco > 1500, `semilla ${s}: fundar con cinco te deja sin caja para la primera semana`);
+  }
+  const cinco = peor;
   // el fondo de armario es lo que evita el punto en la mesa
   const cl = fundarClub();
   while (cl.plantilla.length < 5) cl.plantilla.push({ ...cl.plantilla[0], n: "R" + cl.plantilla.length, energia: 100, conf: 55, lesion: null });
@@ -4160,4 +4178,49 @@ comprueba("Copa: el presupuesto fundacional da para CINCO, no para cuatro", () =
   cl.plantilla[1].lesion = { n: "x", sem: 2 };
   exige(copAlineacionAuto(cl, false).length === 1, "con dos lesionados de cinco debería quedar una sola pareja");
   return "cinco más baratos " + cinco + "€ de " + PRESUP_CLUB + "€ · aguanta una lesión sin perder el punto";
+});
+
+comprueba("Junta: ganar la Copa no puede acabar en despido (regresión: trinquete)", () => {
+  /* Tercer trinquete de un solo sentido del repo, después de la confianza y la
+     fragilidad. El objetivo se apretaba tras cada éxito y no se relajaba nunca,
+     y la paciencia se reponía al `margen` del carácter —1 para la junta
+     `corto`—. Resultado medido con un bot que juega bien: un club que ganó la
+     Copa DOS AÑOS SEGUIDOS terminó destituido al quedar segundo. */
+  // el objetivo nunca baja del segundo puesto: «campeón o a la calle» no es un trabajo
+  const src = String(avanzarSemanaClub);
+  exige(/J\.objetivo=Math\.max\(2,/.test(src),
+    "el objetivo de la junta puede llegar a 1º: ganar la Copa te deja a una mala temporada del despido");
+  // y cumplir repone al menos dos temporadas de cuerda, igual que al fundar
+  exige(/J\.paciencia=Math\.max\(2,CAR\.margen\)/.test(src),
+    "cumplir el objetivo repone menos de dos temporadas: cumplir no compra tranquilidad");
+  exige(/paciencia:Math\.max\(2,J\.margen\)/.test(String(mkJunta)),
+    "al fundar ya no hay suelo de dos temporadas");
+  // y sigue sin apretarse al fallar (el cepo del turno anterior)
+  exige(/if\(posFin<=J\.objetivo\)\s*\n?\s*J\.objetivo=/.test(src),
+    "el objetivo vuelve a apretarse también cuando fallas");
+  return "objetivo con suelo en 2º y paciencia con suelo en 2 temporadas";
+});
+
+comprueba("Club: el mercado del primer día tiene suelo, el semanal no", () => {
+  /* El circuito no tiene división de abajo —el club más flojo del mundo tiene
+     una primera pareja de 60—, así que una fundación con mala suerte nacía sin
+     opción: medido, dos de catorce ganaban CERO de veinticuatro eliminatorias.
+     El suelo es para DOS parejas, que es lo que pide la Copa. */
+  const nivel = j => mediaAttrs(j.attrs);
+  let peorA = 99, peorB = 99;
+  for (let s = 0; s < 10; s++) {
+    rndSemilla(9500 + s * 53, 9500 + s * 53);
+    const m = mkMercadoFundacion("M");
+    exige(m.length === 8, "el mercado de fundación no trae ocho");
+    const o = m.map(nivel).sort((a, b) => b - a);
+    peorA = Math.min(peorA, o[1]);      // segundo mejor: sostiene la primera pareja
+    peorB = Math.min(peorB, o[3]);      // cuarto: sostiene la segunda
+  }
+  exige(peorA >= 56, `en el peor de 10 mercados la primera pareja se queda en ${peorA}: nace sin opción`);
+  exige(peorB >= 50, `en el peor de 10 mercados la segunda pareja se queda en ${peorB}`);
+  // y el mercado SEMANAL sigue sin suelo: el suelo es para no nacer muerto, no para regalar
+  let flojo = 99;
+  for (let s = 0; s < 10; s++) { rndSemilla(9700 + s * 59, 9700 + s * 59); flojo = Math.min(flojo, Math.min(...mkMercadoLibre("M").map(nivel))); }
+  exige(flojo < 56, "el mercado semanal también tiene suelo: eso ya no es un mercado");
+  return "peor primera pareja de 10 mercados: " + peorA + " · peor segunda: " + peorB;
 });

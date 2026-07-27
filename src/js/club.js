@@ -269,6 +269,43 @@ function anotaDerbi(cl,rival,gane){
 }
 
 function mkMercadoLibre(sx){const a=[],seen=new Set();for(let i=0;i<8;i++){let j,g=0;do{j=mkAgente(46,68,sx||"M");}while(seen.has(j.n)&&g++<20);seen.add(j.n);a.push(j);}return a;}
+/* EL MERCADO DEL PRIMER DÍA TIENE SUELO, y el de después no.
+
+   Fundar era una tirada antes de empezar a jugar: ocho agentes de 46 a 68 al
+   azar, y con un mal reparto salías con una plantilla de [59,48,47,46]. El
+   problema es que el circuito NO TIENE DIVISIÓN DE ABAJO —el club más flojo del
+   mundo tiene una primera pareja de 60—, así que ese club se enfrentaba a
+   rivales cinco puntos por encima en todas las jornadas y no podía ganar
+   ninguna. Medido con un bot que juega bien (funda con cinco, ficha fisio,
+   mantiene fondo de armario, no compite en semana de Copa): los clubes que
+   sobreviven ganan de 30 a 45 eliminatorias de 50 y los que caen ganan de 0 a
+   8 de 20. No es varianza, son dos poblaciones distintas, y la que cae nace sin
+   opción.
+
+   Esto no regala nada: garantiza que entre los ocho haya con qué formar una
+   primera pareja capaz de competir en la división más floja que existe. Los
+   demás siguen saliendo al azar, elegir sigue costando lo mismo, y el mercado
+   semanal de después (`cl.mercado`) sigue sin suelo ninguno. */
+function mkMercadoFundacion(sx){
+  const a=mkMercadoLibre(sx);
+  const nivel=j=>mediaAttrs(j.attrs);
+  /* Y el suelo es para DOS PAREJAS, no para una. La Copa pide cuatro jugadores
+     y se juega a dos puntos: con la primera pareja decente y la segunda salida
+     del sorteo crudo, el club perdía igual —medido, dos fundaciones de catorce
+     ganaban CERO de veinticuatro eliminatorias—. Así que se garantizan cuatro:
+     dos que puedan formar una primera pareja al nivel del club más flojo del
+     circuito (60) y otros dos que sostengan una segunda (54). */
+  const MIN_A=60, MIN_B=54;
+  const sube=(k,min)=>{
+    const cur=a.slice().sort((x,y)=>nivel(y)-nivel(x));
+    if(nivel(cur[k])>=min-2) return;
+    const flojo=a.indexOf(cur[cur.length-1]);
+    if(flojo<0) return;
+    a[flojo]=mkAgente(min-1,min+5,sx||"M");
+  };
+  sube(0,MIN_A); sube(1,MIN_A); sube(2,MIN_B); sube(3,MIN_B);
+  return a;
+}
 let mercadoTmp=null,plantillaTmp=[];
 
 function prepararCrearClub(){
@@ -282,9 +319,9 @@ function prepararCrearClub(){
   });
   document.getElementById("clubSexoM").className="selbtn"+(sexoClubSel==="M"?" on":"");
   document.getElementById("clubSexoF").className="selbtn"+(sexoClubSel==="F"?" on":"");
-  document.getElementById("clubSexoM").onclick=()=>{sexoClubSel="M";mercadoTmp=mkMercadoLibre("M");plantillaTmp=[];prepararCrearClub();};
-  document.getElementById("clubSexoF").onclick=()=>{sexoClubSel="F";mercadoTmp=mkMercadoLibre("F");plantillaTmp=[];prepararCrearClub();};
-  if(!mercadoTmp) mercadoTmp=mkMercadoLibre(sexoClubSel);
+  document.getElementById("clubSexoM").onclick=()=>{sexoClubSel="M";mercadoTmp=mkMercadoFundacion("M");plantillaTmp=[];prepararCrearClub();};
+  document.getElementById("clubSexoF").onclick=()=>{sexoClubSel="F";mercadoTmp=mkMercadoFundacion("F");plantillaTmp=[];prepararCrearClub();};
+  if(!mercadoTmp) mercadoTmp=mkMercadoFundacion(sexoClubSel);
   plantillaTmp=plantillaTmp.filter(j=>mercadoTmp.includes(j)===false); // conserva selección
   pintarFilosClub();
   pintarMercadoInicial();
@@ -1264,7 +1301,11 @@ function avanzarSemanaClub(){
       if(sal>Math.max(900,(cl.fans||400)*1.6)) avisa(t("cjun_aviso_sal",{sal}));
     }
     if(posFin<=J.objetivo){
-      J.paciencia=CAR.margen;
+      /* El mismo suelo de dos temporadas que al fundar. Sin él, una junta
+         `corto` (margen 1) te dejaba con UNA temporada de cuerda cada vez que
+         cumplías, así que cumplir no compraba tranquilidad: compraba estar a
+         una mala temporada del despido, para siempre. */
+      J.paciencia=Math.max(2,CAR.margen);
       cl._juntaOk=(cl._juntaOk||0)+1;
       const bonus=Math.round((3000+Math.max(0,(J.objetivo-posFin))*200)*CAR.prima);
       cl.dinero+=bonus;
@@ -1297,8 +1338,13 @@ function avanzarSemanaClub(){
        destituidas en dos temporadas por esa escalera imposible.
        Que te pidan más por haber ganado es la historia de cualquier banquillo;
        que te pidan más por haber perdido no es exigencia, es un cepo. */
+    /* Y el objetivo no baja del segundo puesto. Al apretarse tras cada éxito
+       acababa en «1º o a la calle», y eso combinado con la paciencia corta era
+       una trampa cerrada: medido, un club que ganó la Copa DOS AÑOS SEGUIDOS
+       terminó destituido por quedar segundo al tercero. Ganar el título tiene
+       que comprar tranquilidad, no ponerte la soga. */
     if(posFin<=J.objetivo)
-      J.objetivo=Math.max(1,Math.round(Math.min(posFin,J.objetivo)*CAR.dureza));
+      J.objetivo=Math.max(2,Math.round(Math.min(posFin,J.objetivo)*CAR.dureza));
     cl.junta=J;
     avisa(t("clb_junta_nuevo",{obj:J.objetivo}));
     evolucionaMundo();
