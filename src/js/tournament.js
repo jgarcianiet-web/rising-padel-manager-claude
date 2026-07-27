@@ -787,6 +787,13 @@ function jugarPuntoAnim(){
 }
 function loopAnim(ts){
   if(!anim) return;
+  /* El partido puede haberse cerrado mientras este fotograma estaba en vuelo
+     —salir por el menú, terminar el torneo, cargar otra partida— y entonces
+     `match` ya no existe. Sin esta guarda, la animación petaba con «Cannot read
+     properties of null (reading 'ver')» sobre una pantalla que ya no es la del
+     partido. Lo destapó el generador de capturas al pasar del partido a la
+     siguiente foto. */
+  if(!match){ anim=null; return; }
   if(!anim.last) anim.last=ts;
   const dt=Math.min(.05,(ts-anim.last)/1000)*speed;anim.last=ts;
   anim.t+=dt;

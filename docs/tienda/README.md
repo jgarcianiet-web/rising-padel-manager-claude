@@ -260,8 +260,14 @@ En itch.io conviene marcar también: *Made with no engine*, *Singleplayer*,
 
 - **Capturas:** `NODE_PATH=$PWD/node_modules node tools/capturas.js <idioma>`.
   Juega una carrera de verdad con semilla fija (`TIENDA-1`) —trece temporadas,
-  del puesto 91 al nº1 del mundo, 29 títulos— y fotografía las once pantallas a
-  1920×1080. Tarda unos cinco minutos.
+  del puesto 91 al top 10, 44 títulos y casi 200.000 seguidores— y fotografía
+  las once pantallas a 1920×1080. Tarda unos cinco minutos.
+
+  **Ojo: estas cifras cambian cuando cambia el equilibrio del juego.** Las de
+  antes (nº1 con 29 títulos) las produjo el motor roto, cuando un estilo ganaba
+  el 93-98% a los demás; las de ahora salen del motor equilibrado, del
+  calendario con parones y del coste de energía por rondas. Si vuelven a
+  moverse mucho, regenera y actualiza esta línea en vez de dejarla mintiendo.
 
   Dos decisiones que conviene no deshacer: se fotografía con la **maqueta densa**
   (1280×720 de CSS y densidad 1,5), porque por encima de 1520 px el juego

@@ -182,7 +182,16 @@ const limpiarPrimeraVez = (p) => p.evaluate(() => __limpiaModales());
 
   // 8 · el cuadro del torneo, lo que te juegas y quién tienes enfrente
   await p.evaluate(() => { const c = G.carrera; c.dinero = 9000; c.energia = 95;
-    for (let i = 3; i >= 0 && !torneo; i--) { try { abrirTorneo(i); } catch (e) {} }
+    /* El circuito tiene semanas de parón, así que hay que buscar una en la que
+       de verdad se juegue algo: si no, la captura del cuadro sale vacía. */
+    for (let salto = 0; salto < 8 && !torneo; salto++) {
+      const sl = slotSemana(semanaTemp());
+      const cs = []; if (sl.premier !== undefined && sl.premier !== null) cs.push(sl.premier);
+      if (sl.fip !== undefined && sl.fip !== null) cs.push(sl.fip);
+      cs.sort((a, b) => b - a);
+      for (const i of cs) { if (torneo) break; if (entradaEn(i) === -1) continue; try { abrirTorneo(i); } catch (e) {} }
+      if (!torneo) { c.semana++; c.dia = 1; }
+    }
     if (torneo) { pintarTorneo(); irA("torneo"); } });
   await p.waitForTimeout(500);
   await foto(8, "torneo");
