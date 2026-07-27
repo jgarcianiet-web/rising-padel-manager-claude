@@ -299,10 +299,20 @@ function pintarFilosClub(){
   <div class="foot" style="text-align:left;margin-top:3px">${t("cfil_ayuda")}</div>`;
 }
 function setFiloClub(k){ if(!FILOS_CLUB[k]) return; filoClubSel=k; prepararCrearClub(); }
-/* La Copa pide cuatro jugadores sanos para poner dos parejas. Con 12.000 —el
-   presupuesto de cuando bastaban dos— fundar con cuatro te dejaba en −732€ el
-   primer día. */
-const PRESUP_CLUB=22000;
+/* LA COPA PIDE CUATRO JUGADORES **SANOS**, Y ESO SON CINCO EN PLANTILLA.
+   Con 12.000 —el presupuesto de cuando bastaban dos— fundar con cuatro te
+   dejaba en −732€ el primer día, así que subió a 22.000. Pero 22.000 compra
+   exactamente cuatro, y cuatro no bastan: medido sobre doce fundaciones, el
+   club pasa una media de 1,1 jugadores lesionados por semana, y sin cuatro
+   sanos el segundo punto se pierde en la mesa sin jugarlo.
+
+   El dato que lo cierra: de esas doce fundaciones, la que NUNCA pudo alinear
+   segunda pareja ganó 0 de 20 eliminatorias y la que siempre pudo ganó 16 de
+   20 —y los puntos perdidos en la mesa coincidían exactamente con las jornadas
+   sin segunda pareja—. O sea que lo que decidía la Copa no era la fuerza del
+   club, sino si te llegaban cuatro enteros. Eso no es una decisión, es una
+   tirada. Con cinco en plantilla vuelve a serlo. */
+const PRESUP_CLUB=30000;
 function pintarMercadoInicial(){
   const el=document.getElementById("mercadoInicial");el.innerHTML="";
   let gasto=plantillaTmp.reduce((s,j)=>s+costeFichajeCl({filo:filoClubSel},j),0);
@@ -316,7 +326,7 @@ function pintarMercadoInicial(){
     d.innerHTML=`<b>${j.n}</b> <span class="pill">${t("clb_nivel",{n:nivelTxt(j)})}</span> ${ladoChip(j.lado!==undefined?j.lado:ladoPorAttrs(j.attrs,j.estilo))} <span class="pill">${t("clb_anios",{n:j.edad})}</span> <span class="pill">${estiloNombre(j.estilo)}</span> <span class="pill">${persoNombre(j.perso)}</span> <span class="pill" style="color:${afinidadColor(af)}">${afinidadTxt(af)}</span><div class="d">${t("clb_ficha_linea",{coste,sal:salarioDeCl(clFake,j)})}${(G&&G.clubG&&G.clubG.staff&&G.clubG.staff.ojeador)?"":t("clb_informe_impreciso")}</div>`;
     const b=document.createElement("button");b.style.width="100%";
     b.textContent=!ok?t("cfil_no_firma"):dentro?t("clb_quitar"):t("clb_fichar",{coste});
-    b.disabled=!ok||(!dentro&&(plantillaTmp.length>=4||PRESUP_CLUB-gasto<coste));
+    b.disabled=!ok||(!dentro&&(plantillaTmp.length>=5||PRESUP_CLUB-gasto<coste));
     b.onclick=()=>{
       if(dentro) plantillaTmp=plantillaTmp.filter(x=>x!==j);
       else plantillaTmp.push(j);
@@ -1122,6 +1132,7 @@ function avanzarSemanaClub(){
     if(cl.staff.psico&&j.conf<50) j.conf=clamp(j.conf+2,15,95);
     if((cl.staff.fisio||cl.reformas.medico)&&j.lesion&&rnd()<(cl.staff.fisio&&cl.reformas.medico?.5:.3)){j.lesion.sem--;if(j.lesion.sem<=0){const s=curarLesion(j);avisa(`El fisio adelanta el alta de ${j.n}.`+(s?` (mermado -${s.pct}%, ${s.sem} sem)`:""));}}
     decaeMerma(j);
+    curaFragilidad(j);   // el cuerpo se rehace con semanas sanas, también aquí
     // moral por minutos: el rol (titular A / B / banquillo) sube o quema la moral
     const rol=cl.alin.includes(idx)?"A":(cl.alinB&&cl.alinB.includes(idx))?"B":"banquillo";
     const antes=estadoJugadorClub(j).clave;

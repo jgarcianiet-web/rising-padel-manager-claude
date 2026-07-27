@@ -4132,3 +4132,32 @@ comprueba("Lesiones: el historial pesa, pero no condena (regresión: barrena)", 
   exige(k.fragil === 3, "se cura la fragilidad estando lesionado");
   return "sano " + sano.toFixed(3) + " · con historial " + roto.toFixed(3) + " · fundido " + fundido.toFixed(3);
 });
+
+comprueba("Copa: el presupuesto fundacional da para CINCO, no para cuatro", () => {
+  /* EL HALLAZGO QUE EXPLICABA EL MODO CLUB ENTERO. La Copa pide cuatro
+     jugadores SANOS y el presupuesto compraba exactamente cuatro, así que
+     cualquier lesión —y el club pasa una media de un jugador lesionado por
+     semana— dejaba el segundo punto perdido en la mesa sin jugarlo.
+
+     Medido sobre doce fundaciones: la que NUNCA pudo alinear segunda pareja
+     ganó 0 de 20 eliminatorias y la que siempre pudo ganó 16 de 20, y los
+     puntos perdidos en la mesa coincidían EXACTAMENTE con las jornadas sin
+     segunda pareja. La fuerza del club no predecía nada; lo predecía todo si
+     te llegaban cuatro enteros. Eso no es una decisión, es una tirada. */
+  G = null; prepararCrearClub();
+  const costes = mercadoTmp.map(j => costeFichaje(j)).sort((a, b) => a - b);
+  const cinco = costes.slice(0, 5).reduce((a, b) => a + b, 0);
+  exige(cinco <= PRESUP_CLUB,
+    `los cinco más baratos cuestan ${cinco}€ y el presupuesto es ${PRESUP_CLUB}€: sin quinto, la Copa la decide la enfermería`);
+  // y tiene que sobrar algo para la primera semana: fundar en números rojos no vale
+  exige(PRESUP_CLUB - cinco > 1500, "fundar con cinco te deja sin caja para la primera semana");
+  // el fondo de armario es lo que evita el punto en la mesa
+  const cl = fundarClub();
+  while (cl.plantilla.length < 5) cl.plantilla.push({ ...cl.plantilla[0], n: "R" + cl.plantilla.length, energia: 100, conf: 55, lesion: null });
+  exige(copAlineacionAuto(cl, false).length === 2, "con cinco sanos no se ponen dos parejas");
+  cl.plantilla[0].lesion = { n: "x", sem: 2 };
+  exige(copAlineacionAuto(cl, false).length === 2, "con una lesión y cinco en plantilla ya no hay segunda pareja");
+  cl.plantilla[1].lesion = { n: "x", sem: 2 };
+  exige(copAlineacionAuto(cl, false).length === 1, "con dos lesionados de cinco debería quedar una sola pareja");
+  return "cinco más baratos " + cinco + "€ de " + PRESUP_CLUB + "€ · aguanta una lesión sin perder el punto";
+});

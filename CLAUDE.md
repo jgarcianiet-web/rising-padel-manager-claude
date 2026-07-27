@@ -579,6 +579,30 @@ desempate. Tres reglas que la sostienen:
 3. **Las jornadas caen en semanas sin premier** (`copSemanasLibres`). Sí
    coinciden con Continentales, y ahí es donde la fatiga empieza a decidir.
 
+### La Copa no la decide la fuerza: la decide la enfermería
+
+El hallazgo que explicaba el modo club entero, y que tres rondas de mediciones
+habían achacado a la fuerza de la plantilla. **La Copa pide cuatro jugadores
+SANOS**, y sin ellos el segundo punto se pierde en la mesa sin jugarlo.
+
+Medido sobre doce fundaciones jugadas igual de bien: la que nunca pudo alinear
+segunda pareja ganó **0 de 20** eliminatorias, y la que siempre pudo, **16 de
+20**. Los puntos perdidos en la mesa coincidían *exactamente* con las jornadas
+sin segunda pareja. Y la fuerza no predecía nada: un club de fuerza 67 contra un
+grupo de 60 ganaba 2 de 20 y otro de 59 contra 58 ganaba 12 de 20.
+
+La causa era el presupuesto: 22.000€ compraban exactamente cuatro jugadores, y
+el club pasa **una media de 1,1 lesionados por semana**. Con cuatro en
+plantilla, cualquier lesión te quitaba el punto antes de empezar. Hoy el
+presupuesto (30.000€) da para **cinco**, que es el fondo de armario que la regla
+siempre pidió. Con eso la mediana de eliminatorias ganadas en la primera
+temporada pasa del 25% al 40% y desaparecen las destituciones del primer año.
+
+**La regla no cambió** —sigue sin poder repetir pareja en los dos primeros
+puntos, que es lo que obliga a tener fondo—; lo que cambió es que ahora se puede
+construir ese fondo. Si tocas `PRESUP_CLUB`, comprueba que los CINCO más baratos
+del mercado inicial siguen cabiendo: `tests/casos.js` lo exige.
+
 ### La economía del club, y por qué la juzga la Copa
 
 Tres cosas que se midieron y hubo que corregir, todas de la misma familia:

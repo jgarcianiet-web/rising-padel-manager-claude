@@ -19,6 +19,8 @@ const IDIOMAS=[
 const IDIOMA_DEF="es";
 const I18N={
   es:{
+    sem_paron_t:"Semana de parón en el circuito",
+    sem_paron_d:"No hay torneo esta semana. Buen momento para entrenar fuerte, descansar o llegar entero al siguiente grande.",
     pal_resumen:"{grandes} títulos grandes de {total} en total",
     staff_av_impago:"💸 No has podido pagar a {n} ({sal}€/sem) y se marcha.",
     staff_impago_t:"{n} rompe el contrato por impago",
@@ -2227,6 +2229,8 @@ const I18N={
     ctx_circuito_fip:"circuito Continental",
   },
   en:{
+    sem_paron_t:"Off week on the tour",
+    sem_paron_d:"No tournament this week. A good moment to train hard, rest, or arrive fresh at the next big one.",
     pal_resumen:"{grandes} major titles out of {total} overall",
     staff_av_impago:"💸 You couldn't pay {n} ({sal}€/wk) and they walk away.",
     staff_impago_t:"{n} terminates contract over unpaid wages",
@@ -4435,6 +4439,8 @@ const I18N={
     ctx_circuito_fip:"Continental tour",
   },
   fr:{
+    sem_paron_t:"Semaine de trêve sur le circuit",
+    sem_paron_d:"Pas de tournoi cette semaine. Bon moment pour t'entraîner dur, souffler ou arriver frais au prochain grand rendez-vous.",
     pal_resumen:"{grandes} titres majeurs sur {total} au total",
     staff_av_impago:"💸 Tu n'as pas pu payer {n} ({sal}€/sem) et il/elle s'en va.",
     staff_impago_t:"{n} rompt le contrat pour salaires impayés",
@@ -6643,6 +6649,8 @@ const I18N={
     ctx_circuito_fip:"circuit Continental",
   },
   de:{
+    sem_paron_t:"Spielfreie Woche auf der Tour",
+    sem_paron_d:"Diese Woche kein Turnier. Ein guter Moment, hart zu trainieren, zu ruhen oder frisch beim nächsten großen Event anzukommen.",
     pal_resumen:"{grandes} große Titel von insgesamt {total}",
     staff_av_impago:"💸 Du konntest {n} ({sal}€/Wo.) nicht bezahlen — Abgang.",
     staff_impago_t:"{n} kündigt wegen ausstehender Gehälter",
@@ -8851,6 +8859,8 @@ const I18N={
     ctx_circuito_fip:"Continental-Tour",
   },
   it:{
+    sem_paron_t:"Settimana di pausa nel circuito",
+    sem_paron_d:"Nessun torneo questa settimana. Buon momento per allenarti forte, riposare o arrivare intero al prossimo grande.",
     pal_resumen:"{grandes} titoli grandi su {total} in totale",
     staff_av_impago:"💸 Non hai potuto pagare {n} ({sal}€/sett.) e se ne va.",
     staff_impago_t:"{n} rescinde il contratto per stipendi non pagati",

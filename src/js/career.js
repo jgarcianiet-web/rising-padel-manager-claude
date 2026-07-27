@@ -619,6 +619,14 @@ function pintarEventosSemana(td, disponible, motivoNo){
     b.onclick=()=>abrirTorneo(ci);
     d.appendChild(b);td.appendChild(d);
   });
+  /* Una semana de parón tiene que DECIR que es un parón. Al abrir huecos en el
+     calendario, estas semanas se quedaban con el panel vacío y un «o entrenar»
+     colgando: parecía que algo se había roto, no que el circuito descansaba. */
+  if(!lista.length){
+    const d=document.createElement("div"); d.className="opcion";
+    d.innerHTML=`<b>${t("sem_paron_t")}</b><div class="d">${t("sem_paron_d")}</div>`;
+    td.appendChild(d);
+  }
   if(!disponible){const p=document.createElement("div");p.className="foot";p.textContent=motivoNo;td.appendChild(p);}
   const sep=document.createElement("div");sep.className="foot";sep.textContent=t("sem_o_entrenar");sep.style.margin="8px 0";td.appendChild(sep);
 }

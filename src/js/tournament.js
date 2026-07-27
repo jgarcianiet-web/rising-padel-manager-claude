@@ -73,8 +73,17 @@ function probGana(nA,nB){ return 1/(1+Math.pow(10,(nB-nA)/9)); }
    costando lo de antes y una final cuesta el doble. Con eso paga el que llega
    lejos, que es el que se está llevando los puntos y el dinero, y no el que se
    está construyendo. Además es lo que pasa: las rondas finales son partidos más
-   largos y contra gente que corre más. */
+   largos y contra gente que corre más.
+
+   **SOLO EN CARRERA.** El club tiene su propio presupuesto de energía —sesión
+   7/12/19, eliminatoria de Copa 10, recuperación 24— medido aparte, y aplicarle
+   esta escala sin volver a medirlo le rompió las cuentas: sus mejores jugadores
+   vivían fundidos, no llegaban cuatro sanos a la jornada y el segundo punto se
+   perdía en la mesa. Medido: de 12 eliminatorias ganadas de 20 se pasó a 3 de
+   24, con el club destituido teniendo 295.000€ en caja. Cada modo tiene su
+   presupuesto y se tocan de uno en uno. */
 function costeEnergiaPartido(fase){ return 6+2*clamp(fase|0,0,5); }
+const COSTE_PARTIDO_CLUB=7;
 /* Nivel de una entrada del cuadro. Tu propia entrada no es una pareja del
    mundo (no tiene .jug), así que lleva su nivel calculado dentro. */
 function nivCuadro(p){ return p?(p.yo?(p.nivel||50):nivelPareja(p)):0; }
@@ -995,7 +1004,7 @@ function finPartido(){
     cl.quims[qk]=clamp((cl.quims[qk]??40)+2,10,95);
     teams[0].jug.forEach((jv,i)=>{
       const j=jv._ref;
-      j.energia=clamp(j.energia-costeEnergiaPartido(f),0,100);
+      j.energia=clamp(j.energia-COSTE_PARTIDO_CLUB,0,100);
       j.conf=clamp(j.conf+(gane?4:-5),15,95);
       const w=stats[0].jug[i].w;
       if((gane&&rnd()<.25)||w>=6){

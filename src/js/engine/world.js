@@ -88,8 +88,18 @@ const PREM_CAL=(()=>{
    los que convierten «cuándo juego» en una decisión: si descansas la semana en
    blanco llegas entero al premier siguiente. Los `null` son eso. */
 const CONT_CAL=(()=>{
-  const pat=[0,1,null,2,1,0,null,3,1,2,0,null];
-  return new Array(52).fill(0).map((_,i)=>pat[i%pat.length]);
+  const pat=[0,1,2,1,0,3,1,2,0,1];
+  const c=new Array(52).fill(0).map((_,i)=>pat[i%pat.length]);
+  /* Los parones se abren DONDE TAMPOCO HAY ÉLITE. Con un patrón fijo de huecos
+     la mayoría caían encima de una semana de premier, y entonces no son un
+     parón: son un Continental menos y la semana se juega igual. Medido con la
+     primera versión: de trece huecos solo cinco quedaban de descanso real. */
+  let n=0;
+  for(let i=0;i<52;i++){
+    if(PREM_CAL[i]) continue;
+    if(++n%3===0) c[i]=null;
+  }
+  return c;
 })();
 function slotSemana(st){
   const p=PREM_CAL[st-1];
