@@ -199,7 +199,20 @@ function copJuega(cl,jor,mias,cruce,desempate){
       return;
     }
     const res=quickMatch(teamDePareja(mia),{...suya,jug:(suya.jug||[]).map(x=>({...x}))});
-    mia.forEach(x=>{ x.energia=clamp(x.energia-COP_ENERGIA,0,100); x.conf=clamp(x.conf+(res.gane?4:-4),15,95); });
+    mia.forEach(x=>{ x.energia=clamp(x.energia-COP_ENERGIA,0,100); x.conf=clamp(x.conf+(res.gane?4:-4),15,95);
+      /* La memoria del canterano se escribe donde ocurre el hecho: su debut y
+         su primer punto ganado para el club quedan con fecha y rival, y la
+         ficha los contará años después. Si no se vivió, no existe. */
+      if(x.dela_casa&&!x.debut){
+        x.debut={t:temporada(),sem:semanaTemp()};
+        if(typeof avisa==="function") avisa(t("can_av_debut",{n:x.n}),"ok");
+        if(typeof noticia==="function") noticia("fichaje",t("can_not_debut2_t",{n:x.n}),t("can_not_debut2_s",{n:x.n,club:cl.nombre}));
+      }
+      if(x.dela_casa&&res.gane&&!x.primerPunto){
+        x.primerPunto={t:temporada(),rival:suya.nombre};
+        if(typeof avisa==="function") avisa(t("can_av_punto",{n:x.n,rival:suya.nombre}),"ok");
+      }
+    });
     acta.partidos.push({gane:res.gane, marcador:res.marcador, mios:mia.map(x=>x.n), rival:suya.nombre, desempate:esDes});
     if(res.gane) acta.mio++; else acta.suyo++;
   };

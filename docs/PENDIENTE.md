@@ -146,8 +146,10 @@ De las prioridades 2-8 del último plan:
   (~9 frases por temporada, medido), y recuerda el plan («dijiste que le
   daríamos tiempo»). La némesis tiene arco por fases (herida → pulso → vuelco,
   con noticia) y el staff acumula historia (desde cuándo, títulos juntos).
-  Queda: la memoria de los canteranos del club (quién los descubrió, debut,
-  regreso como rival).
+  Los canteranos también recuerdan: quién los descubrió, su debut, su primer
+  punto ganado y el libro de la cantera con los que se fueron; y la némesis
+  tiene epílogo en la retirada. Queda solo el «regreso como rival» del
+  canterano que se marcha (pide inyectarlo en una pareja del mundo).
 - **P6 · Jerarquía audiovisual** — pendiente (cabeceras de momento, audio
   contextual). `pesoPartido` y `dramaGrada` son la base.
 - **P7 · Tres capas de información** — pendiente, y es la más de interfaz de

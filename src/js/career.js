@@ -491,6 +491,18 @@ function retirarse(){
       ${fila(t("leg_mejor"),"#"+L.mejorPuesto)}
       ${L.rival?fila(t("leg_rival"),`${L.rival.nombre} (${L.rival.v}-${L.rival.d})`):""}
     </div>
+    ${(()=>{
+      /* El epílogo de la némesis: la rivalidad también se retira, y cómo
+         termina depende de cómo fue —el vuelco, la herida que no se cerró o el
+         pulso que nadie ganó—. Sale del estado, como todo el arco. */
+      if(!c.nemesis) return "";
+      const hN=(c.h2h||{})[c.nemesis.id]||{v:0,d:0};
+      const fase=c.nemesis.fase||(((hN.d|0)-(hN.v|0))>=3?"herida":"pulso");
+      return `<div class="opcion" style="border-color:#E05656;margin-bottom:10px">
+        <b style="color:#E05656">${t("leg_nem_titulo")}</b>
+        <div class="d">${t("leg_nem_"+fase,{rival:c.nemesis.nombre,v:hN.v|0,d:hN.d|0,fin:c.nemesis.finales|0})}</div>
+      </div>`;
+    })()}
     <div class="foot" style="text-align:left;line-height:1.6;margin-bottom:10px">${t("leg_cierre_"+L.rango,{nombre:c.nombre,edad:L.edad})}</div>
     <button class="pri" style="width:100%" ${ac("verTrofeos")}>🏆 ${t("leg_ver_trofeos")}</button>
     <button style="width:100%;margin-top:7px" ${ac("cerrarLegado")}>${t("leg_volver")}</button>

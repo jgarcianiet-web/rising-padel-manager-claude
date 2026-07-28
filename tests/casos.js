@@ -4360,3 +4360,63 @@ comprueba("Némesis: el duelo tiene fases y la ficha las cuenta", () => {
   exige(el.innerHTML.includes(t("nem_fase_herida")), "un guardado viejo dominado no sale como herida");
   return "herida, pulso y vuelco · guardado viejo deduce su fase";
 });
+
+comprueba("Cantera: el club recuerda a sus canteranos, del descubrimiento al libro", () => {
+  /* Una promesa no es una ficha en una lista: tiene quién la descubrió, cuándo
+     debutó, su primer punto ganado y —si se va— su línea en el libro de la
+     cantera. Todo se escribe donde ocurre el hecho; si no se vivió, no existe. */
+  const cl = fundarClub();
+  while (cl.plantilla.length < 3) cl.plantilla.push({ ...cl.plantilla[0], n: "R" + cl.plantilla.length, energia: 100, conf: 55, lesion: null, attrs: { ...cl.plantilla[0].attrs } });
+  // un canterano subido al primer equipo, todavía sin debutar
+  const kid = { ...cl.plantilla[0], n: "Canterano Test", attrs: { ...cl.plantilla[0].attrs }, energia: 100, conf: 55, lesion: null,
+    dela_casa: true, subida: temporada(), origen: { t: 1, por: "Ojeadora Test" } };
+  cl.plantilla.push(kid);
+  // juega su primera eliminatoria: el debut queda escrito con fecha
+  const L = copAsegura(cl);
+  const jor = L.cal.findIndex(x => x.par.some(p => p[0] === 0 || p[1] === 0));
+  cl.plantilla.forEach(j => { j.energia = 100; j.lesion = null; });
+  const mias = copAlineacionAuto(cl, false);
+  exige(mias.flat().includes(kid), "el canterano no entra en la alineación de la prueba");
+  copJuega(cl, jor, mias, 0, 0);
+  exige(kid.debut && kid.debut.t === temporada(), "el debut no queda registrado con su temporada");
+  // si ganó su punto, el primer punto también tiene rival y fecha
+  if (kid.primerPunto) exige(!!kid.primerPunto.rival, "el primer punto no guarda contra quién fue");
+  // el libro de la cantera: los tres finales se cuentan y sus claves existen
+  cl.libroCantera = [
+    { n: "A", fin: "sube", t: 3, a: 2, media: 58 },
+    { n: "B", fin: "venta", t: 4, a: 1, media: 51 },
+    { n: "C", fin: "fuga", t: 5, a: 4, media: 49 }];
+  ["sube", "venta", "fuga"].forEach(fin => {
+    const txt = t("can_libro_" + fin, { n: "X", t: 2, a: 3, media: 50 });
+    exige(txt !== "can_libro_" + fin && !txt.includes("{"), "la línea del libro can_libro_" + fin + " no se resuelve");
+  });
+  ["can_av_debut", "can_av_punto", "can_origen_ojeador", "can_origen_casa", "can_libro"].forEach(k =>
+    exige(t(k) !== k, "falta la clave " + k));
+  return "debut T" + kid.debut.t + (kid.primerPunto ? " · primer punto contra " + kid.primerPunto.rival : "") + " · libro con tres finales";
+});
+
+comprueba("Retirada: la némesis tiene epílogo y habla según cómo acabó el duelo", () => {
+  /* La rivalidad también se retira: el vuelco, la herida que no se cerró o el
+     pulso que nadie ganó. El texto sale de la fase, y la fase de los hechos. */
+  ["vuelco", "herida", "pulso"].forEach(f => {
+    const txt = t("leg_nem_" + f, { rival: "X/Y", v: 8, d: 5, fin: 2 });
+    exige(txt !== "leg_nem_" + f && !txt.includes("{rival}"), "el epílogo leg_nem_" + f + " no se resuelve");
+  });
+  // y la pantalla de retirada lo pinta sin reventar, con y sin némesis
+  const c = nuevaCarrera("agresivo");
+  c.edad = 34; c.hist = [{ t: 1, pos: 30 }];
+  c.nemesis = { id: "n1", nombre: "A. Prueba/B. Prueba", desde: 2, elim: 5, fase: "vuelco", finales: 3 };
+  c.h2h = { n1: { v: 9, d: 6, n: "A. Prueba/B. Prueba", elim: 5 } };
+  retirarse();
+  const ov = document.getElementById("legadoModal");
+  exige(ov && ov.innerHTML.includes(t("leg_nem_titulo")), "la retirada no enseña el epílogo de la rivalidad");
+  exige(ov.innerHTML.includes("A. Prueba/B. Prueba"), "el epílogo no nombra a la némesis");
+  quitarEl(ov);
+  const c2 = nuevaCarrera("agresivo");
+  c2.edad = 34; c2.hist = [{ t: 1, pos: 30 }];
+  retirarse();   // sin némesis: sin epílogo y sin reventar
+  const ov2 = document.getElementById("legadoModal");
+  exige(ov2 && !ov2.innerHTML.includes(t("leg_nem_titulo")), "sale epílogo de némesis sin haber némesis");
+  quitarEl(ov2);
+  return "vuelco, herida y pulso resueltos · con y sin némesis";
+});

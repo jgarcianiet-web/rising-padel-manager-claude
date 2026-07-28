@@ -203,6 +203,8 @@ function evolucionaCantera(cl){
     cl.cantera=cl.cantera.filter(x=>x!==j);
     avisa(t("can_av_fuga",{n:j.n,a:j.aniosCan|0}));
     noticia("ruptura",t("can_not_fuga_t",{n:j.n,club:cl.nombre}),t("can_not_fuga_s"));
+    // el club recuerda a los que se fueron: el libro de la cantera
+    (cl.libroCantera=cl.libroCantera||[]).push({n:j.n,fin:"fuga",t:temporada(),a:j.aniosCan|0,media:mediaAttrs(j.attrs)});
   });
   return fuera;
 }
@@ -869,6 +871,7 @@ function pintarCmPlantilla(){
     d.innerHTML=`<h3>${j.pais||""} ${j.n} · <em>${mediaAttrs(j.attrs)}</em></h3>
       <div class="meta" style="margin-top:0">
         <div class="chip">${j.edad} años</div>
+        ${j.dela_casa?`<div class="chip" style="color:var(--lima)" title="${j.debut?t("can_pill_debut",{t:j.debut.t}):""}">🌱 ${t("can_pill_casa")}${j.debut?` · ${t("can_pill_debut",{t:j.debut.t})}`:""}</div>`:""}
         <div class="chip">${estiloNombre(j.estilo)}</div>
         <div class="chip">${persoNombre(j.perso)}</div>
         <div class="chip">Salario <b>${salarioDe(j)}€</b></div>
@@ -877,7 +880,6 @@ function pintarCmPlantilla(){
         <div class="chip">Moral <b style="color:${colAttr(moralC)}">${moralC}</b></div>
         <div class="chip">Contrato <b>${ct.temporadas||1} temp.</b></div>
         <div class="chip">${t("clb_clausula")} <b>${(valorClausula(j)).toLocaleString("es")}€</b></div>
-        ${j.dela_casa?`<div class="chip lima">${t("can_pill_casa")}</div>`:""}
         ${rolJ?`<div class="chip lima">${t("clb_titular",{rol:rolJ})}</div>`:""}
       </div>
       <div class="foot" style="text-align:left;margin-top:6px;color:${est.col<0?"var(--rojo)":est.col>0?"var(--verde)":"var(--gris)"}">${est.clave==="salir"?"🚪":est.clave==="exige"?"😠":est.clave==="dudas"?"🤔":"🙂"} ${est.txt}</div>
@@ -1012,7 +1014,7 @@ function pintarCmClub(){
         : t("can_estanca",{t:x.t,a:x.a,b:x.b})
       ).map(l=>`<div style="font-size:calc(10.5px * var(--esc));color:var(--gris2);padding:1px 0">${l}</div>`).join("");
       d.innerHTML=`<b>${j.n}</b> <span class="pill">${t("clb_nivel_n",{n:mediaAttrs(j.attrs)})}</span> <span class="pill">${t("clb_anios_n",{n:j.edad})}</span> <span class="pill">${estiloNombre(j.estilo)}</span> <span class="pill oro">${techoTxt(cl,j)}</span>
-        <div class="d">${anios<=1?t("can_anio1"):t("can_anios",{n:anios+1})}</div>
+        <div class="d">${anios<=1?t("can_anio1"):t("can_anios",{n:anios+1})}${j.origen?` · ${j.origen.por?t("can_origen_ojeador",{n:j.origen.por,t:j.origen.t}):t("can_origen_casa",{t:j.origen.t})}`:""}</div>
         <div style="color:${il.col};font-size:calc(11px * var(--esc));margin-top:3px">${t(il.k)}</div>
         ${canteraGrafico(j)}
         ${hist?`<div style="margin-top:2px"><span class="foot" style="text-align:left">${t("can_evol")}</span>${hist}</div>`:""}
@@ -1021,16 +1023,27 @@ function pintarCmClub(){
       const b1=document.createElement("button");b1.className="pri";b1.textContent=t("can_subir");
       b1.disabled=cl.plantilla.length>=6;
       b1.onclick=()=>{
-        cl.plantilla.push({...j,salario:Math.round(mediaAttrs(j.attrs)*.6),energia:100,conf:55,lesion:null,dela_casa:true,aniosCan:anios});
+        cl.plantilla.push({...j,salario:Math.round(mediaAttrs(j.attrs)*.6),energia:100,conf:55,lesion:null,dela_casa:true,aniosCan:anios,subida:temporada()});
+        (cl.libroCantera=cl.libroCantera||[]).push({n:j.n,fin:"sube",t:temporada(),a:anios,media:mediaAttrs(j.attrs)});
         cl.cantera.splice(idx,1);cl._subidos=(cl._subidos||0)+1;
         avisa(t("clb_sube",{n:j.n}));
         noticia("fichaje",t("can_not_debut_t",{n:j.n,club:cl.nombre}),t("can_not_debut_s",{a:anios+1}));
         guardar();pintarClubM();
       };
       const b2=document.createElement("button");b2.textContent=t("clb_traspasar",{n:mediaAttrs(j.attrs)*6});
-      b2.onclick=()=>{cl.dinero+=mediaAttrs(j.attrs)*6;cl.cantera.splice(idx,1);avisa(t("clb_promesa_out",{n:j.n}));guardar();pintarClubM();};
+      b2.onclick=()=>{cl.dinero+=mediaAttrs(j.attrs)*6;
+        (cl.libroCantera=cl.libroCantera||[]).push({n:j.n,fin:"venta",t:temporada(),a:j.aniosCan|0,media:mediaAttrs(j.attrs)});
+        cl.cantera.splice(idx,1);avisa(t("clb_promesa_out",{n:j.n}));guardar();pintarClubM();};
       f.appendChild(b1);f.appendChild(b2);d.appendChild(f);c3.appendChild(d);
     });
+  }
+  /* El libro de la cantera: el club recuerda a todos los que pasaron por ella,
+     también a los que se fueron. Tres finales posibles y cada uno se cuenta. */
+  if(cl.libroCantera&&cl.libroCantera.length){
+    const d=document.createElement("div");d.className="opcion";
+    d.innerHTML=`<b>📖 ${t("can_libro")}</b>`+cl.libroCantera.slice(-6).reverse().map(x=>
+      `<div style="font-size:calc(10.5px * var(--esc));color:var(--gris2);padding:1px 0">${t("can_libro_"+x.fin,{n:x.n,t:x.t,a:x.a,media:x.media})}</div>`).join("");
+    c3.appendChild(d);
   }
   el.appendChild(c3);
   // reformas
@@ -1387,6 +1400,8 @@ function avanzarSemanaClub(){
       j.edad=Math.round(R(15,17));
       if(bono) j.pot=Math.min(95,(j.pot||60)+6);
       j.aniosCan=0; j.ilusion=CAN_ILUSION0; j.hist=[];
+      // quién lo encontró y cuándo: es el principio de su historia
+      j.origen={t:temporada(),por:(cl.staff&&cl.staff.ojeador)?cl.staff.ojeador.n:null};
       cl.cantera.push(j);
       avisa(t("clb_academia_presenta",{n:j.n,media:mediaAttrs(j.attrs)}),"ok");
     }

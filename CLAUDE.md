@@ -797,6 +797,39 @@ Dos reglas al tocarlo:
    sin él, una horquilla. Es la única información del juego por la que merece la
    pena pagar un sueldo.
 
+## La cantera se sigue durante años
+
+Una promesa no es una ficha en una lista: cierra temporada como un jugador.
+`evolucionaCantera(cl)` corre en el cierre de temporada del club y hace crecer
+a cada chaval hacia su `pot` con `saltoCantera` —más deprisa cuanto más lejos
+esté del techo, y más con escuela, entrenador y filosofía de cantera—, guarda
+la línea en `j.hist` (temporada, antes, después, en qué golpe mejoró) y le gasta
+`ilusion` por cada año sin debutar.
+
+Dos reglas al tocarlo:
+
+1. **Nadie se va sin aviso.** La curva de ilusión está calculada para que la
+   ficha enseñe «se va a final de temporada» al menos una temporada antes de
+   que se marche. Perder a un canterano tiene que ser culpa del jugador, no una
+   sorpresa. `CAN_FUGA` es solo un tope de seguridad.
+2. **El techo no se enseña, se estima** (`techoTxt`). Con ojeador es un número;
+   sin él, una horquilla. Es la única información del juego por la que merece la
+   pena pagar un sueldo.
+
+### Y el club lo recuerda todo
+
+La memoria del canterano se escribe **donde ocurre el hecho**: `j.origen` al
+presentarse en la academia (con el nombre del ojeador si lo hay), `j.debut` y
+`j.primerPunto` en `copJuega` la primera vez que pisa la pista y la primera vez
+que gana su punto, y `cl.libroCantera` cuando sale de la cantera —tres finales:
+`sube`, `venta`, `fuga`, cada uno con su línea—. La ficha del jugador «de la
+casa» lleva su chip con el debut, y la pestaña del club pinta el libro. Si no
+se vivió, no existe.
+
+Y **la némesis tiene epílogo**: la pantalla de retirada cierra la rivalidad
+según su fase (`leg_nem_vuelco/herida/pulso`), con el cara a cara y las finales
+del duelo. Sale del estado, como todo el arco.
+
 ## Rumores: el mercado se cuenta antes de pasar
 
 `mkRumor` / `resolverRumores` (en `engine/world.js`) publican lo que aún no ha
