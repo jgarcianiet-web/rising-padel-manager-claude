@@ -140,16 +140,18 @@ De las prioridades 2-8 del último plan:
 - **P4 · Staff que cambia cómo se juega** — pendiente. Hoy los seis roles dan
   bonificaciones distintas; el objetivo es que dos profesionales del mismo
   nivel produzcan formas distintas de gestionar.
-- **P5 · Voz y memoria de personajes — hecha en su núcleo.** El compañero deja
+- **P5 · Voz y memoria de personajes — HECHA.** El compañero deja
   promesas con plazo que se comprueban contra lo que haces (y las recuerda con
   su nombre al cumplirse o romperse), tiene voz semanal con doble enfriamiento
   (~9 frases por temporada, medido), y recuerda el plan («dijiste que le
   daríamos tiempo»). La némesis tiene arco por fases (herida → pulso → vuelco,
-  con noticia) y el staff acumula historia (desde cuándo, títulos juntos).
-  Los canteranos también recuerdan: quién los descubrió, su debut, su primer
-  punto ganado y el libro de la cantera con los que se fueron; y la némesis
-  tiene epílogo en la retirada. Queda solo el «regreso como rival» del
-  canterano que se marcha (pide inyectarlo en una pareja del mundo).
+  con noticia) y epílogo en la retirada, y el staff acumula historia (desde
+  cuándo, títulos juntos). Los canteranos también recuerdan: quién los
+  descubrió, su debut, su primer punto ganado y el libro de la cantera con los
+  que se fueron; y el que se marcha —por fuga o por venta— puede volver como
+  rival: una pareja del mundo lo ficha (`canRegresaAlCircuito`), la jornada de
+  Copa contra su club lo anuncia antes de alinear y el acta cierra la historia
+  con su nombre.
 - **P6 · Jerarquía audiovisual** — pendiente (cabeceras de momento, audio
   contextual). `pesoPartido` y `dramaGrada` son la base.
 - **P7 · Tres capas de información** — pendiente, y es la más de interfaz de

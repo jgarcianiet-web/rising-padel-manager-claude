@@ -826,6 +826,22 @@ que gana su punto, y `cl.libroCantera` cuando sale de la cantera —tres finales
 casa» lleva su chip con el debut, y la pestaña del club pinta el libro. Si no
 se vivió, no existe.
 
+**Y el que se marcha puede volver como rival.** `canRegresaAlCircuito` (en
+`club.js`) se llama en la fuga y en la venta desde la cantera: si el chaval
+tiene nivel de circuito (`CAN_REGRESO_MIN`), sustituye al flojo de una pareja
+del mundo —con preferencia por los clubes de tu grupo de la Copa, para que el
+reencuentro pueda ocurrir de verdad— y queda marcado con `exCantera`
+(club, motivo y temporada). La jornada contra su club lo anuncia ANTES de
+alinear (es información que cambia la decisión), y `copJuega` cierra la
+historia en el acta (`acta.exCan`): si su pareja te quitó un punto, lo dice
+con su nombre. Dos cosas al tocarlo:
+
+1. **La elección de pareja es determinista** (la que mejora más de cerca), no
+   sorteada: no consume azar y por tanto no mueve la semilla de nadie.
+2. **Vender también deja rastro**: el vendido puede acabar enfrente, que es el
+   precio oculto de la venta. La línea del libro lleva `dest` cuando se sabe
+   dónde acabó.
+
 Y **la némesis tiene epílogo**: la pantalla de retirada cierra la rivalidad
 según su fase (`leg_nem_vuelco/herida/pulso`), con el cara a cara y las finales
 del duelo. Sale del estado, como todo el arco.

@@ -220,6 +220,16 @@ function copJuega(cl,jor,mias,cruce,desempate){
   // 1-1: desempate, y aquí sí se puede repetir pareja (con lo que les quede)
   if(acta.mio===1&&acta.suyo===1) juega(mias[desempate===1?1:0]||mias[0],suyas[0],true);
   acta.gane=acta.mio>acta.suyo;
+  /* El regreso del canterano se cierra donde ocurre: si el que se fue de tu
+     cantera está enfrente, el acta lo cuenta —y si su pareja te quitó un punto,
+     la historia lo dice con su nombre. */
+  const exCan=suyas.reduce((f,s)=>f||(s.jug||[]).find(x=>x&&x.exCantera&&x.exCantera.club===cl.nombre)||null,null);
+  if(exCan){
+    const suPar=suyas.find(s=>(s.jug||[]).indexOf(exCan)>=0);
+    const meGano=acta.partidos.some(pt=>pt.rival===(suPar&&suPar.nombre)&&(pt.wo||!pt.gane));
+    acta.exCan={n:exCan.n,meGano};
+    if(typeof avisa==="function") avisa(t(meGano?"cop_excan_gana":"cop_excan_pierde",{n:exCan.n}),meGano?undefined:"ok");
+  }
   copAnota(cl,acta,j);
   return acta;
 }

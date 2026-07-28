@@ -204,9 +204,49 @@ function evolucionaCantera(cl){
     avisa(t("can_av_fuga",{n:j.n,a:j.aniosCan|0}));
     noticia("ruptura",t("can_not_fuga_t",{n:j.n,club:cl.nombre}),t("can_not_fuga_s"));
     // el club recuerda a los que se fueron: el libro de la cantera
-    (cl.libroCantera=cl.libroCantera||[]).push({n:j.n,fin:"fuga",t:temporada(),a:j.aniosCan|0,media:mediaAttrs(j.attrs)});
+    const linea={n:j.n,fin:"fuga",t:temporada(),a:j.aniosCan|0,media:mediaAttrs(j.attrs)};
+    const reg=canRegresaAlCircuito(cl,j,"fuga");
+    if(reg) linea.dest=reg.pareja.nombre;
+    (cl.libroCantera=cl.libroCantera||[]).push(linea);
   });
   return fuera;
+}
+/* El canterano que se marcha no desaparece: si tiene nivel para el circuito,
+   una pareja del mundo lo ficha —con preferencia por los clubes de tu grupo de
+   la Copa, para que el regreso se pueda VER— y queda marcado como ex de tu
+   cantera. La elección es determinista (la pareja cuyo flojo mejora más de
+   cerca): no consume azar, así que no mueve la semilla de nadie. */
+const CAN_REGRESO_MIN=48;
+function canRegresaAlCircuito(cl,j,fin){
+  if(!G||!G.world||!G.world.parejas||!j||!j.attrs) return null;
+  const media=mediaAttrs(j.attrs);
+  if(media<CAN_REGRESO_MIN) return null;      // demasiado verde para el circuito
+  const sx=cl.sexo||"M";
+  const grupo=(cl.copa&&cl.copa.grupo)||[];
+  const cands=G.world.parejas.filter(p=>!p.pro&&(p.sexo||"M")===sx&&p.jug&&p.jug.length===2);
+  if(!cands.length) return null;
+  const enGrupo=cands.filter(p=>grupo.indexOf(p.club)>=0);
+  const bolsa=enGrupo.length?enGrupo:cands;
+  // ficha la pareja a la que MEJORA: sustituye a su flojo, y al que menos le sobra
+  let mejor=null,mDist=1e9;
+  bolsa.forEach(p=>{
+    const iF=mediaAttrs(p.jug[0].attrs)<=mediaAttrs(p.jug[1].attrs)?0:1;
+    const d=media-mediaAttrs(p.jug[iF].attrs);
+    if(d<0) return;                            // nadie ficha para empeorar
+    if(d<mDist){ mDist=d; mejor={p,iF}; }
+  });
+  if(!mejor) return null;
+  mejor.p.jug[mejor.iF]={
+    n:j.n,pais:j.pais||"🇪🇸",sexo:sx,estilo:j.estilo||"constructor",
+    perso:j.perso||"frio",attrs:{...j.attrs},conf:55,
+    exCantera:{club:cl.nombre,fin:fin||"fuga",t:temporada()}
+  };
+  const nom=p=>p.jug.map(x=>x.n.split(" ").slice(-1)[0]).join("/");
+  mejor.p.nombre=nom(mejor.p);
+  if(typeof asignaLadosPareja==="function") asignaLadosPareja(mejor.p.jug);
+  noticia("fichaje",t("can_not_regreso_t",{n:j.n}),
+    t(fin==="venta"?"can_not_regreso_venta":"can_not_regreso_fuga",{n:j.n,club:cl.nombre,pareja:mejor.p.nombre}));
+  return {pareja:mejor.p,club:(CLUBES_NPC[mejor.p.club]||{}).n||""};
 }
 /* Cómo se lee su ilusión, que es lo que de verdad decide cuándo subirlo. */
 function ilusionTxt(j){
@@ -686,7 +726,8 @@ function pintarCopa(){
       +acta.partidos.map(pt=>pt.wo
         ? `<div class="brief" style="color:var(--rojo)">${t("cop_wo",{rival:pt.rival})}</div>`
         : `<div class="brief"><b style="color:${pt.gane?"var(--verde)":"var(--rojo)"}">${pt.marcador}</b> ${pt.mios.join(" + ")} — ${pt.rival}${pt.desempate?` <span class="pill">${t("cop_pt_des")}</span>`:""}</div>`
-      ).join("");
+      ).join("")
+      +(acta.exCan?`<div class="foot" style="text-align:left;color:${acta.exCan.meGano?"var(--oro)":"var(--lima)"}">🌱 ${t(acta.exCan.meGano?"cop_excan_gana":"cop_excan_pierde",{n:acta.exCan.n})}</div>`:"");
     bx.appendChild(card);
     return;
   }
@@ -699,8 +740,12 @@ function pintarCopa(){
   sus.innerHTML=`<div class="phead">${t("cop_ellos")}</div>`
     +suyas.map((p,i)=>{
       const id=(typeof identidadPareja==="function"&&p.jug&&p.jug.length>1)?identidadPareja(p):null;
-      return `<div class="brief"><b>${i+1}.</b> ${p.nombre} <span class="pill">${t("clb_nivel_n",{n:nivelPareja(p)})}</span>${id?` <span class="pill" style="color:var(--oro)">${identNombre(id)}</span>`:""}</div>`;
+      const ex=(p.jug||[]).find(x=>x&&x.exCantera&&x.exCantera.club===cl.nombre);
+      return `<div class="brief"><b>${i+1}.</b> ${p.nombre} <span class="pill">${t("clb_nivel_n",{n:nivelPareja(p)})}</span>${id?` <span class="pill" style="color:var(--oro)">${identNombre(id)}</span>`:""}${ex?` <span class="pill" style="color:var(--lima)">🌱 ${t("cop_excan")}</span>`:""}</div>`;
     }).join("");
+  // el reencuentro se anuncia ANTES de alinear: es parte de la decisión
+  const exHoy=suyas.reduce((f,p)=>f||(p.jug||[]).find(x=>x&&x.exCantera&&x.exCantera.club===cl.nombre)||null,null);
+  if(exHoy) sus.innerHTML+=`<div class="foot" style="text-align:left;color:var(--lima)">${t("cop_excan_sub",{n:exHoy.n})}</div>`;
   card.appendChild(sus);
   // las tuyas
   const mias=copAlineacionAuto(cl,!!cl._copReparte);
@@ -1032,7 +1077,11 @@ function pintarCmClub(){
       };
       const b2=document.createElement("button");b2.textContent=t("clb_traspasar",{n:mediaAttrs(j.attrs)*6});
       b2.onclick=()=>{cl.dinero+=mediaAttrs(j.attrs)*6;
-        (cl.libroCantera=cl.libroCantera||[]).push({n:j.n,fin:"venta",t:temporada(),a:j.aniosCan|0,media:mediaAttrs(j.attrs)});
+        const linea={n:j.n,fin:"venta",t:temporada(),a:j.aniosCan|0,media:mediaAttrs(j.attrs)};
+        // vendido no es borrado: si el circuito lo ficha, te lo puedes cruzar
+        const reg=canRegresaAlCircuito(cl,j,"venta");
+        if(reg) linea.dest=reg.pareja.nombre;
+        (cl.libroCantera=cl.libroCantera||[]).push(linea);
         cl.cantera.splice(idx,1);avisa(t("clb_promesa_out",{n:j.n}));guardar();pintarClubM();};
       f.appendChild(b1);f.appendChild(b2);d.appendChild(f);c3.appendChild(d);
     });
@@ -1042,7 +1091,7 @@ function pintarCmClub(){
   if(cl.libroCantera&&cl.libroCantera.length){
     const d=document.createElement("div");d.className="opcion";
     d.innerHTML=`<b>📖 ${t("can_libro")}</b>`+cl.libroCantera.slice(-6).reverse().map(x=>
-      `<div style="font-size:calc(10.5px * var(--esc));color:var(--gris2);padding:1px 0">${t("can_libro_"+x.fin,{n:x.n,t:x.t,a:x.a,media:x.media})}</div>`).join("");
+      `<div style="font-size:calc(10.5px * var(--esc));color:var(--gris2);padding:1px 0">${t("can_libro_"+x.fin,{n:x.n,t:x.t,a:x.a,media:x.media})}${x.dest?` · ${t("can_libro_dest",{pareja:x.dest})}`:""}</div>`).join("");
     c3.appendChild(d);
   }
   el.appendChild(c3);

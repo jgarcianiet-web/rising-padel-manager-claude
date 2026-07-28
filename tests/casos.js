@@ -4395,6 +4395,39 @@ comprueba("Cantera: el club recuerda a sus canteranos, del descubrimiento al lib
   return "debut T" + kid.debut.t + (kid.primerPunto ? " · primer punto contra " + kid.primerPunto.rival : "") + " · libro con tres finales";
 });
 
+comprueba("Cantera: el que se marcha vuelve como rival, y la eliminatoria lo cuenta", () => {
+  /* El canterano que se va no desaparece: si tiene nivel de circuito, una
+     pareja del mundo lo ficha —de tu grupo de la Copa si se puede, para que el
+     reencuentro pueda OCURRIR— y la jornada contra su club lo anuncia y el
+     acta lo cierra con su nombre. */
+  const cl = fundarClub();
+  copAsegura(cl);
+  const kid = mkAgente(58, 58, cl.sexo || "M");
+  kid.n = "Regreso Test";
+  const reg = canRegresaAlCircuito(cl, kid, "fuga");
+  exige(reg && reg.pareja, "un canterano con nivel de circuito no encuentra pareja");
+  const ex = (reg.pareja.jug || []).find(x => x.exCantera);
+  exige(ex && ex.n === kid.n, "el fichado no es el canterano");
+  exige(ex.exCantera.club === cl.nombre && ex.exCantera.fin === "fuga", "la marca de ex no guarda club y motivo");
+  exige(reg.pareja.nombre.indexOf("Test") >= 0, "la pareja no se renombra con él");
+  exige((cl.copa.grupo || []).indexOf(reg.pareja.club) >= 0, "no ficha por un club de tu grupo habiendo sitio");
+  // demasiado verde: el circuito no lo quiere, y no pasa nada
+  exige(!canRegresaAlCircuito(cl, mkAgente(34, 36, cl.sexo || "M"), "fuga"), "el circuito ficha a un chaval muy verde");
+  // el reencuentro: su pareja pasa a ser la mejor de su club y toca jugarla
+  reg.pareja.jug.forEach(j => ATTR_KEYS.forEach(k => j.attrs[k] = 88));
+  while (cl.plantilla.length < 4) cl.plantilla.push({ ...cl.plantilla[0], n: "R" + cl.plantilla.length, energia: 100, conf: 55, lesion: null, attrs: { ...cl.plantilla[0].attrs } });
+  cl.plantilla.forEach(j => { j.energia = 100; j.lesion = null; });
+  const iG = cl.copa.grupo.indexOf(reg.pareja.club) + 1;
+  const jor = cl.copa.cal.findIndex(x => x.par.some(p => (p[0] === 0 && p[1] === iG) || (p[0] === iG && p[1] === 0)));
+  exige(jor >= 0, "no hay jornada contra su club");
+  const acta = copJuega(cl, jor, copAlineacionAuto(cl, false), 0, 0);
+  exige(acta && acta.exCan && acta.exCan.n === kid.n, "el acta no cuenta el reencuentro");
+  ["can_not_regreso_t", "can_not_regreso_fuga", "can_not_regreso_venta", "can_libro_dest",
+   "cop_excan", "cop_excan_sub", "cop_excan_gana", "cop_excan_pierde"].forEach(k =>
+    exige(t(k) !== k, "falta la clave " + k));
+  return "fichado por " + reg.pareja.nombre + " · acta con reencuentro (" + (acta.exCan.meGano ? "te quitó un punto" : "se fue de vacío") + ")";
+});
+
 comprueba("Retirada: la némesis tiene epílogo y habla según cómo acabó el duelo", () => {
   /* La rivalidad también se retira: el vuelco, la herida que no se cerró o el
      pulso que nadie ganó. El texto sale de la fase, y la fase de los hechos. */
