@@ -140,9 +140,14 @@ De las prioridades 2-8 del último plan:
 - **P4 · Staff que cambia cómo se juega** — pendiente. Hoy los seis roles dan
   bonificaciones distintas; el objetivo es que dos profesionales del mismo
   nivel produzcan formas distintas de gestionar.
-- **P5 · Voz y memoria de personajes** — pendiente. La memoria sistémica ya
-  existe (momentos, ejes, dilemas vividos); falta que el compañero recuerde
-  compromisos y que la némesis tenga arco explícito.
+- **P5 · Voz y memoria de personajes — hecha en su núcleo.** El compañero deja
+  promesas con plazo que se comprueban contra lo que haces (y las recuerda con
+  su nombre al cumplirse o romperse), tiene voz semanal con doble enfriamiento
+  (~9 frases por temporada, medido), y recuerda el plan («dijiste que le
+  daríamos tiempo»). La némesis tiene arco por fases (herida → pulso → vuelco,
+  con noticia) y el staff acumula historia (desde cuándo, títulos juntos).
+  Queda: la memoria de los canteranos del club (quién los descubrió, debut,
+  regreso como rival).
 - **P6 · Jerarquía audiovisual** — pendiente (cabeceras de momento, audio
   contextual). `pesoPartido` y `dramaGrada` son la base.
 - **P7 · Tres capas de información** — pendiente, y es la más de interfaz de

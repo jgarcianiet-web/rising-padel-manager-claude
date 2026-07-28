@@ -118,6 +118,7 @@ function ficharStaff(idx){
     delete st.equipoDe; }
   e.staff[st.rol]=st;
   e.mercadoStaff.splice(idx,1);
+  st.desde=temporada(); st.tits=0;   // el técnico también tiene historia contigo
   avisa(t("staff_av_firma",{ico:ROLES_STAFF[st.rol].ico,n:st.n,estrellas:"★".repeat(st.niv),rol:t("rol_"+st.rol).toLowerCase(),sal:st.sal}));
   if(st.niv>=4) post("fichaje");
   guardar(); pintarTodo();
@@ -164,7 +165,7 @@ function renderEquipoStaff(el){
     const st=e.staff[r];
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--borde)">
       <div style="font-size:11.5px">${ROLES_STAFF[r].ico} <b>${st?st.n:"—"}</b> <span style="color:var(--gris2)">· ${t("rol_"+r)}</span>
-        ${st?`<div style="font-size:10px;color:var(--gris)">${"★".repeat(st.niv)}${"☆".repeat(5-st.niv)} · ${st.sal}€/sem${st.rol==="rep"?` · ${t("staff_comision",{c:st.com})}`:""}${st.esp?` · ${atLista(st.esp).join("/")}`:""}<br><em style="color:var(--gris2)">«${t(st.frase)}»</em></div>`:`<div style="font-size:10px;color:var(--gris2)">${t("staff_vacante")}</div>`}
+        ${st?`<div style="font-size:10px;color:var(--gris)">${"★".repeat(st.niv)}${"☆".repeat(5-st.niv)} · ${st.sal}€/sem${st.rol==="rep"?` · ${t("staff_comision",{c:st.com})}`:""}${st.esp?` · ${atLista(st.esp).join("/")}`:""}${st.desde?` · <span style="color:var(--lima)">${t("staff_junto",{t:st.desde,n:st.tits|0})}</span>`:""}<br><em style="color:var(--gris2)">«${t(st.frase)}»</em></div>`:`<div style="font-size:10px;color:var(--gris2)">${t("staff_vacante")}</div>`}
       </div>
       ${st?`<button style="font-size:10px;padding:3px 7px" ${ac("despedirStaff",r)}>${t("staff_despedir")}</button>`:""}
     </div>`;}).join("");
@@ -1401,10 +1402,14 @@ function renderRivalidades(el){
   let cab="";
   if(e.nemesis){
     const h2=(e.h2h||{})[e.nemesis.id]||{v:0,d:0};
+    /* La fase del arco se pinta con la ficha: la rivalidad no es un marcador,
+       es una historia con capítulos, y el capítulo actual se lee del estado. */
+    const nemF=e.nemesis.fase||(((h2.d|0)-(h2.v|0))>=3?"herida":"pulso");
+    const nemFin=e.nemesis.finales|0;
     cab=`<div class="opcion" style="border-color:#E05656;margin-bottom:7px">
       <b style="color:#E05656">${t("nem_titulo")}</b>
-      <div style="font-size:13px;font-weight:700;margin:2px 0">${e.nemesis.nombre}</div>
-      <div class="d">${t("nem_detalle",{n:e.nemesis.elim|0,desde:e.nemesis.desde,v:h2.v|0,d:h2.d|0})}</div>
+      <div style="font-size:13px;font-weight:700;margin:2px 0">${e.nemesis.nombre} <span class="pill" style="color:${nemF==="vuelco"?"var(--lima)":nemF==="herida"?"#E05656":"var(--gris)"}">${t("nem_fase_"+nemF)}</span></div>
+      <div class="d">${t("nem_detalle",{n:e.nemesis.elim|0,desde:e.nemesis.desde,v:h2.v|0,d:h2.d|0})}${nemFin?` · ${t("nem_finales",{n:nemFin})}`:""}</div>
     </div>`;
   }
   const filas=Object.entries(e.h2h||{})
@@ -1920,6 +1925,11 @@ function avanzarSemanaCarrera(){
   // de la moral y ANTES de apagar `_jugoTorneo`, que es lo que distingue una
   // semana de competición de una semana en casa.
   relSemana(c);
+  // las promesas se comprueban contra lo hecho esta semana, y la voz del
+  // compañero habla de lo que está pasando de verdad: ambas necesitan leer
+  // `_jugoTorneo` antes de que se apague
+  if(typeof promSemana==="function") promSemana(c);
+  if(typeof compiComenta==="function") compiComenta(c);
   c._jugoTorneo=false;
   // eventos de circuito: lo que cambia las reglas de esta semana
   evSemana(c,c.semana);

@@ -232,6 +232,8 @@ function abrirTorneo(ci,wildcard){
   const _slot=slotSemana(semanaTemp());
   const _ciudad=(cat.premier&&_slot.premier===ci)?_slot.ciudad:null;
   torneo={cat:ci,nombre:catNombre(cat)+(_ciudad?` · ${_ciudad}`:""),premierT:cat.premier,pts:cat.pts,premio:cat.premio,base:cat.base,fase:startFase,startFase,rivales,cuadro,wildcard:!!wildcard};
+  // la promesa «grande» de la pareja se cumple ENTRANDO, no ganando
+  if(G.modo==="carrera"&&cat.premier) G.carrera._ultPremierSem=G.carrera.semana|0;
   // si entras directo al cuadro final, tu primer rival ya está en el papel
   if(startFase>=CUADRO_FASE0) torneo.rivales[startFase]=rivalDelCuadro(startFase);
   /* «El sorteo no perdona»: cuando el evento está activo, tu primer rival es
@@ -953,6 +955,20 @@ function finPartido(){
       avisa(t("aviso_nemesis",{rival:nm.nombre,n:nm.elim}));
     } else if(e.nemesis&&String(e.nemesis.id)===String(rival.id)){
       e.nemesis.elim=h2r.elim|0;   // el marcador del duelo se mantiene al día
+      /* EL ARCO DE LA RIVALIDAD, derivado de hechos y no de un guion: cada
+         cruce recoloca la fase. «Herida» cuando te domina claramente, «pulso»
+         cuando está igualado, y «vuelco» —una sola vez, y es noticia— cuando
+         le das la vuelta a un duelo que ibas perdiendo. Las finales entre
+         vosotros se cuentan aparte: son las que hacen leyenda. */
+      if(f===5) e.nemesis.finales=(e.nemesis.finales|0)+1;
+      const _v=h2r.v|0,_d=h2r.d|0;
+      if(_d-_v>=3) e.nemesis.dominado=true;
+      const faseNem=(e.nemesis.dominado&&_v>=_d)?"vuelco":(_d-_v>=3?"herida":"pulso");
+      if(faseNem==="vuelco"&&e.nemesis.fase!=="vuelco"){
+        noticia("hito",t("nem_vuelco_t",{rival:rival.nombre}),t("nem_vuelco_s",{yo:nombreEntidad().replace("★ ",""),rival:rival.nombre,v:_v,d:_d}));
+        avisa(t("nem_vuelco_av",{rival:rival.nombre,v:_v,d:_d}),"ok");
+      }
+      e.nemesis.fase=faseNem;
     }
   }
   if(G.modo==="carrera"&&typeof arrAnotaRival==="function") arrAnotaRival(G.carrera,rival.id,gane);
@@ -1048,7 +1064,12 @@ function finPartido(){
     const ptsGan=idxP<0?0:Math.round(evNum("ptsX",torneo.pts[idxP]||0));
     rkAnota(e,e.semana,ptsGan);e.dinero+=neto(torneo.premio[idx]||0);
     if(idxP>=0) rkAnota(rival,e.semana,torneo.pts[Math.max(0,idxP-1)]||0);
-    if(f===5&&G.modo==="carrera") G.carrera.finales=(G.carrera.finales|0)+1;   // una final perdida también es una final
+    if(f===5&&G.modo==="carrera"){
+      G.carrera.finales=(G.carrera.finales|0)+1;   // una final perdida también es una final
+      // y también dice que la pareja va a algún sitio: la ambición se alimenta
+      // de las finales, no solo de los títulos
+      if(typeof relMueve==="function") relMueve(G.carrera,"ambicion",+2);
+    }
     avisa(t("aviso_eliminados",{fase:faseNombre(f).toLowerCase(),torneo:torneo.nombre,pts:ptsGan,din:neto(torneo.premio[idx]||0),resto:G.modo==="carrera"?t("aviso_resto_semana"):""})+(seLesiona?` ⚠ ${lesionTxt}.`:""));
     cerrarTorneo();return;
   }
@@ -1072,6 +1093,15 @@ function finPartido(){
     if(G.modo==="carrera"){
       const c9=G.carrera;
       c9.finales=(c9.finales|0)+1;
+      // los títulos también son del cuerpo técnico que estaba ese día
+      Object.keys(c9.staff||{}).forEach(k=>{ if(c9.staff[k]) c9.staff[k].tits=(c9.staff[k].tits|0)+1; });
+      /* Y ALIMENTAN LA AMBICIÓN DE LA PAREJA. El eje pregunta «¿vamos a algún
+         sitio?», y hasta ahora solo tenía salidas: sin acceso a los premier en
+         las primeras temporadas, la ambición de cualquier carrera caía a cero
+         hacia la semana 100 y se quedaba allí —medido con la traza del eje—.
+         Ganar es la respuesta natural: un título dice que sí vais a algún
+         sitio, y uno grande lo dice más alto. */
+      if(typeof relMueve==="function") relMueve(c9,"ambicion",torneo.premierT?5:3);
       if(e.palmares.length===1) momAnota(c9,"primer_titulo",{torneo:torneo.nombre});
       if(torneo.cat===6&&(e.recMajors||0)===1) momAnota(c9,"primera_corona",{torneo:torneo.nombre});
       if(torneo.cat===7&&(e.recFinals||0)===1) momAnota(c9,"maestros",{});

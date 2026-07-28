@@ -4300,3 +4300,63 @@ comprueba("Momentos y cifras de carrera: la memoria se guarda una vez y no revie
   exige(document.getElementById("trofeosCuerpo").innerHTML.length > 300, "la sala revienta con un guardado viejo");
   return "8 momentos con sus claves · 3 arquetipos comprobados · guardado viejo intacto";
 });
+
+comprueba("Pareja: el compañero recuerda compromisos y tiene voz propia", () => {
+  /* Una conversación que solo mueve barras se olvida; una que deja una promesa
+     con plazo, no. Y el compañero comenta lo que pasa DE VERDAD —jugar tocado,
+     el eje roto, la mala racha—, no frases al azar. */
+  const c = nuevaCarrera("agresivo");
+  c.semana = 10;
+  // la charla del calendario, si sale bien, deja la promesa de levantar el pie
+  rndSemilla(11, 11);
+  const res = charlaHabla(c, "calendario", () => 0.99);   // azar inyectado: sale bien
+  exige(res && res.ok, "la charla no salió bien con el azar forzado");
+  exige((c.promesas || []).some(x => x.id === "descanso"), "hablar del calendario no deja promesa");
+  // cumplirla: una semana sin competir
+  const antes = relLee(c, "convivencia");
+  c._jugoTorneo = false;
+  promSemana(c);
+  exige(!(c.promesas || []).some(x => x.id === "descanso"), "la promesa cumplida no se cierra");
+  exige(relLee(c, "convivencia") > antes, "cumplir la promesa no mueve la relación");
+  // romper la otra: prometer un torneo grande y no ir
+  promAnota(c, "grande");
+  const amb = relLee(c, "ambicion");
+  c.semana += 9; c._jugoTorneo = true;   // pasa el plazo compitiendo en menores
+  promSemana(c);
+  exige(relLee(c, "ambicion") < amb, "romper la promesa del torneo grande no duele");
+  // el plan también es un compromiso: cambiarlo a las 3 semanas tiene respuesta
+  planElige(c, "red"); c.semana += 3;
+  const dep = relLee(c, "deportiva");
+  planElige(c, "muro");
+  exige(relLee(c, "deportiva") < dep, "cambiar de plan a las 3 semanas no roza la deportiva");
+  // la voz: jugar tocado se comenta, y el enfriamiento evita el spam
+  c._ccSem = 0; c.semana = 40; c.merma = { pct: 10, sem: 2 }; c._jugoTorneo = true;
+  exige(compiComenta(c) === "cc_infiltrado", "jugar tocado no se comenta");
+  exige(compiComenta(c) === null, "el compañero habla dos semanas seguidas: spam");
+  // todas las claves de la voz existen en i18n
+  ["cc_infiltrado", "cc_eje", "cc_derrotas", "cc_grande_juega", "cc_grande_descansa", "cc_racha",
+   "prom_descanso_ok", "prom_descanso_rota", "prom_grande_ok", "prom_grande_rota", "prom_plan_cambiado"]
+    .forEach(k => exige(t(k) !== k, "falta la clave " + k));
+  return "promesa cumplida, promesa rota, plan recordado y voz con enfriamiento";
+});
+
+comprueba("Némesis: el duelo tiene fases y la ficha las cuenta", () => {
+  /* La rivalidad no es un marcador: es una historia con capítulos que se leen
+     del estado —la herida cuando te domina, el pulso, y el vuelco (una vez, y
+     es noticia) cuando le das la vuelta—. */
+  const c = nuevaCarrera("agresivo");
+  c.nemesis = { id: "x1", nombre: "A. Rival/B. Rival", desde: 2, elim: 4, fase: "herida", dominado: true, finales: 2 };
+  c.h2h = { x1: { v: 6, d: 5, n: "A. Rival/B. Rival", elim: 4 } };
+  const el = document.getElementById("rivalidades");
+  renderRivalidades(el);
+  exige(el.innerHTML.includes(t("nem_fase_herida")), "la ficha no pinta la fase del arco");
+  exige(el.innerHTML.includes(t("nem_finales", { n: 2 })), "la ficha no cuenta las finales del duelo");
+  ["nem_fase_herida", "nem_fase_pulso", "nem_fase_vuelco", "nem_vuelco_t", "nem_vuelco_s", "nem_vuelco_av"]
+    .forEach(k => exige(t(k) !== k, "falta la clave " + k));
+  // y un guardado viejo, sin fase ninguna, deduce la suya de los hechos
+  delete c.nemesis.fase; delete c.nemesis.finales;
+  c.h2h.x1 = { v: 1, d: 5, n: "A. Rival/B. Rival", elim: 5 };
+  renderRivalidades(el);
+  exige(el.innerHTML.includes(t("nem_fase_herida")), "un guardado viejo dominado no sale como herida");
+  return "herida, pulso y vuelco · guardado viejo deduce su fase";
+});

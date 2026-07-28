@@ -371,6 +371,42 @@ Los tres sitios donde cambia el compañero (fichaje, ruptura y retirada) llaman 
 `parejaNueva(c)`: si añades un cuarto, llámalo también o la etapa nueva heredará
 los automatismos y los enfriamientos de la anterior.
 
+### El compañero recuerda, y por eso puede reprochar
+
+Tres piezas nuevas de `engine/pareja.js`, y una regla común: **todo sale del
+estado y se comprueba contra lo que HACES, no contra lo que dices.**
+
+1. **Promesas** (`promAnota`/`promSemana`): dos charlas dejan un compromiso con
+   plazo —hablar del calendario promete levantar el pie; pedir compromiso
+   promete ir a por un premier—. Se evalúan en el cierre semanal ANTES de
+   apagar `_jugoTorneo`, y al resolverse el compañero lo dice con su nombre.
+   **Nunca dejes registrar una promesa imposible**: la del premier solo se hace
+   dentro del corte (top 56), porque fuera de él se rompía sola cada ocho
+   semanas y hundía el eje a cero hiciera lo que hiciera el jugador (medido).
+   Y `planElige` recuerda: cambiar de plan antes de `PLAN_PACIENCIA` semanas
+   tiene frase y roce.
+2. **La voz semanal** (`compiComenta`): una frase como mucho, con DOBLE
+   enfriamiento —global (`CC_ENFRIA`) y por tema (`CC_REPITE`)—. Sin el
+   segundo, un eje que se queda bajo producía la misma queja cada tres semanas
+   para siempre: 58 veces en tres temporadas, medido. La frecuencia buena está
+   en ~9 frases por temporada, variadas. Y la misma situación produce dos
+   personas distintas: ante el torneo grande con el depósito vacío, la pareja
+   ambiciosa quiere jugarlo y la desgastada pide llegar enteros.
+3. **La ambición tiene entradas y salidas.** Era el CUARTO trinquete del repo,
+   esta vez hacia abajo: sin acceso a los premier en las primeras temporadas no
+   había NINGUNA entrada y el eje caía a cero hacia la semana 100 de cualquier
+   carrera (medido con la traza). Ahora la alimentan los títulos (+3, +5 si es
+   premier), las finales jugadas (+2) y competir en premier (+3): cae cuando la
+   carrera no va a ningún sitio —que es la historia de la ruptura por
+   ambición— y se recupera ganando.
+
+El **arco de la némesis** (en `tournament.js`) se deriva de hechos: «herida»
+cuando te domina (d−v≥3), «pulso» igualado, «vuelco» —una vez, y es noticia—
+al darle la vuelta a un duelo que ibas perdiendo. Las finales entre vosotros se
+cuentan aparte. La ficha de rivalidades pinta la fase, y un guardado viejo la
+deduce de su h2h. Y el **staff tiene historia**: `st.desde` y `st.tits`
+(títulos juntos) se enseñan en su ficha.
+
 ### Cómo se miden estas cosas (y por qué `golpeTodo:{err}` es peligroso)
 
 Un plan se ajusta **midiendo partidos, no leyendo el multiplicador**. El banco

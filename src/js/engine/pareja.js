@@ -70,9 +70,21 @@ function planElige(c,id){
   if(!PLANES_PAREJA[id]) return false;
   planAsegura(c);
   if(c.plan.id===id) return false;
+  /* EL COMPAÑERO RECUERDA EL PLAN. Elegir un plan es un compromiso de meses
+     (el dominio empieza en cero y se entrena); cambiarlo a las pocas semanas
+     tira ese trabajo y el compañero lo dice, porque el trabajo era de los dos.
+     No es un castigo grande —es una frase y un roce en la deportiva—, pero es
+     la diferencia entre un menú y una persona. */
+  const desde=c._planDesdeSem|0, edad=(c.semana|0)-desde;
+  if(c.plan.id!=="libre"&&desde&&edad<PLAN_PACIENCIA&&c.compi){
+    relMueve(c,"deportiva",-3);
+    if(typeof avisa==="function") avisa(t("prom_plan_cambiado",{n:nomCompi(c),sem:edad}));
+  }
   c.plan={id,dominio:0};      // el plan nuevo empieza de cero: hay que entrenarlo
+  c._planDesdeSem=c.semana|0;
   return true;
 }
+const PLAN_PACIENCIA=10;   // semanas que el compañero espera antes de darse por vencido con un plan
 /* Crece con el trabajo semanal y con los partidos jugados juntos. */
 function planEntrena(c,cuanto){
   planAsegura(c);
@@ -219,6 +231,17 @@ function charlaHabla(c,id,azar){
   // la moral general se mueve con la media de lo que haya pasado
   const suma=Object.values(deltas).reduce((a,x)=>a+x,0);
   c.compiMoral=clamp((c.compiMoral==null?65:c.compiMoral)+Math.round(suma/3),5,95);
+  /* Dos charlas no terminan al cerrar el modal: dejan una PROMESA con plazo.
+     Hablar del calendario es prometer levantar el pie; pedir compromiso es
+     prometer ir a por un torneo grande. Si la conversación salió mal no hay
+     promesa: no os habéis entendido. */
+  if(sale&&id==="calendario") promAnota(c,"descanso");
+  /* La promesa del torneo grande solo se hace si es POSIBLE cumplirla: fuera
+     del corte de los premier (top 56), prometerla era firmar su ruptura cada
+     ocho semanas —medido: −9 de ambición recurrentes que hundían el eje a cero
+     hiciera lo que hiciera el jugador—. Fuera del corte, la charla sigue
+     moviendo los ejes; el compromiso concreto llegará cuando se pueda. */
+  if(sale&&id==="compromiso"&&typeof miPuesto==="function"&&miPuesto()<=56) promAnota(c,"grande");
   return {ok:sale,deltas};
 }
 
@@ -234,10 +257,117 @@ function relSemana(c){
   // deportiva: sigue a los resultados recientes
   if((c.rachaAct||0)>=2) relMueve(c,"deportiva",+2);
   else if((c.rachaAct||0)===0&&c._jugoTorneo) relMueve(c,"deportiva",-2);
-  // ambición: si el calendario es flojo para lo que da la pareja, se impacienta
+  // ambición: si el calendario es flojo para lo que da la pareja, se impacienta…
   if(!c._jugoTorneo) relMueve(c,"ambicion",-1);
+  // …y jugar donde duele la alimenta. Sin esto la ambición solo podía bajar y
+  // la queja del compañero era crónica e irresoluble: 58 veces la misma frase
+  // en tres temporadas, medido. Un eje sin camino de vuelta no es un eje, es
+  // un contador de culpa.
+  /* OJO al fuera-por-uno: el cierre incrementa `c.semana` ANTES de llegar
+     aquí, así que la semana del premier es la ANTERIOR a la actual. Con `===`
+     esto no se cumplía jamás y la ambición seguía sin camino de vuelta. */
+  if(c._jugoTorneo&&(c.semana|0)-(c._ultPremierSem|0)<=1) relMueve(c,"ambicion",+3);
   // lealtad: se gana con el tiempo juntos, despacio
   if(((c.semana|0)-(c._parejaDesdeSem||0))%8===0) relMueve(c,"lealtad",+1);
   // el plan compartido se afianza jugando
   if(c._jugoTorneo) planEntrena(c,2);
+}
+
+/* ================================================================
+   PROMESAS: el compañero recuerda lo que le dijiste.
+   Una conversación que solo mueve barras se olvida; una que deja un
+   compromiso con plazo, no. Cada promesa nace de una decisión concreta
+   (una charla, hoy), tiene un plazo en semanas y una comprobación contra el
+   ESTADO de la partida —no contra lo que digas, contra lo que hagas—. Al
+   resolverse, el compañero lo dice con su nombre y la relación se mueve.
+   Se comprueban en el cierre semanal, ANTES de apagar `_jugoTorneo`, como
+   todo lo que distingue una semana de competición de una semana en casa.
+================================================================ */
+const PROMESAS={
+  /* de la charla «calendario»: prometes levantar el pie — al menos una semana
+     sin competir dentro del plazo */
+  descanso:{ plazo:4,
+    cumple:c=>!c._jugoTorneo,
+    ef:{convivencia:5,personal:3}, mal:{convivencia:-8,lealtad:-5} },
+  /* de la charla «compromiso»: prometes ir a por un torneo grande — entrar en
+     un premier dentro del plazo */
+  grande:{ plazo:8,
+    cumple:c=>(c._ultPremierSem|0)>=(c._promGrandeDesde|0),
+    ef:{ambicion:6,deportiva:3}, mal:{ambicion:-9,personal:-4} },
+};
+function promAnota(c,id){
+  if(!c||!PROMESAS[id]) return false;
+  c.promesas=c.promesas||[];
+  if(c.promesas.some(x=>x.id===id)) return false;   // una promesa viva por tipo
+  c.promesas.push({id,sem:c.semana|0});
+  if(id==="grande") c._promGrandeDesde=c.semana|0;
+  return true;
+}
+function promSemana(c){
+  if(!c||!c.promesas||!c.promesas.length||!c.compi) return;
+  const quedan=[];
+  c.promesas.forEach(pr=>{
+    const d=PROMESAS[pr.id]; if(!d){ return; }
+    let fin=null;
+    try{ if(d.cumple(c)) fin="ok"; }catch(e){}
+    if(!fin&&(c.semana|0)-(pr.sem|0)>=d.plazo) fin="rota";
+    if(!fin){ quedan.push(pr); return; }
+    const tabla=fin==="ok"?d.ef:d.mal;
+    Object.keys(tabla).forEach(k=>relMueve(c,k,tabla[k]));
+    c.compiMoral=clamp((c.compiMoral==null?65:c.compiMoral)+(fin==="ok"?3:-5),5,95);
+    if(typeof avisa==="function")
+      avisa(t("prom_"+pr.id+"_"+(fin==="ok"?"ok":"rota"),{n:nomCompi(c),sem:(c.semana|0)-(pr.sem|0)}),fin==="ok"?"ok":"bad");
+  });
+  c.promesas=quedan;
+}
+
+/* ================================================================
+   LA VOZ DEL COMPAÑERO: comenta lo que está pasando DE VERDAD.
+   Una frase como mucho, con enfriamiento, elegida por prioridad sobre el
+   estado real: jugar tocado, el eje que se está rompiendo, la mala racha, el
+   torneo grande que viene con el depósito vacío (y ahí lo que dice depende de
+   su ambición: la misma semana produce dos personas distintas), o la racha
+   buena. Sale de `rnd()`: es visible, pero es la MISMA voz en la misma
+   partida con la misma semilla.
+================================================================ */
+const CC_ENFRIA=3;     // semanas entre comentarios, sea cual sea el tema
+const CC_REPITE=12;    // y las que tarda en volver sobre EL MISMO tema
+function compiComenta(c){
+  if(!c||!c.compi) return null;
+  if((c.semana|0)-(c._ccSem|0)<CC_ENFRIA) return null;
+  /* Doble enfriamiento: uno global (que no hable cada semana) y uno POR TEMA
+     (que no repita la misma queja). Sin el segundo, un eje que se queda bajo
+     producía la misma frase cada tres semanas para siempre —58 veces en tres
+     temporadas, medido— y una frase repetida ya no es una persona, es un
+     tablón de avisos. */
+  c._ccVisto=c._ccVisto||{};
+  const fresco=k=>(c.semana|0)-(c._ccVisto[k]|0)>=CC_REPITE;
+  const linea=(clave,datos,eje,delta,tema)=>{
+    c._ccSem=c.semana|0;
+    c._ccVisto[tema||clave]=c.semana|0;
+    if(eje) relMueve(c,eje,delta||0);
+    const msg="💬 "+nomCompi(c)+": "+t(clave,datos||{});
+    if(typeof avisa==="function") avisa(msg);
+    return clave;
+  };
+  // 1 · jugar tocado: si compites con secuelas, te lo dice a la cara
+  if(c.merma&&c._jugoTorneo&&fresco("cc_infiltrado")) return linea("cc_infiltrado",{});
+  // 2 · el eje que se está rompiendo, con su nombre (y sin repetirse: cada eje es un tema)
+  const peor=relPeor(c);
+  if(relLee(c,peor)<35&&fresco("eje:"+peor)&&rnd()<.6)
+    return linea("cc_eje",{eje:relNombre(peor).toLowerCase()},null,0,"eje:"+peor);
+  // 3 · tres derrotas seguidas
+  const r=(c.racha||[]);
+  if(r.length>=3&&r.slice(-3).every(x=>x==="D")&&fresco("cc_derrotas")) return linea("cc_derrotas",{});
+  // 4 · torneo grande a la vista: la misma semana, dos personas distintas
+  const sig=(typeof slotSemana==="function")?slotSemana((semanaTemp()%SEMANAS_TEMP)+1):null;
+  if(sig&&sig.premier!=null&&sig.premier>=5&&(c.energia|0)<45&&fresco("cc_grande")&&rnd()<.7){
+    const cat=(typeof catNombre==="function")?catNombre(sig.premier):"";
+    return relLee(c,"ambicion")>=60
+      ? linea("cc_grande_juega",{torneo:cat},"ambicion",1,"cc_grande")
+      : linea("cc_grande_descansa",{torneo:cat},"convivencia",1,"cc_grande");
+  }
+  // 5 · la racha buena también se comenta
+  if((c.rachaAct|0)>=4&&fresco("cc_racha")&&rnd()<.5) return linea("cc_racha",{n:c.rachaAct|0});
+  return null;
 }
