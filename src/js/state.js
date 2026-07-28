@@ -348,20 +348,57 @@ function ent(){ return G?(G.modo==="carrera"?G.carrera:G.clubG):null; }
    defiendes. `pts` sigue existiendo como suma cacheada, así que todo lo que ya
    leía `pts` sigue funcionando igual.
 ================================================================ */
+/* ================================================================
+   MOMENTOS: la memoria emocional de la carrera. Un contador de títulos dice
+   cuánto; esto dice CUÁLES. Cada momento se guarda UNA vez —son primeras
+   veces— con su temporada, su semana y los datos para contarlo, y la sala de
+   trofeos los pinta como tarjetas. No se calcula nada al pintar: si no se
+   vivió, no existe.
+================================================================ */
+function momAnota(e,id,datos){
+  if(!e) return false;
+  e.momentos=e.momentos||[];
+  if(e.momentos.some(m=>m.id===id)) return false;
+  e.momentos.push({id,t:temporada(),sem:semanaTemp(),d:datos||{}});
+  return true;
+}
+function momDe(e,id){ return ((e&&e.momentos)||[]).find(m=>m.id===id)||null; }
+
 const RK_SEMANAS=52;
 function rkSlot(semanaAbs){ return ((Math.max(1,semanaAbs|0)-1)%RK_SEMANAS); }
 function rkNuevo(){ return new Array(RK_SEMANAS).fill(0); }
-function rkSuma(x){ return (x.rk||[]).reduce((a,b)=>a+(b|0),0); }
+/* EL RANKING CUENTA SOLO TUS MEJORES RESULTADOS, como los circuitos de verdad.
+   Sumando las 52 casillas, jugar más siempre sumaba más: un Continental Bronce
+   (40 puntos) nunca estorbaba, así que la estrategia óptima era competir todas
+   las semanas y los torneos menores eran acumulables hasta el infinito. Con los
+   mejores 18, un resultado pequeño solo cuenta mientras no tengas 18 mejores:
+   los menores sirven para el dinero, el ritmo y la confianza —y para entrar en
+   el circuito—, pero el ranking de arriba se juega en las semanas grandes.
+   Es lo que convierte el calendario en una selección y no en una cinta de
+   correr. El anillo entero se conserva: se sigue defendiendo TODO lo ganado
+   (una casilla que caduca puede dejar sitio a un resultado que antes no
+   contaba). */
+const RK_MEJORES=18;
+function rkSuma(x){
+  const r=x.rk||[];
+  if(r.length<=RK_MEJORES) return r.reduce((a,b)=>a+(b|0),0);
+  return r.slice().sort((a,b)=>(b|0)-(a|0)).slice(0,RK_MEJORES).reduce((a,b)=>a+(b|0),0);
+}
 /* Las partidas antiguas traen `pts` y ninguna historia. Se reparte lo que
    tuvieran por las 52 casillas: así su ranking no salta de golpe y a lo largo
    del año siguiente van defendiendo lo que traían. */
 function rkAsegura(x){
   if(!x) return null;
   if(!Array.isArray(x.rk)||x.rk.length!==RK_SEMANAS){
-    const total=x.pts|0, cacho=Math.floor(total/RK_SEMANAS);
+    /* Se reparte en RK_MEJORES casillas espaciadas, no en las 52: con el
+       ranking a mejores-18, repartir en 52 dejaba 34 casillas fuera de la suma
+       y los puntos heredados se deflactaban un 65% al migrar. Espaciadas para
+       que la defensa de ese total se reparta por el año, no caiga de golpe. */
+    const total=x.pts|0, cacho=Math.floor(total/RK_MEJORES);
     x.rk=rkNuevo();
-    for(let i=0;i<RK_SEMANAS;i++) x.rk[i]=cacho;
-    x.rk[0]+=total-cacho*RK_SEMANAS;
+    const paso=Math.floor(RK_SEMANAS/RK_MEJORES);   // 52/18 → una de cada ~3
+    for(let k=0;k<RK_MEJORES;k++) x.rk[k*paso]=cacho;
+    x.rk[0]+=total-cacho*RK_MEJORES;
   }
   x.pts=rkSuma(x);
   return x.rk;

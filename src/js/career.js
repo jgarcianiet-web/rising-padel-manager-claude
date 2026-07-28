@@ -1881,6 +1881,10 @@ function avanzarSemanaCarrera(){
   regen=Math.round(evNum("energia",regen));
   c.energia=clamp(c.energia+regen,0,evNum("energiaTope",100));
   const pos_=miPuesto();
+  /* Semanas como número 1: la medida de una era, no un salto de una semana.
+     Se cuenta aquí, en el cierre, para que valga estar arriba el lunes de
+     verdad y no un instante entre dos repintados. */
+  if(pos_===1){ c.semN1=(c.semN1|0)+1; if(c.semN1===1) momAnota(c,"n1",{}); }
   fansAdd(Math.round((c.fans||0)*.002)+(pos_<=10?25:pos_<=20?8:1));
   if(!c._jugoTorneo&&c.dinero<600){
     c.dinero+=90;

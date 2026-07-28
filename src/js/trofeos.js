@@ -77,8 +77,14 @@ function pintarTrofeos(){
       <div class="nom">${e.nombre}</div>
       <div class="sub">${rango?`<b style="color:var(--oro)">${rango}</b> · `:""}${t("trf_temporadas",{n:Math.max(1,hist.length)})}${esCarrera?` · ${t("trf_edad",{n:e.edad})}`:""}</div>
     </div>
-    <div class="media"><div class="v">${pal.length}</div><div class="l">${t("trf_titulos")}</div></div>
+    <div class="media"><div class="v">${cat.corona.length+cat.maestros.length+cat.elite.length}</div><div class="l">${t("trf_grandes")}</div></div>
   </div>`);
+  /* Los arquetipos: lo que esta carrera FUE, aunque no fuera la del número 1.
+     Salen de hechos medibles (legadoDe), no de una etiqueta puesta a mano. */
+  if(leg&&leg.arqs&&leg.arqs.length){
+    O.push(`<div style="display:flex;flex-wrap:wrap;gap:5px;margin:-6px 0 12px">${
+      leg.arqs.map(k=>`<span class="pill" style="color:var(--lima)">${t("leg_arq_"+k)}</span>`).join("")}</div>`);
+  }
 
   /* --- las cifras --- */
   O.push(`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:7px;margin-bottom:14px">
@@ -86,9 +92,24 @@ function pintarTrofeos(){
     ${trofeosCifra(pct+"%",t("trf_victorias"),pct>=55?"var(--verde)":pct>=45?"var(--texto)":"var(--rojo)")}
     ${trofeosCifra("#"+mejorPos,t("trf_mejor_puesto"),mejorPos<=3?"var(--oro)":"var(--lima)")}
     ${trofeosCifra(cat.corona.length,t("trf_coronas"),cat.corona.length?"var(--oro)":"var(--gris2)")}
-    ${trofeosCifra(n1,t("trf_anios_n1"),n1?"var(--oro)":"var(--gris2)")}
+    ${trofeosCifra(esCarrera?(e.finales|0):"—",t("trf_finales"),"var(--texto)")}
+    ${trofeosCifra(esCarrera?(e.semN1|0):n1,t("trf_sem_n1"),(esCarrera?(e.semN1|0):n1)?"var(--oro)":"var(--gris2)")}
+    ${trofeosCifra(esCarrera?(e.vTop10|0):"—",t("trf_top10"),"var(--lima)")}
+    ${trofeosCifra(pal.length,t("trf_titulos"),"var(--gris)")}
     ${trofeosCifra(fmtFans(e.fans||0),t("trf_seguidores"),"var(--azul)")}
   </div>`);
+  /* --- los momentos: la memoria, no la estadística --- */
+  const moms=(e.momentos||[]);
+  if(moms.length){
+    O.push(`<div class="anaHd">${t("trf_hd_momentos")}</div>`);
+    O.push(`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:7px;margin-bottom:14px">${
+      moms.map(m=>{
+        const ICO={primer_titulo:"🏆",primera_corona:"👑",maestros:"🎓",n1:"⭐",top10:"⚔",nemesis_final:"😤",titulo_tocado:"🩹",titulo_suplente:"🤝"};
+        return `<div class="opcion" style="margin:0">
+          <b>${ICO[m.id]||"✦"} ${t("mom_"+m.id)}</b>
+          <div class="d">${t("mom_"+m.id+"_d",{t:m.t,sem:m.sem,torneo:(m.d||{}).torneo||"",rival:(m.d||{}).rival||""})}</div>
+        </div>`; }).join("")}</div>`);
+  }
 
   /* --- la vitrina --- */
   O.push(`<div class="anaHd">${t("trf_hd_vitrina")}</div>`);
@@ -98,9 +119,10 @@ function pintarTrofeos(){
     const grupos=[["corona","🏆","var(--oro)"],["maestros","👑","#E6FA50"],["elite","🥇","#9B59D0"],["continental","🎾","var(--azul)"],["otros","·","var(--gris)"]];
     grupos.forEach(([k,ico,col])=>{
       if(!cat[k].length) return;
+      const cuerpo=(typeof PAL_DETALLE!=="undefined"&&cat[k].length>PAL_DETALLE&&typeof resumeTitulos==="function")?resumeTitulos(cat[k]):cat[k].join(" · ");
       O.push(`<div style="margin-bottom:7px">
         <div style="font-size:calc(10px * var(--esc));color:${col};letter-spacing:.5px;margin-bottom:2px">${ico} ${t("trf_cat_"+k)} · ${cat[k].length}</div>
-        <div style="font-size:calc(11px * var(--esc));color:var(--gris);line-height:1.6">${cat[k].join(" · ")}</div>
+        <div style="font-size:calc(11px * var(--esc));color:var(--gris);line-height:1.6">${cuerpo}</div>
       </div>`);
     });
   }

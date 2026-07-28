@@ -242,6 +242,28 @@ semana del año, y `x.pts` es la suma cacheada. De ahí las cuatro funciones de
 `tests/estatico.js` falla si alguien vuelve a meter el recorte del 55% al
 cerrar temporada.
 
+### Cuentan los mejores 18 resultados
+
+`rkSuma` no suma las 52 casillas: ordena y **suma las 18 mejores**
+(`RK_MEJORES`). Sumándolo todo, jugar más siempre sumaba más —un Bronce de 40
+puntos nunca estorbaba— y la estrategia óptima era competir todas las semanas:
+medido, un bot de volumen ganaba 107 títulos y llegaba al número 1. Con los
+mejores 18, ese mismo bot acaba 3º con 8.200 puntos contra 17.300 del líder:
+los menores siguen sirviendo (dinero, ritmo, confianza, entrar al circuito),
+pero **el ranking de arriba se gana en las semanas grandes o no se gana**.
+
+Dos detalles finos:
+
+- **El anillo entero se conserva.** Se defiende TODO lo ganado: una casilla que
+  caduca puede dejar sitio a un resultado pequeño que estaba esperando fuera de
+  los 18 (la prueba lo cubre con el «suplente» que entra a contar).
+- **`rkAsegura` migra a 18 casillas espaciadas, no a 52.** Repartir en 52
+  deflactaba un 65% los puntos heredados al contar solo los 18 mejores.
+
+Y ojo al medir repartos: con mejores-18, la suma de una pareja llena NO sube en
+el premio entero (el título desplaza a su peor resultado). Lo que garantiza el
+reparto es lo que entra en la **casilla** de la semana, no el delta de `pts`.
+
 ### La previa no puntúa
 
 `loserIdx` es para el dinero y `loserPtsIdx` para los puntos, y devuelve −1 en
@@ -249,6 +271,29 @@ las fases de previa. Con la previa puntuando, entrar en la clasificatoria de una
 Corona y perder el primer partido daba 100 puntos, más que ganar un Continental
 Plata entero (80): presentarse a perder era la estrategia óptima y se medía
 —48-196 sin un título daba el puesto 3—.
+
+## Momentos, cifras de carrera y arquetipos
+
+Tres piezas de la misma idea: **el contador de títulos comunica volumen; la
+carrera se comunica con otras cosas.**
+
+1. **Momentos** (`momAnota`, en `state.js`): primeras veces que se guardan una
+   sola vez con su temporada y sus datos —primer título, primera Corona, los
+   Maestros, el número 1, la primera víctima del top 10, la final ganada a la
+   némesis, el título jugando tocado, el título con suplente—. Los pinta la
+   sala de trofeos como tarjetas. No se calcula nada al pintar: si no se vivió,
+   no existe. Al añadir uno: gancho en el sitio del hecho + clave `mom_*` y
+   `mom_*_d` en los cinco idiomas.
+2. **Cifras que miden carrera**: `c.finales` (jugadas, también las perdidas),
+   `c.semN1` (semanas cerradas como nº1) y `c.vTop10` (victorias contra el top
+   10, con el puesto del rival leído ANTES de que la semana recoloque el
+   ranking). La cabecera de la sala de trofeos enseña los grandes títulos como
+   cifra principal; el total bruto queda como una cifra más.
+3. **Arquetipos** (`legadoDe(...).arqs`): lo que la carrera FUE aunque no fuera
+   la del número 1 —especialista en Coronas, rey del circuito menor, ídolo
+   popular, matagigantes, el que volvió…—. Salen de hechos comprobables de los
+   contadores, nunca de una etiqueta a mano, y una carrera puede tener varios o
+   ninguno.
 
 ## El circuito puntúa como puntúas tú
 

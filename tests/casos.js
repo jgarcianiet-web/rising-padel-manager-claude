@@ -2637,9 +2637,15 @@ comprueba("Ranking: el cuadro reparte como un cuadro y el campeón cobra lo suyo
   const cat = CATS[sl.premier];
   const sx = c.sexo || "M";
   const mundo = G.world.parejas.filter(p => (p.sexo || "M") === sx);
-  const antes = new Map(mundo.map(p => [p.id, p.pts]));
+  /* Se mide el ANILLO, no la suma: con el ranking a mejores-18, a una pareja
+     con 18 resultados ya contando el título le desplaza el peor y la suma sube
+     menos que el premio. Eso es lo correcto; lo que el reparto garantiza es lo
+     que entra en la casilla de la semana. */
+  mundo.forEach(p => rkAsegura(p));
+  const slotSem = rkSlot(c.semana);
+  const antes = new Map(mundo.map(p => [p.id, p.rk[slotSem] | 0]));
   simCircuito([]);
-  const ganancias = mundo.map(p => p.pts - antes.get(p.id)).filter(x => x > 0).sort((a, b) => b - a);
+  const ganancias = mundo.map(p => (p.rk[slotSem] | 0) - antes.get(p.id)).filter(x => x > 0).sort((a, b) => b - a);
   exige(ganancias[0] === cat.pts[0], `el campeón se llevó ${ganancias[0]} y la categoría paga ${cat.pts[0]}`);
   exige(ganancias.filter(x => x === cat.pts[0]).length === 1, "hubo más de un campeón del premier");
   // y el reparto decrece: no es una tarifa plana
@@ -3781,11 +3787,18 @@ comprueba("Copa: los rivales son de tu división (regresión: eran los mejores)"
   const derbi = cl.derbi && cl.derbi.club;
   const vecinos = L.grupo.filter(i => i !== derbi);
   const fuerzas = vecinos.map(i => copFuerzaClub(cl, i));
-  const dist = fuerzas.map(f => Math.abs(f - mia));
+  /* OJO: la regla busca la división UN ESCALÓN POR DEBAJO de tu mejor pareja
+     (`copCrea` usa mia−3), así que hay que juzgar las distancias contra ESE
+     objetivo. Esta prueba comparaba contra `mia` a secas y fallaba una vez de
+     cada muchas, cuando el mundo sorteado dejaba a un club ligeramente mejor
+     más cerca de `mia` que uno ligeramente peor: la regla elegía bien y la
+     prueba medía otra cosa. Fue EL parpadeo de la suite durante días. */
+  const objetivo = mia - 3;
+  const dist = fuerzas.map(f => Math.abs(f - objetivo));
   exige(Math.max(...dist) <= 20, "hay un rival a " + Math.max(...dist) + " puntos de nivel: " + fuerzas.join(","));
-  // y son los más cercanos que hay en el mundo, salvo el derbi
+  // y son los más cercanos al objetivo que hay en el mundo, salvo el derbi
   const todas = CLUBES_NPC.map((_, i) => i).filter(i => i !== derbi)
-    .map(i => Math.abs(copFuerzaClub(cl, i) - mia)).sort((a, b) => a - b);
+    .map(i => Math.abs(copFuerzaClub(cl, i) - objetivo)).sort((a, b) => a - b);
   exige(Math.max(...dist) <= todas[vecinos.length - 1] + 1,
     "no coge los más cercanos: " + dist.join(",") + " frente a " + todas.slice(0, vecinos.length).join(","));
   // al crecer el club, la división también sube
@@ -4223,4 +4236,67 @@ comprueba("Club: el mercado del primer día tiene suelo, el semanal no", () => {
   for (let s = 0; s < 10; s++) { rndSemilla(9700 + s * 59, 9700 + s * 59); flojo = Math.min(flojo, Math.min(...mkMercadoLibre("M").map(nivel))); }
   exige(flojo < 56, "el mercado semanal también tiene suelo: eso ya no es un mercado");
   return "peor primera pareja de 10 mercados: " + peorA + " · peor segunda: " + peorB;
+});
+
+comprueba("Ranking: cuentan los mejores 18 resultados, no todo lo que juegues", () => {
+  /* Sumando las 52 casillas, jugar más siempre sumaba más y los torneos
+     menores eran acumulables hasta el infinito: una carrera terminaba con más
+     de cien títulos y el contador dejaba de comunicar una carrera para
+     comunicar volumen. Con los mejores 18, el menor sigue sirviendo (dinero,
+     ritmo, confianza, entrar al circuito) pero el ranking de arriba se juega
+     en las semanas grandes. */
+  const x = { pts: 0, rk: null };
+  rkAsegura(x);
+  for (let i = 0; i < 18; i++) rkAnota(x, i + 1, 100);
+  exige(x.pts === 1800, "18 resultados de 100 deberían sumar 1800: " + x.pts);
+  // el resultado 19, pequeño, NO sube la suma: ya no acumula infinito
+  rkAnota(x, 19, 40);
+  exige(x.pts === 1800, "un Bronce con 18 resultados mejores no debería contar: " + x.pts);
+  // uno grande sí: desplaza al peor de los que contaban
+  rkAnota(x, 20, 200);
+  exige(x.pts === 1900, "un resultado grande debería desplazar al peor: " + x.pts);
+  // y cuando caducan resultados buenos, el pequeño que esperaba entra a contar
+  rkCaduca(x, 1 + RK_SEMANAS);
+  exige(x.pts === 1900, "tras caducar uno siguen quedando 18 mejores que el Bronce: " + x.pts);
+  rkCaduca(x, 2 + RK_SEMANAS);
+  exige(x.pts === 1840, "al quedar hueco en los 18, el suplente debería entrar: " + x.pts);
+  // la migración de partidas viejas conserva el total
+  const viejo = { pts: 5200, rk: null };
+  rkAsegura(viejo);
+  exige(viejo.pts === 5200, "migrar una partida vieja cambia sus puntos: " + viejo.pts);
+  return "18 mejores · el 19º espera su hueco · migración sin pérdida";
+});
+
+comprueba("Momentos y cifras de carrera: la memoria se guarda una vez y no revienta", () => {
+  /* El contador de títulos comunica volumen; la carrera se comunica con las
+     primeras veces (momentos), las finales, las semanas como nº1 y las
+     victorias contra el top 10. Todo sale de ganchos en el sitio del hecho. */
+  const c = nuevaCarrera("agresivo");
+  // cada momento se guarda UNA vez, con su temporada y sus datos
+  exige(momAnota(c, "primer_titulo", { torneo: "Test Open" }) === true, "el primer momento no se anota");
+  exige(momAnota(c, "primer_titulo", { torneo: "Otro" }) === false, "un momento se anota dos veces");
+  exige(c.momentos.length === 1 && momDe(c, "primer_titulo").d.torneo === "Test Open", "el momento no guarda sus datos");
+  // toda clave de momento usada por los ganchos existe en i18n (y con su _d)
+  ["primer_titulo", "primera_corona", "maestros", "n1", "top10", "nemesis_final", "titulo_tocado", "titulo_suplente"].forEach(id => {
+    exige(t("mom_" + id) !== "mom_" + id, "falta la clave mom_" + id);
+    exige(t("mom_" + id + "_d") !== "mom_" + id + "_d", "falta la clave mom_" + id + "_d");
+  });
+  // los arquetipos salen de hechos comprobables
+  c.recMajors = 3; c.fans = 500000; c.hist = [{ pos: 5 }, { pos: 40 }, { pos: 4 }];
+  const leg = legadoDe(c, G.world);
+  exige(leg.arqs.includes("coronas"), "tres Coronas no dan el arquetipo de especialista");
+  exige(leg.arqs.includes("idolo"), "medio millón de seguidores no da el de ídolo");
+  exige(leg.arqs.includes("remontada"), "caer 35 puestos y volver no da el de la remontada");
+  leg.arqs.forEach(k => exige(t("leg_arq_" + k) !== "leg_arq_" + k, "falta la clave leg_arq_" + k));
+  // y la sala de trofeos pinta todo eso sin reventar, también con guardados sin momentos
+  c.momentos.push({ id: "n1", t: 3, sem: 12, d: {} });
+  c.finales = 9; c.semN1 = 22; c.vTop10 = 14;
+  pintarTrofeos();
+  const html = document.getElementById("trofeosCuerpo").innerHTML;
+  exige(html.includes(t("trf_hd_momentos")), "la sala no enseña los momentos");
+  exige(html.includes(t("trf_sem_n1")), "la sala no enseña las semanas de nº1");
+  delete c.momentos; delete c.finales; delete c.semN1; delete c.vTop10;
+  pintarTrofeos();   // un guardado viejo, sin nada de esto, tiene que pintar igual
+  exige(document.getElementById("trofeosCuerpo").innerHTML.length > 300, "la sala revienta con un guardado viejo");
+  return "8 momentos con sus claves · 3 arquetipos comprobados · guardado viejo intacto";
 });

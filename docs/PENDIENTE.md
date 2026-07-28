@@ -121,6 +121,33 @@ sacó a la luz cosas que ninguna prueba de claves ni de interfaz veía:
 
 ---
 
+## La hoja de ruta al 9/10 (segunda tanda)
+
+De las prioridades 2-8 del último plan:
+
+- **P2 · Inflación de torneos y títulos — HECHA.** El ranking cuenta los
+  mejores 18 resultados (`RK_MEJORES`), el perfil enseña cifras de carrera
+  (grandes títulos, finales, semanas nº1, victorias top-10) con el total bruto
+  degradado, y los momentos (`momAnota`) guardan las primeras veces. Medido: el
+  bot de volumen que llegaba a nº1 con 107 títulos ahora acaba 3º.
+- **P8 · Arquetipos — hecha en su núcleo.** `legadoDe(...).arqs` reconoce siete
+  identidades de carrera desde contadores reales; se pintan en la sala de
+  trofeos. Faltan los arquetipos que piden datos que aún no se guardan (pareja
+  histórica, jugador de un solo club).
+- **P3 · Que las 52 semanas no sean rutina** — pendiente. Lo ya hecho (parones,
+  coste por rondas, carga) empuja en esa dirección; faltan la fatiga residual
+  fina (viajes, finales, edad) y el conflicto de calendario dentro de la pareja.
+- **P4 · Staff que cambia cómo se juega** — pendiente. Hoy los seis roles dan
+  bonificaciones distintas; el objetivo es que dos profesionales del mismo
+  nivel produzcan formas distintas de gestionar.
+- **P5 · Voz y memoria de personajes** — pendiente. La memoria sistémica ya
+  existe (momentos, ejes, dilemas vividos); falta que el compañero recuerde
+  compromisos y que la némesis tenga arco explícito.
+- **P6 · Jerarquía audiovisual** — pendiente (cabeceras de momento, audio
+  contextual). `pesoPartido` y `dramaGrada` son la base.
+- **P7 · Tres capas de información** — pendiente, y es la más de interfaz de
+  todas: capa «qué necesita atención ahora», capa «por qué», capa experta.
+
 ## Contenido: lo que sube la nota y no está hecho
 
 Por orden de retorno, según la auditoría:

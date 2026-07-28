@@ -970,6 +970,13 @@ function finPartido(){
     post("maldicion",{rival:rival.nombre});
   }
   e.vd=e.vd||{v:0,d:0}; e.vd[gane?"v":"d"]++;
+  /* Victorias contra el top 10: una de las cifras que de verdad miden una
+     carrera, y hasta ahora no se contaba. Se mira el puesto del rival HOY,
+     antes de que la semana recoloque el ranking. */
+  if(gane&&G.modo==="carrera"&&typeof puestoDePareja==="function"&&puestoDePareja(rival.nombre)<=10){
+    G.carrera.vTop10=(G.carrera.vTop10|0)+1;
+    if(G.carrera.vTop10===1) momAnota(G.carrera,"top10",{rival:rival.nombre});
+  }
   // el derbi del club: un rival del circuito al que se le tiene ganas desde el día uno
   if(G.modo==="club"&&typeof anotaDerbi==="function") anotaDerbi(G.clubG,rival,gane);
   if(gane){ e.rachaAct=(e.rachaAct||0)+1; if(e.rachaAct>(e.rachaMax||0)){e.rachaMax=e.rachaAct;if(e.rachaMax===15)avisa(t("aviso_racha15"));} }
@@ -1041,6 +1048,7 @@ function finPartido(){
     const ptsGan=idxP<0?0:Math.round(evNum("ptsX",torneo.pts[idxP]||0));
     rkAnota(e,e.semana,ptsGan);e.dinero+=neto(torneo.premio[idx]||0);
     if(idxP>=0) rkAnota(rival,e.semana,torneo.pts[Math.max(0,idxP-1)]||0);
+    if(f===5&&G.modo==="carrera") G.carrera.finales=(G.carrera.finales|0)+1;   // una final perdida también es una final
     avisa(t("aviso_eliminados",{fase:faseNombre(f).toLowerCase(),torneo:torneo.nombre,pts:ptsGan,din:neto(torneo.premio[idx]||0),resto:G.modo==="carrera"?t("aviso_resto_semana"):""})+(seLesiona?` ⚠ ${lesionTxt}.`:""));
     cerrarTorneo();return;
   }
@@ -1059,6 +1067,18 @@ function finPartido(){
     // los títulos de la etapa actual con tu compañero: la historia es de LOS DOS
     if(G.modo==="carrera") e._parejaTitulos=(e._parejaTitulos|0)+1;
     if(torneo.cat===7){ e.recFinals=(e.recFinals||0)+1; }
+    /* Los momentos: las primeras veces que hacen la carrera. Ganar el trofeo 74
+       no comunica nada; el primero, la primera Corona o levantarlo mermado, sí. */
+    if(G.modo==="carrera"){
+      const c9=G.carrera;
+      c9.finales=(c9.finales|0)+1;
+      if(e.palmares.length===1) momAnota(c9,"primer_titulo",{torneo:torneo.nombre});
+      if(torneo.cat===6&&(e.recMajors||0)===1) momAnota(c9,"primera_corona",{torneo:torneo.nombre});
+      if(torneo.cat===7&&(e.recFinals||0)===1) momAnota(c9,"maestros",{});
+      if(c9.nemesis&&rival&&rival.id===c9.nemesis.id) momAnota(c9,"nemesis_final",{rival:rival.nombre,torneo:torneo.nombre});
+      if(c9.merma) momAnota(c9,"titulo_tocado",{torneo:torneo.nombre});
+      if(typeof evFlag==="function"&&evFlag("suplente")) momAnota(c9,"titulo_suplente",{torneo:torneo.nombre});
+    }
     fansAdd([60,120,250,500,1500,3000,8000,5000][torneo.cat]||60,t("fan_titulo",{torneo:torneo.nombre}));
     post("titulo",{torneo:torneo.nombre});
     if(torneo.premierT&&torneo.favNos===false){

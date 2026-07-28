@@ -701,7 +701,24 @@ function legadoDe(c,world){
     const x=((c.h2h)||{})[c.nemesis.id]||{};
     rival={nombre:c.nemesis.nombre,v:x.v|0,d:x.d|0,n:(x.v|0)+(x.d|0),nemesis:true};
   }
-  return {temporadas:hist.length,titulos:pal.length,majors,n1,mejorPuesto:mejor,rival,rango,edad:(c&&c.edad)||0};
+  /* ARQUETIPOS: una carrera que no llegó al número 1 no es una carrera
+     fallida, y el juego tiene que saber decir POR QUÉ. Cada arquetipo sale de
+     hechos comprobables del estado —los mismos contadores que ya existen—, no
+     de una etiqueta puesta a mano, y una carrera puede tener varios o ninguno.
+     El rango mide altura; esto mide identidad. */
+  const arqs=[];
+  const finalsTF=(c&&c.recFinals)||0, elite=(c&&c.recTitElite)||0;
+  const menores=Math.max(0,pal.length-majors-finalsTF-elite);
+  if(majors>=3) arqs.push("coronas");
+  if(finalsTF>=2) arqs.push("maestros");
+  if(hist.length>=13) arqs.push("fondo");
+  if(menores>=30&&majors===0) arqs.push("menor");
+  if(((c&&c.fans)||0)>=400000) arqs.push("idolo");
+  if((c&&c.vTop10|0)>=25) arqs.push("matagigantes");
+  // la remontada: caer 25 puestos o más y volver a lo más alto de tu carrera
+  for(let i=0;i<hist.length;i++) for(let j=i+1;j<hist.length;j++)
+    if(hist[j].pos-hist[i].pos>=25&&hist.slice(j+1).some(h=>h.pos<=hist[i].pos)){ arqs.push("remontada"); i=j=hist.length; }
+  return {temporadas:hist.length,titulos:pal.length,majors,n1,mejorPuesto:mejor,rival,rango,arqs,edad:(c&&c.edad)||0};
 }
 /* ================================================================
    DILEMAS ENCADENADOS: decisiones cuyas consecuencias no son inmediatas, sino
