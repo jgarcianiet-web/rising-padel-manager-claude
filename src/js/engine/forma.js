@@ -131,6 +131,10 @@ function formaSube(c,k,n){
 /* Cada semana todo tira hacia cero: la forma no se guarda en un cajón. */
 function formaEnfria(c){
   frAsegura(c);
+  /* El preparador «de picos» alarga la punta de forma: lo trabajado se enfría
+     a la mitad de velocidad, que es justo lo que compra preparar una semana
+     grande. El «motor» no toca esto: lo suyo es la recuperación semanal. */
+  if(typeof staffPerfil==="function"&&staffPerfil("fisico")==="picos"&&((c.semana|0)%2)===1) return;
   ATTR_KEYS.forEach(k=>{
     const v=formaLee(c,k);
     if(v>0) c.forma[k]=v-1; else if(v<0) c.forma[k]=v+1;

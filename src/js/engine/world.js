@@ -1520,10 +1520,16 @@ function curaFragilidad(port){
 // Devuelve la lesión (y sube su fragilidad) o null. Muta port.fragil.
 function intentaLesion(port,tieneFisio){
   const fragilEf=Math.max(0,(port.fragil||0)+rasgosLesionAjuste(port));   // rasgos: propenso/hierro
-  const r=kLesion(riesgoLesionPost(port.energia,fragilEf,tieneFisio,port.carga));  // la dificultad modula el riesgo médico
+  /* La escuela del fisio decide DÓNDE trabaja: el preventivo evita la lesión
+     (menos riesgo, alta normal) y el recuperador la acorta (más riesgo que el
+     preventivo, pero la baja pierde dos semanas). Mismo nivel, otra gestión. */
+  const perfF=(typeof staffPerfil==="function")?staffPerfil("fisio"):null;
+  let r=kLesion(riesgoLesionPost(port.energia,fragilEf,tieneFisio,port.carga));  // la dificultad modula el riesgo médico
+  if(tieneFisio&&perfF==="preventivo") r*=.8;    // .5 de fisio × .8 = .4 efectivo
+  if(tieneFisio&&perfF==="recuperador") r*=1.2;  // su fuerte no es evitarla
   if(rnd()>=r) return null;
   const les=pickLesion(clamp(1-(port.energia==null?100:port.energia)/40,0,1));
-  if(tieneFisio) les.sem=Math.max(1,les.sem-1);
+  if(tieneFisio) les.sem=Math.max(1,les.sem-(perfF==="recuperador"?2:1));
   /* La clínica no evita la lesión: acorta la baja, que es lo que se compra. En
      carrera cubre a los dos, que para eso es tuya. */
   if(G.modo==="carrera"&&typeof invLesionDurX==="function"){
@@ -1544,7 +1550,9 @@ function curarLesion(port){
 function decaeMerma(port){
   if(!port.merma) return;
   // con clínica la secuela se disipa en varias semanas de golpe
-  const pasos=(G.modo==="carrera"&&port===G.carrera&&typeof invMermaPasos==="function")?invMermaPasos(port):1;
+  let pasos=(G.modo==="carrera"&&port===G.carrera&&typeof invMermaPasos==="function")?invMermaPasos(port):1;
+  // el fisio recuperador también trabaja la secuela: se disipa al doble
+  if(typeof staffPerfil==="function"&&staffPerfil("fisio")==="recuperador") pasos+=1;
   port.merma.sem-=pasos;
   if(port.merma.sem<=0) port.merma=null;
 }

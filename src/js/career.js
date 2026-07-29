@@ -14,6 +14,22 @@ const ROLES_STAFF={
   ojeador:{n:"Ojeador",salBase:60,ico:"🔭"},
 };
 const ESP_GRUPOS=[["fondo","globo","pared"],["remate","vibora","bandeja"],["volea","chiquita","dejada"],["remate","volea","fondo"],["bandeja","globo","dejada"]];
+/* LA ESCUELA DEL TÉCNICO. Dos profesionales del mismo nivel no gestionan
+   igual: cada rol tiene dos escuelas y cada una engancha a una mecánica
+   DISTINTA de la simulación —no es «+1 más» sino «otra cosa»—. El fisio
+   preventivo evita lesiones y el recuperador las acorta; el psicólogo de ánimo
+   sostiene las malas rachas y el de presión prepara los partidos grandes; el
+   preparador motor te da semanas y el de picos te alarga la punta de forma.
+   Los técnicos de guardados viejos no llevan escuela y funcionan exactamente
+   como antes: la escuela llega con el mercado nuevo. */
+const PERFILES_STAFF={
+  entrenador:["pizarra","pista"],
+  fisio:["preventivo","recuperador"],
+  psico:["animo","presion"],
+  fisico:["motor","picos"],
+  rep:["marcas","premios"],
+  ojeador:["cantera","mercado"],
+};
 // Cada frase es una CLAVE i18n; se resuelve al pintarla, así el staff ya
 // contratado habla en el idioma activo (los guardados antiguos llevan el texto
 // literal y t() lo devuelve tal cual).
@@ -37,6 +53,7 @@ function mkStaff(rol,nivFijo){
     frase:pick(FRASES_STAFF[rol]||["fr_generica"])};
   if(rol==="entrenador") st.esp=pick(ESP_GRUPOS);
   if(rol==="rep") st.com=Math.max(8,20-niv*2);   // % de comisión: mejor agente, menos muerde
+  if(PERFILES_STAFF[rol]) st.perfil=pick(PERFILES_STAFF[rol]);
   return st;
 }
 function rolesDeModo(){ return G.modo==="carrera"?["entrenador","fisio","psico","fisico","rep"]:["entrenador","fisio","psico","fisico","ojeador"]; }
@@ -159,13 +176,19 @@ function pintarTodo(){
   // la guía de las primeras semanas mira el estado después de cada repintado
   if(typeof guiaComprueba==="function") guiaComprueba();
 }
+/* La escuela en pantalla: chip con el nombre y, donde cabe, la línea de qué
+   cambia. Un técnico de guardado viejo no lleva escuela y no enseña nada. */
+function perfilChip(st){
+  if(!st||!st.perfil) return "";
+  return ` <span class="pill" style="color:var(--lima)">${t("staff_perfil_"+st.perfil)}</span>`;
+}
 function renderEquipoStaff(el){
   const e=ent(), roles=rolesDeModo();
   el.innerHTML=roles.map(r=>{
     const st=e.staff[r];
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--borde)">
-      <div style="font-size:11.5px">${ROLES_STAFF[r].ico} <b>${st?st.n:"—"}</b> <span style="color:var(--gris2)">· ${t("rol_"+r)}</span>
-        ${st?`<div style="font-size:10px;color:var(--gris)">${"★".repeat(st.niv)}${"☆".repeat(5-st.niv)} · ${st.sal}€/sem${st.rol==="rep"?` · ${t("staff_comision",{c:st.com})}`:""}${st.esp?` · ${atLista(st.esp).join("/")}`:""}${st.desde?` · <span style="color:var(--lima)">${t("staff_junto",{t:st.desde,n:st.tits|0})}</span>`:""}<br><em style="color:var(--gris2)">«${t(st.frase)}»</em></div>`:`<div style="font-size:10px;color:var(--gris2)">${t("staff_vacante")}</div>`}
+      <div style="font-size:11.5px">${ROLES_STAFF[r].ico} <b>${st?st.n:"—"}</b> <span style="color:var(--gris2)">· ${t("rol_"+r)}</span>${perfilChip(st)}
+        ${st?`<div style="font-size:10px;color:var(--gris)">${"★".repeat(st.niv)}${"☆".repeat(5-st.niv)} · ${st.sal}€/sem${st.rol==="rep"?` · ${t("staff_comision",{c:st.com})}`:""}${st.esp?` · ${atLista(st.esp).join("/")}`:""}${st.desde?` · <span style="color:var(--lima)">${t("staff_junto",{t:st.desde,n:st.tits|0})}</span>`:""}${st.perfil?`<br><span style="color:var(--lima)">${t("staff_perfil_"+st.perfil+"_d")}</span>`:""}<br><em style="color:var(--gris2)">«${t(st.frase)}»</em></div>`:`<div style="font-size:10px;color:var(--gris2)">${t("staff_vacante")}</div>`}
       </div>
       ${st?`<button style="font-size:10px;padding:3px 7px" ${ac("despedirStaff",r)}>${t("staff_despedir")}</button>`:""}
     </div>`;}).join("");
@@ -183,8 +206,8 @@ function renderMercadoStaff(el){
   if(!listaVis.length){ el.innerHTML=filtroBar+`<div class="foot" style="text-align:left">${t("staff_nadie")}</div>`; return; }
   el.innerHTML=filtroBar+`<div class="foot" style="text-align:left;margin-bottom:6px">${t("staff_bolsa",{n:listaVis.length})}</div>`+listaVis.map((st)=>{const i=e.mercadoStaff.indexOf(st);return `
     <div class="opcion" style="padding:8px">
-      <div style="font-size:11.5px">${ROLES_STAFF[st.rol].ico} <b>${st.n}</b>, ${st.edad} <span class="pill">${t("rol_"+st.rol)}</span> ${st.seOfrece?`<span class="pill" style="color:var(--lima)">${t("staff_se_ofrece")}</span>`:""}${st.equipoDe?`<span class="pill" style="color:var(--oro)">${t("staff_entrena_a",{pos:puestoDePareja(st.equipoDe),equipo:st.equipoDe})}</span>`:""}</div>
-      <div style="font-size:10px;color:var(--gris);margin:3px 0">${"★".repeat(st.niv)}${"☆".repeat(5-st.niv)} · ${st.sal}€/sem${st.rol==="rep"?` · ${t("staff_comision",{c:st.com})}`:""}${st.esp?` · ${t("staff_especialista",{lista:atLista(st.esp).join(", ")})}`:""} · <em>«${t(st.frase)}»</em>${st.equipoDe?(()=>{const cl=clausulaEntrenador(st);const alcanza=miPuesto()-puestoDePareja(st.equipoDe)<=([99,30,20,12,7,4][st.niv]||15);return `<br><span style="color:var(--oro)">${t("staff_clausula",{cl:cl.toLocaleString("es")})}</span>${alcanza?"":` <span style="color:#E05656">${t("staff_fuera_alcance")}</span>`}`;})():""}</div>
+      <div style="font-size:11.5px">${ROLES_STAFF[st.rol].ico} <b>${st.n}</b>, ${st.edad} <span class="pill">${t("rol_"+st.rol)}</span>${perfilChip(st)} ${st.seOfrece?`<span class="pill" style="color:var(--lima)">${t("staff_se_ofrece")}</span>`:""}${st.equipoDe?`<span class="pill" style="color:var(--oro)">${t("staff_entrena_a",{pos:puestoDePareja(st.equipoDe),equipo:st.equipoDe})}</span>`:""}</div>
+      <div style="font-size:10px;color:var(--gris);margin:3px 0">${"★".repeat(st.niv)}${"☆".repeat(5-st.niv)} · ${st.sal}€/sem${st.rol==="rep"?` · ${t("staff_comision",{c:st.com})}`:""}${st.esp?` · ${t("staff_especialista",{lista:atLista(st.esp).join(", ")})}`:""}${st.perfil?` · <span style="color:var(--lima)">${t("staff_perfil_"+st.perfil+"_d")}</span>`:""} · <em>«${t(st.frase)}»</em>${st.equipoDe?(()=>{const cl=clausulaEntrenador(st);const alcanza=miPuesto()-puestoDePareja(st.equipoDe)<=([99,30,20,12,7,4][st.niv]||15);return `<br><span style="color:var(--oro)">${t("staff_clausula",{cl:cl.toLocaleString("es")})}</span>${alcanza?"":` <span style="color:#E05656">${t("staff_fuera_alcance")}</span>`}`;})():""}</div>
       ${st.equipoDe?(()=>{const cl=clausulaEntrenador(st);const alcanza=miPuesto()-puestoDePareja(st.equipoDe)<=([99,30,20,12,7,4][st.niv]||15);return `<button style="width:100%;font-size:11px" ${ac("ficharStaff",i)}${(!alcanza||e.dinero<cl)?' disabled':''}>${!alcanza?t("staff_no_aceptaria"):e.dinero<cl?t("staff_clausula_sin_caja",{cl:cl.toLocaleString("es")}):t("staff_negociar",{cl:cl.toLocaleString("es")})}</button>`;})():`<button style="width:100%;font-size:11px" ${ac("ficharStaff",i)}>${t("staff_contratar",{sal:st.sal})}</button>`}
     </div>`;}).join("");
 }
@@ -193,6 +216,29 @@ function entrenadorActual(){
   return (e&&e.staff&&e.staff.entrenador)||{n:t("staff_sin_ent"),sal:0,esp:[],niv:0,frase:"fr_sin_ent"};
 }
 function staffNiv(rol){ const e=ent(); return (e&&e.staff&&e.staff[rol])?(e.staff[rol].niv||2):0; }
+/* La escuela del técnico contratado, o null (vacante o guardado viejo). Vale
+   en los dos modos: `ent()` devuelve la carrera o el club, y el staff es suyo. */
+function staffPerfil(rol){ const e=ent(); const st=e&&e.staff&&e.staff[rol]; return (st&&st.perfil)||null; }
+/* Los tres números que cambian de escuela, extraídos para poder MEDIRLOS:
+   una regla que solo vive inline en el cierre semanal no se puede probar. */
+function regenCarrera(){
+  const n=staffNiv("fisico"); if(!n) return 26;
+  // el preparador «motor» compra semanas: su tema es que siempre haya depósito
+  return 26+(staffPerfil("fisico")==="motor"?4:2)+n;
+}
+function confSueloPsico(){
+  const n=staffNiv("psico"); if(!n) return 0;
+  // el psicólogo de «ánimo» sostiene las malas rachas: su suelo es más alto
+  return 35+n*(staffPerfil("psico")==="animo"?3:2);
+}
+function netoPremio(x){
+  const c=(G&&G.modo==="carrera")?G.carrera:null;
+  const r=c&&c.staff&&c.staff.rep;
+  if(!r) return x;
+  // el agente «de premios» negocia su comisión a la baja: cobra la mitad
+  const com=(r.com||15)/(r.perfil==="premios"?2:1);
+  return Math.round(x*(1-com/100));
+}
 const ENTRENADORES=[
   {id:0,n:"Sin entrenador",sal:0,esp:[],desc:"Tu plan y tu instinto. Nadie te corrige."},   // catálogo heredado (no se pinta ya)
   {id:1,n:"Míster del club",sal:60,esp:["fondo","globo","pared"],desc:"Viejo zorro de la defensa: fondo, globo y pared."},
@@ -1871,8 +1917,10 @@ function avanzarSemanaCarrera(){
   cierraSemanaEntreno(c,factor);
   simCircuito(c._rivalesSemana);c._rivalesSemana=[];
   prensaSemanal();
-  if(c.sponsor&&!c._spot&&rnd()<(c.sponsor.tier>=3?.14:.08)){
-    const pago=Math.round(c.sponsor.sem*(c.sponsor.tier>=4?4:c.sponsor.tier===3?3:c.sponsor.tier===2?2.2:1.6));
+  // el agente «de marcas» vive del teléfono: más rodajes y mejor pagados
+  const _repMarcas=staffPerfil("rep")==="marcas";
+  if(c.sponsor&&!c._spot&&rnd()<(c.sponsor.tier>=3?.14:.08)+(_repMarcas?.05:0)){
+    const pago=Math.round(c.sponsor.sem*(c.sponsor.tier>=4?4:c.sponsor.tier===3?3:c.sponsor.tier===2?2.2:1.6)*(_repMarcas?1.35:1));
     const fansB=[0,120,400,1200,3500][c.sponsor.tier]||0;
     c._spot={marca:c.sponsor.marca,pago,fans:fansB,tipo:pick(SPOT_TIPOS),caduca:semanaTemp()+3};
     avisa(t("spot_av_oferta",{marca:c.sponsor.marca,tipo:t(c._spot.tipo),pago,fans:fansB}));
@@ -1893,7 +1941,7 @@ function avanzarSemanaCarrera(){
   }
   decaeMerma(c);   // la secuela de la última lesión se va disipando
   curaFragilidad(c);  // y el cuerpo se rehace si le das semanas sanas
-  let regen=26+(staffNiv("fisico")?2+staffNiv("fisico"):0);
+  let regen=regenCarrera();
   // los eventos mandan sobre la recuperación y sobre el techo de energía
   regen=Math.round(evNum("energia",regen));
   c.energia=clamp(c.energia+regen,0,evNum("energiaTope",100));
@@ -1928,7 +1976,8 @@ function avanzarSemanaCarrera(){
     if(tieneRasgo(c.compi,"ambicioso")&&miPuesto()>20) d+=1;
     if(d) c.compiMoral=clamp((c.compiMoral??65)-d,5,95);
   }
-  if(c.staff&&c.staff.psico&&c.conf<35+staffNiv("psico")*2) c.conf=35+staffNiv("psico")*2;
+  const _suelo=confSueloPsico();
+  if(_suelo&&c.conf<_suelo) c.conf=_suelo;
   if(c.compiMoral===29&&!c._avisoMoral){
     c._avisoMoral=true;
     avisa(t("av_harto",{n:c.compi.n}));
@@ -2040,7 +2089,7 @@ function cierreTemporadaCarrera(){
     while(c.ofertasPatro.length<nOf&&intent++<20){
       const t2=tiers[c.ofertasPatro.length%tiers.length];
       const of=ofertaPatro(t2);
-      if(rep_) of.sem=Math.round(of.sem*1.2);
+      if(rep_) of.sem=Math.round(of.sem*(rep_.perfil==="marcas"?1.3:1.2));
       if(typeof invPatroX==="function") of.sem=Math.round(of.sem*invPatroX(c));
       if(rnd()<.4){ of.sem=Math.round(of.sem*1.3); of.primas=of.primas.slice(0,1); of._perfil="fijo alto"; }
       else if(of.primas.length){ of.sem=Math.round(of.sem*.8); of._perfil="por objetivos"; }
@@ -2217,7 +2266,7 @@ function entrenoSemanalCarrera(factor){
     const k=golpeReal(atleta,plan,ent_,ctx);
     const v=atleta.attrs[k];
     let g=v<55?2:v<70?1:(rnd()<.5?1:0);
-    if(ent_.esp.includes(k)&&rnd()<(.3+.08*(ent_.niv||2))) g+=1;   // el especialista exprime su tema
+    if(ent_.esp.includes(k)&&rnd()<(.3+.08*(ent_.niv||2))+(ent_.perfil==="pista"?.18:0)) g+=1;   // el especialista exprime su tema; el de pista, más
     g=ajustaGanancia(g,it,edad);
     if(v>=58&&g>0&&rnd()<.5) g--;               // los cimientos van rápido...
     if(v>=72&&g>0&&rnd()<.5) g--;               // ...y la élite cuesta sudor doble

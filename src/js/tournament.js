@@ -443,6 +443,15 @@ function empezarPartido(ver,coach){
   ent()._rivalesSemana.push(rival.id);
   teams=[miTeam(),rival];
   teams[1].jug.forEach(j=>{j.conf=j.conf??55;});
+  /* El psicólogo «de presión» trabaja los partidos que pesan: si lo que hay en
+     juego es serio o más, tu equipo sale con la cabeza preparada. Va aquí,
+     antes de la bifurcación, para que valga igual en el partido visto y en el
+     resuelto rápido. */
+  if(G.modo==="carrera"&&typeof staffPerfil==="function"&&staffPerfil("psico")==="presion"
+     &&typeof pesoPartido==="function"&&torneo){
+    const _pz0=pesoPartido(ent(),CATS[torneo.cat],torneo.fase,rival);
+    if(_pz0>=DRAMA_CORTES[0]) teams[0].jug.forEach(j=>j.conf=clamp((j.conf??55)+4+staffNiv("psico"),10,95));
+  }
   stats=[mkStats(),mkStats()];
   match={p:[0,0],j:[0,0],s:[0,0],hist:[],server:rnd()<.5?0:1,fin:false,ver,chall:[3,3],revisando:false,momento:{team:-1,run:0,best:[0,0],aviso:null}};
   match.autoCoach=!!coach;
@@ -1057,7 +1066,7 @@ function finPartido(){
 
   // neto() aplica el margen económico de la dificultad a TODO premio de torneo
   // (un solo punto para carrera y club) y, en carrera, la comisión del representante.
-  const neto=(x)=>{x=ecoIngreso(x);const r=G.modo==="carrera"&&G.carrera.staff&&G.carrera.staff.rep;return r?Math.round(x*(1-(r.com||15)/100)):x;};
+  const neto=(x)=>netoPremio(ecoIngreso(x));   // margen de dificultad + comisión del agente (el «de premios» muerde la mitad)
   if(!gane){
     const idx=loserIdx(f), idxP=loserPtsIdx(f);
     // una temporada con puntuación nueva o una gira reparten distinto

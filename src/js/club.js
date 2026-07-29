@@ -162,7 +162,7 @@ function saltoCantera(cl,j){
   const margen=techo-media;
   let f=1;
   if(cl.reformas&&cl.reformas.escuela) f+=.35;
-  if(cl.staff&&cl.staff.entrenador) f+=.2;
+  if(cl.staff&&cl.staff.entrenador) f+=(cl.staff.entrenador.perfil==="pizarra"?.35:.2);   // el de pizarra construye estructura: la cantera lo nota
   if(filoClub(cl)==="cantera") f+=.3;            // la filosofía se nota donde dice notarse
   f+=(cl.instal||1)*.06;
   if((j.edad||17)>=21) f*=.55;                    // a los 21 ya casi no se enseña nada
@@ -566,9 +566,9 @@ function simTorneoParejaB(ci){
     fase++;
     // lesión por fatiga a mitad de torneo
     const cansado=parB.find(j=>j.energia<20&&!j.lesion);
-    if(cansado&&rnd()<kLesion(cl.staff.fisio?.15:.3)){
+    if(cansado&&rnd()<kLesion(cl.staff.fisio?(cl.staff.fisio.perfil==="preventivo"?.12:cl.staff.fisio.perfil==="recuperador"?.18:.15):.3)){
       cansado.lesion=pickLesion(clamp(1-cansado.energia/40,0,1));
-      if(cl.staff.fisio) cansado.lesion.sem=Math.max(1,cansado.lesion.sem-1);
+      if(cl.staff.fisio) cansado.lesion.sem=Math.max(1,cansado.lesion.sem-(cl.staff.fisio.perfil==="recuperador"?2:1));
       cansado.fragil=(cansado.fragil||0)+1;
       idxPts=loserIdx(fase);
       resumen.push(`retirada (W.O.): ${cansado.n}, ${cansado.lesion.n}`);
@@ -1157,7 +1157,8 @@ function entrenaUnoClub(j,factor){
   if(cl.instal>=3&&rnd()<.3) g+=1;
   if(cl.reformas&&cl.reformas.video&&rnd()<.35) g+=1;
   const entNiv=(cl.staff&&cl.staff.entrenador&&cl.staff.entrenador.niv)||0;
-  if(entNiv&&rnd()<.12*entNiv) g+=1;   // buen entrenador jefe = mejor progresión
+  const entPista=(cl.staff&&cl.staff.entrenador&&cl.staff.entrenador.perfil==="pista")?1.5:1;
+  if(entNiv&&rnd()<.12*entNiv*entPista) g+=1;   // buen entrenador jefe = mejor progresión; el de pista, más aún
   g=ajustaGanancia(g,it,j.edad);
   if(v>=58&&g>0&&rnd()<.5) g--;
   if(v>=72&&g>0&&rnd()<.5) g--;
@@ -1215,7 +1216,7 @@ function avanzarSemanaClub(){
      entrena (17) y juega una eliminatoria (13) vivía a cero de energía, se caía
      de `copDisponibles` y el club perdía las jornadas sin jugarlas. Medido:
      0 de 20 eliminatorias con cuatro jugadores sanos en plantilla. */
-  const regen=24+(cl.reformas.gym?4:0)+(cl.staff.fisico?4:0);
+  const regen=24+(cl.reformas.gym?4:0)+(cl.staff.fisico?(cl.staff.fisico.perfil==="motor"?6:4):0);
   cl.plantilla.forEach((j,idx)=>{
     j.energia=clamp(j.energia+regen,0,100);
     /* LA CONFIANZA SE ENFRÍA HACIA EL CENTRO. Sin esto era un trinquete de un
@@ -1228,8 +1229,8 @@ function avanzarSemanaClub(){
        semanas, no marcarte la carrera. */
     j.conf=clamp(j.conf+(j.conf<55?2:j.conf>55?-1:0),15,95);
     if(cl.reformas.residencia) j.conf=clamp(j.conf+1,15,95);
-    if(cl.staff.psico&&j.conf<50) j.conf=clamp(j.conf+2,15,95);
-    if((cl.staff.fisio||cl.reformas.medico)&&j.lesion&&rnd()<(cl.staff.fisio&&cl.reformas.medico?.5:.3)){j.lesion.sem--;if(j.lesion.sem<=0){const s=curarLesion(j);avisa(`El fisio adelanta el alta de ${j.n}.`+(s?` (mermado -${s.pct}%, ${s.sem} sem)`:""));}}
+    if(cl.staff.psico&&j.conf<50) j.conf=clamp(j.conf+(cl.staff.psico.perfil==="animo"?3:2),15,95);
+    if((cl.staff.fisio||cl.reformas.medico)&&j.lesion&&rnd()<(cl.staff.fisio&&cl.reformas.medico?.5:.3)+(cl.staff.fisio&&cl.staff.fisio.perfil==="recuperador"?.15:0)){j.lesion.sem--;if(j.lesion.sem<=0){const s=curarLesion(j);avisa(`El fisio adelanta el alta de ${j.n}.`+(s?` (mermado -${s.pct}%, ${s.sem} sem)`:""));}}
     decaeMerma(j);
     curaFragilidad(j);   // el cuerpo se rehace con semanas sanas, también aquí
     // moral por minutos: el rol (titular A / B / banquillo) sube o quema la moral
@@ -1420,7 +1421,9 @@ function avanzarSemanaClub(){
       }
     });
     cl.mercado=mkMercadoLibre(cl.sexo||"M");
-    if(cl.staff.ojeador){ for(let i=0;i<3;i++) cl.mercado.push(mkAgente(56,72,cl.sexo||"M")); }
+    // el ojeador «de mercado» trae mejores nombres a la lista; el «de cantera»
+    // hace su trabajo en la academia (mejor techo de lo que se presenta)
+    if(cl.staff.ojeador){ const _oM=cl.staff.ojeador.perfil==="mercado"; for(let i=0;i<3;i++) cl.mercado.push(_oM?mkAgente(60,78,cl.sexo||"M"):mkAgente(56,72,cl.sexo||"M")); }
     // los clubes rivales también fichan
     if(cl.mercado.length>4&&rnd()<.8){
       const qi=Math.floor(rnd()*cl.mercado.length);
@@ -1448,6 +1451,8 @@ function avanzarSemanaClub(){
       const j=mkAgente(42+cl.instal*2+bono,50+cl.instal*2+bono,cl.sexo||"M");
       j.edad=Math.round(R(15,17));
       if(bono) j.pot=Math.min(95,(j.pot||60)+6);
+      // el ojeador de cantera encuentra chavales con más techo: es SU tema
+      if(cl.staff&&cl.staff.ojeador&&cl.staff.ojeador.perfil==="cantera") j.pot=Math.min(95,(j.pot||60)+4);
       j.aniosCan=0; j.ilusion=CAN_ILUSION0; j.hist=[];
       // quién lo encontró y cuándo: es el principio de su historia
       j.origen={t:temporada(),por:(cl.staff&&cl.staff.ojeador)?cl.staff.ojeador.n:null};

@@ -269,8 +269,9 @@ function relSemana(c){
   if(c._jugoTorneo&&(c.semana|0)-(c._ultPremierSem|0)<=1) relMueve(c,"ambicion",+3);
   // lealtad: se gana con el tiempo juntos, despacio
   if(((c.semana|0)-(c._parejaDesdeSem||0))%8===0) relMueve(c,"lealtad",+1);
-  // el plan compartido se afianza jugando
-  if(c._jugoTorneo) planEntrena(c,2);
+  // el plan compartido se afianza jugando; el entrenador de pizarra acelera
+  // los automatismos, que es exactamente lo que vende
+  if(c._jugoTorneo) planEntrena(c,(typeof staffPerfil==="function"&&staffPerfil("entrenador")==="pizarra")?3:2);
 }
 
 /* ================================================================

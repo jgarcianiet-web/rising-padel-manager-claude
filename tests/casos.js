@@ -4428,6 +4428,66 @@ comprueba("Cantera: el que se marcha vuelve como rival, y la eliminatoria lo cue
   return "fichado por " + reg.pareja.nombre + " · acta con reencuentro (" + (acta.exCan.meGano ? "te quitó un punto" : "se fue de vacío") + ")";
 });
 
+comprueba("Staff: cada técnico tiene escuela, y dos del mismo nivel gestionan distinto", () => {
+  /* La P4: la escuela no es «+1 más», es OTRA mecánica. El fisio preventivo
+     evita y el recuperador acorta; el psicólogo de ánimo sostiene rachas y el
+     de presión prepara finales; el preparador motor da semanas y el de picos
+     alarga la forma; el agente de marcas vende y el de premios negocia. */
+  const c = nuevaCarrera("agresivo");
+  // toda escuela declarada tiene nombre y descripción en los cinco idiomas
+  Object.entries(PERFILES_STAFF).forEach(([rol, ps]) => {
+    exige(ps.length === 2, "el rol " + rol + " no tiene dos escuelas");
+    ps.forEach(p => {
+      exige(t("staff_perfil_" + p) !== "staff_perfil_" + p, "falta el nombre de la escuela " + p);
+      exige(t("staff_perfil_" + p + "_d") !== "staff_perfil_" + p + "_d", "falta la descripción de " + p);
+    });
+  });
+  // el mercado nace con escuela
+  for (let i = 0; i < 8; i++) { const st = mkStaff(pick(rolesDeModo())); exige(PERFILES_STAFF[st.rol].includes(st.perfil), "un técnico nace sin escuela"); }
+  // preparador: el motor compra semanas…
+  c.staff.fisico = Object.assign(mkStaff("fisico", 3), { perfil: "motor" });
+  const rMotor = regenCarrera();
+  c.staff.fisico.perfil = "picos";
+  exige(rMotor === regenCarrera() + 2, "el preparador motor no da más recuperación");
+  // …y el de picos enfría la forma a la mitad de velocidad
+  frAsegura(c); c.forma.volea = 4;
+  c.semana = 11; formaEnfria(c);
+  exige(c.forma.volea === 4, "el de picos enfría en semana impar");
+  c.semana = 12; formaEnfria(c);
+  exige(c.forma.volea === 3, "con el de picos la forma no se enfría nunca");
+  // psicólogo: el de ánimo pone el suelo de confianza más alto
+  c.staff.psico = Object.assign(mkStaff("psico", 3), { perfil: "animo" });
+  const sAnimo = confSueloPsico();
+  c.staff.psico.perfil = "presion";
+  exige(sAnimo > confSueloPsico(), "el psicólogo de ánimo no sube el suelo");
+  // representante: el de premios muerde la mitad de la comisión
+  c.staff.rep = Object.assign(mkStaff("rep", 3), { perfil: "premios", com: 14 });
+  const nPrem = netoPremio(1000);
+  c.staff.rep.perfil = "marcas";
+  exige(nPrem === 930 && netoPremio(1000) === 860, "la comisión no distingue escuelas: " + nPrem);
+  // fisio recuperador: la secuela se disipa al doble; el preventivo ni la toca
+  c.staff.fisio = Object.assign(mkStaff("fisio", 3), { perfil: "recuperador" });
+  c.merma = { sem: 4, pct: 5 }; decaeMerma(c);
+  exige(c.merma.sem === 2, "el recuperador no acelera la secuela: " + c.merma.sem);
+  c.staff.fisio.perfil = "preventivo";
+  c.merma = { sem: 4, pct: 5 }; decaeMerma(c);
+  exige(c.merma.sem === 3, "el preventivo toca la secuela sin ser su tema");
+  // entrenador de pizarra: los automatismos del plan crecen más deprisa
+  c.staff.entrenador = Object.assign(mkStaff("entrenador", 3), { perfil: "pizarra" });
+  planElige(c, "muro"); c._jugoTorneo = true; relSemana(c);
+  const dPiz = planDominio(c);
+  c.staff.entrenador.perfil = "pista";
+  planElige(c, "red"); c._planDesdeSem = 0;
+  c._jugoTorneo = true; relSemana(c);
+  exige(dPiz > planDominio(c), "el de pizarra no acelera el plan: " + dPiz + " vs " + planDominio(c));
+  // y un técnico de guardado viejo, sin escuela, funciona exactamente como antes
+  delete c.staff.rep.perfil;
+  exige(netoPremio(1000) === 860, "un agente de guardado viejo no cobra su comisión de siempre");
+  delete c.staff.fisico.perfil;
+  exige(regenCarrera() === 26 + 2 + 3, "un preparador de guardado viejo no regenera lo de siempre");
+  return "12 escuelas con nombre, descripción y efecto propio · el guardado viejo funciona igual";
+});
+
 comprueba("Retirada: la némesis tiene epílogo y habla según cómo acabó el duelo", () => {
   /* La rivalidad también se retira: el vuelco, la herida que no se cerró o el
      pulso que nadie ganó. El texto sale de la fase, y la fase de los hechos. */

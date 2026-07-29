@@ -137,9 +137,16 @@ De las prioridades 2-8 del último plan:
 - **P3 · Que las 52 semanas no sean rutina** — pendiente. Lo ya hecho (parones,
   coste por rondas, carga) empuja en esa dirección; faltan la fatiga residual
   fina (viajes, finales, edad) y el conflicto de calendario dentro de la pareja.
-- **P4 · Staff que cambia cómo se juega** — pendiente. Hoy los seis roles dan
-  bonificaciones distintas; el objetivo es que dos profesionales del mismo
-  nivel produzcan formas distintas de gestionar.
+- **P4 · Staff que cambia cómo se juega — HECHA.** Cada rol tiene dos
+  escuelas (`PERFILES_STAFF`) y todo técnico nace con una: el fisio preventivo
+  evita la lesión y el recuperador la acorta; el psicólogo de ánimo sostiene
+  las rachas y el de presión prepara los partidos que pesan (y el desempate de
+  la Copa); el preparador motor da semanas y el de picos alarga la forma; el
+  entrenador de pizarra acelera el plan y la cantera y el de pista exprime el
+  entreno; el agente de marcas vende y el de premios negocia; el ojeador de
+  cantera sube el techo de la academia y el de mercado trae mejores agentes.
+  La escuela se ve al fichar (chip + qué cambia) y los guardados viejos
+  funcionan como siempre. Ver «El staff tiene escuela» en CLAUDE.md.
 - **P5 · Voz y memoria de personajes — HECHA.** El compañero deja
   promesas con plazo que se comprueban contra lo que haces (y las recuerda con
   su nombre al cumplirse o romperse), tiene voz semanal con doble enfriamiento

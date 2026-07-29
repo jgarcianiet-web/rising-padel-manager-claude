@@ -198,7 +198,13 @@ function copJuega(cl,jor,mias,cruce,desempate){
       acta.suyo++;
       return;
     }
-    const res=quickMatch(teamDePareja(mia),{...suya,jug:(suya.jug||[]).map(x=>({...x}))});
+    const tm=teamDePareja(mia);
+    /* El psicólogo «de presión» prepara el partido que pesa: en el desempate,
+       tu pareja sale con la cabeza trabajada. Es lo que cambia la decisión de
+       a quién guardas para el tercer punto. */
+    if(esDes&&cl.staff&&cl.staff.psico&&cl.staff.psico.perfil==="presion")
+      tm.jug.forEach(x=>x.conf=clamp((x.conf??55)+6,15,95));
+    const res=quickMatch(tm,{...suya,jug:(suya.jug||[]).map(x=>({...x}))});
     mia.forEach(x=>{ x.energia=clamp(x.energia-COP_ENERGIA,0,100); x.conf=clamp(x.conf+(res.gane?4:-4),15,95);
       /* La memoria del canterano se escribe donde ocurre el hecho: su debut y
          su primer punto ganado para el club quedan con fecha y rival, y la

@@ -530,6 +530,40 @@ media por debajo, entrenar siempre suave 10 por debajo, y varias estrategias
 sensatas (alternar cargas, pagar sparring, rotar objetivos) empatan arriba. Eso
 es lo que se busca: varios caminos buenos y dos maneras claras de hacerlo mal.
 
+## El staff tiene escuela: mismo nivel, otra gestión
+
+`PERFILES_STAFF` (en `career.js`). Cada rol tiene **dos escuelas** y todo
+técnico nace con una (`st.perfil`, sorteada en `mkStaff`). La regla que las
+gobierna:
+
+> **Una escuela engancha a una mecánica DISTINTA, no da «un poco más» de la
+> misma.** El fisio preventivo baja el riesgo de lesión y el recuperador
+> acorta la baja y disipa la secuela al doble; el psicólogo de ánimo sube el
+> suelo semanal de confianza y el de presión da confianza extra en los
+> partidos serios (carrera) y en el desempate de la Copa (club); el preparador
+> motor regenera más energía y el de picos enfría la forma a la mitad; el
+> entrenador de pizarra acelera el dominio del plan (y la cantera en club) y
+> el de pista exprime el entreno; el agente de marcas trae más rodajes y
+> mejores contratos y el de premios muerde la mitad de comisión; el ojeador de
+> cantera sube el techo de lo que se presenta y el de mercado trae mejores
+> agentes.
+
+Cosas que hay que respetar al tocarlas:
+
+1. **Los guardados viejos no llevan escuela y funcionan exactamente como
+   antes**: todos los ganchos tratan `perfil` ausente como el comportamiento
+   de siempre (el patrón de `t()` con los literales). No migres staff viejo.
+2. **Los números que cambian de escuela viven en helpers medibles**
+   (`regenCarrera`, `confSueloPsico`, `netoPremio`, `staffPerfil`), no inline:
+   una regla que solo existe dentro del cierre semanal no se puede probar.
+3. **La escuela se enseña donde se ficha** (`perfilChip` + descripción en el
+   mercado y en el equipo): si el jugador no puede ver la diferencia antes de
+   contratar, no es una decisión.
+4. Medido con el banco (`banco-perfiles.js`, carreras de 6 temporadas con la
+   misma semilla): las dos escuelas de cada rol quedan cerca en resultado
+   global y lejos en CÓMO llegan —esa es la vara: si una escuela domina a la
+   otra en todo, está mal calibrada—.
+
 ## El partido te contesta: lectura, informe e identidad
 
 `engine/tactica.js`. La táctica ya cambiaba el partido, pero el partido no
