@@ -559,10 +559,16 @@ Cosas que hay que respetar al tocarlas:
 3. **La escuela se enseña donde se ficha** (`perfilChip` + descripción en el
    mercado y en el equipo): si el jugador no puede ver la diferencia antes de
    contratar, no es una decisión.
-4. Medido con el banco (`banco-perfiles.js`, carreras de 6 temporadas con la
-   misma semilla): las dos escuelas de cada rol quedan cerca en resultado
-   global y lejos en CÓMO llegan —esa es la vara: si una escuela domina a la
-   otra en todo, está mal calibrada—.
+4. **Medido con carreras de 6 temporadas, 4 semillas por escuela.** Las dos
+   escuelas del fisio acaban igual por caminos distintos: ≈0,5 lesiones por
+   carrera —al preventivo no le llegan, al recuperador le duran una semana y
+   sin secuela—, contra 2 con fisio sin escuela y 7 sin fisio. El preparador
+   motor da +4 de energía media (83 vs 79) y el de picos convierte esa forma
+   en semanas grandes; los puestos finales se solapan. Con ±30 puestos de
+   ruido por semilla la vara no es afinar: es que ninguna escuela quede
+   muerta ni domine, y no pasa. Y ojo al volver a medir: SEIS carreras dentro
+   de un solo `page.evaluate` revientan el renderizador (`Target crashed`) y
+   la promesa se queda colgada sin quemar CPU — una página por carrera.
 
 ## El partido te contesta: lectura, informe e identidad
 
