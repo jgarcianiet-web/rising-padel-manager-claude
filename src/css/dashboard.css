@@ -1,10 +1,10 @@
 /* ================= DISPOSICIÓN DE ORDENADOR ================= */
 #hud{display:none}
 #hud .hudCaja{background:var(--pane);border:1px solid var(--borde);border-radius:2px;padding:9px 10px}
-#hud .hudTit{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--gris2);margin-bottom:5px}
-#hud .hudFila{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px;padding:2px 0}
-#hud .hudFila b{font-family:'Chakra Petch',sans-serif;font-size:14px}
-#hud .hudNom{font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:15px;line-height:1.15}
+#hud .hudTit{font-size:calc(9px * var(--esc));letter-spacing:2px;text-transform:uppercase;color:var(--gris2);margin-bottom:5px}
+#hud .hudFila{display:flex;justify-content:space-between;align-items:baseline;font-size:calc(11.5px * var(--esc));padding:2px 0}
+#hud .hudFila b{font-family:'Chakra Petch',sans-serif;font-size:calc(14px * var(--esc))}
+#hud .hudNom{font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:calc(15px * var(--esc));line-height:1.15}
 
 @media(min-width:1120px){
   .cont{max-width:1240px}
@@ -20,8 +20,60 @@
        gap:10px;align-items:start}
   #tab-semana>.card,#tab-entreno>.card,#tab-staff>.card,#tab-ranking>.card,#tab-diario>.card,
   #cm-semana>.card,#cm-ranking>.card,#cm-diario>.card{margin-bottom:0}
-  .tabs button{padding:9px 15px;font-size:12.5px}
+  .tabs button{padding:9px 15px;font-size:calc(12.5px * var(--esc))}
 }
+/* ---------------- pantallas anchas ----------------
+
+   El contenido se quedaba clavado en 1240 px, así que en un monitor de 1920 se
+   usaba el 63% del ancho y en uno de 2560 menos de la mitad: media pantalla en
+   negro. El tope sube por escalones y los paneles, que ya reparten sus tarjetas
+   con auto-fill, se llevan solos las columnas que quepan. */
+@media(min-width:1600px){
+  .cont{max-width:1520px}
+  /* estos tres seguían clavados en dos columnas fijas desde los 760 px */
+  #tab-jugador,#cm-plantilla,#cm-clubpan{grid-template-columns:repeat(auto-fill,minmax(420px,1fr))}
+  #scr-torneo .cont{grid-template-columns:repeat(auto-fill,minmax(460px,1fr))}
+}
+@media(min-width:2100px){
+  .cont{max-width:1780px}
+  body.con-hud #hud{width:330px}
+  body.con-hud .wrap{padding-left:330px}
+}
+
+/* ---------------- pantallas táctiles ----------------
+
+   Con ratón, un botón de 25 px se acierta siempre. Con el dedo, no: los de la
+   barra superior medían 26×25 px, por debajo de lo que se pulsa cómodo, y el
+   público de este juego pasa de los 40. En dispositivos de puntero grueso se
+   agranda el área de pulsación sin tocar el aspecto en escritorio. */
+@media(pointer:coarse){
+  .topbar .mini button{min-height:38px;min-width:38px;padding:7px 11px}
+  .tabs button{min-height:42px}
+  .selbtn,.difchip{min-height:34px}
+  /* las filas pulsables del ranking y del mercado también piden dedo */
+  table.rk tr[style*="cursor"] td{padding-top:9px;padding-bottom:9px}
+}
+
+/* ---------------- móvil apaisado ----------------
+
+   Un teléfono girado deja 360 px de alto: entre la barra superior, las pestañas
+   y los KPI quedaban menos de 250 px para jugar. Aquí se recorta el relleno
+   vertical de todo.
+
+   Va DESPUÉS del bloque táctil a propósito: agrandar las pestañas a 42 px para
+   el dedo se come justo el alto que hace falta, así que en esta situación gana
+   lo compacto (34 px, que se sigue pulsando de sobra). */
+@media(max-height:520px) and (orientation:landscape){
+  .topbar{padding:4px 10px}
+  .tabs button{padding:6px 4px;min-height:34px}
+  .kpi{padding:3px 4px}
+  .card{padding:10px;margin-bottom:7px}
+  h3{margin:-10px -10px 8px;padding:6px 10px}
+  .cont{padding:6px}
+  .menu{margin-top:2vh}
+  .menu button{padding:10px;margin-bottom:6px}
+}
+
 @media(hover:hover){                          /* respuesta al ratón, cosa de escritorio */
   .tabs button:hover{color:var(--texto);background:#182234}
   .opcion:hover{border-color:var(--gris2)}

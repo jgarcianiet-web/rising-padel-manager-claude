@@ -14,26 +14,46 @@ const ROLES_STAFF={
   ojeador:{n:"Ojeador",salBase:60,ico:"🔭"},
 };
 const ESP_GRUPOS=[["fondo","globo","pared"],["remate","vibora","bandeja"],["volea","chiquita","dejada"],["remate","volea","fondo"],["bandeja","globo","dejada"]];
+/* LA ESCUELA DEL TÉCNICO. Dos profesionales del mismo nivel no gestionan
+   igual: cada rol tiene dos escuelas y cada una engancha a una mecánica
+   DISTINTA de la simulación —no es «+1 más» sino «otra cosa»—. El fisio
+   preventivo evita lesiones y el recuperador las acorta; el psicólogo de ánimo
+   sostiene las malas rachas y el de presión prepara los partidos grandes; el
+   preparador motor te da semanas y el de picos te alarga la punta de forma.
+   Los técnicos de guardados viejos no llevan escuela y funcionan exactamente
+   como antes: la escuela llega con el mercado nuevo. */
+const PERFILES_STAFF={
+  entrenador:["pizarra","pista"],
+  fisio:["preventivo","recuperador"],
+  psico:["animo","presion"],
+  fisico:["motor","picos"],
+  rep:["marcas","premios"],
+  ojeador:["cantera","mercado"],
+};
 // Cada frase es una CLAVE i18n; se resuelve al pintarla, así el staff ya
 // contratado habla en el idioma activo (los guardados antiguos llevan el texto
 // literal y t() lo devuelve tal cual).
+/* Doce frases por rol. Con cuatro, un mercado de staff de seis candidatos ya
+   enseñaba la misma dos veces en la misma pantalla. */
 const FRASES_STAFF={
-  entrenador:["fr_ent_1","fr_ent_2","fr_ent_3","fr_ent_4"],
-  fisio:["fr_fisio_1","fr_fisio_2","fr_fisio_3","fr_fisio_4"],
-  psico:["fr_psico_1","fr_psico_2","fr_psico_3","fr_psico_4"],
-  fisico:["fr_fisico_1","fr_fisico_2","fr_fisico_3","fr_fisico_4"],
-  rep:["fr_rep_1","fr_rep_2","fr_rep_3","fr_rep_4"],
-  ojeador:["fr_ojeador_1","fr_ojeador_2","fr_ojeador_3","fr_ojeador_4"],
+  entrenador:["fr_ent_1","fr_ent_2","fr_ent_3","fr_ent_4","fr_ent_5","fr_ent_6","fr_ent_7","fr_ent_8","fr_ent_9","fr_ent_10","fr_ent_11","fr_ent_12"],
+  fisio:["fr_fisio_1","fr_fisio_2","fr_fisio_3","fr_fisio_4","fr_fisio_5","fr_fisio_6","fr_fisio_7","fr_fisio_8","fr_fisio_9","fr_fisio_10","fr_fisio_11","fr_fisio_12"],
+  psico:["fr_psico_1","fr_psico_2","fr_psico_3","fr_psico_4","fr_psico_5","fr_psico_6","fr_psico_7","fr_psico_8","fr_psico_9","fr_psico_10","fr_psico_11","fr_psico_12"],
+  fisico:["fr_fisico_1","fr_fisico_2","fr_fisico_3","fr_fisico_4","fr_fisico_5","fr_fisico_6","fr_fisico_7","fr_fisico_8","fr_fisico_9","fr_fisico_10","fr_fisico_11","fr_fisico_12"],
+  rep:["fr_rep_1","fr_rep_2","fr_rep_3","fr_rep_4","fr_rep_5","fr_rep_6","fr_rep_7","fr_rep_8","fr_rep_9","fr_rep_10","fr_rep_11","fr_rep_12"],
+  ojeador:["fr_ojeador_1","fr_ojeador_2","fr_ojeador_3","fr_ojeador_4","fr_ojeador_5","fr_ojeador_6","fr_ojeador_7","fr_ojeador_8","fr_ojeador_9","fr_ojeador_10","fr_ojeador_11","fr_ojeador_12"],
 };
 function mkStaff(rol,nivFijo){
-  const niv=nivFijo||Math.min(5,Math.max(1,Math.round(R(1,3.6)+(Math.random()<.18?1:0))));
-  const sx=Math.random()<.5?"M":"F";
-  const nom=`${nombrePorSexo(sx)} ${pick(APELL)}`;
-  const st={rol,n:nom,sexo:sx,edad:Math.round(R(30,62)),niv,
+  const niv=nivFijo||Math.min(5,Math.max(1,Math.round(R(1,3.6)+(rnd()<.18?1:0))));
+  const sx=rnd()<.5?"M":"F";
+  const pais=pickPais();
+  const nom=`${nombrePorSexo(sx,pais)} ${apellidoPais(pais)}`;
+  const st={rol,n:nom,sexo:sx,pais,edad:Math.round(R(30,62)),niv,
     sal:Math.round(ROLES_STAFF[rol].salBase*niv*(1+R(-.12,.15))),
     frase:pick(FRASES_STAFF[rol]||["fr_generica"])};
   if(rol==="entrenador") st.esp=pick(ESP_GRUPOS);
   if(rol==="rep") st.com=Math.max(8,20-niv*2);   // % de comisión: mejor agente, menos muerde
+  if(PERFILES_STAFF[rol]) st.perfil=pick(PERFILES_STAFF[rol]);
   return st;
 }
 function rolesDeModo(){ return G.modo==="carrera"?["entrenador","fisio","psico","fisico","rep"]:["entrenador","fisio","psico","fisico","ojeador"]; }
@@ -41,14 +61,14 @@ function mkMercadoStaff(){
   const roles=rolesDeModo();
   const m=[];
   // BOLSA DE EMPLEO: varios agentes libres de cada rol (una lista de verdad, no dos)
-  roles.forEach(r=>{ const n=r==="entrenador"?4:3; for(let i=0;i<n+(Math.random()<.5?1:0);i++) m.push(mkStaff(r)); });
+  roles.forEach(r=>{ const n=r==="entrenador"?4:3; for(let i=0;i<n+(rnd()<.5?1:0);i++) m.push(mkStaff(r)); });
   // Y TODOS los entrenadores que ya trabajan con parejas del circuito: contactables (con rescisión)
   if(roles.includes("entrenador")&&G.world){
     const pares=G.world.parejas.filter(p2=>(p2.sexo||"M")===miSexo()&&!p2.yo);
     pares.forEach(par=>{
       if(!par._entrenador){
         const nivPar=Math.round((mediaAttrs(par.jug[0].attrs)+mediaAttrs(par.jug[1].attrs))/2);
-        const niv=clamp(Math.round(nivPar/18)+(Math.random()<.3?1:0),1,5);
+        const niv=clamp(Math.round(nivPar/18)+(rnd()<.3?1:0),1,5);
         par._entrenador=Object.assign(mkStaff("entrenador",niv),{equipoDe:par.nombre});
       }
       m.push(par._entrenador);
@@ -81,7 +101,7 @@ function aceptaProyecto(st){
   if(salto>margen) return {ok:false,motivo:t("staff_proy_top",{n:st.n,posEl,posYo})};
   // aunque esté en margen, a veces declina (proyecto poco convincente)
   const prob=clamp(.9-salto/(margen*1.6),.25,.97);
-  if(Math.random()>prob) return {ok:false,motivo:t("staff_proy_duda",{n:st.n,equipo:st.equipoDe}),reintento:true};
+  if(rnd()>prob) return {ok:false,motivo:t("staff_proy_duda",{n:st.n,equipo:st.equipoDe}),reintento:true};
   return {ok:true};
 }
 function refrescaMercadoStaff(){
@@ -90,7 +110,7 @@ function refrescaMercadoStaff(){
 }
 function ofertaStaffSemanal(){
   const e=ent(); if(!e||!e.mercadoStaff) return;
-  if(Math.random()>.07) return;
+  if(rnd()>.07) return;
   const calidad=miPuesto()<=10?4:miPuesto()<=20?3:undefined;
   const st=mkStaff(pick(rolesDeModo()),calidad);
   st.seOfrece=true; st.sal=Math.round(st.sal*.82); st.caduca=semanaTemp()+2;
@@ -115,6 +135,7 @@ function ficharStaff(idx){
     delete st.equipoDe; }
   e.staff[st.rol]=st;
   e.mercadoStaff.splice(idx,1);
+  st.desde=temporada(); st.tits=0;   // el técnico también tiene historia contigo
   avisa(t("staff_av_firma",{ico:ROLES_STAFF[st.rol].ico,n:st.n,estrellas:"★".repeat(st.niv),rol:t("rol_"+st.rol).toLowerCase(),sal:st.sal}));
   if(st.niv>=4) post("fichaje");
   guardar(); pintarTodo();
@@ -126,16 +147,50 @@ function despedirStaff(rol){
   avisa(t("staff_av_adios",{n:st.n,sal:st.sal}));
   guardar(); pintarTodo();
 }
-function pintarTodo(){ if(G.modo==="carrera") pintarCarrera(); else pintarClubM(); }
+/* Nadie trabaja gratis, y una deuda sin consecuencia no es una decisión.
+   Medido con el banco de carreras: un perfil que fichaba a los tres del
+   mercado en cuanto tenía 5.000€ terminaba seis temporadas a −117.636€ sin
+   que pasara absolutamente nada —el staff seguía cobrando a crédito para
+   siempre—. Ahora hay un mes de cuerda (cuatro nóminas) y, pasado eso, se
+   marcha el mejor pagado. Se avisa antes con `av_fijos`, así que perder al
+   entrenador es culpa tuya, no una sorpresa.
+
+   **Uno por semana, no todos de golpe.** Con un bucle, quitar al mejor pagado
+   encoge la nómina y con ella el límite, así que el siguiente también se pasa
+   de raya y se cae toda la estructura en la misma semana. Marchándose de uno
+   en uno, la caja tiene siete días para respirar entre bajas y la reacción del
+   jugador todavía sirve para algo. */
+const IMPAGO_GRACIA=4;
+function impagoStaff(c){
+  const roles=Object.keys(c.staff||{}).filter(k=>c.staff[k]);
+  const nom=roles.reduce((s,k)=>s+(c.staff[k].sal||0),0);
+  if(!nom||c.dinero>=-Math.max(1200,nom*IMPAGO_GRACIA)) return;
+  const rol=roles.sort((a,b)=>(c.staff[b].sal||0)-(c.staff[a].sal||0))[0];
+  const st=c.staff[rol];
+  c.staff[rol]=null;
+  avisa(t("staff_av_impago",{n:st.n,sal:st.sal}));
+  noticia("fichaje",t("staff_impago_t",{n:st.n}),t("staff_impago_s",{n:st.n,rol:t("rol_"+rol).toLowerCase()}));
+}
+function pintarTodo(){
+  if(G.modo==="carrera") pintarCarrera(); else pintarClubM();
+  // la guía de las primeras semanas mira el estado después de cada repintado
+  if(typeof guiaComprueba==="function") guiaComprueba();
+}
+/* La escuela en pantalla: chip con el nombre y, donde cabe, la línea de qué
+   cambia. Un técnico de guardado viejo no lleva escuela y no enseña nada. */
+function perfilChip(st){
+  if(!st||!st.perfil) return "";
+  return ` <span class="pill" style="color:var(--lima)">${t("staff_perfil_"+st.perfil)}</span>`;
+}
 function renderEquipoStaff(el){
   const e=ent(), roles=rolesDeModo();
   el.innerHTML=roles.map(r=>{
     const st=e.staff[r];
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--borde)">
-      <div style="font-size:11.5px">${ROLES_STAFF[r].ico} <b>${st?st.n:"—"}</b> <span style="color:var(--gris2)">· ${t("rol_"+r)}</span>
-        ${st?`<div style="font-size:10px;color:var(--gris)">${"★".repeat(st.niv)}${"☆".repeat(5-st.niv)} · ${st.sal}€/sem${st.rol==="rep"?` · ${t("staff_comision",{c:st.com})}`:""}${st.esp?` · ${atLista(st.esp).join("/")}`:""}<br><em style="color:var(--gris2)">«${t(st.frase)}»</em></div>`:`<div style="font-size:10px;color:var(--gris2)">${t("staff_vacante")}</div>`}
+      <div style="font-size:11.5px">${ROLES_STAFF[r].ico} <b>${st?st.n:"—"}</b> <span style="color:var(--gris2)">· ${t("rol_"+r)}</span>${perfilChip(st)}
+        ${st?`<div style="font-size:10px;color:var(--gris)">${"★".repeat(st.niv)}${"☆".repeat(5-st.niv)} · ${st.sal}€/sem${st.rol==="rep"?` · ${t("staff_comision",{c:st.com})}`:""}${st.esp?` · ${atLista(st.esp).join("/")}`:""}${st.desde?` · <span style="color:var(--lima)">${t("staff_junto",{t:st.desde,n:st.tits|0})}</span>`:""}${st.perfil?`<br><span style="color:var(--lima)">${t("staff_perfil_"+st.perfil+"_d")}</span>`:""}<br><em style="color:var(--gris2)">«${t(st.frase)}»</em></div>`:`<div style="font-size:10px;color:var(--gris2)">${t("staff_vacante")}</div>`}
       </div>
-      ${st?`<button style="font-size:10px;padding:3px 7px" onclick="despedirStaff('${r}')">${t("staff_despedir")}</button>`:""}
+      ${st?`<button style="font-size:10px;padding:3px 7px" ${ac("despedirStaff",r)}>${t("staff_despedir")}</button>`:""}
     </div>`;}).join("");
 }
 function renderMercadoStaff(el){
@@ -145,15 +200,15 @@ function renderMercadoStaff(el){
   // filtro por rol (bolsa grande → pestañas de rol)
   e._staffFiltro=e._staffFiltro||"todos";
   const roles=rolesDeModo();
-  const filtroBar=`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px">${["todos",...roles].map(r=>`<button class="selbtn${e._staffFiltro===r?" on":""}" style="font-size:9px;padding:4px 6px" onclick="ent()._staffFiltro='${r}';${G.modo==="carrera"?"pintarCarrera":"pintarClubM"}()">${r==="todos"?t("staff_todos"):ROLES_STAFF[r].ico+" "+t("rol_"+r).split("/")[0]}</button>`).join("")}</div>`;
+  const filtroBar=`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px">${["todos",...roles].map(r=>`<button class="selbtn${e._staffFiltro===r?" on":""}" style="font-size:9px;padding:4px 6px" ${ac("filtroStaff",r)}>${r==="todos"?t("staff_todos"):ROLES_STAFF[r].ico+" "+t("rol_"+r).split("/")[0]}</button>`).join("")}</div>`;
   let listaVis=e.mercadoStaff.filter(st=>e._staffFiltro==="todos"||st.rol===e._staffFiltro);
   listaVis=listaVis.slice().sort((a,b)=>(a.equipoDe?1:0)-(b.equipoDe?1:0)||b.niv-a.niv);
   if(!listaVis.length){ el.innerHTML=filtroBar+`<div class="foot" style="text-align:left">${t("staff_nadie")}</div>`; return; }
   el.innerHTML=filtroBar+`<div class="foot" style="text-align:left;margin-bottom:6px">${t("staff_bolsa",{n:listaVis.length})}</div>`+listaVis.map((st)=>{const i=e.mercadoStaff.indexOf(st);return `
     <div class="opcion" style="padding:8px">
-      <div style="font-size:11.5px">${ROLES_STAFF[st.rol].ico} <b>${st.n}</b>, ${st.edad} <span class="pill">${t("rol_"+st.rol)}</span> ${st.seOfrece?`<span class="pill" style="color:var(--lima)">${t("staff_se_ofrece")}</span>`:""}${st.equipoDe?`<span class="pill" style="color:var(--oro)">${t("staff_entrena_a",{pos:puestoDePareja(st.equipoDe),equipo:st.equipoDe})}</span>`:""}</div>
-      <div style="font-size:10px;color:var(--gris);margin:3px 0">${"★".repeat(st.niv)}${"☆".repeat(5-st.niv)} · ${st.sal}€/sem${st.rol==="rep"?` · ${t("staff_comision",{c:st.com})}`:""}${st.esp?` · ${t("staff_especialista",{lista:atLista(st.esp).join(", ")})}`:""} · <em>«${t(st.frase)}»</em>${st.equipoDe?(()=>{const cl=clausulaEntrenador(st);const alcanza=miPuesto()-puestoDePareja(st.equipoDe)<=([99,30,20,12,7,4][st.niv]||15);return `<br><span style="color:var(--oro)">${t("staff_clausula",{cl:cl.toLocaleString("es")})}</span>${alcanza?"":` <span style="color:#E05656">${t("staff_fuera_alcance")}</span>`}`;})():""}</div>
-      ${st.equipoDe?(()=>{const cl=clausulaEntrenador(st);const alcanza=miPuesto()-puestoDePareja(st.equipoDe)<=([99,30,20,12,7,4][st.niv]||15);return `<button style="width:100%;font-size:11px" onclick="ficharStaff(${i})"${(!alcanza||e.dinero<cl)?' disabled':''}>${!alcanza?t("staff_no_aceptaria"):e.dinero<cl?t("staff_clausula_sin_caja",{cl:cl.toLocaleString("es")}):t("staff_negociar",{cl:cl.toLocaleString("es")})}</button>`;})():`<button style="width:100%;font-size:11px" onclick="ficharStaff(${i})">${t("staff_contratar",{sal:st.sal})}</button>`}
+      <div style="font-size:11.5px">${ROLES_STAFF[st.rol].ico} <b>${st.n}</b>, ${st.edad} <span class="pill">${t("rol_"+st.rol)}</span>${perfilChip(st)} ${st.seOfrece?`<span class="pill" style="color:var(--lima)">${t("staff_se_ofrece")}</span>`:""}${st.equipoDe?`<span class="pill" style="color:var(--oro)">${t("staff_entrena_a",{pos:puestoDePareja(st.equipoDe),equipo:st.equipoDe})}</span>`:""}</div>
+      <div style="font-size:10px;color:var(--gris);margin:3px 0">${"★".repeat(st.niv)}${"☆".repeat(5-st.niv)} · ${st.sal}€/sem${st.rol==="rep"?` · ${t("staff_comision",{c:st.com})}`:""}${st.esp?` · ${t("staff_especialista",{lista:atLista(st.esp).join(", ")})}`:""}${st.perfil?` · <span style="color:var(--lima)">${t("staff_perfil_"+st.perfil+"_d")}</span>`:""} · <em>«${t(st.frase)}»</em>${st.equipoDe?(()=>{const cl=clausulaEntrenador(st);const alcanza=miPuesto()-puestoDePareja(st.equipoDe)<=([99,30,20,12,7,4][st.niv]||15);return `<br><span style="color:var(--oro)">${t("staff_clausula",{cl:cl.toLocaleString("es")})}</span>${alcanza?"":` <span style="color:#E05656">${t("staff_fuera_alcance")}</span>`}`;})():""}</div>
+      ${st.equipoDe?(()=>{const cl=clausulaEntrenador(st);const alcanza=miPuesto()-puestoDePareja(st.equipoDe)<=([99,30,20,12,7,4][st.niv]||15);return `<button style="width:100%;font-size:11px" ${ac("ficharStaff",i)}${(!alcanza||e.dinero<cl)?' disabled':''}>${!alcanza?t("staff_no_aceptaria"):e.dinero<cl?t("staff_clausula_sin_caja",{cl:cl.toLocaleString("es")}):t("staff_negociar",{cl:cl.toLocaleString("es")})}</button>`;})():`<button style="width:100%;font-size:11px" ${ac("ficharStaff",i)}>${t("staff_contratar",{sal:st.sal})}</button>`}
     </div>`;}).join("");
 }
 function entrenadorActual(){
@@ -161,6 +216,33 @@ function entrenadorActual(){
   return (e&&e.staff&&e.staff.entrenador)||{n:t("staff_sin_ent"),sal:0,esp:[],niv:0,frase:"fr_sin_ent"};
 }
 function staffNiv(rol){ const e=ent(); return (e&&e.staff&&e.staff[rol])?(e.staff[rol].niv||2):0; }
+/* La escuela del técnico contratado, o null (vacante o guardado viejo). Vale
+   en los dos modos: `ent()` devuelve la carrera o el club, y el staff es suyo. */
+function staffPerfil(rol){ const e=ent(); const st=e&&e.staff&&e.staff[rol]; return (st&&st.perfil)||null; }
+/* Los tres números que cambian de escuela, extraídos para poder MEDIRLOS:
+   una regla que solo vive inline en el cierre semanal no se puede probar. */
+function regenCarrera(){
+  const n=staffNiv("fisico");
+  // el preparador «motor» compra semanas: su tema es que siempre haya depósito
+  let r=26+(n?(staffPerfil("fisico")==="motor"?4:2)+n:0);
+  // la gira se cobra aquí: el poso de las semanas seguidas frena la recuperación
+  const c=(G&&G.modo==="carrera")?G.carrera:null;
+  if(c&&typeof giraRegen==="function") r-=giraRegen(c);
+  return Math.max(8,r);
+}
+function confSueloPsico(){
+  const n=staffNiv("psico"); if(!n) return 0;
+  // el psicólogo de «ánimo» sostiene las malas rachas: su suelo es más alto
+  return 35+n*(staffPerfil("psico")==="animo"?3:2);
+}
+function netoPremio(x){
+  const c=(G&&G.modo==="carrera")?G.carrera:null;
+  const r=c&&c.staff&&c.staff.rep;
+  if(!r) return x;
+  // el agente «de premios» negocia su comisión a la baja: cobra la mitad
+  const com=(r.com||15)/(r.perfil==="premios"?2:1);
+  return Math.round(x*(1-com/100));
+}
 const ENTRENADORES=[
   {id:0,n:"Sin entrenador",sal:0,esp:[],desc:"Tu plan y tu instinto. Nadie te corrige."},   // catálogo heredado (no se pinta ya)
   {id:1,n:"Míster del club",sal:60,esp:["fondo","globo","pared"],desc:"Viejo zorro de la defensa: fondo, globo y pared."},
@@ -211,9 +293,9 @@ const MARCAS=[
 const SPOT_TIPOS=["spot_1","spot_2","spot_3","spot_4","spot_5","spot_6"];   // claves i18n; los guardados antiguos llevan el texto literal (t() lo devuelve tal cual)
 /* catálogo de primas por objetivos (se cobran una vez al lograrse, mientras dure el contrato) */
 const PRIMAS_CAT={
-  2:[["titP","Primer título Premier",1200],["racha10","Racha de 10 victorias",800],["top20","Cerrar en el top 20",900]],
-  3:[["titP","Título Premier",3000],["top10","Entrar en el top 10",4000],["racha10","Racha de 10 victorias",2000],["major","Ganar un Major",8000]],
-  4:[["major","Ganar un Major",20000],["top10","Top 10 mundial",10000],["n1","Cerrar como Nº1",50000],["titP","Título Premier",6000]],
+  2:[["titP","Primer título Élite",1200],["racha10","Racha de 10 victorias",800],["top20","Cerrar en el top 20",900]],
+  3:[["titP","Título Élite",3000],["top10","Entrar en el top 10",4000],["racha10","Racha de 10 victorias",2000],["major","Ganar una Corona",8000]],
+  4:[["major","Ganar una Corona",20000],["top10","Top 10 mundial",10000],["n1","Cerrar como Nº1",50000],["titP","Título Élite",6000]],
 };
 const TIER_TXT={1:"MARCA DE BARRIO",2:"MARCA NACIONAL",3:"GIGANTE DEL DEPORTE",4:"MULTINACIONAL"};
 function ofertaPatro(tier){
@@ -225,7 +307,7 @@ function ofertaPatro(tier){
   if(cat.length){
     const n=tier>=3?2:1;
     const pool=[...cat];
-    for(let i=0;i<n&&pool.length;i++){ const pr=pool.splice(Math.floor(Math.random()*pool.length),1)[0]; of.primas.push([pr[0],t("prima_"+pr[0]),pr[2]]); }
+    for(let i=0;i<n&&pool.length;i++){ const pr=pool.splice(Math.floor(rnd()*pool.length),1)[0]; of.primas.push([pr[0],t("prima_"+pr[0]),pr[2]]); }
   }
   return of;
 }
@@ -234,8 +316,9 @@ function mkLibre(nivMin,nivMax,sx){
   const est=pick(Object.keys(ESTILOS));
   const nivel=Math.round(R(nivMin,nivMax));
   sx=sx||"M";
-  const apodo=Math.random()<.28?` «${pick(APODOS)}»`:"";
-  return {n:nombrePorSexo(sx)+apodo+" "+pick(APELL),pais:pickPais(),sexo:sx,origen:"libre",estilo:est,perso:pick(Object.keys(PERSONALIDADES)),attrs:mkAttrsNivel(nivel,est)};
+  const apodo=rnd()<.28?` «${pick(APODOS)}»`:"";
+  const pais=pickPais();
+  return {n:nombrePorSexo(sx,pais)+apodo+" "+apellidoPais(pais),pais,sexo:sx,origen:"libre",estilo:est,perso:pick(Object.keys(PERSONALIDADES)),attrs:mkAttrsNivel(nivel,est)};
 }
 function mkMercadoParejas(){
   const c=G.carrera, pos=miPuesto(), lista=[];
@@ -244,9 +327,9 @@ function mkMercadoParejas(){
   // 2 jugadores de parejas del circuito del MISMO SEXO: solo escuchan si estás mejor o parecido
   const filas=rankingFilas();
   const cand=G.world.parejas.filter(p=>!p.retiraT&&(p.sexo||"M")===miSexo).map(p=>({p,pos:filas.find(f=>f.id===p.id).pos}))
-    .filter(x=>x.pos>pos-4).sort(()=>Math.random()-.5).slice(0,2);
+    .filter(x=>x.pos>pos-4).sort(()=>rnd()-.5).slice(0,2);
   cand.forEach(x=>{
-    const idx=Math.random()<.5?0:1, j=x.p.jug[idx];
+    const idx=rnd()<.5?0:1, j=x.p.jug[idx];
     lista.push({n:j.n,pais:j.pais,origen:"circuito",worldId:x.p.id,jugIdx:idx,estilo:j.estilo,perso:j.perso,attrs:{...j.attrs},parejaNombre:x.p.nombre,parejaPos:x.pos});
   });
   return lista;
@@ -264,17 +347,34 @@ function pintarAvaEditor(){
   const ctrls=document.getElementById("avaCtrls");
   // el catálogo de peinado tiene 3 opciones en femenino y 4 en masculino
   const campos=[["piel",t("ava_piel"),AVA_PIEL.length],["pelo",t("ava_pelo"),AVA_PELO.length],["tipoPelo",t("ava_peinado"),sexoSel==="F"?3:4],["barba",t("ava_barba"),sexoSel==="F"?1:3],["compl",t("ava_compl"),AVA_COMPL.length]];
-  ctrls.innerHTML=campos.map(([c,lbl,mod])=>`<button class="selbtn" style="font-size:10px;padding:5px 4px" onclick="ciclaAva('${c}',1,${mod})">${lbl} ▸</button>`).join("")+`<button class="selbtn" style="font-size:10px;padding:5px 4px" onclick="avaAleatorio()">🎲 ${t("ava_aleatorio")}</button>`;
+  ctrls.innerHTML=campos.map(([c,lbl,mod])=>`<button class="selbtn" style="font-size:10px;padding:5px 4px" ${ac("ciclaAva",c,mod)}>${lbl} ▸</button>`).join("")+`<button class="selbtn" style="font-size:10px;padding:5px 4px" ${ac("avaAleatorio")}>🎲 ${t("ava_aleatorio")}</button>`;
 }
 function avaAleatorio(){
   const nPein=sexoSel==="F"?3:4;
-  AVA_EDIT={piel:Math.floor(Math.random()*AVA_PIEL.length),pelo:Math.floor(Math.random()*AVA_PELO.length),
-    tipoPelo:Math.floor(Math.random()*nPein),barba:sexoSel==="F"?0:Math.floor(Math.random()*3),
-    compl:Math.random()<.45?Math.floor(Math.random()*AVA_COMPL.length):0};
+  AVA_EDIT={piel:Math.floor(rnd()*AVA_PIEL.length),pelo:Math.floor(rnd()*AVA_PELO.length),
+    tipoPelo:Math.floor(rnd()*nPein),barba:sexoSel==="F"?0:Math.floor(rnd()*3),
+    compl:rnd()<.45?Math.floor(rnd()*AVA_COMPL.length):0};
   pintarAvaEditor();
 }
+/* Campo de semilla de la pantalla de creación. Se ofrece una ya generada para
+   que quien no quiera saber nada del asunto no tenga que tocarla; quien teclee
+   la suya jugará exactamente la misma partida que otro con esa misma semilla. */
+function pintarSemillaCrear(nueva){
+  const inp=document.getElementById("inSemilla"); if(!inp) return;
+  if(nueva||!inp.value) inp.value=semillaTxt(semillaNueva());
+  const b=document.getElementById("btnSemillaOtra");
+  if(b) b.onclick=()=>pintarSemillaCrear(true);
+}
+/* Lee lo tecleado y lo deja preparado para la próxima partida. Si el campo está
+   vacío o es ilegible, se sortea una: nunca se queda sin semilla. */
+function tomaSemillaCrear(){
+  const inp=document.getElementById("inSemilla");
+  SEMILLA_ELEGIDA=inp?semillaDe(inp.value):0;
+}
+
 function pintarCrear(){
   pintarAvaEditor();
+  pintarSemillaCrear();
   const cont=document.getElementById("colores");
   cont.innerHTML="";
   COLORES.forEach(c=>{
@@ -322,9 +422,11 @@ function marcaSexo(){
 function empezarCarrera(estiloKey){
   if(lado===null){lado=0;marcaLado();}
   if(persoSel===null) persoSel="frio";
+  tomaSemillaCrear();          // antes de construir G: mkWorld() ya consume azar
   const nombre=document.getElementById("inNombre").value.trim()||"Jugador";
-  G={v:1,modo:"carrera",dif:difMenu(),world:mkWorld(),clubG:null,carrera:{
+  G={v:1,modo:"carrera",_slot:slotDestino(),semilla:iniciaSemilla(),dif:difMenu(),world:mkWorld(),clubG:null,carrera:{
     nombre,estilo:estiloKey,perso:persoSel,lado,color:colorSel,ava:{...AVA_EDIT},_ropa:colorSel,
+    desarrollo:sorteaDesarrollo(),   // precoz, tardío o constante: cada carrera arranca distinta
     attrs:{...ESTILOS[estiloKey].attrs},
     semana:1,edad:16,pts:0,dinero:2500,energia:100,conf:55,
     sexo:sexoSel,planJug:"auto",dia:1,_sesEntreno:0,fans:120,social:[],
@@ -336,10 +438,14 @@ function empezarCarrera(estiloKey){
   }};
   G.carrera.mercadoP=mkMercadoParejas();
   G.carrera.objetivos=mkObjetivosTemporada(G.carrera,miPuesto());
-  avisa(t("av_debut",{nombre,estilo:estiloNombre(estiloKey).toLowerCase(),perso:persoNombre(persoSel).toLowerCase()}));
-  noticia("debut",t("not_debut_t",{nombre}),t("not_debut_s"));
-  entrarPartida();
-  verTuto("carrera");
+  const pos=miPuesto();   // el circuito creció: el puesto de salida ya no es fijo
+  avisa(t("av_debut",{nombre,estilo:estiloNombre(estiloKey).toLowerCase(),perso:persoNombre(persoSel).toLowerCase(),pos}));
+  noticia("debut",t("not_debut_t",{nombre}),t("not_debut_s",{pos}));
+  // el perfil de desarrollo y la era del mundo se dicen desde el día uno:
+  // son información que cambia cómo planificas la carrera
+  avisa(t("des_av_"+G.carrera.desarrollo));
+  if(G.world.era) noticia("circuito",t("era_"+G.world.era+"_t"),t("era_"+G.world.era+"_s"));
+  entrarPartida();   // arranca también la guía jugable; el tutorial de fichas queda como consulta (botón ?)
 }
 
 ["semana","entreno","staff","jugador","ranking","diario"].forEach(t=>{
@@ -362,6 +468,7 @@ function rompeConCompi(c){
   const protRup={jug:[{n:c.nombre,sexo:c.sexo,_ropa:"#C6F53C"},{n:ex,sexo:c.sexo}]};
   c.compi={...compiInicial(c.sexo||"M"),attrs:mkAttrsNivel(CHINO.nivel,CHINO.estilo)};
   c.quimica=CHINO.quim;c.compiMoral=70;c.compiPlan="auto";c._crisisPareja=null;
+  parejaNueva(c);
   noticia("ruptura",t("not_ruptura_t",{ex}),t("not_ruptura_s",{compi:c.sexo==="F"?"China":"Chino"}),protRup);
   avisa(t("rup_av_rompe",{ex,compi:c.sexo==="F"?"China":"Chino"}));
 }
@@ -404,7 +511,7 @@ function pintarUltimoBaile(){
   if(!puedeRetirarse(c)){ box.innerHTML=""; return; }
   box.innerHTML=`<div class="opcion">
     <b>${t("ub_puedes")}</b><div class="d">${t("ub_puedes_d",{edad:c.edad})}</div>
-    <button style="width:100%;margin-top:6px" onclick="anunciarUltimoBaile()">${t("ub_anunciar")}</button></div>`;
+    <button style="width:100%;margin-top:6px" ${ac("anunciarUltimoBaile")}>${t("ub_anunciar")}</button></div>`;
 }
 function anunciarUltimoBaile(){
   const c=G&&G.carrera; if(!c||!puedeRetirarse(c)) return;
@@ -421,6 +528,7 @@ function retirarse(){
   const c=G&&G.carrera; if(!c) return;
   const L=legadoDe(c,G.world);
   c.retirado=true;
+  if(typeof musicaTema==="function") musicaTema("retirada");   // la carrera se despide con su tema
   try{ lsDel(SLOTS.carrera); }catch(e){}
   const fila=(k,v)=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px solid var(--borde)"><span style="color:var(--gris)">${k}</span><b>${v}</b></div>`;
   const ov=document.getElementById("legadoModal")||(()=>{const d=document.createElement("div");d.id="legadoModal";d.style.cssText="position:fixed;inset:0;background:rgba(8,10,14,.96);z-index:90;display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto";document.body.appendChild(d);return d;})();
@@ -439,8 +547,21 @@ function retirarse(){
       ${fila(t("leg_mejor"),"#"+L.mejorPuesto)}
       ${L.rival?fila(t("leg_rival"),`${L.rival.nombre} (${L.rival.v}-${L.rival.d})`):""}
     </div>
+    ${(()=>{
+      /* El epílogo de la némesis: la rivalidad también se retira, y cómo
+         termina depende de cómo fue —el vuelco, la herida que no se cerró o el
+         pulso que nadie ganó—. Sale del estado, como todo el arco. */
+      if(!c.nemesis) return "";
+      const hN=(c.h2h||{})[c.nemesis.id]||{v:0,d:0};
+      const fase=c.nemesis.fase||(((hN.d|0)-(hN.v|0))>=3?"herida":"pulso");
+      return `<div class="opcion" style="border-color:#E05656;margin-bottom:10px">
+        <b style="color:#E05656">${t("leg_nem_titulo")}</b>
+        <div class="d">${t("leg_nem_"+fase,{rival:c.nemesis.nombre,v:hN.v|0,d:hN.d|0,fin:c.nemesis.finales|0})}</div>
+      </div>`;
+    })()}
     <div class="foot" style="text-align:left;line-height:1.6;margin-bottom:10px">${t("leg_cierre_"+L.rango,{nombre:c.nombre,edad:L.edad})}</div>
-    <button class="pri" style="width:100%" onclick="quitarEl(document.getElementById('legadoModal'));G=null;irA('menu');pintarMenu();">${t("leg_volver")}</button>
+    <button class="pri" style="width:100%" ${ac("verTrofeos")}>🏆 ${t("leg_ver_trofeos")}</button>
+    <button style="width:100%;margin-top:7px" ${ac("cerrarLegado")}>${t("leg_volver")}</button>
   </div>`;
 }
 function pintarObjetivos(){
@@ -480,13 +601,21 @@ function mostrarDilema(c){
 function pintarCarrera(){
   const c=G.carrera;
   if(c._crisisPareja&&typeof document!=="undefined"&&document.body&&!document.getElementById("ruptModal")) setTimeout(()=>mostrarRuptura(c),350);
+  // las escenas del arranque: solo en las primeras semanas y una cada vez
+  if(typeof arrEscenaPendiente==="function"&&typeof document!=="undefined"&&document.body
+     &&!document.getElementById("arrModal")&&!document.getElementById("ruptModal")&&!document.getElementById("dilModal"))
+    setTimeout(()=>{ try{ mostrarEscenaArranque(); }catch(e){} },380);
   else if(c.dilemaActivo&&typeof document!=="undefined"&&document.body&&!document.getElementById("dilModal")) setTimeout(()=>mostrarDilema(c),350);
   document.getElementById("topCtx").innerHTML=`<b>${t("ctx_temporada")} ${temporada()}</b> · S${semanaTemp()}/${SEMANAS_TEMP} · ${c.sexo==="F"?t("ctx_circuito_f"):t("ctx_circuito_m")}<br>${c.nombre}, ${c.edad} ${t("ctx_anios")} · 🎟×${c.wildcards||0} · ${t("ctx_forma")} ${rachaHtml(c.racha)}`;
   const nOf=(c.ofertasPatro||[]).length;
   document.getElementById("tabJugador").innerHTML=`${t("nav_jugador")}${nOf?` <span style="color:var(--lima)">●</span>`:""}`;
   document.getElementById("kSem").textContent="S"+semanaTemp();
   document.getElementById("kRank").textContent="#"+miPuesto();
-  document.getElementById("kPts").textContent=c.pts;
+  /* Los puntos, y debajo lo que se defiende esta semana. Es la información que
+     convierte el ranking en algo que se lee: sin ella, ganar 300 puntos parece
+     siempre bueno aunque el año pasado hicieras 1000 en este mismo torneo. */
+  const _def=typeof rkDefiende==="function"?rkDefiende(c,c.semana):0;
+  document.getElementById("kPts").innerHTML=`${c.pts}${_def?` <span style="font-size:calc(9px * var(--esc));color:var(--rojo)" title="${t("sem_defiendes",{n:_def})}">−${_def}</span>`:""}`;
   document.getElementById("kDin").textContent=c.dinero+"€";
   const kE=document.getElementById("kEne");
   kE.textContent=c.energia;
@@ -500,6 +629,7 @@ function pintarCarrera(){
     renderMercadoStaff(document.getElementById("mercadoStaff"));
     const cst=Object.keys(ent().staff||{}).reduce((x,k)=>x+((ent().staff[k]&&ent().staff[k].sal)||0),0);
     document.getElementById("staffCoste").textContent=t("staff_coste",{cst});
+    pintarInversiones();
   }
   if(tabActiva==="jugador"){pintarJugador();pintarUltimoBaile();renderParejas(document.getElementById("parejasHist"));renderHitos(document.getElementById("hitos"));renderRivalidades(document.getElementById("rivalidades"));}
   if(tabActiva==="ranking"){renderRanking(document.getElementById("tablaRk"));renderClubes(document.getElementById("tablaClubes"));renderN1(document.getElementById("n1hist"));renderRecords(document.getElementById("records"));}
@@ -509,27 +639,31 @@ function pintarEventosSemana(td, disponible, motivoNo){
   const slot=slotSemana(semanaTemp());
   const lista=[];
   if(slot.premier!==undefined) lista.push(slot.premier);
-  lista.push(slot.fip);
+  if(slot.fip!==undefined&&slot.fip!==null) lista.push(slot.fip);
   const pos=miPuesto();
   lista.forEach(ci=>{
     const cat=CATS[ci], ent2=entradaEn(ci);
-    const tag=cat.premier?'<span class="pill oro">PREMIER</span>':'<span class="pill lima">FIP</span>';
+    const tag=cat.premier?`<span class="pill oro">${t("sem_tag_elite")}</span>`:`<span class="pill lima">${t("sem_tag_cont")}</span>`;
     const d=document.createElement("div");d.className="opcion";
     if(ent2===-1){
       const wc=ent().wildcards||0;
-      d.innerHTML=`<b>${cat.n}</b> ${tag}<div class="d">${cat.tf?`Reservado al <b>top 8</b> de la temporada — sois #${pos}. Sin previas ni wildcards: hay que ganárselo.`:`Corte de inscripción: top ${cat.cupoP} del ranking — sois #${pos}. ${cat.premier?`Puedes usar una <b>wildcard</b> para entrar por la previa (te quedan ${wc} este año).`:"Suma puntos en el circuito FIP para entrar."}`}</div>`;
+      // Por qué no entras: los Maestros son cerrados por definición; en el resto
+      // hay corte de ranking, y si es de la Élite todavía te queda la wildcard.
+      const porQue = cat.tf ? t("sem_corte_tf",{pos})
+        : t("sem_corte_top",{cupo:cat.cupoP,pos})+" "+(cat.premier?t("sem_corte_wc",{n:wc}):t("sem_corte_cont"));
+      d.innerHTML=`<b>${catNombre(cat)}</b> ${tag}<div class="d">${porQue}</div>`;
       if(cat.premier&&!cat.tf&&wc>0){
         const b=document.createElement("button");
         b.className="pri";b.style.width="100%";
-        b.textContent=t("sem_wc_usar",{cat:cat.n,n:wc});
+        b.textContent=t("sem_wc_usar",{cat:catNombre(cat),n:wc});
         b.disabled=!disponible||wc<=0;
         if(wc<=0) b.textContent=t("sem_wc_sin");
         b.onclick=()=>{
           if(ent().wildcards<=0){ avisa(t("sem_wc_no_quedan")); return; }
           const viaje=costeViaje(ci);
-          if(ent().dinero<viaje){ avisa(t("av_viaje_no",{cat:cat.n,viaje})); return; }
+          if(ent().dinero<viaje){ avisa(t("av_viaje_no",{cat:catNombre(cat),viaje})); return; }
           ent().wildcards--;
-          avisa(t("av_wildcard",{cat:cat.n,n:ent().wildcards}));
+          avisa(t("av_wildcard",{cat:catNombre(cat),n:ent().wildcards}));
           abrirTorneo(ci,true);
         };
         d.appendChild(b);
@@ -537,18 +671,31 @@ function pintarEventosSemana(td, disponible, motivoNo){
       td.appendChild(d);return;
     }
     const modo=cat.tf ? t("sem_modo_tf") : ent2===2 ? t("sem_modo_directo",{pos}) : t("sem_modo_previa");
+    // si el torneo de esta semana puede acabar en algo grande, que se vea aquí
+    const _pz=(typeof pesoPartido==="function")?pesoPartido(ent(),cat,5,null):0;
+    const _tier=(typeof pesoTier==="function")?pesoTier(_pz):"rutina";
     const slotE=slotSemana(semanaTemp());
     const sede=(cat.premier&&slotE.premier===ci)?`${slotE.ciudad}`:t("sem_sede_nacional");
     const viaje=costeViaje(ci);
-    d.innerHTML=`<b>${cat.n}</b> ${tag} <span class="pill">📍 ${sede}</span> <span class="pill">${t("sem_viaje",{n:viaje})}</span> <span class="pill">${t("sem_campeon",{n:cat.premio[0]})}</span><div class="d">${modo}</div>`;
+    // si tienes el centro plantado ahí, el viaje ya sale más barato: que se vea
+    const enCasa=(typeof invRegion==="function")&&slotE.region&&invRegion(ent())===slotE.region;
+    d.innerHTML=`<b>${catNombre(cat)}</b> ${tag}${(_tier==="grande"||_tier==="historica")?` <span class="pill" style="color:${tierColor(_tier)}">${tierNombre(_tier)}</span>`:""} <span class="pill">📍 ${sede}</span>${enCasa?` <span class="pill" style="color:var(--lima)">${t("sem_en_casa")}</span>`:""} <span class="pill">${t("sem_viaje",{n:viaje})}</span> <span class="pill">${t("sem_campeon",{n:cat.premio[0]})}</span><div class="d">${modo}</div>`;
     const b=document.createElement("button");
     b.className=cat.premier?"pri":"azul";b.style.width="100%";
     const sinCaja=ent().dinero<viaje;
-    b.textContent=sinCaja?t("sem_sin_caja",{viaje}):t("sem_inscribirse",{cat:cat.n,viaje});
+    b.textContent=sinCaja?t("sem_sin_caja",{viaje}):t("sem_inscribirse",{cat:catNombre(cat),viaje});
     b.disabled=!disponible||sinCaja;
     b.onclick=()=>abrirTorneo(ci);
     d.appendChild(b);td.appendChild(d);
   });
+  /* Una semana de parón tiene que DECIR que es un parón. Al abrir huecos en el
+     calendario, estas semanas se quedaban con el panel vacío y un «o entrenar»
+     colgando: parecía que algo se había roto, no que el circuito descansaba. */
+  if(!lista.length){
+    const d=document.createElement("div"); d.className="opcion";
+    d.innerHTML=`<b>${t("sem_paron_t")}</b><div class="d">${t("sem_paron_d")}</div>`;
+    td.appendChild(d);
+  }
   if(!disponible){const p=document.createElement("div");p.className="foot";p.textContent=motivoNo;td.appendChild(p);}
   const sep=document.createElement("div");sep.className="foot";sep.textContent=t("sem_o_entrenar");sep.style.margin="8px 0";td.appendChild(sep);
 }
@@ -558,6 +705,36 @@ function pintarSemana(){
   document.getElementById("semTitulo").innerHTML=c.lesion?`${t("sem_baja")} · <em>${c.lesion.n} (${c.lesion.sem} ${t("sem_abrev")})</em>`:`${t("kpi_semana")} ${semanaTemp()} · <em>${diaNombre(dia-1).toUpperCase()}</em>`+(c.merma?` · <span style="color:#E0A030">${t("sem_mermado")} -${c.merma.pct}% (${c.merma.sem} ${t("sem_abrev")})</span>`:"");
   pintarObjetivos();
   const td=document.getElementById("torneosDisp");td.innerHTML="";
+  /* La capa «qué necesita atención ahora» (P7): como mucho cuatro asuntos,
+     solo los que cambian una decisión de esta semana, con su porqué al pulsar. */
+  if(typeof renderAtencion==="function") renderAtencion(td);
+  // y el conflicto de calendario (P3), solo cuando hay voces en los dos lados
+  if(typeof renderVoces==="function") renderVoces(td);
+  /* Lo que está pasando en el circuito, antes que nada: si la pista está lenta
+     o tu pareja no juega, eso decide si te inscribes. */
+  const evs=evActivos(c);
+  if(evs.length){
+    const caja=document.createElement("div");
+    caja.className="evbox";
+    caja.innerHTML=`<div class="evhd">${t("ev_hd")}</div>`+evs.map(a2=>{
+      const quedan=a2.hasta-c.semana+1;
+      return `<div class="evrow"><b>${evNombre(a2.id)}</b>
+        <span class="evdur">${quedan<=1?t("ev_ultima"):t("ev_hasta",{n:quedan})}</span>
+        <div>${evEfecto(a2.id)}</div></div>`;
+    }).join("");
+    td.appendChild(caja);
+  }
+  /* Lo primero de la semana: qué te juegas en el ranking. Defender 1000 puntos
+     cambia por completo la lectura del mismo torneo. */
+  if(typeof rkDefiende==="function"){
+    const def=rkDefiende(c,c.semana);
+    const av=document.createElement("div");
+    av.className="foot"; av.style.textAlign="left"; av.style.marginBottom="6px";
+    av.innerHTML=def>0
+      ? `<span style="color:var(--oro)">${t("sem_defiendes",{n:def})}</span>`
+      : t("sem_defiendes_no");
+    td.appendChild(av);
+  }
   // tira lunes-domingo
   const ds=document.createElement("div");ds.className="diastrip";
   for(let d=1;d<=7;d++){
@@ -606,6 +783,7 @@ function pintarSemana(){
     fila.appendChild(bJ);
   }
   const bE=document.createElement("button");
+  bE.id="btnEntrenarHoy";          // la guía lo señala
   bE.textContent=t("sem_entrenar");
   bE.disabled=!!c.lesion||esDiaPartido||c.energia<10;
   bE.title=c.lesion?t("sem_t_baja"):esDiaPartido?t("sem_t_partido"):t("sem_t_sesion");
@@ -706,6 +884,247 @@ function pintarEntreno(){
   sel.value=c.compiPlan||"auto";
   sel.onchange=()=>{c.compiPlan=sel.value;guardar();};
   cp.appendChild(sel);
+  pintarCtxEntreno();
+  pintarEstadoFisico();
+}
+/* Dónde metes el dinero. Solo tiene sentido cuando sobra, y por eso el panel se
+   explica solo: coste de entrada, mantenimiento y qué cambia cada nivel. */
+function pintarInversiones(){
+  const c=G.carrera, bx=document.getElementById("inversiones");
+  if(!bx||G.modo!=="carrera") return;
+  bx.innerHTML="";invAsegura(c);
+  const sub=document.createElement("div");sub.className="foot";sub.style.textAlign="left";sub.style.marginBottom="8px";
+  sub.textContent=t("inv_sub");
+  bx.appendChild(sub);
+  const gasto=invUpkeepTotal(c), renta=invRenta(c);
+  const eur=n=>Number(n||0).toLocaleString("es");
+  if(gasto||renta){
+    const bal=document.createElement("div");bal.className="chbar";bal.style.marginBottom="9px";
+    bal.innerHTML=`<span>${t("inv_balance",{gasto:eur(gasto),renta:eur(renta)})}</span><b style="color:${renta-gasto>=0?"var(--verde)":"var(--rojo)"}">${renta-gasto>=0?"+":""}${eur(renta-gasto)}€</b>`;
+    bx.appendChild(bal);
+  } else {
+    const v=document.createElement("div");v.className="foot";v.style.textAlign="left";v.style.marginBottom="9px";
+    v.textContent=t("inv_vacio");
+    bx.appendChild(v);
+  }
+  INV_IDS.forEach(id=>{
+    const niv=invNiv(c,id), d=INVERSIONES[id], precio=invPrecio(c,id);
+    const o=document.createElement("div");o.className="opcion";
+    if(niv) o.style.borderColor="var(--lima)";
+    const reg=(id==="centro"&&niv)?` <span class="pill">${t("inv_region_en",{n:t("inv_region_"+invRegion(c))})}</span>`:"";
+    o.innerHTML=`<b>${invNombre(id)}</b>${niv?` <span class="pill" style="color:var(--lima)">${t("inv_niv",{n:niv,max:INV_NIV_MAX})}</span>`:""}${reg}
+      <div class="d">${invDesc(id)}</div>
+      <div class="d" style="color:var(--azul)">${invEfecto(id,niv||1)}</div>
+      ${niv?`<div class="foot" style="text-align:left;margin:0 0 6px">${t("inv_upkeep",{n:eur(invUpkeep(c,id))})}</div>`:""}`;
+    // el centro se planta en una región: hay que elegirla antes de abrirlo
+    if(id==="centro"&&!niv){
+      const hd=document.createElement("div");hd.className="foot";hd.style.textAlign="left";hd.style.margin="4px 0 3px";
+      hd.textContent=t("inv_region_hd");
+      o.appendChild(hd);
+      const fila=document.createElement("div");fila.className="fila";
+      INV_REGIONES.forEach(rg=>{
+        const b=document.createElement("button");
+        b.className="selbtn"+((c._invRegion||INV_REGIONES[0])===rg?" on":"");
+        b.style.fontSize="11px";
+        b.textContent=t("inv_region_"+rg);
+        b.onclick=()=>{c._invRegion=rg;pintarCarrera();};
+        fila.appendChild(b);
+      });
+      o.appendChild(fila);
+    }
+    if(niv<INV_NIV_MAX){
+      const b=document.createElement("button");b.style.width="100%";b.style.marginTop="6px";
+      const puede=c.dinero>=precio;
+      b.textContent=!puede?t("inv_caro")
+        :niv?t("inv_subir",{niv:niv+1,n:eur(precio)}):t("inv_comprar",{n:eur(precio)});
+      b.disabled=!puede;
+      if(puede) b.onclick=()=>abrirInversion(id);
+      o.appendChild(b);
+    } else {
+      const p=document.createElement("div");p.className="foot";p.style.textAlign="left";p.style.color="var(--oro)";
+      p.textContent=t("inv_tope");
+      o.appendChild(p);
+    }
+    if(niv){
+      const bc=document.createElement("button");bc.style.width="100%";bc.style.marginTop="5px";
+      bc.style.background="none";bc.style.color="var(--gris)";
+      const dev=Math.round(d.coste.slice(0,niv).reduce((s,x)=>s+x,0)*.35);
+      bc.textContent=t("inv_cerrar",{n:eur(dev)});
+      bc.onclick=()=>cerrarInversion(id);
+      o.appendChild(bc);
+    }
+    bx.appendChild(o);
+  });
+}
+function abrirInversion(id){
+  const c=G.carrera; if(!c) return;
+  const precio=invPrecio(c,id);
+  if(!invCompra(c,id,c._invRegion)) return;
+  avisa(t("inv_av_abre",{n:invNombre(id),c:precio.toLocaleString("es"),s:invUpkeep(c,id).toLocaleString("es")}));
+  guardar();pintarCarrera();
+}
+function cerrarInversion(id){
+  const c=G.carrera; if(!c) return;
+  const dev=invCierra(c,id);
+  if(!dev) return;
+  avisa(t("inv_av_cierra",{n:invNombre(id),c:dev.toLocaleString("es")}));
+  guardar();pintarCarrera();
+}
+/* Dónde entrenas esta semana. Lo que convierte el entrenamiento en una decisión
+   y no en un botón: cada sitio cuesta algo distinto y renuncia a algo distinto. */
+function pintarCtxEntreno(){
+  const c=G.carrera, bx=document.getElementById("entCtx");
+  if(!bx) return;
+  bx.innerHTML="";
+  frAsegura(c);
+  const hd=document.createElement("div");hd.className="phead";hd.textContent=t("ent_ctx_hd");
+  bx.appendChild(hd);
+  const actual=ctxEntreno(c);
+  Object.keys(CTX_ENTRENO).forEach(id=>{
+    const d=CTX_ENTRENO[id], es=id===actual;
+    const o=document.createElement("div");o.className="opcion";
+    if(es) o.style.borderColor="var(--lima)";
+    o.innerHTML=`<b>${ctxNombre(id)}</b>${es?` <span class="pill" style="color:var(--lima)">${t("pj_actual")}</span>`:""}
+      <div class="d">${ctxDesc(id)}</div>
+      <div class="d" style="color:var(--azul);margin-bottom:${es?"0":"6px"}">${ctxEfecto(id)}</div>`;
+    if(!es){
+      const b=document.createElement("button");b.style.width="100%";
+      b.textContent=t("pj_elegir");
+      b.disabled=!!d.coste&&c.dinero<d.coste;
+      if(!b.disabled) b.onclick=()=>elegirCtxEntreno(id);
+      else b.textContent=t("ent_ctx_caro");
+      o.appendChild(b);
+    }
+    bx.appendChild(o);
+  });
+}
+function elegirCtxEntreno(id){
+  const c=G.carrera; if(!c) return;
+  // no se puede uno ir a la montaña con un torneo a medias
+  if(CTX_ENTRENO[id]&&CTX_ENTRENO[id].sinTorneo&&torneo){ avisa(t("ent_stage_no")); return; }
+  if(!ctxElige(c,id)) return;
+  if(CTX_ENTRENO[id].fisico&&c.planJug&&c.planJug!=="auto"&&ATTR_FISICOS.indexOf(c.planJug)<0) avisa(t("ent_gim_no"));
+  guardar();pintarCarrera();
+}
+/* El parte del cuerpo técnico. Nunca da un número exacto: da horquillas, y la
+   horquilla se estrecha cuanto mejor sea tu staff. Pagar un preparador es pagar
+   por saber en qué estado estás. */
+function pintarEstadoFisico(){
+  const c=G.carrera, bx=document.getElementById("entEstado");
+  if(!bx) return;
+  bx.innerHTML="";
+  frAsegura(c);
+  const prec=precisionStaff(c);
+  /* La barra dibuja la HORQUILLA, no el valor: se pinta de `lo` a `hi`. Sería
+     absurdo contar el dato en palabras y regalarlo en píxeles. */
+  const linea=(lbl,txt,v,col,nota)=>{
+    const b=banda(v,prec,13), lo=clamp(b.lo,0,100), an=Math.max(3,clamp(b.hi,0,100)-lo);
+    const d=document.createElement("div");d.style.marginBottom="9px";
+    d.innerHTML=`<div class="arow"><span class="k" style="text-transform:none">${lbl}</span><span class="v" style="color:${col}">${txt}</span></div>
+      <div class="abar"><i style="margin-left:${lo}%;width:${an}%;background:${col}"></i></div>
+      ${nota?`<div class="foot" style="text-align:left;margin-top:0">${nota}</div>`:""}`;
+    return d;
+  };
+  const est=cargaEstado(c), colC=est==="bien"?"var(--verde)":est==="pasado"?"var(--rojo)":est==="parado"?"var(--gris)":"var(--oro)";
+  bx.appendChild(linea(t("ent_carga"),`${t("car_"+est)} · ${bandaTxt(c.carga,prec,13)}`,c.carga,colC));
+  const rit=ritmoEstado(c), colR=rit==="lanzado"?"var(--verde)":rit==="frio"?"var(--rojo)":"var(--oro)";
+  bx.appendChild(linea(t("ent_ritmo"),`${t("rit_"+rit)} · ${bandaTxt(c.ritmo,prec,13)}`,c.ritmo,colR));
+  // el poso de la gira: lo que la energía no cuenta
+  if(typeof giraLee==="function"){
+    const gEst=giraEstado(c), colG=gEst==="fresco"?"var(--verde)":gEst==="rodado"?"var(--gris)":gEst==="cargado"?"var(--oro)":"var(--rojo)";
+    bx.appendChild(linea(t("ent_gira"),`${t("gira_"+gEst)} · ${bandaTxt(giraLee(c),prec,13)}`,giraLee(c),colG,
+      giraRegen(c)>0?t("ent_gira_nota",{n:giraRegen(c)}):""));
+  }
+  // adaptación al golpe que estás trabajando
+  const k=golpeReal(c,c.planJug,entrenadorActual(),ctxDatos(c));
+  const ad=adaptLee(c,k), colA=ad>=70?"var(--rojo)":ad>=40?"var(--oro)":"var(--verde)";
+  bx.appendChild(linea(`${t("ent_adapt")} · ${atNombre(k)}`,bandaTxt(ad,prec,13),ad,colA,
+    ad>=65?t("ent_adapt_alta"):""));
+  // pronóstico de la semana, en horquilla
+  const pr=document.createElement("div");pr.className="foot";pr.style.textAlign="left";pr.style.marginTop="8px";
+  if(prec<=0) pr.textContent=t("ent_pron_ciego");
+  else { const p=pronosticoEntreno(c,k); pr.textContent=t("ent_pron",{lo:p.lo,hi:p.hi,g:atNombre(k)}); }
+  bx.appendChild(pr);
+  // forma por golpe: dónde estás fino y dónde oxidado
+  const mej=formaMejor(c), peo=formaPeor(c);
+  const fr=document.createElement("div");fr.className="foot";fr.style.textAlign="left";fr.style.marginTop="4px";
+  fr.textContent=(formaLee(c,mej)<=0&&formaLee(c,peo)>=0)
+    ? t("frm_plano")
+    : `${formaLee(c,mej)>0?t("frm_mejor",{g:atNombre(mej)}):""} ${formaLee(c,peo)<0?t("frm_peor",{g:atNombre(peo)}):""}`.trim();
+  bx.appendChild(fr);
+}
+
+/* ================================================================
+   LAS ESCENAS DEL ARRANQUE
+
+   Se preguntan una vez por semana y cada una se marca vista. Van en modal
+   propio porque son lo único que pasa esa semana: si compiten con la pantalla
+   de la semana, no las lee nadie.
+================================================================ */
+function arrModal(){
+  return document.getElementById("arrModal")||(()=>{
+    const d=document.createElement("div");d.id="arrModal";
+    d.style.cssText="position:fixed;inset:0;background:rgba(8,11,17,.95);z-index:84;display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto";
+    document.body.appendChild(d);return d;})();
+}
+function mostrarEscenaArranque(){
+  const c=G.carrera; if(!c) return false;
+  const k=arrEscenaPendiente(c);
+  if(!k) return false;
+  if(k==="pareja") return escenaPareja(c);
+  if(k==="rival") return escenaRival(c);
+  return escenaBalance(c);
+}
+/* 1 · quién es tu primera pareja y qué le dices */
+function escenaPareja(c){
+  const ov=arrModal();
+  ov.innerHTML=`<div class="card" style="max-width:460px;width:100%;margin:auto">
+    <h3 style="margin-top:0">${t("arr_par_hd")} · <em>${c.compi.n}</em></h3>
+    <div style="display:flex;gap:11px;align-items:center;margin-bottom:9px">
+      <div>${avatarSVG(c.compi,46)}</div>
+      <div style="font-size:calc(12.5px * var(--esc));line-height:1.5">${t("arr_par_txt",{n:c.compi.n})}</div>
+    </div>
+    <div id="arrOps"></div>
+  </div>`;
+  const ops=document.getElementById("arrOps");
+  ARR_PACTOS.forEach(p=>{
+    const d=document.createElement("div");d.className="opcion";
+    d.innerHTML=`<b>${t("arr_pac_"+p.id)}</b><div class="d" style="margin-bottom:6px">${t("arr_pac_"+p.id+"_d")}</div>`;
+    const b=document.createElement("button");b.className="pri";b.style.width="100%";
+    b.textContent=t("arr_pac_elegir");
+    b.onclick=()=>{ arrPacto(c,p.id); arrMarca(c,"pareja"); quitarEl(ov); guardar(); pintarCarrera(); };
+    d.appendChild(b);ops.appendChild(d);
+  });
+  return true;
+}
+/* 2 · el primer rival, presentado con nombre */
+function escenaRival(c){
+  const r=arrEligeRival(c)||(arrRivalDebut(c)&&G.world.parejas.find(p=>String(p.id)===String(c.rivalDebut.id)));
+  if(!r){ arrMarca(c,"rival"); return false; }
+  const rd=arrRivalDebut(c);
+  const ov=arrModal();
+  ov.innerHTML=`<div class="card" style="max-width:460px;width:100%;margin:auto">
+    <h3 style="margin-top:0">${t("arr_riv_hd")}</h3>
+    <div style="display:flex;gap:4px;margin-bottom:8px">${(r.jug||[]).map(j=>avatarSVG(j,42)).join("")}</div>
+    <div style="font-size:calc(13px * var(--esc));font-weight:700;margin-bottom:4px">${r.nombre} <span class="pill">${t("clb_nivel_n",{n:nivelPareja(r)})}</span></div>
+    <div style="font-size:calc(12.5px * var(--esc));line-height:1.5;margin-bottom:11px">${t("arr_riv_txt",{n:r.nombre})}</div>
+    <button class="pri" id="arrOk" style="width:100%">${t("arr_riv_ok")}</button>
+  </div>`;
+  document.getElementById("arrOk").onclick=()=>{ arrMarca(c,"rival"); quitarEl(ov); guardar(); pintarCarrera(); };
+  return true;
+}
+/* 3 · el balance de las diez semanas */
+function escenaBalance(c){
+  const L=arrBalance(c);
+  const ov=arrModal();
+  ov.innerHTML=`<div class="card" style="max-width:460px;width:100%;margin:auto">
+    <h3 style="margin-top:0">${t("arr_bal_hd")}</h3>
+    <div class="foot" style="text-align:left;margin-bottom:9px">${t("arr_bal_sub")}</div>
+    ${L.map(x=>`<div class="brief">${x.txt}</div>`).join("")}
+    <button class="pri" id="arrOk" style="width:100%;margin-top:10px">${t("arr_bal_ok")}</button>
+  </div>`;
+  document.getElementById("arrOk").onclick=()=>{ arrMarca(c,"balance"); quitarEl(ov); guardar(); pintarCarrera(); };
+  return true;
 }
 function pintarJugador(){
   const c=G.carrera;
@@ -714,7 +1133,10 @@ function pintarJugador(){
   hav.innerHTML=avatarSVG({n:c.nombre,sexo:c.sexo,ava:c.ava,_ropa:c._ropa||c.color},52);
   document.getElementById("hNom").textContent=c.nombre;
   const _hsub=document.getElementById("hSub");
-  _hsub.innerHTML=`${c.edad} años · ${ladoTxt(c.lado)} · ${estiloNombre(c.estilo)} · ${persoNombre(c.perso)}`+(()=>{const r=chipRasgos(c);return r?`<div style="margin-top:4px">${r}</div>`:"";})();
+  // el perfil de desarrollo se enseña siempre: planificar la carrera es saber
+  // cuándo rinde tu entreno y cuándo llegará el declive (guardado viejo: constante)
+  const _des=c.desarrollo?` · <span title="${t("des_"+c.desarrollo+"_d")}" style="color:var(--lima)">${t("des_"+c.desarrollo)}</span>`:"";
+  _hsub.innerHTML=`${c.edad} años · ${ladoTxt(c.lado)} · ${estiloNombre(c.estilo)} · ${persoNombre(c.perso)}${_des}`+(()=>{const r=chipRasgos(c);return r?`<div style="margin-top:4px">${r}</div>`:"";})();
   document.getElementById("hMedia").textContent=mediaAttrs(c.attrs);
   document.getElementById("hMeta").innerHTML=`
     <div class="chip">${t("kpi_confianza2")} <b style="color:${colAttr(c.conf)}">${c.conf}</b></div>
@@ -734,6 +1156,7 @@ function pintarJugador(){
     <div class="chip">${t("comp_moral")} <b style="color:${colAttr(moral)}">${moral}</b></div>
     <div class="chip">${t("comp_afinidad")} <b style="color:${colAttr(afin)}">${afin}</b></div>
     ${(()=>{const r=chipRasgos(c.compi);return r?`<div style="width:100%;margin-top:3px">${r}</div>`:"";})()}`;
+  pintarPareja();
   const mk=document.getElementById("mercado");mk.innerHTML="";
   const morAviso=document.createElement("div");
   morAviso.className="foot";morAviso.style.textAlign="left";morAviso.style.marginBottom="7px";
@@ -786,6 +1209,108 @@ function pintarJugador(){
     b.onclick=()=>{c.sponsor={...of};c.ofertasPatro=[];noticia("contrato",t("patro_not_t",{marca:of.marca,quien:nombreEntidad().replace("★ ","")}),t("patro_not_s",{tier:tierTxt(of.tier),sem:of.sem,obj:of.objetivo}));avisa(t("patro_av_firma",{marca:of.marca,tier:tierTxt(of.tier),sem:of.sem,obj:of.objetivo}));fansAdd(of.tier>=3?300:60,t("fan_patro"));guardar();pintarCarrera();};
     d.appendChild(b);st.appendChild(d);
   });
+}
+/* ---------------- la pareja: plan, ejes y conversaciones ----------------
+   Las tres cosas viven en la misma tarjeta que la pareja porque son la misma
+   conversación: cómo jugáis, cómo estáis y qué piensas hacer al respecto. */
+function pintarPareja(){
+  const c=G.carrera;
+  const bxP=document.getElementById("parejaPlan"),
+        bxE=document.getElementById("parejaEjes"),
+        bxC=document.getElementById("parejaCharlas");
+  if(!bxP||!bxE||!bxC) return;
+  bxP.innerHTML="";bxE.innerHTML="";bxC.innerHTML="";
+  if(!c.compi){
+    bxP.innerHTML=`<div class="foot" style="text-align:left">${t("pj_sin_pareja")}</div>`;
+    return;
+  }
+  planAsegura(c);relAsegura(c);
+  /* --- plan de juego --- */
+  const hdP=document.createElement("div");hdP.className="phead";hdP.textContent=t("pj_plan_hd");
+  bxP.appendChild(hdP);
+  const actual=planPareja(c), dom=planDominio(c);
+  Object.keys(PLANES_PAREJA).forEach(id=>{
+    const es=id===actual;
+    const d=document.createElement("div");d.className="opcion";
+    if(es) d.style.borderColor="var(--lima)";
+    d.innerHTML=`<b>${planNombre(id)}</b>${es?` <span class="pill" style="color:var(--lima)">${t("pj_actual")}</span>`:""}
+      <div class="d">${planDesc(id)}</div>
+      <div class="d" style="color:var(--azul);margin-bottom:0">${planComo(id)}</div>`;
+    if(es){
+      if(id!=="libre"){
+        const col=dom>=70?"var(--verde)":dom>=35?"var(--oro)":"var(--rojo)";
+        const b=document.createElement("div");b.className="abar";b.style.marginTop="7px";
+        b.innerHTML=`<i style="width:${Math.max(2,dom)}%;background:${col}"></i>`;
+        d.appendChild(b);
+        const tx=document.createElement("div");tx.className="foot";tx.style.textAlign="left";tx.style.marginTop="2px";
+        tx.textContent=dom>0?t("pj_dominio",{n:dom}):t("pj_dominio_0");
+        d.appendChild(tx);
+      }
+    } else {
+      const b=document.createElement("button");b.style.width="100%";b.style.marginTop="4px";
+      b.textContent=t("pj_elegir");
+      b.onclick=()=>elegirPlanPareja(id);
+      d.appendChild(b);
+      if(dom>=25&&id!=="libre"){
+        const av=document.createElement("div");av.className="foot";av.style.textAlign="left";av.style.color="var(--oro)";
+        av.textContent=t("pj_cambiar");
+        d.appendChild(av);
+      }
+    }
+    bxP.appendChild(d);
+  });
+  /* --- los seis ejes --- */
+  const hdE=document.createElement("div");hdE.className="phead";hdE.textContent=t("pj_ejes_hd");
+  bxE.appendChild(hdE);
+  const grid=document.createElement("div");grid.className="attrs";
+  EJES.forEach(k=>{
+    const v=relLee(c,k), col=colAttr(v);
+    const cel=document.createElement("div");cel.className="acell";
+    // sin `capitalize`: los ejes tienen nombre de dos palabras y quedaría
+    // «Reparto De Protagonismo»
+    cel.innerHTML=`<div class="arow"><span class="k" style="text-transform:none">${relNombre(k)}</span><span class="v" style="color:${col}">${t("eje_"+relEstado(v))}</span></div>
+      <div class="abar"><i style="width:${Math.max(2,v)}%;background:${col}"></i></div>
+      <div class="foot" style="text-align:left;margin-top:0">${relDesc(k)}</div>`;
+    grid.appendChild(cel);
+  });
+  bxE.appendChild(grid);
+  const peor=document.createElement("div");peor.className="foot";peor.style.textAlign="left";peor.style.marginTop="7px";
+  peor.textContent=t("pj_peor",{n:relNombre(relPeor(c))});
+  bxE.appendChild(peor);
+  /* --- conversaciones --- */
+  const hdC=document.createElement("div");hdC.className="phead";hdC.textContent=t("pj_charlas_hd",{n:c.compi.n});
+  bxC.appendChild(hdC);
+  // primero las que se pueden tener hoy: la lista es larga y lo que importa es
+  // qué puedes hacer esta semana, no el catálogo completo
+  CHARLAS.slice().sort((a,b)=>(charlaDisponible(c,b.id)?1:0)-(charlaDisponible(c,a.id)?1:0)).forEach(ch=>{
+    const d=document.createElement("div");d.className="opcion";
+    const precio=[];
+    if(ch.energia) precio.push(`<span class="pill">${t("pj_coste_en",{n:ch.energia})}</span>`);
+    if(ch.dinero) precio.push(`<span class="pill" style="color:var(--lima)">${t("pj_coste_di",{n:ch.dinero})}</span>`);
+    d.innerHTML=`<b>${charlaNombre(ch.id)}</b> ${precio.join(" ")}
+      <div class="d">${charlaDesc(ch.id)}</div>
+      <div class="d" style="color:var(--gris2);margin-bottom:6px">${charlaEfecto(ch.id)}</div>`;
+    const esp=charlaEspera(c,ch.id), puede=charlaDisponible(c,ch.id);
+    const b=document.createElement("button");b.style.width="100%";
+    b.textContent=esp>0?t("pj_espera",{n:esp}):puede?t("pj_hablar"):t("pj_charla_no");
+    b.disabled=!puede;
+    if(puede) b.onclick=()=>hablarConCompi(ch.id);
+    d.appendChild(b);
+    bxC.appendChild(d);
+  });
+}
+function elegirPlanPareja(id){
+  const c=G.carrera; if(!c||!c.compi) return;
+  if(!planElige(c,id)) return;
+  avisa(t("pj_plan_ok",{n:planNombre(id)}));
+  guardar();pintarCarrera();
+}
+function hablarConCompi(id){
+  const c=G.carrera; if(!c||!c.compi) return;
+  const r=charlaHabla(c,id);
+  if(!r) return;
+  avisa(r.ok?t("pj_ok",{n:c.compi.n}):t("pj_mal",{n:c.compi.n}));
+  guardar();pintarCarrera();
 }
 // Mesa de negociación: ves lo que exige el candidato, ajustas tu oferta (ceder
 // el lado), compruebas la afinidad prevista y firmas si acepta.
@@ -847,6 +1372,7 @@ function ficharPareja(ci,acuerdo){
     lado:(ac.suLado===0||ac.suLado===1)?ac.suLado:undefined, _acuerdo:{objetivo:ac.objetivoRanking||null,reparto:ac.reparto||50}};
   if(ac.tuLado===0||ac.tuLado===1) c.lado=ac.tuLado;   // si cediste el lado, te recolocas
   c.quimica=35; c.compiMoral=70; c.compiPlan="auto";
+  parejaNueva(c);
   c.mercadoP.splice(ci,1);
   noticia("fichaje",t("not_fichaje_t",{n:cand.n}),cand.origen==="circuito"?t("not_fichaje_s_circuito",{pareja:cand.parejaNombre}):t("not_fichaje_s_libre"));
   avisa(t("mkt_av_nueva",{n:cand.n}));
@@ -900,8 +1426,8 @@ function renderClubes(el){
   G.world.parejas.forEach(p=>{ if(p.club!==undefined&&(p.sexo||"M")===sx){ acc[p.club].pts+=p.pts; acc[p.club].parejas++; } });
   if(G.modo==="club") acc.push({n:"★ "+G.clubG.nombre,color:G.clubG.color,pts:G.clubG.pts,yo:true,tit:(G.clubG.palmares||[]).length,parejas:(G.clubG.plantilla||[]).length});
   acc.sort((a,b)=>b.pts-a.pts);
-  let html=`<tr class="hd"><td>#</td><td>Club</td><td class="pts">🏆</td><td class="pts">Pts</td></tr>`;
-  html+=acc.map((c,i)=>`<tr class="${c.yo?"yo":i<3?"top":""}" ${c.idx!==undefined?`style="cursor:pointer" onclick="verClub(${c.idx})"`:""}><td class="pos">${i+1}</td><td><span style="color:${c.color}">●</span> ${c.n}${c.idx!==undefined?' <span style="color:var(--gris2);font-size:9px">▸</span>':""}</td><td class="pts">${c.tit||0}</td><td class="pts">${c.pts}</td></tr>`).join("");
+  let html=`<tr class="hd"><td>#</td><td>${t("sl_col_club")}</td><td class="pts">🏆</td><td class="pts">Pts</td></tr>`;
+  html+=acc.map((c,i)=>`<tr class="${c.yo?"yo":i<3?"top":""}" ${c.idx!==undefined?`style="cursor:pointer" ${ac("verClub",c.idx)}`:""}><td class="pos">${i+1}</td><td><span style="color:${c.color}">●</span> ${c.n}${c.idx!==undefined?' <span style="color:var(--gris2);font-size:9px">▸</span>':""}</td><td class="pts">${c.tit||0}</td><td class="pts">${c.pts}</td></tr>`).join("");
   el.innerHTML=html;
 }
 function verClub(idx){
@@ -914,17 +1440,21 @@ function verClub(idx){
   const ov=document.getElementById("clubModal")||(()=>{const d=document.createElement("div");d.id="clubModal";d.style.cssText="position:fixed;inset:0;background:rgba(10,13,19,.9);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px";document.body.appendChild(d);return d;})();
   ov.innerHTML=`<div class="card" style="max-width:440px;width:100%;max-height:86vh;overflow:auto">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><div style="width:14px;height:14px;border-radius:3px;background:${c.color}"></div><h3 style="margin:0">${c.n}</h3></div>
-    <div class="foot" style="text-align:left;margin-bottom:8px">📍 ${c.sede} · <em>«${c.lema}»</em><br>${FILOSOFIAS[c.fil]||""}</div>
+    <div class="foot" style="text-align:left;margin-bottom:8px">📍 ${c.sede} · <em>«${c.lema}»</em><br>${c.fil?t(FILOSOFIAS[c.fil]||c.fil):""}</div>
     <div style="font-size:11px;color:var(--gris);text-transform:uppercase;letter-spacing:1px;margin:8px 0 3px">Plantel (${pares.length})</div>
     <table class="rk">${pares.map(p=>`<tr><td style="font-size:11px"><span style="display:inline-block;vertical-align:middle;margin-right:3px">${avatarSVG(p.jug[0],18)}${avatarSVG(p.jug[1],18)}</span>${p.nombre}</td><td class="pts">#${posDe(p.nombre)}</td><td class="pts">${nivelPareja(p)}</td></tr>`).join("")||'<tr><td class="foot">Sin parejas esta temporada</td></tr>'}</table>
     <div style="font-size:11px;color:var(--gris);text-transform:uppercase;letter-spacing:1px;margin:10px 0 3px">Palmarés reciente (${tit.length})</div>
-    ${tit.length?`<div class="foot" style="text-align:left">${tit.slice(0,8).map(t=>`🏆 ${t}`).join("<br>")}</div>`:'<div class="foot" style="text-align:left">Aún sin títulos. La historia se escribe.</div>'}
-    <button class="pri" style="width:100%;margin-top:10px" onclick="quitarEl(document.getElementById('clubModal'))">${t("btn_cerrar")}</button>
+    ${tit.length?`<div class="foot" style="text-align:left">${tit.slice(0,8).map(t=>`🏆 ${t}`).join("<br>")}</div>`:'<div class="foot" style="text-align:left">${t("clb_sin_titulos")}</div>'}
+    <button class="pri" style="width:100%;margin-top:10px" ${ac("cerrarModal","clubModal")}>${t("btn_cerrar")}</button>
   </div>`;
   ov.onclick=(e)=>{ if(e.target===ov) quitarEl(ov); };
 }
 /* ---------- seguidores y red social ---------- */
-const SOCIAL_USERS=["PadelManiaco_88","LaBandejaDeOro","GrisPistaCentral","TiaDelGlobo","ViboraFan","ElMuroSur","PuntoDeOro_","CholoPadelero","MatchballEterno","RinconDelReves","SmashRonco","La4Paredes","CristaleraLoca","PibeDeLaPala"];
+/* Nombres del muro. Son apodos, no texto traducible: un usuario se llama igual
+   en las cinco versiones. Eran catorce para dieciocho posts en pantalla, así
+   que el mismo tipo comentaba tres veces seguidas. */
+const SOCIAL_USERS=["PadelManiaco_88","LaBandejaDeOro","GrisPistaCentral","TiaDelGlobo","ViboraFan","ElMuroSur","PuntoDeOro_","CholoPadelero","MatchballEterno","RinconDelReves","SmashRonco","La4Paredes","CristaleraLoca","PibeDeLaPala",
+  "DobleParedYa","ElTioDelBanquillo","BolaDeOro_77","NoSubasALaRed","MiPalaEsVieja","Contragolpe_","LaGradaNorte","Set_Y_Medio","ChiquitaMortal","AbueloDePista","PadelDeBarrio","VamosQueSePuede","SaqueDeCristal","TresCuartosDePista","LaDejadaJusta","FondoDePista_x"];
 function clasificaRiv(h2){
   if(!h2) return null;
   const tot=h2.v+h2.d; if(tot<3) return null;
@@ -954,10 +1484,14 @@ function renderRivalidades(el){
   let cab="";
   if(e.nemesis){
     const h2=(e.h2h||{})[e.nemesis.id]||{v:0,d:0};
+    /* La fase del arco se pinta con la ficha: la rivalidad no es un marcador,
+       es una historia con capítulos, y el capítulo actual se lee del estado. */
+    const nemF=e.nemesis.fase||(((h2.d|0)-(h2.v|0))>=3?"herida":"pulso");
+    const nemFin=e.nemesis.finales|0;
     cab=`<div class="opcion" style="border-color:#E05656;margin-bottom:7px">
       <b style="color:#E05656">${t("nem_titulo")}</b>
-      <div style="font-size:13px;font-weight:700;margin:2px 0">${e.nemesis.nombre}</div>
-      <div class="d">${t("nem_detalle",{n:e.nemesis.elim|0,desde:e.nemesis.desde,v:h2.v|0,d:h2.d|0})}</div>
+      <div style="font-size:13px;font-weight:700;margin:2px 0">${e.nemesis.nombre} <span class="pill" style="color:${nemF==="vuelco"?"var(--lima)":nemF==="herida"?"#E05656":"var(--gris)"}">${t("nem_fase_"+nemF)}</span></div>
+      <div class="d">${t("nem_detalle",{n:e.nemesis.elim|0,desde:e.nemesis.desde,v:h2.v|0,d:h2.d|0})}${nemFin?` · ${t("nem_finales",{n:nemFin})}`:""}</div>
     </div>`;
   }
   const filas=Object.entries(e.h2h||{})
@@ -976,30 +1510,59 @@ function renderRivalidades(el){
 function fmtFans(n){return n>=1000?(n/1000).toFixed(1).replace(".0","")+"k":""+n;}
 function fansAdd(n,motivo){
   const e=ent(); if(!e) return;
+  // la agencia de imagen multiplica lo que suma, no lo que ya tienes
+  if(n>0&&G.modo==="carrera"&&typeof invFansX==="function") n=Math.round(n*invFansX(e));
   e.fans=Math.max(0,(e.fans||0)+n);
   if(n>=100&&motivo) avisa(t("av_fans",{n,motivo,total:fmtFans(e.fans)}));
+}
+/* Publicaciones de la afición, por tipo de suceso. Guarda CLAVES i18n, como el
+   resto de catálogos del juego (ver CLAUDE.md). */
+/* El muro guarda dieciocho posts a la vista. Con dos o tres frases por
+   categoría, una racha de victorias enseñaba tres veces la misma; ahora hay
+   entre seis y nueve de cada, que es lo que hace falta para que el muro
+   parezca gente y no una plantilla. */
+const POSTS_FAN={
+  victoria:["soc_vic_1","soc_vic_2","soc_vic_3","soc_vic_4","soc_vic_5","soc_vic_6","soc_vic_7","soc_vic_8","soc_vic_9"],
+  derrota:["soc_der_1","soc_der_2","soc_der_3","soc_der_4","soc_der_5","soc_der_6","soc_der_7","soc_der_8","soc_der_9"],
+  titulo:["soc_tit_1","soc_tit_2","soc_tit_3","soc_tit_4","soc_tit_5","soc_tit_6","soc_tit_7","soc_tit_8"],
+  fichaje:["soc_fic_1","soc_fic_2","soc_fic_3","soc_fic_4","soc_fic_5","soc_fic_6","soc_fic_7","soc_fic_8"],
+  picante:["soc_pic_1","soc_pic_2","soc_pic_3","soc_pic_4","soc_pic_5","soc_pic_6","soc_pic_7","soc_pic_8"],
+  lesion:["soc_les_1","soc_les_2","soc_les_3","soc_les_4","soc_les_5","soc_les_6"],
+  forma:["soc_for_1","soc_for_2","soc_for_3","soc_for_4","soc_for_5","soc_for_6"],
+  junta:["soc_jun_1","soc_jun_2","soc_jun_3","soc_jun_4","soc_jun_5","soc_jun_6"],
+  gala:["soc_gal_1","soc_gal_2","soc_gal_3","soc_gal_4","soc_gal_5","soc_gal_6"],
+  rivalidad:["soc_riv_1","soc_riv_2","soc_riv_3","soc_riv_4","soc_riv_5","soc_riv_6","soc_riv_7","soc_riv_8"],
+  maldicion:["soc_mal_1","soc_mal_2","soc_mal_3","soc_mal_4","soc_mal_5","soc_mal_6","soc_mal_7","soc_mal_8"],
+  campanada:["soc_cam_1","soc_cam_2","soc_cam_3","soc_cam_4","soc_cam_5","soc_cam_6","soc_cam_7","soc_cam_8"],
+  derbi:["soc_der_derbi_1","soc_der_derbi_2","soc_der_derbi_3","soc_der_derbi_4","soc_der_derbi_5","soc_der_derbi_6"],
+  rumor:["soc_rum_1","soc_rum_2","soc_rum_3","soc_rum_4","soc_rum_5","soc_rum_6"],
+  compi:["soc_cmp_1","soc_cmp_2","soc_cmp_3","soc_cmp_4","soc_cmp_5","soc_cmp_6"],
+  torneo:["soc_trn_1","soc_trn_2","soc_trn_3","soc_trn_4","soc_trn_5","soc_trn_6"],
+};
+/* Quién es "tu pareja" para el muro: en carrera, tu compañero; en club, el
+   primero de la pareja A. Si no hay ninguno, un genérico: el muro no puede
+   escribir «undefined juega mejor que nunca». */
+function nombreCompiMuro(){
+  if(G.modo==="carrera") return (G.carrera&&G.carrera.compi&&G.carrera.compi.n)||t("dil_compi_gen");
+  const al=typeof alineacion==="function"&&alineacion();
+  return (al&&al[0]&&al[0].n)||t("dil_compi_gen");
 }
 function post(tipo,ctx){
   const e=ent(); if(!e) return;
   ctx=ctx||{};
   const yo=G.modo==="carrera"?G.carrera.nombre:G.clubG.nombre;
-  const T={
-    victoria:[`Vaya nivel hoy de ${yo} 🔥 ese ${ctx.rival||"rival"} no sabía dónde meterse`,`Menudo partido acabo de ver. ${yo} está en modo serio 👏`,`Lo de hoy en ${ctx.torneo||"el torneo"} hay que enmarcarlo. VAMOS ${yo.toUpperCase()}`],
-    derrota:[`Duro palo hoy... pero se sale. Confianza ciega en ${yo} 💪`,`Alguien me explica qué ha pasado en ${ctx.torneo||"el torneo"} porque yo no doy crédito`,`Día malo lo tiene cualquiera. El lunes a seguir, ${yo} ❤`],
-    titulo:[`CAMPEONES 🏆🏆🏆 ${yo} ES OTRA COSA`,`Se me ha caído una lagrimilla con este título, no os voy a engañar 🥹`,`${(ctx.torneo||"título").toUpperCase()} PARA CASA. QUÉ MOMENTO`],
-    fichaje:[`Ojo al movimiento 👀 me gusta MUCHO para ${yo}`,`Bombazo del mercado!! esto cambia la temporada`,`No sé si es el fichaje que necesitábamos pero ilusión hay 🤞`],
-    picante:[`JAJAJA las declaraciones de hoy 🌶 así se habla`,`Se va a liar con lo que ha dicho en prensa... y me encanta`,`Menos titulares y más bandeja, opino 🤷`],
-    lesion:[`No no no la lesión no 😭 recupérate pronto`,`Qué mala suerte de verdad... a cuidarse y volver más fuerte`],
-    forma:[`${ctx.racha||3} victorias seguidas... esto empieza a dar miedito 👀`,`La grada nota algo especial esta temporada. Ojalá no equivocarme`],
-    junta:[`La directiva apretando... confianza en el proyecto o no? Yo ya no sé`,`Si la junta echa al míster me doy de baja de socio, aviso`],
-    gala:[`PAREJA DEL AÑO. Lo demás son opiniones 🏆`,`Qué orgullo de gala, en serio. Historia.`],
-    rivalidad:[`Lo de hoy contra ${ctx.rival||"esos dos"} ya es personal y me ENCANTA 🔥`,`Cada cruce con ${ctx.rival||"ellos"} es una final. Qué rivalidad nos están regalando`,`Necesito ya el próximo capítulo contra ${ctx.rival||"ellos"} 🍿`],
-    maldicion:[`POR FIN cae ${ctx.rival||"la bestia negra"} 😭😭 qué peso fuera`,`Se rompió la maldición!! Sabía que este día llegaba`,`A ${ctx.rival||"esos"} ya no se les teme. Punto de inflexión TOTAL`],
-    campanada:[`NADIE daba un duro y mirad 🏆 CAMPANADA HISTÓRICA`,`Esto es una sorpresa MAYÚSCULA y lo sabéis todos`,`Contra pronóstico y contra el mundo. Qué barbaridad 👏👏`],
-  }[tipo];
+  const T=POSTS_FAN[tipo];
   if(!T) return;
+  // Se guarda la CLAVE y sus parámetros, no el texto ya resuelto: así el muro se
+  // relee traducido si el jugador cambia de idioma a mitad de partida.
+  const params={yo,YO:yo.toUpperCase(),
+    compi:ctx.compi||nombreCompiMuro(),
+    rival:ctx.rival||t("soc_rival_gen"),
+    torneo:ctx.torneo||t("soc_torneo_gen"),
+    TORNEO:(ctx.torneo||t("soc_titulo_gen")).toUpperCase(),
+    racha:ctx.racha||3};
   e.social=(e.social||[]);
-  e.social.unshift({user:pick(SOCIAL_USERS),txt:pick(T),likes:Math.round(R(2,12)+Math.sqrt(e.fans||100)*R(.5,2)),t:temporada(),sem:semanaTemp()});
+  e.social.unshift({user:pick(SOCIAL_USERS),k:pick(T),p:params,likes:Math.round(R(2,12)+Math.sqrt(e.fans||100)*R(.5,2)),t:temporada(),sem:semanaTemp()});
   e.social=e.social.slice(0,18);
 }
 function renderSocial(el){
@@ -1011,7 +1574,7 @@ function renderSocial(el){
       <div class="sava" style="background:${["#4FA3D8","#E06AA0","#3FBF8F","#E0A030","#9B59D0","#5CC8E6"][p2.user.length%6]}">${p2.user[0]}</div>
       <div class="scuerpo">
         <div class="suser">@${p2.user} <span class="stime">T${p2.t}·S${p2.sem}</span></div>
-        <div class="stxt">${p2.txt}</div>
+        <div class="stxt">${p2.txt||t(p2.k,p2.p||{})}</div>
         <div class="slikes">♥ ${p2.likes}</div>
       </div>
     </div>`).join("");
@@ -1023,18 +1586,36 @@ function renderTrayectoria(el){
   html+=h.slice(-12).map(x=>`<tr><td class="pos">T${x.t}</td><td>#${x.pos}</td><td class="pts">${x.pts}</td><td class="niv">${x.tit||"·"}</td></tr>`).join("");
   el.innerHTML=html;
 }
+/* ¿Ha ganado ya un torneo de la Serie Élite (Élite 2/1, Corona o Maestros)?
+
+   Se mira el contador, que es lo fiable. Las partidas anteriores al contador no
+   lo tienen, así que se cae a rastrear el palmarés en busca de los nombres
+   viejos del circuito — que es como se comprobaba antes. Es solo compatibilidad
+   hacia atrás: en las partidas nuevas el palmarés ya no contiene esas palabras. */
+function tituloElite(e){
+  if((e.recTitElite||0)>=1) return true;
+  return (e.palmares||[]).some(x=>/Premier|MAJOR|Tour Finals/.test(x));
+}
 const HITOS_CARRERA=[
   {id:"v1",txt:"Primera victoria en el circuito",ck:(c)=>((c.vd||{}).v||0)>=1,fans:30,din:100},
   {id:"tit1",txt:"Primer título (el que nunca se olvida)",ck:(c)=>c.palmares.length>=1,fans:100,din:300},
   {id:"top30",txt:"Entrar en el top 30",ck:(c)=>miPuesto()<=30,fans:150,din:500},
   {id:"top20",txt:"Entrar en el top 20",ck:(c)=>miPuesto()<=20,fans:300,din:1200},
-  {id:"pro",txt:"Debutar en un cuadro Premier",ck:(c)=>!!c.pro,fans:400,din:1500},
-  {id:"titP",txt:"Primer título Premier",ck:(c)=>c.palmares.some(x=>x.includes("Premier")||x.includes("MAJOR")),fans:1000,din:5000},
+  {id:"pro",txt:"Debutar en un cuadro Élite",ck:(c)=>!!c.pro,fans:400,din:1500},
+  {id:"titP",txt:"Primer título Élite",ck:(c)=>tituloElite(c),fans:1000,din:5000},
   {id:"top10",txt:"Entrar en el top 10",ck:(c)=>miPuesto()<=10,fans:800,din:3000},
   {id:"v100",txt:"100 victorias como profesional",ck:(c)=>((c.vd||{}).v||0)>=100,fans:400,din:1500},
   {id:"racha10",txt:"Racha de 10 victorias",ck:(c)=>(c.rachaMax||0)>=10,fans:300,din:1000},
-  {id:"major",txt:"Ganar un MAJOR",ck:(c)=>(c.recMajors||0)>=1,fans:3000,din:15000},
+  {id:"major",txt:"Ganar una CORONA",ck:(c)=>(c.recMajors||0)>=1,fans:3000,din:15000},
   {id:"n1",txt:"Cerrar una temporada como Nº1",ck:(c)=>(G.world.n1hist||[]).some(x=>x.yo),fans:5000,din:25000},
+  // Con once hitos, la lista se completaba antes de que la carrera terminara y
+  // el jugador se quedaba sin metas a largo plazo. Estos cinco cubren el tramo
+  // final, que es justo donde ahora hay contenido (declive, retirada, legado).
+  {id:"top5",txt:"Entrar en el top 5",ck:(c)=>miPuesto()<=5,fans:1500,din:7000},
+  {id:"v250",txt:"250 victorias como profesional",ck:(c)=>((c.vd||{}).v||0)>=250,fans:1200,din:6000},
+  {id:"elite10",txt:"Diez títulos de la Serie Élite",ck:(c)=>(c.recTitElite||0)>=10,fans:2500,din:14000},
+  {id:"corona3",txt:"Tres Coronas en las vitrinas",ck:(c)=>(c.recMajors||0)>=3,fans:6000,din:30000},
+  {id:"decada",txt:"Diez temporadas en el circuito",ck:(c)=>temporada()>=10,fans:2000,din:9000},
 ];
 const HITOS_CLUB=[
   {id:"tit1",txt:"Primer título del club",ck:(cl)=>cl.palmares.length>=1,fans:120,din:800},
@@ -1044,8 +1625,19 @@ const HITOS_CLUB=[
   {id:"reforma",txt:"Primera reforma terminada",ck:(cl)=>Object.values(cl.reformas||{}).some(Boolean),fans:100,din:0},
   {id:"top10",txt:"Club en el top 10",ck:(cl)=>miPuesto()<=10,fans:800,din:5000},
   {id:"junta2",txt:"Cumplir el objetivo de la junta dos veces",ck:(cl)=>(cl._juntaOk||0)>=2,fans:400,din:3000},
-  {id:"titP",txt:"Título Premier para las vitrinas",ck:(cl)=>cl.palmares.some(x=>x.includes("Premier")||x.includes("MAJOR")),fans:1500,din:8000},
+  {id:"titP",txt:"Título Élite para las vitrinas",ck:(cl)=>tituloElite(cl),fans:1500,din:8000},
   {id:"top3",txt:"Podio del ranking de clubes",ck:(cl)=>miPuesto()<=3,fans:2000,din:12000},
+  {id:"p6",txt:"Plantilla de 6 jugadores",ck:(cl)=>cl.plantilla.length>=6,fans:250,din:0},
+  {id:"cantera1",txt:"Subir a un jugador de la academia",ck:(cl)=>(cl._subidos||0)>=1,fans:400,din:1500},
+  // el arco entero de la cantera: no basta con subirlo, hay que ponerlo a jugar
+  {id:"canteraA",txt:"Un canterano en la pareja A",ck:(cl)=>{
+    const al=(cl.alin||[]).map(i=>(cl.plantilla||[])[i]);
+    return al.some(j=>j&&j.dela_casa);
+  },fans:700,din:2500},
+  {id:"cantera3",txt:"Tres canteranos en el primer equipo",ck:(cl)=>(cl.plantilla||[]).filter(j=>j.dela_casa).length>=3,fans:1200,din:5000},
+  {id:"reformas4",txt:"Cuatro reformas terminadas",ck:(cl)=>Object.values(cl.reformas||{}).filter(Boolean).length>=4,fans:900,din:4000},
+  {id:"fans10k",txt:"Diez mil seguidores",ck:(cl)=>(cl.fans||0)>=10000,fans:1500,din:6000},
+  {id:"n1club",txt:"El mejor club del mundo",ck:(cl)=>miPuesto()===1,fans:5000,din:25000},
 ];
 function chequeaHitos(){
   const e=ent(); if(!e) return;
@@ -1095,7 +1687,7 @@ function renderRecords(el){
 function renderN1(el){
   const h=(G.world.n1hist||[]);
   if(!h.length){ el.innerHTML=`<tr><td class="foot" style="border:none;text-align:left">${t("pan_sin_temporadas")}</td></tr>`; return; }
-  let html=`<tr class="hd"><td>T</td><td>Nº1 al cierre</td><td class="pts">Pts</td></tr>`;
+  let html=`<tr class="hd"><td>T</td><td>${t("rk_n1_cierre")}</td><td class="pts">Pts</td></tr>`;
   html+=h.slice(-10).map(x=>`<tr class="${x.yo?"yo":""}"><td class="pos">T${x.t}</td><td>${x.yo?"👑 ":""}${x.nombre}</td><td class="pts">${x.pts}</td></tr>`).join("");
   el.innerHTML=html;
 }
@@ -1139,6 +1731,18 @@ function fotoNoticia(tipo,acc){
     art=`<rect x="48" y="24" width="64" height="42" rx="3" fill="#E9EDF4"/><path d="M56 38h48M56 46h48M56 54h28" stroke="#9AA6BB" stroke-width="2.5"/><path d="M88 58c6-6 10 4 16-4" stroke="${a}" stroke-width="2.5" fill="none"/><path d="M104 22l10 10-4 4-10-10z" fill="${a}"/>`;
   } else if(tipo==="hito"){
     art=`<rect x="42" y="50" width="24" height="20" fill="${a}" opacity=".55"/><rect x="68" y="38" width="24" height="32" fill="${a}"/><rect x="94" y="56" width="24" height="14" fill="${a}" opacity=".55"/><circle cx="80" cy="26" r="7" fill="${a}"/>`;
+  } else if(tipo==="mercado"){
+    // dos bocas hablando de un tercero: el dibujo del rumor
+    art=`<path d="M30 20h56a6 6 0 0 1 6 6v20a6 6 0 0 1-6 6H50l-12 10v-10h-8a6 6 0 0 1-6-6V26a6 6 0 0 1 6-6z" fill="${a}" opacity=".9"/>
+      <path d="M78 38h50a6 6 0 0 1 6 6v18a6 6 0 0 1-6 6h-8v9l-11-9H78a6 6 0 0 1-6-6V44a6 6 0 0 1 6-6z" fill="${a}" opacity=".5"/>
+      <g fill="${b}"><circle cx="46" cy="36" r="3"/><circle cx="58" cy="36" r="3"/><circle cx="70" cy="36" r="3"/></g>
+      <g fill="${b}" opacity=".8"><circle cx="92" cy="53" r="2.5"/><circle cx="103" cy="53" r="2.5"/><circle cx="114" cy="53" r="2.5"/></g>`;
+  } else if(tipo==="circuito"){
+    // un cuadro de torneo: llaves que se van cerrando
+    art=`<g stroke="${a}" stroke-width="2.5" fill="none">
+      <path d="M22 22h16v14h-16M22 50h16v14h-16"/><path d="M38 29h10v28h-10"/><path d="M48 43h14"/>
+      <path d="M138 22h-16v14h16M138 50h-16v14h16"/><path d="M122 29h-10v28h10"/><path d="M112 43h-14"/></g>
+      <circle cx="80" cy="43" r="9" fill="${a}"/>`;
   }
   return `<svg viewBox="0 0 160 90" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="g${tipo}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${b}"/><stop offset="1" stop-color="#0E1218"/></linearGradient></defs><rect width="160" height="90" fill="url(#g${tipo})"/>${pista}${art}</svg>`;
 }
@@ -1169,7 +1773,32 @@ function escenaNoticia(n){
   }
   return `<svg viewBox="0 0 160 90" preserveAspectRatio="xMidYMid slice">${grad}${esc}</svg>`;
 }
-const NOTI_KICK={titulo:"CAMPEONES",n1:"HISTORIA",lesion:"PARTE MÉDICO",fichaje:"MERCADO",venta:"TRASPASO",ruptura:"BOMBAZO",retirada:"ADIÓS A UNA LEYENDA",debut:"PROMESA",contrato:"PATROCINIO",hito:"PROFESIONALES",circuito:"CRÓNICA DEL CIRCUITO",mercado:"RUMORES"};
+/* Antetítulos del periódico. Claves, no texto: salían en castellano en las cinco
+   ediciones del diario. Se resuelven con kickTxt() al maquetar la portada. */
+const NOTI_KICK={titulo:"kick_titulo",n1:"kick_n1",lesion:"kick_lesion",fichaje:"kick_fichaje",venta:"kick_venta",ruptura:"kick_ruptura",retirada:"kick_retirada",debut:"kick_debut",contrato:"kick_contrato",hito:"kick_hito",circuito:"kick_circuito",mercado:"kick_mercado"};
+function kickTxt(tipo){ return t(NOTI_KICK[tipo]||"kick_mercado"); }
+/* La columna de mercado: lo que se dice y aún no ha pasado. Es la sección con
+   más vida del periódico porque la mitad de lo que hay ahí no va a ocurrir. */
+function rumoresHTML(){
+  const e=ent(), rs=(e.rumores||[]).slice(0,3);
+  const cuerpo=rs.length
+    ? rs.map(r=>{ const tx=rumorTexto(r); return `<div class="rumor"><b>${tx.t}</b><span>${tx.x}</span></div>`; }).join("")
+    : `<div class="rumor"><span>${t("rum_sin")}</span></div>`;
+  return `<div class="seccion"><div class="secthd">${t("pre_seccion_rum")}</div>${cuerpo}</div>`;
+}
+/* La columna de opinión. No es azar: el periódico opina sobre el momento que
+   estás viviendo, así que leerla dice algo que no está en los números. */
+function columnaHTML(){
+  const e=ent(), pos=miPuesto();
+  let k;
+  if(G.modo==="club") k="pre_op_club";
+  else if(pos<=5) k="pre_op_arriba";
+  else if((e.rachaAct||0)>=3) k="pre_op_subiendo";
+  else if((e.rachaAct||0)===0&&((e.vd||{}).d||0)>=3) k="pre_op_bajando";
+  else k="pre_op_empezando";
+  return `<div class="seccion col"><div class="secthd">${t("pre_opinion")}</div>
+    <div class="coltxt">${t(k)}</div><div class="colfirma">— ${t("pre_firma")}</div></div>`;
+}
 function renderNoticias(el){
   const ns=ent().noticias||[];
   const kcol={titulo:"#8A6A00",n1:"#8A6A00",contrato:"#8A6A00",lesion:"#8A1E1E",ruptura:"#8A1E1E",retirada:"#5A5548",fichaje:"#1E4E8A",venta:"#1E4E8A",debut:"#3E6B1E",hito:"#3E6B1E"};
@@ -1177,8 +1806,8 @@ function renderNoticias(el){
     <div class="mastsub">${t("pre_masthead",{t:temporada(),s:semanaTemp(),circuito:miSexo()==="F"?t("pre_circ_f"):t("pre_circ_m")})}</div>`;
   if(!ns.length){
     el.innerHTML=`<div class="paper">${mast}
-      <div class="apertura"><div class="atit">El circuito espera su próxima historia</div>
-      <div class="asub">Esta portada se escribirá con tus títulos, tus fichajes y tus batallas. La rotativa está lista.</div></div>
+      <div class="apertura"><div class="atit">${t("pre_vacio_t")}</div>
+      <div class="asub">${t("pre_vacio_x")}</div></div>
       <div class="pfoot">${t("pre_pie")}</div></div>`;
     return;
   }
@@ -1187,17 +1816,18 @@ function renderNoticias(el){
   el.innerHTML=`<div class="paper">${mast}
     <div class="apertura">
       <div class="afoto">${escenaNoticia(a)}</div>
-      <div class="akick" style="color:${kcol[a.tipo]||"#1E4E8A"}">${NOTI_KICK[a.tipo]||"CIRCUITO"} · T${a.t} S${a.sem}</div>
+      <div class="akick" style="color:${kcol[a.tipo]||"#1E4E8A"}">${kickTxt(a.tipo)} · T${a.t} S${a.sem}</div>
       <div class="atit">${a.titular}</div>
       <div class="asub">${a.sub||""}</div>
     </div>
     ${minis.length?`<div class="pgrid">${minis.map(n=>`
       <div class="pmini">
         <div class="mfoto">${escenaNoticia(n)}</div>
-        <div class="mkick" style="color:${kcol[n.tipo]||"#1E4E8A"}">${NOTI_KICK[n.tipo]||"CIRCUITO"}</div>
+        <div class="mkick" style="color:${kcol[n.tipo]||"#1E4E8A"}">${kickTxt(n.tipo)}</div>
         <div class="mtit">${n.titular}</div>
       </div>`).join("")}</div>`:""}
-    ${tambien.length?`<div class="tambien"><b>TAMBIÉN EN PORTADA</b>${tambien.map(n=>`<div>· ${n.titular} <span style="color:#7A7462;font-size:9px">T${n.t}S${n.sem}</span></div>`).join("")}</div>`:""}
+    <div class="dos">${rumoresHTML()}${columnaHTML()}</div>
+    ${tambien.length?`<div class="tambien"><b>${t("pre_tambien")}</b>${tambien.map(n=>`<div>· ${n.titular} <span style="color:#7A7462;font-size:9px">T${n.t}S${n.sem}</span></div>`).join("")}</div>`:""}
     ${(()=>{const e2=ent();const ops=[[fmtFans(e2.fans||0),t("cifra_seguidores")],["#"+miPuesto(),t("cifra_ranking")],[(e2.rachaAct||0)>=3?e2.rachaAct:(e2.vd||{v:0}).v,(e2.rachaAct||0)>=3?t("cifra_racha"):t("cifra_victorias")],[e2.palmares.length,t("cifra_titulos")]];const [num,txt]=ops[semanaTemp()%ops.length];return `<div class="lacifra"><span>${t("cifra_hd")}</span><b>${num}</b>${txt}</div>`;})()}
     <div class="pfoot">${t("pre_pie_ed",{ed:G.modo==="carrera"?t("pre_ed_carrera"):t("pre_ed_clubes")})}</div>
   </div>`;
@@ -1216,9 +1846,48 @@ function renderDiario(elD,elP){
     return `<div class="brief" style="border-left-color:${col||"var(--borde2)"}${col?`;color:${col}`:""}">${x}</div>`;
   }).join("");
   elD.innerHTML=e.diario.length
-    ?`<div class="teletipo"><div class="thead">ÚLTIMA HORA · AGENCIA RPD · CIRCUITO ${miSexo()==="F"?"FEMENINO":"MASCULINO"}</div>${briefs}</div>`
-    :"<div class='foot' style='text-align:left'>Sin novedades.</div>";
-  elP.innerHTML=e.palmares.length?e.palmares.map(x=>`<div style="color:var(--oro)">🏆 ${x}</div>`).join(""):`<div>${t("pan_sin_titulos")}</div>`;
+    ?`<div class="teletipo"><div class="thead">${t("tele_head",{circuito:miSexo()==="F"?t("pre_circ_f"):t("pre_circ_m")})}</div>${briefs}</div>`
+    :`<div class="foot" style="text-align:left">${t("tele_sin")}</div>`;
+  elP.innerHTML=palmaresHTML(e.palmares);
+}
+/* EL PALMARÉS AGRUPADO, Y LOS GRANDES PRIMERO.
+   El calendario reparte 52 torneos al año, así que una carrera larga termina
+   con más de cien títulos y esto era una lista plana de cien líneas doradas
+   idénticas: un Continental Bronce de la temporada 2 ocupaba lo mismo que la
+   Corona que te hizo número uno, y el palmarés dejaba de medir nada. Se agrupa
+   por categoría, de mayor a menor, y arriba va lo que de verdad cuenta: las
+   Coronas, los Maestros y la Élite. La sala de trofeos ya lo hacía así; era el
+   Diario el que seguía volcándolo en bruto. */
+function palmaresHTML(palmares){
+  const pal=palmares||[];
+  if(!pal.length) return `<div>${t("pan_sin_titulos")}</div>`;
+  const cat=trofeosPorCategoria(pal);
+  const grandes=cat.corona.length+cat.maestros.length+cat.elite.length;
+  const grupos=[["corona","🏆","var(--oro)"],["maestros","👑","#E6FA50"],["elite","🥇","#9B59D0"],["continental","🎾","var(--azul)"],["otros","·","var(--gris)"]];
+  const cab=`<div class="foot" style="text-align:left;margin-bottom:5px">${t("pal_resumen",{grandes,total:pal.length})}</div>`;
+  return cab+grupos.map(([k,ico,col])=>{
+    if(!cat[k].length) return "";
+    /* Los grupos gordos se cuentan, no se listan. Noventa y dos «Continental
+       Bronce (T7)» seguidos no son un palmarés, son un muro: lo que se quiere
+       saber de ahí abajo es cuántos, no cuáles. Los grandes sí van uno a uno,
+       porque cada uno tiene su historia. */
+    const cuerpo=cat[k].length>PAL_DETALLE ? resumeTitulos(cat[k]) : cat[k].join(" · ");
+    return `<div style="margin-bottom:6px">
+      <div style="font-size:calc(10px * var(--esc));color:${col};letter-spacing:.5px;margin-bottom:2px">${ico} ${t("trf_cat_"+k)} · ${cat[k].length}</div>
+      <div style="font-size:calc(11px * var(--esc));color:var(--gris);line-height:1.6">${cuerpo}</div>
+    </div>`;
+  }).join("");
+}
+const PAL_DETALLE=12;   // a partir de aquí se cuenta en vez de enumerar
+/* Agrupa títulos por su nombre sin la temporada ni la ciudad: «Bronce ×70». */
+function resumeTitulos(lista){
+  const n={};
+  lista.forEach(x=>{
+    const base=String(x).replace(/\s*·[^()]*/,"").replace(/\s*\(T\d+\)\s*$/,"").trim();
+    n[base]=(n[base]||0)+1;
+  });
+  return Object.keys(n).sort((a,b)=>n[b]-n[a])
+    .map(k=>`${k} <b style="color:var(--texto)">×${n[k]}</b>`).join(" · ");
 }
 
 function ingresosSemanaCarrera(){
@@ -1232,7 +1901,12 @@ function guardaPosiciones(){
 function entrenarDia(){
   const c=G.carrera, it=c.intens||"normal";
   c._sesEntreno=(c._sesEntreno||0)+1;
-  c.energia=clamp(c.energia-(it==="suave"?3:it==="intensa"?6:4),0,100);
+  /* El coste de una sesión y la recuperación semanal son un presupuesto: si no
+     cuadran, entrenar te deja sin energía para competir y el óptimo pasa a ser
+     NO entrenar. Medido con el banco de carreras: con 4 por sesión y 12 de
+     recuperación, el que entrenaba cinco días vivía a 1 de energía y jugaba dos
+     partidos en dos temporadas. */
+  c.energia=clamp(c.energia-(it==="suave"?2:it==="intensa"?5:3),0,100);
   avanzarDia();
 }
 function descansarDia(){
@@ -1258,44 +1932,80 @@ function avanzarSemanaCarrera(){
   const factor=Math.min(1,(c._sesEntreno||0)/5);
   c._sesEntreno=0;
   const it=c.intens||"normal";
+  frAsegura(c);
   if(!c.lesion&&factor>0){
     const log=entrenoSemanalCarrera(factor);
     if(log) avisa(t("av_entrenos",{it:({suave:t("ent_suave"),normal:t("ent_normal"),intensa:t("ent_intensa")})[it]||it,log}));
   }
+  // el contexto de entreno se cobra y deja sus efectos propios
+  cierraSemanaEntreno(c,factor);
+  const _nPart=c._rivalesSemana.length;   // partidos de esta semana, para el poso de la gira
   simCircuito(c._rivalesSemana);c._rivalesSemana=[];
   prensaSemanal();
-  if(c.sponsor&&!c._spot&&Math.random()<(c.sponsor.tier>=3?.14:.08)){
-    const pago=Math.round(c.sponsor.sem*(c.sponsor.tier>=4?4:c.sponsor.tier===3?3:c.sponsor.tier===2?2.2:1.6));
+  // el agente «de marcas» vive del teléfono: más rodajes y mejor pagados
+  const _repMarcas=staffPerfil("rep")==="marcas";
+  if(c.sponsor&&!c._spot&&rnd()<(c.sponsor.tier>=3?.14:.08)+(_repMarcas?.05:0)){
+    const pago=Math.round(c.sponsor.sem*(c.sponsor.tier>=4?4:c.sponsor.tier===3?3:c.sponsor.tier===2?2.2:1.6)*(_repMarcas?1.35:1));
     const fansB=[0,120,400,1200,3500][c.sponsor.tier]||0;
     c._spot={marca:c.sponsor.marca,pago,fans:fansB,tipo:pick(SPOT_TIPOS),caduca:semanaTemp()+3};
     avisa(t("spot_av_oferta",{marca:c.sponsor.marca,tipo:t(c._spot.tipo),pago,fans:fansB}));
   }
   c.semana++;
+  /* Empieza semana nueva: se cae lo que se ganó en esta misma semana del año
+     pasado. Va aquí, antes de que se juegue nada, para que el torneo de esta
+     semana entre en la casilla ya vacía. */
+  const cae=caducaSemanaRanking(c.semana);
+  if(cae>0) avisa(t("av_defiende_cae",{n:cae}));
   if(c.lesion){
     c.lesion.sem--;
     if(c.lesion.sem<=0){
-      const nom=lesNombre(c.lesion), sec=curarLesion(c);
+      const nom=lesNombre(c.lesion), _grav=c.lesion.grav|0, sec=curarLesion(c);
       avisa(t("les_alta",{n:nom})+(sec?t("les_merma",{pct:sec.pct,sem:sec.sem}):""));
+      // volver de una lesión seria también es un momento (P6)
+      if(_grav>=2&&typeof momentoCabecera==="function")
+        momentoCabecera({tipo:"vuelta",ico:"💪",titulo:t("cab_alta_t"),sub:t("cab_alta_s",{les:nom})});
     }
     else avisa(t("les_recup",{n:lesNombre(c.lesion),sem:c.lesion.sem}));
   }
   decaeMerma(c);   // la secuela de la última lesión se va disipando
-  let regen=12+(staffNiv("fisico")?2+staffNiv("fisico"):0);
-  c.energia=clamp(c.energia+regen,0,100);
+  curaFragilidad(c);  // y el cuerpo se rehace si le das semanas sanas
+  /* El poso de la gira se anota ANTES de calcular la recuperación: la semana
+     que acabas de jugar es la que te pasa factura en este mismo cierre. */
+  if(typeof giraSemana==="function"){
+    const gAntes=giraEstado(c);
+    giraSemana(c,!!c._jugoTorneo,_nPart,c._giraViaje|0); c._giraViaje=0;
+    const gAhora=giraEstado(c);
+    if(gAhora!==gAntes&&(gAhora==="cargado"||gAhora==="fundido")) avisa(t("gira_av_"+gAhora));
+  }
+  let regen=regenCarrera();
+  // los eventos mandan sobre la recuperación y sobre el techo de energía
+  regen=Math.round(evNum("energia",regen));
+  c.energia=clamp(c.energia+regen,0,evNum("energiaTope",100));
   const pos_=miPuesto();
+  /* Semanas como número 1: la medida de una era, no un salto de una semana.
+     Se cuenta aquí, en el cierre, para que valga estar arriba el lunes de
+     verdad y no un instante entre dos repintados. */
+  if(pos_===1){ c.semN1=(c.semN1|0)+1;
+    if(c.semN1===1&&momAnota(c,"n1",{})&&typeof momentoCabecera==="function")
+      momentoCabecera({tipo:"gloria",ico:"⭐",titulo:t("mom_n1"),sub:t("mom_n1_d",{t:temporada(),sem:semanaTemp()}),dato:`${c.nombre} / ${c.compi.n}`});
+  }
   fansAdd(Math.round((c.fans||0)*.002)+(pos_<=10?25:pos_<=20?8:1));
   if(!c._jugoTorneo&&c.dinero<600){
     c.dinero+=90;
-    if(!c._avisoClases){c._avisoClases=true;avisa("Semana sin competir y caja floja: clases en el club, +90€.");}
+    if(!c._avisoClases){c._avisoClases=true;avisa(t("av_clases_club"));}
   } else if(c.dinero>=600) c._avisoClases=false;
-  c._jugoTorneo=false;
   c.dinero+=ingresosSemanaCarrera();
+  // lo que ingresan y lo que cuestan las inversiones
+  const _inv=invSemana(c);
+  if(_inv.gasto>0&&c.dinero<0&&!c._avisoInv){ c._avisoInv=true; avisa(t("inv_av_ahoga",{n:_inv.gasto.toLocaleString("es")})); }
+  if(c.dinero>_inv.gasto*4) c._avisoInv=false;
   const fijos=Object.keys(c.staff||{}).reduce((x,k)=>x+((c.staff[k]&&c.staff[k].sal)||0),0);
   if(c.dinero<300&&fijos>100&&!c._avisoFijos){c._avisoFijos=true;avisa(t("av_fijos",{fijos}));}
   if(c.dinero>1500) c._avisoFijos=false;
   const vida=40+(c.pro?180:0)+(miPuesto()<=15?180:0);
   c.dinero-=Math.min(vida,Math.max(0,c.dinero));  // no puedes gastar lo que no tienes: vives al día
   c.dinero-=Object.keys(c.staff||{}).reduce((s2,k)=>s2+((c.staff[k]&&c.staff[k].sal)||0),0);
+  impagoStaff(c);
   if(!(c.staff&&c.staff.psico)){
     // la moral se desgasta sola según la afinidad de la pareja: si os entendéis,
     // aguanta; si no, se erosiona. El leal aguanta más; el ambicioso mal clasificado, menos.
@@ -1305,15 +2015,30 @@ function avanzarSemanaCarrera(){
     if(tieneRasgo(c.compi,"ambicioso")&&miPuesto()>20) d+=1;
     if(d) c.compiMoral=clamp((c.compiMoral??65)-d,5,95);
   }
-  if(c.staff&&c.staff.psico&&c.conf<35+staffNiv("psico")*2) c.conf=35+staffNiv("psico")*2;
+  const _suelo=confSueloPsico();
+  if(_suelo&&c.conf<_suelo) c.conf=_suelo;
   if(c.compiMoral===29&&!c._avisoMoral){
     c._avisoMoral=true;
     avisa(t("av_harto",{n:c.compi.n}));
   }
+  // la pareja: los ejes se mueven solos y el plan se afianza jugando. Va después
+  // de la moral y ANTES de apagar `_jugoTorneo`, que es lo que distingue una
+  // semana de competición de una semana en casa.
+  relSemana(c);
+  // las promesas se comprueban contra lo hecho esta semana, y la voz del
+  // compañero habla de lo que está pasando de verdad: ambas necesitan leer
+  // `_jugoTorneo` antes de que se apague
+  if(typeof promSemana==="function") promSemana(c);
+  if(typeof compiComenta==="function") compiComenta(c);
+  c._jugoTorneo=false;
+  // eventos de circuito: lo que cambia las reglas de esta semana
+  evSemana(c,c.semana);
+  // el circuito habla: rumores que nacen, se confirman o se desmienten
+  semanaDeRumores(c,c.semana);
   // dilemas encadenados: primero llegan las consecuencias de decisiones pasadas...
   resolverPendientes(c,c.semana).forEach(p=>avisa(`⏳ ${p.txt}`));
   // ...y de vez en cuando surge un nuevo dilema (si no hay uno pendiente de decidir)
-  if(!c.dilemaActivo && !c.lesion && Math.random()<.28) eligeDilema(c,c.semana);
+  if(!c.dilemaActivo && !c.lesion && rnd()<.28) eligeDilema(c,c.semana);
   // objetivos de temporada: premia los que se van cumpliendo
   if(!c.objetivos) c.objetivos=mkObjetivosTemporada(c,miPuesto());
   evaluaObjetivos(c,miPuesto()).forEach(o=>{
@@ -1330,10 +2055,9 @@ function avanzarSemanaCarrera(){
     c.edad++;evolucionaMundo();
     // EL ÚLTIMO BAILE · el cuerpo empieza a pasar factura: lo explosivo se va
     // antes que el toque, así el jugador se reconvierte solo.
-    const perdido=aplicaDeclive(c.attrs,c.edad);
+    const perdido=aplicaDeclive(c.attrs,(typeof desarrolloEdadDeclive==="function")?desarrolloEdadDeclive(c):c.edad);
     if(perdido>0) avisa(t("ub_declive",{n:perdido,edad:c.edad}));
     if(c.compi&&c.compi.attrs&&(c.compi.edad=(c.compi.edad||c.edad)+1)>=EDAD_DECLIVE) aplicaDeclive(c.compi.attrs,c.compi.edad);
-    c.pts=Math.round(c.pts*.55);
     avisa(t("av_cierre",{t:temporada()-1,pos:posFin,pts:ptsFin,tit:titsT,ok:cumplidos,total:totalObj,edad:c.edad}));
     if(totalObj&&cumplidos<totalObj) c.compiMoral=clamp((c.compiMoral??65)-(totalObj-cumplidos)*3,5,95);
     // EL ACUERDO: lo que le prometiste al ficharle se cobra al cierre
@@ -1354,6 +2078,7 @@ function avanzarSemanaCarrera(){
       c.compi={...compiInicial(c.sexo||"M"),attrs:mkAttrsNivel(CHINO.nivel,CHINO.estilo)};
       c.quimica=CHINO.quim; c.compiMoral=70; c.compiPlan="auto";
       c._parejaDesde=temporada(); c._parejaTitulos=0;
+      parejaNueva(c);
     }
     c.objetivos=mkObjetivosTemporada(c,miPuesto());   // metas para la nueva temporada
     cierreTemporadaCarrera();
@@ -1381,8 +2106,8 @@ function cierreTemporadaCarrera(){
       if(s.tRest<=0){
         avisa(t("av_renueva",{marca:s.marca}));
         c.sponsor=null;
-        const t=(pos<=8&&(c.fans||0)>=6000)?4:pos<=11?3:pos<=20?2:1;
-        c.ofertasPatro.push({...ofertaPatro(t),sem:Math.round(ofertaPatro(t).sem*1.2)});
+        const tier=(pos<=8&&(c.fans||0)>=6000)?4:pos<=11?3:pos<=20?2:1;   // `tier`, no `t`: taparía la traducción
+        c.ofertasPatro.push({...ofertaPatro(tier),sem:Math.round(ofertaPatro(tier).sem*1.2)});
       } else {
         avisa(t("av_obj_marca",{marca:s.marca,pos,n:s.tRest}));
       }
@@ -1394,6 +2119,8 @@ function cierreTemporadaCarrera(){
   if(pos<=8&&(c.fans||0)>=6000) tier=4;   // las multinacionales quieren caras conocidas
   const rep_=c.staff&&c.staff.rep;
   if(rep_&&tier>0&&tier<4) tier=Math.min(pos<=8?4:3,tier+1);
+  // la agencia de imagen abre la puerta de las marcas grandes igual que un agente
+  if(typeof invSubeTier==="function"&&invSubeTier(c)&&tier>0&&tier<4) tier=Math.min(pos<=8?4:3,tier+1);
   if(tier>0){
     const nOf=rep_?3:pos<=20?2:2;
     const tiers=[tier]; if(tier>1) tiers.push(tier-1);
@@ -1401,8 +2128,9 @@ function cierreTemporadaCarrera(){
     while(c.ofertasPatro.length<nOf&&intent++<20){
       const t2=tiers[c.ofertasPatro.length%tiers.length];
       const of=ofertaPatro(t2);
-      if(rep_) of.sem=Math.round(of.sem*1.2);
-      if(Math.random()<.4){ of.sem=Math.round(of.sem*1.3); of.primas=of.primas.slice(0,1); of._perfil="fijo alto"; }
+      if(rep_) of.sem=Math.round(of.sem*(rep_.perfil==="marcas"?1.3:1.2));
+      if(typeof invPatroX==="function") of.sem=Math.round(of.sem*invPatroX(c));
+      if(rnd()<.4){ of.sem=Math.round(of.sem*1.3); of.primas=of.primas.slice(0,1); of._perfil="fijo alto"; }
       else if(of.primas.length){ of.sem=Math.round(of.sem*.8); of._perfil="por objetivos"; }
       if(!c.ofertasPatro.some(x=>x.marca===of.marca)) c.ofertasPatro.push(of);
     }
@@ -1415,7 +2143,7 @@ function cierreTemporadaCarrera(){
   // reconducirla (se resuelve con un evento al volver al panel de carrera).
   const moral=c.compiMoral??65;
   const evPar=evaluarRuptura(c,miPuesto());
-  if(evPar.crisis&&Math.random()<.85){
+  if(evPar.crisis&&rnd()<.85){
     c._crisisPareja=evPar;
     avisa(t("av_tension",{n:c.compi.n}));
   } else if(moral<50){
@@ -1458,31 +2186,31 @@ function mostrarAnuario(){
       <div class="opcion" style="text-align:center"><div style="font-size:18px;font-weight:700;font-family:'Chakra Petch'">${fmtFans(h.fans)}</div><div class="foot">seguidores</div></div>
       <div class="opcion" style="text-align:center"><div style="font-size:16px;font-weight:700;font-family:'Chakra Petch';color:${balDinero>=0?"var(--lima)":"#E05656"}">${balDinero>=0?"+":""}${balDinero.toLocaleString("es")}€</div><div class="foot">balance del año</div></div>
     </div>
-    <div class="foot" style="text-align:left;margin-bottom:3px">Evolución en el ranking</div>
+    <div class="foot" style="text-align:left;margin-bottom:3px">${t("anu_evolucion")}</div>
     ${graf}
-    <div class="foot" style="text-align:left;margin-top:10px">👑 Nº1 del circuito: <b>${h.campeon}</b></div>
+    <div class="foot" style="text-align:left;margin-top:10px">${t("anu_n1_circuito",{n:h.campeon})}</div>
     ${anuarioMerito(c,h,prev)}
-    <button class="pri" style="width:100%;margin-top:12px" onclick="quitarEl(document.getElementById('anuarioModal'))">Empezar nueva temporada</button>
+    <button class="pri" style="width:100%;margin-top:12px" ${ac("cerrarModal","anuarioModal")}>Empezar nueva temporada</button>
   </div>`;
   ov.onclick=(e)=>{ if(e.target===ov) quitarEl(ov); };
 }
 function anuarioMerito(c,h,prev){
   const frases=[];
-  if(h.tit>=3) frases.push("🌟 Temporada de época: tres o más títulos.");
+  if(h.tit>=3) frases.push(t("anu_epoca"));
   else if(h.tit>0) frases.push(`✨ ${h.tit} título(s) que quedan para la historia.`);
   if(prev&&prev.pos-h.pos>=8) frases.push(`🚀 Escalada brutal: ${prev.pos-h.pos} puestos de un año a otro.`);
-  if(h.pos===1) frases.push("👑 Cerráis el año como número uno del mundo.");
-  else if(h.pos<=5) frases.push("🏅 Entre los cinco mejores del circuito.");
-  if(prev&&h.pos-prev.pos>=8) frases.push("📉 Año duro: toca recomponerse.");
+  if(h.pos===1) frases.push(t("anu_n1"));
+  else if(h.pos<=5) frases.push(t("anu_top5"));
+  if(prev&&h.pos-prev.pos>=8) frases.push(t("anu_duro"));
   if(!frases.length) frases.push("📈 Un año más de rodaje. La progresión es carrera de fondo.");
   return `<div style="border-top:1px solid var(--borde);margin-top:8px;padding-top:7px">${frases.map(f=>`<div style="font-size:11.5px;line-height:1.5;color:var(--gris)">${f}</div>`).join("")}</div>`;
 }
 function ajustaGanancia(g,intens,edad){
-  if(intens==="suave"&&g>0&&Math.random()<.4) g--;
-  if(intens==="intensa"&&Math.random()<.5) g++;
+  if(intens==="suave"&&g>0&&rnd()<.4) g--;
+  if(intens==="intensa"&&rnd()<.5) g++;
   if(edad!==undefined){
-    if(edad<20&&Math.random()<.3) g++;
-    if(edad>=29&&g>0&&Math.random()<.4) g--;
+    if(edad<20&&rnd()<.3) g++;
+    if(edad>=29&&g>0&&rnd()<.4) g--;
   }
   return Math.max(0,g);
 }
@@ -1502,15 +2230,17 @@ function prensaSemanal(){
   const e=ent(); if(!e) return;
   const sl=slotSemana(semanaTemp());
   const filas=rankingFilas();
-  // 1) crónica del Premier de la semana (si tú no lo ganaste)
+  // 1) crónica del torneo Élite de la semana (si tú no lo ganaste)
   if(sl.premier!==undefined&&e._campPremSem!==semanaTemp()){
     const cands=filas.filter(f=>!f.yo).slice(0,10);
-    const w=cands[Math.floor(Math.random()*Math.min(5,cands.length))];
+    const w=cands[Math.floor(rnd()*Math.min(5,cands.length))];
     if(w){
-      const giro=pick(["exhibición y título","final épica decidida en el tercer set","remontada imposible ante la grada","paliza sin contemplaciones en la final","título tras salvar tres bolas de partido"]);
-      noticia("circuito",`${w.nombre} conquistan ${CATS[sl.premier].n==="Tour Finals"?"las Finals":"el "+CATS[sl.premier].n} de ${sl.ciudad}`,`${giro.charAt(0).toUpperCase()+giro.slice(1)} en ${sl.ciudad}`);
+      const giro=t(pick(["not_cron_giro1","not_cron_giro2","not_cron_giro3","not_cron_giro4","not_cron_giro5"]));
+      // la crónica sale con la foto de quien ganó, no con un dibujo genérico
+      const parW=(G.world.parejas||[]).find(x=>x.id===w.id);
+      noticia("circuito",t("not_cron_t",{nombre:w.nombre,cat:catNombre(sl.premier),ciudad:sl.ciudad}),t("not_cron_s",{giro,ciudad:sl.ciudad}),parW&&parW.jug?parW:null);
     }
-  } else if(Math.random()<.55&&G.world.prevPos){
+  } else if(rnd()<.55&&G.world.prevPos){
     // 2) el movimiento de la semana en el ranking
     let mejor=null,salto=0;
     filas.slice(0,28).forEach(f=>{
@@ -1521,33 +2251,90 @@ function prensaSemanal(){
     if(mejor&&salto>=2){
       noticia("mercado",t("not_mercado_t",{nombre:mejor.nombre,verbo:salto>=5?t("not_mercado_verbo_up"):t("not_mercado_verbo"),pos:mejor.pos}),t("not_mercado_s",{salto,frase:t(pick(["not_mercado_v1","not_mercado_v2","not_mercado_v3","not_mercado_v4"]))}));
     }
-  } else if(Math.random()<.3){
+  } else if(rnd()<.3){
     // 3) pieza de color con una estrella parodiada
-    const star=filas.filter(f=>!f.yo&&f.pos<=6)[Math.floor(Math.random()*Math.min(6,filas.length-1))];
+    const star=filas.filter(f=>!f.yo&&f.pos<=6)[Math.floor(rnd()*Math.min(6,filas.length-1))];
     if(star) noticia("circuito",t(pick(["not_circuito_v1","not_circuito_v2","not_circuito_v3","not_circuito_v4"])),t("not_circuito_star_s",{star:star.nombre}));
   }
+}
+/* Cierra la semana de trabajo: cobra el sitio donde has entrenado, deja sus
+   efectos, mueve la carga acumulada, enfría la forma y actualiza el ritmo de
+   competición. Va después del entrenamiento porque la carga que te frena hoy es
+   la que arrastrabas, no la que acabas de meterte. */
+function cierraSemanaEntreno(c,factor){
+  frAsegura(c);
+  const d=ctxDatos(c), id=ctxEntreno(c);
+  const ses=Math.round(clamp(factor,0,1)*5);
+  if(d.coste&&ses>0){
+    const cobro=Math.round(d.coste*clamp(factor,.35,1));
+    if(c.dinero>=cobro){
+      c.dinero-=cobro;
+      avisa(t("ent_ctx_cobro",{ctx:ctxNombre(id),n:cobro}));
+    } else {
+      c.ctxEnt=CTX_DEF;                       // sin caja se entrena donde siempre
+      avisa(t("ent_ctx_caro"));
+    }
+  }
+  if(d.energia) c.energia=clamp(c.energia+d.energia,0,100);
+  if(d.quimica) c.quimica=clamp(c.quimica+d.quimica,0,100);
+  if(d.presion) c.conf=clamp(c.conf+d.presion,5,95);
+  const antes=cargaEstado(c);
+  cargaAplica(c,ses);
+  formaEnfria(c);
+  ritmoSemana(c,!!c._jugoTorneo);
+  const ahora=cargaEstado(c);
+  if(ahora!==antes&&ahora==="pasado") avisa(t("car_av_pasado"));
+  if(ahora!==antes&&ahora==="parado") avisa(t("car_av_parado"));
+}
+/* El golpe que se trabaja de verdad: en el gimnasio no se entrena la dejada,
+   por mucho que sea lo que tengas apuntado en el plan. */
+function golpeReal(atleta,plan,ent_,ctx){
+  const k=golpePlan(atleta,plan,ent_);
+  if(ctx&&ctx.fisico&&ATTR_FISICOS.indexOf(k)<0){
+    return ATTR_FISICOS.slice().sort((a,b)=>atleta.attrs[a]-atleta.attrs[b])[0];
+  }
+  return k;
 }
 function entrenoSemanalCarrera(factor){
   if(factor<=0) return null;
   const c=G.carrera, it=c.intens||"normal", ent_=entrenadorActual();
+  frAsegura(c);
+  const ctx=ctxDatos(c), gX=cargaGanX(c);
   const res=[];
-  const sesion=(atleta,plan,edad)=>{
-    const k=golpePlan(atleta,plan,ent_);
+  const sesion=(atleta,plan,edad,mio)=>{
+    const k=golpeReal(atleta,plan,ent_,ctx);
     const v=atleta.attrs[k];
-    let g=v<55?2:v<70?1:(Math.random()<.5?1:0);
-    if(ent_.esp.includes(k)&&Math.random()<(.3+.08*(ent_.niv||2))) g+=1;   // el especialista exprime su tema
+    let g=v<55?2:v<70?1:(rnd()<.5?1:0);
+    if(ent_.esp.includes(k)&&rnd()<(.3+.08*(ent_.niv||2))+(ent_.perfil==="pista"?.18:0)) g+=1;   // el especialista exprime su tema; el de pista, más
     g=ajustaGanancia(g,it,edad);
-    if(v>=58&&g>0&&Math.random()<.5) g--;               // los cimientos van rápido...
-    if(v>=72&&g>0&&Math.random()<.5) g--;               // ...y la élite cuesta sudor doble
-    if(factor<1&&g>0&&Math.random()>factor) g=Math.max(0,g-1);
-    if(factor<1&&Math.random()>factor+.25) g=0;         // semana de torneo: poco tiempo de pista de entreno
-    if(g>0){ const rf=rasgosEntreno(atleta); if(rf>1&&Math.random()<rf-1) g++; else if(rf<1&&Math.random()<1-rf) g=Math.max(0,g-1); }   // talento / entrena mal
+    if(v>=58&&g>0&&rnd()<.5) g--;               // los cimientos van rápido...
+    if(v>=72&&g>0&&rnd()<.5) g--;               // ...y la élite cuesta sudor doble
+    if(factor<1&&g>0&&rnd()>factor) g=Math.max(0,g-1);
+    if(factor<1&&rnd()>factor+.25) g=0;         // semana de torneo: poco tiempo de pista de entreno
+    if(g>0){ const rf=rasgosEntreno(atleta); if(rf>1&&rnd()<rf-1) g++; else if(rf<1&&rnd()<1-rf) g=Math.max(0,g-1); }   // talento / entrena mal
+    /* Lo nuevo: el sitio, la carga que arrastras y lo trillado que tengas ese
+       golpe. Los tres son multiplicadores por debajo de 1 casi siempre, así que
+       se resuelven con una moneda en vez de con una resta que dejaría todo a 0. */
+    if(mio&&g>0){
+      const mult=ctx.gan*gX*adaptFactor(c,k)
+        *((typeof invCtxGanX==="function")?invCtxGanX(c,ctxEntreno(c)):1)
+        *((typeof desarrolloGanX==="function")?desarrolloGanX(c):1);   // precoz/tardío: la edad rinde distinto
+      let ent=g*mult;
+      g=Math.floor(ent); if(rnd()<ent-g) g++;
+    }
     atleta.attrs[k]=clamp(v+g,20,95);
+    if(mio){
+      adaptTrabaja(c,k);         // este golpe queda trillado…
+      adaptDescansa(c,k);        // …y los demás se desentumecen
+      formaSube(c,k,g>0?3:2);    // pero sale mejor las próximas semanas
+    }
     return `${atNombre(k)} ${g>0?"+"+g:"·"}`;
   };
-  res.push(t("ent_tu")+": "+sesion(c,c.planJug,c.edad));
+  res.push(t("ent_tu")+": "+sesion(c,c.planJug,c.edad,true));
   res.push(`${c.compi.n}: `+sesion(c.compi,c.compiPlan));
-  if(factor>=.8&&it==="intensa"&&Math.random()<.06&&!c.lesion){
+  // la sobrecarga ya no es solo cuestión de intensidad: es del poso de meses
+  const riesgo=.06*cargaLesionX(c)*(ctx.lesionX||1);
+  if(factor>=.8&&it==="intensa"&&rnd()<riesgo&&!c.lesion){
     c.lesion={n:"sobrecarga por exceso de entrenamiento",k:"les_sobre",sem:1};
     res.push(t("les_sobre_log"));
   }

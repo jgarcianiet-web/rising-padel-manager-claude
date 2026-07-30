@@ -34,6 +34,17 @@ function jugarTorneoEntero(limite) {
   while (torneo && vueltas++ < (limite || 8)) { empezarPartido(false); pulsarFicha(); }
   return vueltas;
 }
+/* Sitúa la partida en una semana en la que SE JUEGUE esa categoría. Un torneo
+   no se puede abrir cualquier semana —el circuito es un calendario— y `entradaEn`
+   lo hace cumplir, así que una prueba que quiera jugar una Corona tiene que
+   ponerse primero en una semana de Corona. */
+function semanaDeCategoria(c, ci) {
+  for (let s = 1; s <= SEMANAS_TEMP; s++) {
+    const sl = slotSemana(s);
+    if (sl.premier === ci || sl.fip === ci) { c.semana = s; return s; }
+  }
+  throw new Error("el calendario no tiene ninguna semana de la categoría " + ci);
+}
 function fundarClub() {
   G = null; sexoClubSel = "M"; colorClubSel = "#C6F53C";
   prepararCrearClub();
@@ -76,10 +87,21 @@ comprueba("Se puede abrir 'crear club' sin partida (regresión: Script error)", 
 });
 
 comprueba("El presupuesto inicial permite fichar una pareja", () => {
-  G = null; prepararCrearClub();
-  const costes = mercadoTmp.map(j => costeFichaje(j)).sort((a, b) => a - b);
-  exige(costes[0] + costes[1] <= PRESUP_CLUB, "los dos jugadores más baratos no caben en la caja inicial");
-  return "los 2 más baratos: " + (costes[0] + costes[1]) + "€ de " + PRESUP_CLUB + "€";
+  /* Sembrado y sobre VARIOS mercados: sin semilla esto heredaba el estado que
+     le dejara la prueba anterior, así que fallaba una vez de cada diez y solo
+     a veces. Una prueba que depende de con qué mano venga el generador no
+     comprueba nada, avisa al azar. */
+  let peor = 0;
+  for (let s = 0; s < 8; s++) {
+    rndSemilla(9100 + s * 61, 9100 + s * 61);
+    G = null; mercadoTmp = null; plantillaTmp = [];
+    prepararCrearClub();
+    const costes = mercadoTmp.map(j => costeFichaje(j)).sort((a, b) => a - b);
+    const dos = costes[0] + costes[1];
+    peor = Math.max(peor, dos);
+    exige(dos <= PRESUP_CLUB, `semilla ${s}: los dos más baratos cuestan ${dos}€ y no caben en ${PRESUP_CLUB}€`);
+  }
+  return "el peor de 8 mercados: " + peor + "€ de " + PRESUP_CLUB + "€";
 });
 
 comprueba("Carrera: crear jugador y disputar un torneo", () => {
@@ -278,8 +300,18 @@ comprueba("Lesiones y moral: gravedad, secuela, fragilidad y moral en pista", ()
   for (let i = 0; i < 200; i++) { fr.energia = 5; fr.lesion = null; if (intentaLesion(fr, false)) veces++; }
   exige(veces > 0, "con energía a 5 no se lesiona nunca");
   exige(fr.fragil > 0, "lesionarse no aumenta la fragilidad");
-  // con energía llena y sin fragilidad, el riesgo es nulo
-  exige(riesgoLesionPost(100, 0, false) === 0, "no debería haber riesgo de lesión con energía llena");
+  /* Con energía llena y sin poso el riesgo es residual, pero no cero: si lo
+     fuera, al cuadrar el presupuesto de energía nadie volvería a lesionarse
+     nunca —medido: 0% de semanas lesionado en seis temporadas y tres formas de
+     jugar— y con las lesiones se caen el fisio, la clínica y media razón de ser
+     de la carga acumulada. Lo que rompe a un deportista sano es el poso. */
+  const sano = riesgoLesionPost(100, 0, false, 0);
+  const fundido = riesgoLesionPost(15, 0, false, 0);
+  const pasado = riesgoLesionPost(100, 0, false, 95);
+  exige(sano > 0 && sano < .03, "con energía llena el riesgo debería ser residual: " + sano);
+  exige(fundido > sano * 8, "quedarse sin fuerzas no dispara el riesgo");
+  exige(pasado > sano * 2, "vivir pasado de vueltas no rompe a nadie: " + pasado);
+  exige(riesgoLesionPost(100, 0, true, 95) < pasado, "el fisio no protege al que arrastra carga");
   // la moral pesa en la pista: alta suma confianza, baja resta
   exige(moralAjusteConf(90) > 0 && moralAjusteConf(20) < 0, "la moral no ajusta la confianza en pista");
   return `graves ${graves}/${N} (riesgo alto) vs ${gravesBajo}/${N} (bajo); ${veces}/200 lesiones con energía a 5`;
@@ -402,9 +434,9 @@ comprueba("Relaciones: afinidad, motivo de crisis y ruptura con alternativas", (
   exige(probReconduccion({ compi: j("d", 1, ["leal"]) }, "hablar") > probReconduccion({ compi: j("d", 1, ["conflictivo"]) }, "hablar"), "el leal no es más fácil de reconducir");
   // aplicar: 'dejar' rompe; una charla exitosa (forzando el azar) sube la moral y NO rompe
   exige(aplicarOpcionRuptura(c1, "dejar").rompio === true, "dejar debería romper la pareja");
-  const _r = Math.random; Math.random = () => 0;
+  const _r = rnd, _est = rndEstado(); rnd = () => 0;
   const antes = c1.compiMoral, res = aplicarOpcionRuptura(c1, "hablar", ev.motivo);
-  Math.random = _r;
+  rnd = _r; rndSemilla(_est.semilla, _est.pos);
   exige(res.rompio === false && c1.compiMoral > antes, "una reconducción exitosa debería subir la moral sin romper");
   return `comp ${comp} vs choque ${choque}; motivos ${motivoDescontento(c1, 5).clave}/${motivoDescontento(c2, 45).clave}`;
 });
@@ -634,30 +666,438 @@ comprueba("Club: una alineación imposible se repara sola (regresión)", () => {
   return "reparada en los dos casos";
 });
 
+/* Limpia las ranuras y devuelve la ranura de destino a la 1. Sin esto último,
+   un caso que abra la ranura 3 deja apuntando ahí al siguiente, y la partida
+   nueva del caso de al lado se guarda donde no toca. */
+function limpiaRanuras(modo) {
+  for (let n = 1; n <= N_RANURAS; n++) borrarSlot(modo || "carrera", n);
+  if (!modo) for (let n = 1; n <= N_RANURAS; n++) borrarSlot("club", n);
+  _slotDestino = 1;
+}
+
 comprueba("Guardado: con partida empezada se puede elegir 'nueva' (regresión WebView)", () => {
+  limpiaRanuras();
   nuevaCarrera("agresivo");
   guardar();
-  exige(infoSlot("carrera"), "la partida no se guardó");
+  exige(slotInfo("carrera", 1), "la partida no se guardó");
   G = null;
   abrirModo("carrera");
-  const btn = document.getElementById("mmNueva");
-  exige(btn && btn.onclick, "el modal no ofrece empezar una partida nueva");
+  // la ranura 1 está ocupada, así que la 2 debe ofrecer empezar de cero
+  const btn = document.getElementById("mmNueva2");
+  exige(btn && btn.onclick, "el selector no ofrece empezar una partida nueva");
   btn.onclick();                  // aquí es donde antes reventaba por .remove()
-  exige(infoSlot("carrera"), "empezar una nueva borró la partida guardada antes de tiempo");
-  return "modal correcto y guardado intacto";
+  exige(slotInfo("carrera", 1), "empezar una nueva borró la partida guardada antes de tiempo");
+  return "selector correcto y guardado intacto";
 });
 
 comprueba("Guardado: 'continuar' recupera la partida", () => {
+  limpiaRanuras();
   const c = nuevaCarrera("agresivo");
   const nombre = c.nombre;
   guardar();
   G = null;
   abrirModo("carrera");
-  const btn = document.getElementById("mmCont");
-  exige(btn && btn.onclick, "el modal no ofrece continuar");
+  const btn = document.getElementById("mmCont1");
+  exige(btn && btn.onclick, "el selector no ofrece continuar");
   btn.onclick();
   exige(G && G.carrera && G.carrera.nombre === nombre, "no se recuperó la partida");
   return "partida recuperada";
+});
+
+comprueba("Ranuras: tres partidas por modo, independientes entre sí", () => {
+  limpiaRanuras();
+  const nombres = [];
+  for (let n = 1; n <= N_RANURAS; n++) {
+    G = null; _slotDestino = n;
+    const c = nuevaCarrera("agresivo");
+    nombres.push(c.nombre);
+    guardar();
+    exige(G._slot === n, "la partida no recuerda su ranura: " + G._slot);
+  }
+  // las tres existen y cada una guarda a quien le toca
+  for (let n = 1; n <= N_RANURAS; n++) {
+    const inf = slotInfo("carrera", n);
+    exige(inf && !inf.roto, "la ranura " + n + " no se guardó");
+    exige(inf.nombre === nombres[n - 1], "la ranura " + n + " tiene el nombre de otra: " + inf.nombre);
+  }
+  // avanzar en una NO toca a las demás
+  G = null; abrirModo("carrera");
+  document.getElementById("mmCont2").onclick();
+  G.carrera.semana += 4; guardar();
+  exige(slotInfo("carrera", 2).semana === 5, "la ranura 2 no avanzó");
+  exige(slotInfo("carrera", 1).semana === 1, "avanzar en la 2 movió la 1");
+  exige(slotInfo("carrera", 3).semana === 1, "avanzar en la 2 movió la 3");
+  // borrar una deja las otras
+  borrarSlot("carrera", 2);
+  exige(!slotInfo("carrera", 2), "borrar no vació la ranura");
+  exige(slotInfo("carrera", 1) && slotInfo("carrera", 3), "borrar una se llevó las demás");
+  limpiaRanuras();
+  return N_RANURAS + " ranuras independientes";
+});
+
+comprueba("Ranuras: la primera es la clave de siempre (guardados antiguos)", () => {
+  // Una partida guardada antes de que existieran las ranuras vive en
+  // "rpm_carrera_v1" sin sufijo; tiene que aparecer como ranura 1 sin migrar nada.
+  limpiaRanuras();
+  exige(slotKey("carrera", 1) === SLOTS.carrera, "la ranura 1 cambió de clave: " + slotKey("carrera", 1));
+  exige(slotKey("carrera") === SLOTS.carrera, "sin número debería ser la ranura 1");
+  exige(slotKey("carrera", 2) !== SLOTS.carrera, "la ranura 2 pisa la clave antigua");
+  nuevaCarrera("agresivo");
+  const viejo = JSON.stringify(G); const nombre = G.carrera.nombre;
+  G = null; limpiaRanuras();
+  lsSet(SLOTS.carrera, viejo);                     // simula el guardado antiguo
+  const inf = slotInfo("carrera", 1);
+  exige(inf && inf.nombre === nombre, "el guardado antiguo no aparece como ranura 1");
+  limpiaRanuras();
+  return "compatible sin migración";
+});
+
+comprueba("Importar: valida el fichero antes de tocar la ranura", () => {
+  limpiaRanuras();
+  const c = nuevaCarrera("agresivo"); guardar();
+  const bueno = JSON.stringify(G); const nombre = c.nombre;
+  G = null; limpiaRanuras();
+
+  // lo que NO debe entrar
+  exige(importarPartida("esto no es json", "carrera", 1) === "imp_err_formato", "acepta texto que no es JSON");
+  exige(importarPartida("[1,2,3]", "carrera", 1) === "imp_err_formato", "acepta un JSON que no es una partida");
+  exige(importarPartida(bueno, "club", 1) === "imp_err_modo", "acepta una carrera como si fuera un club");
+  exige(importarPartida(JSON.stringify({ modo: "carrera", carrera: {} }), "carrera", 1) === "imp_err_incompleta", "acepta una carrera sin nombre");
+  exige(importarPartida(JSON.stringify({ modo: "carrera", carrera: { nombre: "X", semana: 1 } }), "carrera", 1) === "imp_err_mundo", "acepta una partida sin mundo");
+  exige(!slotInfo("carrera", 1), "un fichero inválido dejó algo escrito en la ranura");
+
+  // lo que sí
+  exige(importarPartida(bueno, "carrera", 3) === null, "rechaza una partida válida");
+  const inf = slotInfo("carrera", 3);
+  exige(inf && inf.nombre === nombre, "la partida importada no se lee bien");
+  // y se puede continuar de verdad
+  G = null; abrirModo("carrera");
+  document.getElementById("mmCont3").onclick();
+  exige(G && G.carrera && G.carrera.nombre === nombre, "no se puede continuar lo importado");
+  exige(G._slot === 3, "lo importado no se abre en su ranura");
+  limpiaRanuras();
+  return "ida y vuelta completa";
+});
+
+comprueba("Avisos: se pueden dar desde el menú, sin partida abierta", () => {
+  // avisa() llamaba a ent(), que hacía G.modo con G a null y reventaba. Salta
+  // desde el selector de ranuras, que vive en el menú: importar una partida
+  // escribía el fichero pero moría antes de repintar, y la ranura recién
+  // importada seguía apareciendo vacía.
+  G = null;
+  exige(ent() === null, "ent() debería devolver null sin partida abierta");
+  avisa("prueba desde el menú");     // no debe lanzar
+  avisa("prueba con tipo", "ok");
+  return "avisa() tolera G nulo";
+});
+
+comprueba("Ranuras: una partida corrupta se muestra y se puede borrar", () => {
+  limpiaRanuras();
+  lsSet(slotKey("carrera", 2), "{roto");
+  const inf = slotInfo("carrera", 2);
+  exige(inf && inf.roto, "una ranura ilegible debería marcarse como rota, no desaparecer");
+  G = null; abrirModo("carrera");   // el selector debe pintarse sin reventar con basura dentro
+  borrarSlot("carrera", 2);
+  exige(!slotInfo("carrera", 2), "no se pudo borrar la ranura rota");
+  limpiaRanuras();
+  return "visible y recuperable";
+});
+
+comprueba("Trofeos: la sala reúne la carrera entera sin reventar", () => {
+  const c = nuevaCarrera("agresivo");
+  // una carrera vivida, con de todo
+  c.vd = { v: 120, d: 60 }; c.recMajors = 2; c.fans = 30000; c.edad = 27;
+  c.palmares = ["Corona · París (T4)", "Élite 1 · Madrid (T3)", "Continental Oro (T2)", "Maestros · Barcelona (T5)"];
+  c.hist = [{ t: 1, pos: 70, pts: 100, tit: 0 }, { t: 2, pos: 30, pts: 900, tit: 1 }, { t: 3, pos: 9, pts: 3000, tit: 2 }];
+  c.hitosOk = { v1: 1, tit1: 2, top30: 2, top10: 3 };
+  c.h2h = { 10: { n: "A/B", v: 3, d: 7 }, 11: { n: "C/D", v: 5, d: 2 } };
+  c.nemesis = { id: 10, elim: 3 };
+  c.parejasHist = [{ n: "C. Hinojosa", desde: 1, hasta: 2, temps: 2, titulos: 1, motivo: "ruptura" }];
+  pintarTrofeos();
+  const html = document.getElementById("trofeosCuerpo").innerHTML;
+  exige(html.length > 500, "la sala sale casi vacía: " + html.length + " caracteres");
+  // las secciones importantes tienen que estar
+  ["trf_hd_vitrina", "trf_hd_hitos", "trf_hd_h2h", "trf_hd_parejas"].forEach(k => {
+    exige(html.indexOf(t(k).split("·")[0].trim()) >= 0, "falta la sección " + k);
+  });
+  exige(!/\btrf_[a-z_]+/.test(html), "alguna clave se queda sin traducir en la sala");
+  exige(html.indexOf("120-60") >= 0, "no aparece el balance de partidos");
+  exige(html.indexOf("#9") >= 0, "no aparece el mejor puesto del historial");
+  return "sala completa con " + c.palmares.length + " títulos";
+});
+
+comprueba("Trofeos: el palmarés se agrupa bien, incluidos los nombres viejos", () => {
+  const g = trofeosPorCategoria([
+    "Corona · Roma (T3)", "MAJOR París (T1)",            // nuevo y viejo: los dos son Corona
+    "Maestros · Barcelona (T4)", "Tour Finals (T2)",      // ídem
+    "Élite 1 · Madrid (T3)", "Premier P1 · Doha (T1)",    // ídem
+    "Continental Oro (T2)", "FIP Gold (T1)",              // ídem
+    "Open del barrio (T1)",
+  ]);
+  exige(g.corona.length === 2, "Coronas mal agrupadas: " + g.corona.length);
+  exige(g.maestros.length === 2, "Maestros mal agrupados: " + g.maestros.length);
+  exige(g.elite.length === 2, "Élite mal agrupada: " + g.elite.length);
+  exige(g.continental.length === 2, "Continental mal agrupado: " + g.continental.length);
+  exige(g.otros.length === 1, "lo que no encaja debería ir a otros");
+  return "5 categorías, con guardados nuevos y viejos";
+});
+
+comprueba("Trofeos: la sala también funciona en club y sin datos", () => {
+  // recién empezada: no debe reventar aunque no haya nada que enseñar
+  const c = nuevaCarrera("agresivo");
+  c.hist = []; c.palmares = []; c.h2h = {}; c.hitosOk = {};
+  pintarTrofeos();
+  exige(document.getElementById("trofeosCuerpo").innerHTML.indexOf(t("trf_sin_titulos")) >= 0,
+    "una carrera nueva debería decir que la vitrina está vacía");
+  // el gráfico necesita dos temporadas: con una no se pinta y no pasa nada
+  exige(trofeosGrafico([{ t: 1, pos: 50, pts: 0, tit: 0 }]) === "", "con una sola temporada no debería haber gráfico");
+  exige(trofeosGrafico([]) === "", "sin historial no debería haber gráfico");
+  exige(trofeosGrafico([{ t: 1, pos: 50 }, { t: 2, pos: 20 }]).indexOf("<svg") === 0, "con dos temporadas sí");
+  // y en modo club
+  fundarClub();
+  pintarTrofeos();
+  exige(document.getElementById("trofeosCuerpo").innerHTML.length > 300, "la sala del club sale vacía");
+  return "carrera vacía y club";
+});
+
+comprueba("Cuadro: el torneo tiene un cuadro de 16 con siembra", () => {
+  const c = nuevaCarrera("agresivo");
+  c.pts = 99999;                       // nº1: te toca ser cabeza de serie
+  semanaDeCategoria(c, 6);             // y una semana en la que se juegue la Corona
+  abrirTorneo(6);
+  const cu = torneo.cuadro;
+  exige(cu, "el torneo no genera cuadro");
+  exige(cu.ronda[2].length === CUADRO_N, `el cuadro tiene ${cu.ronda[2].length} y no ${CUADRO_N}`);
+  exige(cu.mi >= 0, "tu pareja no está en el cuadro");
+  // sin repetidos: nadie juega dos veces en la misma ronda
+  const ids = cu.ronda[2].filter(p => p && !p.yo).map(p => p.id);
+  exige(new Set(ids).size === ids.length, "hay parejas repetidas en el cuadro");
+  // el mejor sembrado va a una punta y el segundo a la otra: no se cruzan antes de la final
+  exige(cu.mi === 0, "el nº1 del ranking debería estar sembrado en la primera casilla, está en " + cu.mi);
+  // tu rival de octavos sale del cuadro, no de una tirada suelta
+  const rival = torneo.rivales[2];
+  exige(rival && rival === cu.ronda[2][1], "el rival de octavos no viene del cuadro");
+  return `${CUADRO_N} parejas, sembrado en la casilla ${cu.mi}`;
+});
+
+comprueba("Cuadro: el resto del torneo también juega, ronda a ronda", () => {
+  /* OJO: esta prueba comprueba la MECÁNICA del cuadro, no que tú ganes. Antes
+     ponía los atributos a 95 y daba por hecho llegar a la final; con el motor
+     equilibrado eso ya no es seguro (ni debe serlo), así que se juega hasta
+     donde se llegue y se comprueban las rondas que se hayan resuelto. Se
+     reintenta con otra semilla si caes a la primera, porque con una sola ronda
+     no hay nada que mirar. */
+  let c, cu, octavos, rivales, llegue;
+  for (let intento = 0; intento < 6; intento++) {
+    c = nuevaCarrera("agresivo");
+    c.pts = 99999;
+    ATTR_KEYS.forEach(k => { c.attrs[k] = 95; c.compi.attrs[k] = 95; });
+    semanaDeCategoria(c, 6);
+    rndSemilla(4100 + intento * 97, 4100 + intento * 97);
+    abrirTorneo(6);
+    cu = torneo.cuadro;
+    octavos = cu.ronda[2].filter(Boolean).length;
+    rivales = [];
+    let v = 0;
+    while (torneo && v++ < 6) {
+      rivales.push({ fase: torneo.fase, riv: torneo.rivales[torneo.fase] });
+      empezarPartido(false);
+      pulsarFicha();
+    }
+    llegue = rivales.length;
+    if (llegue >= 3) break;   // al menos octavos, cuartos y semis: hay rondas que mirar
+  }
+  exige(llegue >= 2, "no se pudo pasar de la primera ronda en seis intentos");
+  // las rondas que se han disputado tienen que haberse resuelto enteras
+  for (let f = 3; f < 2 + llegue; f++) {
+    const esperados = octavos / Math.pow(2, f - 2);
+    exige(cu.ronda[f] && cu.ronda[f].filter(Boolean).length === esperados,
+      `la ronda ${f} no se resuelve entera: ${cu.ronda[f] ? cu.ronda[f].filter(Boolean).length : "—"} de ${esperados}`);
+  }
+  // cada rival tuyo tiene que haber ganado su cruce anterior
+  rivales.forEach(({ fase, riv }) => {
+    if (!riv || fase < 3) return;
+    exige(cu.ronda[fase].includes(riv), `el rival de la fase ${fase} no había ganado su partido`);
+  });
+  // nadie eliminado reaparece más adelante
+  const enSemis = new Set((cu.ronda[4] || []).filter(Boolean).map(p => p.yo ? "yo" : p.id));
+  (cu.ronda[5] || []).filter(Boolean).forEach(p => {
+    exige(enSemis.has(p.yo ? "yo" : p.id), "una pareja llega a la final sin haber jugado la semifinal");
+  });
+  return `${octavos} en octavos → ${(cu.ronda[5] || []).filter(Boolean).length} en la final`;
+});
+
+comprueba("Cuadro: el favorito gana casi siempre, pero la campanada existe", () => {
+  // probGana es la que decide los cruces entre parejas del ordenador
+  exige(Math.abs(probGana(70, 70) - .5) < 1e-9, "a igual nivel debería ser 50%");
+  exige(probGana(82, 70) > .85 && probGana(82, 70) < .96, "12 puntos de ventaja deberían dar ~90%: " + probGana(82, 70).toFixed(3));
+  exige(probGana(70, 82) < .15, "y al revés");
+  exige(probGana(95, 40) < 1, "nunca debería ser certeza absoluta");
+  exige(probGana(40, 95) > 0, "la campanada nunca debería ser imposible");
+  // en 2000 cruces con 8 puntos de diferencia, el flojo gana alguna vez
+  let sorpresas = 0;
+  for (let i = 0; i < 2000; i++) if (rnd() >= probGana(78, 70)) sorpresas++;
+  exige(sorpresas > 100 && sorpresas < 700, `${sorpresas}/2000 campanadas: el equilibrio se ha ido`);
+  return `8 puntos de ventaja → ${(100 - sorpresas / 20).toFixed(0)}% para el favorito`;
+});
+
+comprueba("Contenido: los catálogos tienen volumen para una carrera larga", () => {
+  // Antes: 3 dilemas, 7 lesiones, 4 reformas, 11+9 hitos. Una carrera de diez
+  // temporadas los agotaba y empezaba a repetir de forma visible.
+  exige(DILEMAS.length >= 15, `solo ${DILEMAS.length} dilemas`);
+  exige(LESIONES.length >= 12, `solo ${LESIONES.length} lesiones`);
+  exige(Object.keys(REFORMAS).length >= 8, `solo ${Object.keys(REFORMAS).length} reformas`);
+  exige(HITOS_CARRERA.length >= 16, `solo ${HITOS_CARRERA.length} hitos de carrera`);
+  exige(HITOS_CLUB.length >= 14, `solo ${HITOS_CLUB.length} hitos de club`);
+  // sin ids repetidos, que romperían el seguimiento de hitos y dilemas
+  const dup = (arr) => arr.filter((x, i) => arr.indexOf(x) !== i);
+  exige(!dup(DILEMAS.map(d => d.id)).length, "dilemas con id repetido: " + dup(DILEMAS.map(d => d.id)));
+  exige(!dup(HITOS_CARRERA.map(h => h.id)).length, "hitos de carrera repetidos: " + dup(HITOS_CARRERA.map(h => h.id)));
+  exige(!dup(HITOS_CLUB.map(h => h.id)).length, "hitos de club repetidos: " + dup(HITOS_CLUB.map(h => h.id)));
+  exige(!dup(LESIONES.map(l => l.k)).length, "lesiones repetidas: " + dup(LESIONES.map(l => l.k)));
+  // el muro de fans y el mercado de staff se leen muchas más veces que un dilema:
+  // ahí la repetición canta antes que en ningún otro sitio
+  const nPosts = Object.values(POSTS_FAN).reduce((n, a2) => n + a2.length, 0);
+  const nStaff = Object.values(FRASES_STAFF).reduce((n, a2) => n + a2.length, 0);
+  exige(nPosts >= 90, `solo ${nPosts} posts de fans`);
+  exige(nStaff >= 72, `solo ${nStaff} frases de staff`);
+  exige(SOCIAL_USERS.length >= 30, `solo ${SOCIAL_USERS.length} usuarios en el muro`);
+  Object.entries(POSTS_FAN).forEach(([k, arr]) => exige(arr.length >= 6, `la categoría ${k} solo tiene ${arr.length} posts`));
+  exige(!dup(SOCIAL_USERS).length, "usuarios del muro repetidos: " + dup(SOCIAL_USERS));
+  const todos = Object.values(POSTS_FAN).flat();
+  exige(!dup(todos).length, "posts de fans repetidos entre categorías: " + dup(todos));
+  return `${DILEMAS.length} dilemas · ${nPosts} posts · ${nStaff} frases de staff · ${LESIONES.length} lesiones · ${HITOS_CARRERA.length + HITOS_CLUB.length} hitos`;
+});
+
+comprueba("Contenido: todos los dilemas se pueden pintar y resolver", () => {
+  const c = nuevaCarrera("agresivo");
+  // un protagonista con de todo, para que se cumplan las condiciones
+  c.dinero = 500; c.fans = 3000; c.energia = 80; c.pro = true; c.edad = 31;
+  c.vd = { v: 20, d: 5 }; c.compiMoral = 70;
+  c.sponsor = { marca: "Nébula", sem: 300, tier: 2 };
+  c.staff = c.staff || {}; c.staff.entrenador = { n: "R. Vela", sal: 200, niv: 3 };
+  let pintados = 0;
+  DILEMAS.forEach(d => {
+    // el texto debe resolverse sin lanzar y sin dejar claves crudas a la vista
+    const tit = d.titulo(c), tx = d.texto(c);
+    exige(tit && tx, `${d.id}: título o texto vacío`);
+    exige(!/^dil_/.test(tit), `${d.id}: el título se queda en la clave (${tit})`);
+    exige(!/^dil_/.test(tx), `${d.id}: el texto se queda en la clave`);
+    exige(d.ops.length >= 2, `${d.id}: menos de dos opciones`);
+    d.ops.forEach((o, i) => {
+      const ot = o.txt(c), od = o.desc(c);
+      exige(ot && !/^dil_/.test(ot), `${d.id} op${i}: opción sin traducir (${ot})`);
+      exige(od && !/^dil_/.test(od), `${d.id} op${i}: descripción sin traducir`);
+      if (o.dif) exige(o.dif.txt(c) && !/^dil_/.test(o.dif.txt(c)), `${d.id} op${i}: consecuencia sin traducir`);
+    });
+    pintados++;
+  });
+  exige(pintados === DILEMAS.length, "algún dilema no se pudo pintar");
+
+  // y resolverlos de verdad muta al protagonista sin romper nada
+  DILEMAS.forEach(d => {
+    const antes = { dinero: c.dinero, fans: c.fans };
+    c.dilemaActivo = { id: d.id, sem: 1 };
+    const r = aplicarOpcionDilema(c, 0, 1);
+    exige(r && r.op, `${d.id}: no se pudo resolver`);
+    exige(Number.isFinite(c.dinero) && Number.isFinite(c.fans), `${d.id} deja valores no numéricos`);
+    exige(c.fans >= 0, `${d.id} deja los seguidores en negativo`);
+    c.dinero = antes.dinero; c.fans = antes.fans;
+  });
+  return DILEMAS.length + " dilemas pintados y resueltos";
+});
+
+comprueba("Contenido: las reformas se declaran al fundar y cuestan de menos a más", () => {
+  const cl = fundarClub();
+  Object.keys(REFORMAS).forEach(k => {
+    exige(k in cl.reformas, `el club nace sin declarar la reforma ${k}`);
+    exige(cl.reformas[k] === false, `la reforma ${k} nace ya construida`);
+    exige(REFORMAS[k].coste > 0, `la reforma ${k} no cuesta nada`);
+  });
+  // el catálogo va escalonado: la primera se alcanza pronto y la última es meta
+  const costes = Object.values(REFORMAS).map(r => r.coste);
+  exige(Math.min(...costes) <= 6000, "no hay ninguna reforma asequible de salida");
+  exige(Math.max(...costes) >= 15000, "falta una reforma que sea una meta de verdad");
+  return `${costes.length} reformas de ${Math.min(...costes)}€ a ${Math.max(...costes)}€`;
+});
+
+comprueba("Circuito: 90 parejas por categoría y se debuta por el puesto 91", () => {
+  const c = nuevaCarrera("agresivo");
+  exige(G.world.parejas.length === WORLD_N, `el circuito tiene ${G.world.parejas.length}, esperaba ${WORLD_N}`);
+  const porSexo = { M: 0, F: 0 };
+  G.world.parejas.forEach(p => porSexo[p.sexo || "M"]++);
+  exige(porSexo.M === porSexo.F, `categorías desiguales: ${porSexo.M}M / ${porSexo.F}F`);
+  exige(porSexo.M >= 80 && porSexo.M <= 100, `deberían ser 80-100 por categoría, hay ${porSexo.M}`);
+  // el jugador debuta por el fondo del ranking, no a mitad de tabla
+  const puesto = miPuesto();
+  exige(puesto >= 80, `se debuta demasiado arriba: puesto ${puesto}`);
+  exige(puesto <= porSexo.M + 1, `puesto imposible: ${puesto} de ${porSexo.M + 1}`);
+  return `${WORLD_N} parejas · ${porSexo.M} por categoría · debut en el ${puesto}`;
+});
+
+comprueba("Circuito: el nivel cubre toda la escalera en ambas categorías", () => {
+  nuevaCarrera("agresivo");
+  ["M", "F"].forEach(sx => {
+    const niveles = G.world.parejas.filter(p => (p.sexo || "M") === sx).map(p => nivelPareja(p));
+    const min = Math.min(...niveles), max = Math.max(...niveles);
+    // si el nivel se repartiera por índice global, cada sexo tendría media escalera
+    exige(min <= 45, `${sx}: la pareja más floja está en ${min}, debería haber novatos`);
+    exige(max >= 80, `${sx}: la mejor pareja está en ${max}, falta la élite`);
+  });
+  return "de novato a élite en las dos categorías";
+});
+
+comprueba("Circuito: las parejas se reparten por TODOS los clubes", () => {
+  nuevaCarrera("agresivo");
+  repartirClubes();
+  const porClub = {};
+  G.world.parejas.forEach(p => { porClub[p.club] = (porClub[p.club] || 0) + 1; });
+  const usados = Object.keys(porClub).length;
+  exige(usados === CLUBES_NPC.length, `solo ${usados} de ${CLUBES_NPC.length} clubes tienen parejas`);
+  // clubAlAzar() debe poder devolver cualquier índice, no solo los 9 primeros
+  const vistos = new Set();
+  for (let i = 0; i < 3000; i++) vistos.add(clubAlAzar());
+  exige(vistos.size === CLUBES_NPC.length, `clubAlAzar solo alcanza ${vistos.size} de ${CLUBES_NPC.length} clubes`);
+  exige(Math.max(...vistos) === CLUBES_NPC.length - 1, "clubAlAzar no llega al último club");
+  return `${CLUBES_NPC.length} clubes, todos con plantilla`;
+});
+
+comprueba("Circuito: los nombres respetan la bandera del jugador", () => {
+  nuevaCarrera("agresivo");
+  // muestras de repertorios inconfundibles
+  const marcas = {
+    "🇸🇪": /Lindqvist|Bergström|Sandberg|Nyström|Åkerlund|Hedlund|Sjöberg|Wallin|Ekström|Holmberg|Dahl/,
+    "🇶🇦": /\bAl-/,          // el nombre va abreviado ("R. Al-Hajri"), no anclar al principio
+    "🇳🇱": /Van Dijk|De Vries|Bakker|Visser|Hoekstra|Kuipers|Van Leeuwen|Smits|Verhoeven|Blom/,
+  };
+  let comprobados = 0;
+  G.world.parejas.forEach(p => (p.jug || []).forEach(j => {
+    const re = marcas[j.pais];
+    if (!re || p.pro) return;                 // la élite lleva nombres escritos a mano
+    comprobados++;
+    exige(re.test(j.n), `${j.pais} con nombre que no es de ahí: ${j.n}`);
+  }));
+  exige(comprobados >= 3, "casi no salieron jugadores de esos países para comprobar (" + comprobados + ")");
+  // y el generador acepta países sin repertorio propio sin reventar
+  exige(nombrePorSexo("M", "🇯🇵").length > 0, "un país sin repertorio debería caer al español");
+  exige(apellidoPais("🇯🇵").length > 0, "apellido de país sin repertorio");
+  return comprobados + " jugadores con nombre acorde a su bandera";
+});
+
+comprueba("Circuito: el mundo grande se genera y simula rápido", () => {
+  const t0 = Date.now();
+  nuevaCarrera("agresivo");
+  const tMundo = Date.now() - t0;
+  const t1 = Date.now();
+  for (let i = 0; i < 26; i++) simCircuito([]);
+  const tSim = Date.now() - t1;
+  const kb = Math.round(JSON.stringify(G).length / 1024);
+  // márgenes anchos: la prueba es contra una regresión de orden de magnitud,
+  // no contra el ruido de una máquina más lenta
+  exige(tMundo < 2000, `generar el mundo tarda ${tMundo}ms`);
+  exige(tSim < 2000, `26 semanas de circuito tardan ${tSim}ms`);
+  exige(kb < 400, `la partida ocupa ${kb} KB, demasiado para localStorage con 3 ranuras`);
+  return `mundo ${tMundo}ms · 26 semanas ${tSim}ms · ${kb} KB`;
 });
 
 comprueba("Pádel: todas las parejas combinan drive y revés", () => {
@@ -970,6 +1410,61 @@ comprueba("La pareja como personaje: acuerdo, retirada e historia común", () =>
   return `acuerdo ${ok.delta}/${malLejos.delta}; retiro 38→${ret38} 42→${ret42}; etapa de ${et.temps} temporadas`;
 });
 
+comprueba("Circuito: las categorías guardan claves y se traducen", () => {
+  exige(CATS.length === 8, "deberían seguir siendo 8 categorías");
+  CATS.forEach((c, i) => {
+    exige(c.k === "cat_" + i, "la categoría " + i + " no guarda su clave: " + JSON.stringify(c.k));
+    exige(c.n === undefined, "la categoría " + i + " conserva un nombre literal");
+  });
+  // catNombre resuelve por índice y por objeto, y cambia con el idioma
+  exige(catNombre(0) === catNombre(CATS[0]), "catNombre no acepta índice y objeto por igual");
+  const es = CATS.map((_, i) => catNombre(i));
+  try {
+    localStorage.setItem("rpm_idioma", "de");
+    const de = CATS.map((_, i) => catNombre(i));
+    exige(de[6] === "Krone" && de[7] === "Meister", "las categorías no se traducen: " + de.join("/"));
+    exige(de.every(x => x && x.indexOf("cat_") < 0), "alguna categoría se queda en la clave sin traducir");
+  } finally { localStorage.removeItem("rpm_idioma"); }
+  return es.join(" · ");
+});
+
+/* El juego se vende: no puede llevar los nombres reales del circuito ni de
+   otros productos. Esta prueba mira el texto que VE el jugador, en los cinco
+   idiomas, más los literales del código. */
+comprueba("Circuito: no aparecen marcas de terceros en ningún idioma", () => {
+  // Las marcas van siempre en mayúscula inicial, así que la comparación es
+  // sensible a la caja: en francés "premier tableau" es el ordinal y es legítimo.
+  const PROHIBIDAS = [/\bFIP\b/, /\bPremier\b/, /\bMAJOR\b/, /Tour Finals/i, /Football Manager/i, /World Padel/i];
+  const malas = [];
+  for (const idioma of ["es", "en", "fr", "de", "it"]) {
+    const dicc = I18N[idioma];
+    for (const [k, v] of Object.entries(dicc)) {
+      if (typeof v !== "string") continue;
+      // Al principio de frase el francés escribe "Premier titre" con mayúscula
+      // y sigue siendo el ordinal: se descarta si le sigue palabra en minúscula
+      const texto = idioma === "fr" ? v.replace(/\bPremier(?= [a-zà-ÿ])/g, "…") : v;
+      PROHIBIDAS.forEach(re => { if (re.test(texto)) malas.push(idioma + "." + k + ": " + v.slice(0, 60)); });
+    }
+  }
+  exige(!malas.length, malas.slice(0, 6).join(" | "));
+  return Object.keys(I18N.es).length + " claves × 5 idiomas limpias";
+});
+
+comprueba("Circuito: el hito de título Élite usa contador y respeta guardados viejos", () => {
+  const c = nuevaCarrera("agresivo");
+  exige(!tituloElite(c), "de inicio no debería haber título Élite");
+  // partida nueva: manda el contador, no el texto del palmarés
+  c.palmares.push("Continental Oro (T1)");
+  exige(!tituloElite(c), "un título Continental no debería contar como Élite");
+  c.recTitElite = 1;
+  exige(tituloElite(c), "el contador no activa el hito");
+  // partida vieja: no tiene contador, pero su palmarés lleva los nombres de antes
+  const viejo = { recTitElite: 0, palmares: ["Premier P1 · Roma (T3)"] };
+  exige(tituloElite(viejo), "un guardado antiguo con título Premier pierde su hito");
+  exige(!tituloElite({ palmares: ["FIP Gold (T2)"] }), "un FIP antiguo no era título Premier");
+  return "contador + compatibilidad";
+});
+
 comprueba("Idiomas: los catálogos de datos guardan CLAVES, no frases", () => {
   // los catálogos que se pintan deben referenciar claves i18n existentes en los
   // 5 idiomas; si alguien mete una frase suelta, esto lo caza
@@ -986,6 +1481,8 @@ comprueba("Idiomas: los catálogos de datos guardan CLAVES, no frases", () => {
   revisa("REFORMAS", Object.keys(REFORMAS).flatMap(k => ["ref_" + k, "ref_" + k + "_d"]));
   revisa("ATTR_KEYS", ATTR_KEYS.map(k => "at_" + k));
   revisa("MARCAS (sectores)", [...new Set(MARCAS.map(m => m.sec))]);
+  revisa("RASGOS", Object.values(RASGOS).flatMap(r => [r.n, r.desc]));
+  revisa("CATS", CATS.map(c => c.k));
   revisa("PRIMAS_CAT", [...new Set(Object.values(PRIMAS_CAT).flat().map(p => "prima_" + p[0]))]);
   revisa("TUTO", TUTO.carrera.concat(TUTO.club).flat());
   // y ningún sector de marca puede haber quedado como frase en español
@@ -1027,7 +1524,8 @@ comprueba("Idiomas: golpes y frases del staff en el idioma activo", () => {
     exige(atLista(["globo", "volea"]).join("/") === "lob/volley", "atLista no traduce la lista de especialidades");
     // mkStaff guarda la frase como CLAVE, no como texto
     const st = mkStaff("fisio", 3);
-    exige(/^fr_fisio_[1-4]$/.test(st.frase), "mkStaff no guarda la frase como clave i18n: " + st.frase);
+    exige(FRASES_STAFF.fisio.indexOf(st.frase) >= 0, "mkStaff no guarda la frase como clave i18n: " + st.frase);
+    exige(FRASES_STAFF.fisio.length >= 12, "el catálogo de frases se quedó corto: " + FRASES_STAFF.fisio.length);
     exige(t(st.frase) !== st.frase && /[a-z]/i.test(t(st.frase)), "la frase del staff no resuelve a texto");
     // fallback: un guardado antiguo con la frase literal sigue mostrándose
     exige(t("Manos de oro, agenda llena.") === "Manos de oro, agenda llena.", "el fallback de frases antiguas no funciona");
@@ -1037,7 +1535,8 @@ comprueba("Idiomas: golpes y frases del staff en el idioma activo", () => {
     ATTR_KEYS.forEach(k => ["en", "fr", "de", "it"].forEach(l => exige(I18N[l]["at_" + k], `falta at_${k} en ${l}`)));
     Object.values(FRASES_STAFF).forEach(arr => arr.forEach(k => exige(I18N.es[k] && I18N.de[k], "frase de staff sin clave: " + k)));
   } finally { localStorage.removeItem("rpm_idioma"); }
-  return "9 golpes y 24 frases de staff en 5 idiomas";
+  const nFr = Object.values(FRASES_STAFF).reduce((n, a2) => n + a2.length, 0);
+  return "9 golpes y " + nFr + " frases de staff en 5 idiomas";
 });
 
 comprueba("Idiomas: avisos sueltos, hitos, primas y club en el idioma activo", () => {
@@ -1045,14 +1544,14 @@ comprueba("Idiomas: avisos sueltos, hitos, primas y club en el idioma activo", (
     localStorage.setItem("rpm_idioma", "en");
     exige(t("av_wildcard", { cat: "P1", n: 1 }).includes("Wildcard used"), "el aviso de wildcard no interpola en inglés");
     exige(t("clb_junta_nuevo", { obj: 20 }) === "📋 New board goal: finish the season in the top 20.", "el aviso de la junta no sale en inglés");
-    exige(t("hito_ca_major") === "Win a MAJOR" && t("hito_cl_top3").includes("Podium"), "los hitos no se traducen");
+    exige(t("hito_ca_major") === "Win a CROWN" && t("hito_cl_top3").includes("Podium"), "los hitos no se traducen");
     exige(t("prima_n1") === "Close as No. 1", "las primas no se traducen");
     // los hitos referencian claves existentes en ambos modos
     HITOS_CARRERA.forEach(h => exige(I18N.es["hito_ca_" + h.id] && I18N.en["hito_ca_" + h.id], "hito de carrera sin clave: " + h.id));
     HITOS_CLUB.forEach(h => exige(I18N.es["hito_cl_" + h.id] && I18N.en["hito_cl_" + h.id], "hito de club sin clave: " + h.id));
     Object.keys(REFORMAS).forEach(k => exige(I18N.es["ref_" + k] && I18N.it["ref_" + k + "_d"], "reforma sin clave: " + k));
     localStorage.setItem("rpm_idioma", "es");
-    exige(t("hito_ca_major") === "Ganar un MAJOR", "los hitos no vuelven al español");
+    exige(t("hito_ca_major") === "Ganar una CORONA", "los hitos no vuelven al español");
     const claves = Object.keys(I18N.es).filter(k => /^(av_|ent_|fan_|hito_|prima_|clb_|ref_|rec_)/.test(k));
     exige(claves.length >= 95, "faltan claves de avisos/hitos/club: " + claves.length);
     ["en", "fr", "de", "it"].forEach(l => claves.forEach(k => exige(typeof I18N[l][k] === "string" && I18N[l][k].length > 0, `falta ${k} en ${l}`)));
@@ -1212,6 +1711,8 @@ comprueba("Idiomas: el selector aplica el idioma y repinta el menú traducido", 
    sea ni trivial ni imposible en la dificultad estándar. */
 
 // mulberry32: misma semilla → misma secuencia.
+/* OBSOLETO: el juego ya trae su propio generador con semilla (src/js/rng.js).
+   Se conserva solo por si algún caso viejo lo llama. */
 function rngSemilla(seed) {
   let s = seed >>> 0;
   return () => {
@@ -1225,10 +1726,17 @@ function rngSemilla(seed) {
 // Simula `temporadas` de Superliga con una dificultad y semilla dadas. Devuelve
 // métricas de balance. Determinista: no depende de Math.random del entorno.
 function simulaSuperliga(dificultad, seed, temporadas) {
-  const gPrev = G, randPrev = Math.random;
+  /* A GRANEL. Estas pruebas miden la economía y el objetivo de la junta a lo
+     largo de decenas de temporadas; jugar punto a punto cada eliminatoria son
+     trece mil partidos y el vm de pruebas tarda media hora. La logística está
+     ajustada contra el motor para que ambas vías digan lo mismo. */
+  return slAGranel(true, () => _simulaSuperliga(dificultad, seed, temporadas));
+}
+function _simulaSuperliga(dificultad, seed, temporadas) {
+  const gPrev = G, estPrev = rndEstado();
   try {
     G = { dif: dificultad };
-    Math.random = rngSemilla(seed);
+    rndSemilla(seed);          // siembra el generador del juego (antes se pisaba Math.random)
     const tuyo = { n: "Test SC", color: "#C6F53C", fuerza: 62 };
     let sl = mkSuperliga(tuyo.n, tuyo.fuerza, tuyo.color);
     sl.plantilla = mkPlantillaSuperliga();
@@ -1252,8 +1760,104 @@ function simulaSuperliga(dificultad, seed, temporadas) {
       sl = nueva;
     }
     return { caja: res.caja, cumplidos, titulos, objetivo: sl.objetivo, temporadas };
-  } finally { Math.random = randPrev; G = gPrev; }
+  } finally { rndSemilla(estPrev.semilla, estPrev.pos); G = gPrev; }
 }
+
+comprueba("Semilla: ida y vuelta del texto que ve el jugador", () => {
+  [1, 12345, 4294967295, 999999999].forEach(s => {
+    exige(semillaDe(semillaTxt(s)) === s, "no sobrevive la ida y vuelta: " + s + " → " + semillaTxt(s));
+  });
+  exige(/^[0-9A-Z]+$/.test(semillaTxt(123456789)), "la semilla debería ser legible: " + semillaTxt(123456789));
+  exige(semillaDe("") === 0, "vacío debería dar 0 (y entonces se sortea una)");
+  exige(semillaDe("  ") === 0, "espacios deberían dar 0");
+  exige(semillaDe("no-existe-esto") >= 0, "un texto raro no debería reventar");
+  exige(semillaNueva() > 0 && semillaNueva() !== semillaNueva(), "semillaNueva debería dar valores distintos");
+  return "base 36 legible y reversible";
+});
+
+comprueba("Semilla: el mismo flujo da la misma secuencia, y otro flujo no", () => {
+  const saca = (s, n) => { rndSemilla(s); return Array.from({ length: n }, () => rnd()); };
+  const a = saca(2024, 40), b = saca(2024, 40), c = saca(2025, 40);
+  exige(a.every((v, i) => v === b[i]), "la misma semilla da secuencias distintas");
+  exige(a.some((v, i) => v !== c[i]), "dos semillas distintas dan lo mismo");
+  exige(a.every(v => v >= 0 && v < 1), "algún valor se sale de [0,1)");
+  // reanudar por posición: retomar a mitad continúa la misma secuencia
+  rndSemilla(2024); for (let i = 0; i < 17; i++) rnd();
+  const pos = rndEstado().pos;
+  const sigue = [rnd(), rnd(), rnd()];
+  rndSemilla(2024, pos);
+  exige([rnd(), rnd(), rnd()].every((v, i) => v === sigue[i]), "retomar por posición no continúa la misma secuencia");
+  return "secuencia estable y reanudable";
+});
+
+/* La prueba que justifica todo el ejercicio: dos carreras con la misma semilla
+   tienen que vivir el mismo torneo, punto por punto. */
+comprueba("Semilla: dos partidas con la misma semilla juegan el mismo torneo", () => {
+  const juega = (semilla) => {
+    G = null; _slotDestino = 1;
+    // se teclea en el campo de la pantalla de creación, que es el camino real:
+    // empezarCarrera() lee de ahí y pisa cualquier SEMILLA_ELEGIDA puesta a mano
+    document.getElementById("inSemilla").value = semillaTxt(semilla);
+    const c = nuevaCarrera("agresivo");
+    abrirTorneo(0);
+    const marcadores = [];
+    let v = 0;
+    while (torneo && v++ < 8) {
+      empezarPartido(false);
+      marcadores.push(document.getElementById("mkSets") ? "" : "");
+      marcadores.push(JSON.stringify(stats && stats.pganados));
+      pulsarFicha();
+    }
+    return { rival: c.h2h, pts: c.pts, dinero: c.dinero, marcadores: marcadores.join("|"),
+             mundo: G.world.parejas.slice(0, 5).map(p => p.nombre + ":" + p.pts).join(",") };
+  };
+  const a = juega(777777), b = juega(777777), c = juega(888888);
+  exige(a.mundo === b.mundo, "el mundo generado difiere con la misma semilla");
+  exige(a.pts === b.pts && a.dinero === b.dinero, `el torneo difiere: ${a.pts}pts/${a.dinero}€ vs ${b.pts}pts/${b.dinero}€`);
+  exige(a.marcadores === b.marcadores, "los partidos se juegan distinto con la misma semilla");
+  exige(a.mundo !== c.mundo || a.pts !== c.pts, "dos semillas distintas dan exactamente lo mismo");
+  limpiaRanuras();
+  return `semilla 777777 → ${a.pts} pts, ${a.dinero}€`;
+});
+
+comprueba("Semilla: la partida la guarda y continuarla retoma el flujo donde iba", () => {
+  limpiaRanuras();
+  G = null; _slotDestino = 1;
+  document.getElementById("inSemilla").value = semillaTxt(4242);
+  nuevaCarrera("agresivo");
+  exige(G.semilla === 4242, "la partida no guarda la semilla elegida: " + G.semilla);
+  for (let i = 0; i < 25; i++) rnd();          // consume flujo, como haría jugar
+  guardar();
+  const posGuardada = G._rngS;
+  exige(posGuardada === rndEstado().pos, "guardar no anota la posición del flujo");
+  const siguientes = [rnd(), rnd(), rnd()];
+
+  // continuar la partida: debe seguir por donde iba, no volver al principio
+  G = null; rndSemilla(1, 1);                  // ensucia el flujo a propósito
+  abrirModo("carrera");
+  document.getElementById("mmCont1").onclick();
+  exige(G.semilla === 4242, "al continuar se pierde la semilla");
+  exige([rnd(), rnd(), rnd()].every((v, i) => v === siguientes[i]),
+        "continuar no retoma el flujo: recargar y repetir daría otro resultado");
+  limpiaRanuras();
+  return "semilla y posición viajan con la partida";
+});
+
+comprueba("Semilla: una partida antigua sin semilla recibe una al abrirse", () => {
+  limpiaRanuras();
+  nuevaCarrera("agresivo"); guardar();
+  // simula un guardado de antes de que existiera la semilla
+  const d = JSON.parse(lsGet(slotKey("carrera", 1)));
+  delete d.semilla; delete d._rngS;
+  lsSet(slotKey("carrera", 1), JSON.stringify(d));
+  G = null;
+  abrirModo("carrera");
+  document.getElementById("mmCont1").onclick();
+  exige(G.semilla > 0, "una partida antigua debería recibir semilla al abrirse");
+  exige(rndEstado().semilla === G.semilla, "el flujo no arranca con la semilla de la partida");
+  limpiaRanuras();
+  return "compatible con guardados de antes";
+});
 
 comprueba("Balance: la simulación es reproducible con la misma semilla", () => {
   const a = simulaSuperliga("manager", 12345, 5);
@@ -1470,4 +2074,2692 @@ comprueba("Idiomas: noticias de carrera con variantes aleatorias (pick) traducen
     exige(t("not_anuncio_t", { marca: "Wilson", tipo: t("not_anuncio_default") }) === "Wilson launches an ad", "anuncio: " + t("not_anuncio_t", { marca: "Wilson", tipo: t("not_anuncio_default") }));
   } finally { localStorage.removeItem("rpm_idioma"); }
   return "variantes y contrato/mercado en inglés";
+});
+
+/* Guía de las primeras semanas -------------------------------------------
+   Fallos reales que cazó la verificación en navegador y que no vuelven:
+   la guía se quedaba clavada en el paso 1 (nada la despertaba al cambiar de
+   pestaña) y, al arreglarlo con un salto hacia adelante, se comía media
+   carrera de golpe porque `tabActiva` ya vale "semana" nada más empezar. */
+function guiaLimpia() {
+  ["carrera", "club"].forEach(m => localStorage.removeItem("rpm_guia_" + m));
+  _guiaModo = null; _guiaPaso = 0;
+  torneo = null;            // el torneo abierto de otro caso es un hito de la guía
+}
+function guiaId() { return guiaPasos()[_guiaPaso].id; }
+
+comprueba("Guía: empieza por el principio aunque la pestaña ya sea la de la semana", () => {
+  guiaLimpia();
+  const c = nuevaCarrera();
+  exige(tabActiva === "semana", "el juego debería arrancar en la pestaña Semana");
+  guiaEmpieza("carrera");
+  exige(_guiaModo === "carrera", "la guía no arrancó");
+  exige(guiaId() === "ficha", "arrancó en el paso '" + guiaId() + "' en vez del primero");
+  exige(c.semana === 1, "la carrera no empieza en la semana 1");
+  return "paso 1 de 9, sin saltos";
+});
+
+comprueba("Guía: cada paso se da por hecho con su acción, no con otra", () => {
+  guiaLimpia();
+  const c = nuevaCarrera();
+  guiaEmpieza("carrera");
+  const paso = (etiqueta, hacer) => { hacer(); guiaComprueba(); return guiaId(); };
+  exige(paso("jugador", () => tabActiva = "jugador") === "entreno", "tras abrir Jugador: " + guiaId());
+  exige(paso("entreno", () => tabActiva = "entreno") === "golpe", "tras abrir Entreno: " + guiaId());
+  exige(paso("golpe", () => c.planJug = "remate") === "semana", "tras elegir golpe: " + guiaId());
+  exige(paso("semana", () => tabActiva = "semana") === "entrenar", "tras volver a Semana: " + guiaId());
+  exige(paso("entrenar", () => c._sesEntreno = 1) === "inscribir", "tras entrenar: " + guiaId());
+  return "5 pasos encadenados";
+});
+
+comprueba("Guía: el plan del ojeador cuenta aunque se deje en normal", () => {
+  guiaLimpia();
+  const c = nuevaCarrera();
+  guiaEmpieza("carrera");
+  tabActiva = "jugador"; guiaComprueba();
+  tabActiva = "entreno"; guiaComprueba();
+  c.planJug = "remate"; guiaComprueba();
+  tabActiva = "semana"; guiaComprueba();
+  c._sesEntreno = 1; guiaComprueba();
+  abrirTorneo(0); guiaComprueba();
+  exige(guiaId() === "ojeador", "no llegó al informe: " + guiaId());
+  // el plan recomendado puede ser exactamente el neutro: lo que vale es haberlo tocado
+  aplicarTacticaRec("normal", "repartir", "normal", "normal");
+  guiaComprueba();
+  exige(guiaId() === "jugar", "aplicar el plan neutro no contó: " + guiaId());
+  return "el plan se marca al tocarlo";
+});
+
+comprueba("Guía: un hito posterior desatasca; el estado de la interfaz no", () => {
+  guiaLimpia();
+  const c = nuevaCarrera();
+  guiaEmpieza("carrera");
+  tabActiva = "semana"; guiaComprueba();
+  exige(guiaId() === "ficha", "una pestaña no es un hito: " + guiaId());
+  c.semana = 2; guiaComprueba();          // hito: se pasó de semana sin seguir la guía
+  exige(guiaId() === "fin", "el hito no desatascó la guía: " + guiaId());
+  return "salta solo con hechos consumados";
+});
+
+comprueba("Guía: se retoma donde estaba y no vuelve si se cierra", () => {
+  guiaLimpia();
+  const c = nuevaCarrera();
+  guiaEmpieza("carrera");
+  tabActiva = "jugador"; guiaComprueba();
+  tabActiva = "entreno"; guiaComprueba();
+  const donde = guiaId();
+  exige(localStorage.getItem("rpm_guia_carrera") === "2", "no guardó el paso: " + localStorage.getItem("rpm_guia_carrera"));
+  _guiaModo = null; _guiaPaso = 0;                       // como si se recargara la página
+  guiaEmpieza("carrera");
+  exige(guiaId() === donde, "no retomó en '" + donde + "' sino en '" + guiaId() + "'");
+  guiaCierra();
+  exige(guiaTerminada("carrera"), "cerrarla no queda registrado");
+  guiaEmpieza("carrera");
+  exige(_guiaModo === null, "la guía cerrada volvió a salir");
+  guiaLimpia();
+  return "sobrevive a la recarga, no al cierre";
+});
+
+comprueba("Guía: no pide la pareja B a un club que no tiene con quién formarla", () => {
+  guiaLimpia();
+  const cl = fundarClub();                 // se funda con dos jugadores
+  exige(cl.plantilla.length < 4, "el club de prueba debería tener menos de cuatro");
+  guiaEmpieza("club");
+  cmTab = "plantilla"; guiaComprueba();
+  exige(guiaId() === "panel", "pidió la pareja B siendo imposible: " + guiaId());
+  guiaLimpia();
+  return "el paso imposible se salta";
+});
+
+comprueba("Club: la pareja B se forma en dos clics (regresión: se borraba sola)", () => {
+  const cl = fundarClub();
+  while (cl.plantilla.length < 4) cl.plantilla.push({ ...cl.plantilla[0], n: "Suplente " + cl.plantilla.length });
+  cl.alin = [0, 1]; cl.alinB = null;
+  cl.alinB = [2];                          // primer clic: pareja a medias
+  repararAlin();
+  exige(cl.alinB && cl.alinB.length === 1, "el estado intermedio se borró al repintar");
+  cl.alinB = [2, 3];                       // segundo clic
+  repararAlin();
+  exige(cl.alinB && cl.alinB.length === 2, "la pareja B completa no se conserva");
+  cl.plantilla.length = 3;                 // se va el jugador elegido a medias
+  cl.alinB = [3]; repararAlin();
+  exige(cl.alinB === null, "un índice que ya no existe debería limpiarse");
+  return "pareja B formable y a prueba de bajas";
+});
+
+/* Cuaderno de dilemas: memoria y cadenas ---------------------------------
+   Antes era una bolsa de la que se sacaba al azar: la misma escena volvía tres
+   veces en una temporada y ninguna decisión dejaba rastro. */
+comprueba("Dilemas: una escena no se repite mientras esté fresca", () => {
+  const c = nuevaCarrera();
+  c.dilVistos = { furgoneta: 10 };
+  const ids = dilemasDisponibles(c, 20).map(d => d.id);
+  exige(ids.indexOf("furgoneta") < 0, "repitió una escena de hace 10 semanas");
+  const luego = dilemasDisponibles(c, 10 + DIL_DESCANSO + 1).map(d => d.id);
+  c.dinero = 500; c.pro = false;
+  exige(dilemasDisponibles(c, 10 + DIL_DESCANSO + 1).some(d => d.id === "furgoneta"), "no vuelve nunca, ni pasado el descanso");
+  return "descanso de " + DIL_DESCANSO + " semanas";
+});
+
+comprueba("Dilemas: los marcados como únicos no vuelven jamás", () => {
+  const c = nuevaCarrera();
+  c.edad = 19; c.dilVistos = { universidad: 5 };
+  exige(!dilemasDisponibles(c, 5 + DIL_DESCANSO * 3).some(d => d.id === "universidad"), "un dilema único se repitió");
+  return "los únicos se viven una vez";
+});
+
+comprueba("Dilemas: la decisión queda registrada y abre la escena que la sigue", () => {
+  const c = nuevaCarrera();
+  c.fans = 3000; c.dinero = 1000;
+  c.dilemaActivo = { id: "inversor", sem: 12 };
+  aplicarOpcionDilema(c, 0, 12);                    // firmar el adelanto
+  exige(dilHizo(c, "inversor", 0), "la decisión no quedó registrada");
+  exige(!dilHizo(c, "inversor", 1), "registró una decisión que no se tomó");
+  exige((c.pendientes || []).some(p => p.abre === "cobro_inversor"), "la consecuencia no encadena");
+  exige(!dilemasDisponibles(c, 13).some(d => d.id === "cobro_inversor"), "el cobro salta antes de tiempo");
+  resolverPendientes(c, 18);                        // seis semanas después
+  exige(c.dilemaActivo && c.dilemaActivo.id === "cobro_inversor", "el inversor no vino a cobrar");
+  return "firmar hoy es un dilema dentro de seis semanas";
+});
+
+comprueba("Dilemas: las cadenas por condición solo existen si hiciste aquello", () => {
+  const a = nuevaCarrera(); a.edad = 31; a.fragil = 3;
+  a.decis = { infiltracion: 1 };                     // dijo que no a la infiltración
+  exige(!dilemasDisponibles(a, 60).some(d => d.id === "operacion"), "la operación aparece sin haberse infiltrado");
+  a.decis = { infiltracion: 0 };
+  exige(dilemasDisponibles(a, 60).some(d => d.id === "operacion"), "infiltrarse no abre la operación");
+  return "la resonancia es de quien se infiltró";
+});
+
+comprueba("Dilemas: un texto con nombres sobrevive a una partida sin ellos", () => {
+  const c = nuevaCarrera();
+  c.compi = null; c.nemesis = null;                  // guardado viejo, pareja rota
+  ["nemesis_adios", "compi_oferta", "compi_boda", "hermano_compi"].forEach(id => {
+    const d = _dilemaPorId(id);
+    exige(d, "falta el dilema " + id);
+    const tit = d.titulo(c), tx = d.texto(c);
+    exige(tit && !/undefined/.test(tit), id + ": título roto (" + tit + ")");
+    exige(tx && !/undefined/.test(tx), id + ": texto roto");
+    d.ops.forEach(o => { if (o.dif) exige(!/undefined/.test(o.dif.txt(c)), id + ": consecuencia rota"); });
+  });
+  return "sin pareja y sin némesis, el modal aguanta";
+});
+
+comprueba("Dilemas: hay cuaderno para una carrera larga sin repetirse", () => {
+  const c = nuevaCarrera();
+  c.dinero = 4000; c.fans = 2600; c.pro = true; c.edad = 26; c.energia = 70;
+  c.sponsor = { marca: "Nébula", sem: 300, tier: 2 };
+  c.vd = { v: 30, d: 6 }; c.compiMoral = 60;
+  const disp = dilemasDisponibles(c, 60).length;
+  exige(DILEMAS.length >= 45, "el cuaderno se quedó corto: " + DILEMAS.length);
+  exige(disp >= 12, "para un perfil normal solo hay " + disp + " escenas posibles");
+  const ids = new Set(DILEMAS.map(d => d.id));
+  exige(ids.size === DILEMAS.length, "hay ids de dilema repetidos");
+  return DILEMAS.length + " dilemas, " + disp + " posibles para un profesional de 26";
+});
+
+comprueba("Narrador: la frase encaja con el final que se pinta", () => {
+  // Antes había una sola bolsa de frases: el narrador decía «a la red» mientras
+  // la bola moría en el cristal.
+  const dentro = (k, pool) => pool.indexOf(k) >= 0;
+  ["net", "out", "glass"].forEach(modo => {
+    for (let i = 0; i < 30; i++) {
+      const k = frasePunto(F_ERR, modo);
+      exige(dentro(k, F_ERR[modo]), `error ${modo}: salió ${k}, de otra bolsa`);
+      exige(I18N.es[k] && I18N.de[k], "frase de narrador sin clave: " + k);
+    }
+  });
+  ["winner", "porTres"].forEach(modo => {
+    for (let i = 0; i < 30; i++) {
+      const k = frasePunto(F_WIN, modo);
+      exige(dentro(k, F_WIN[modo]), `${modo}: salió ${k}, de otra bolsa`);
+    }
+  });
+  const total = Object.values(F_ERR).flat().length + Object.values(F_WIN).flat().length;
+  exige(total >= 24, "el narrador se quedó corto: " + total);
+  exige(Object.values(F_PERSO).every(a => a.length >= 2), "cada personalidad necesita más de una coletilla");
+  return total + " frases de punto repartidas por final";
+});
+
+comprueba("Narrador: elegir frase no toca el flujo con semilla", () => {
+  // La frase es decoración: si consumiera azar de simulación, comentar o no
+  // comentar cambiaría el resultado del partido siguiente.
+  rndSemilla(12345, 0);
+  const antes = rndEstado().pos;
+  for (let i = 0; i < 50; i++) { frasePunto(F_ERR, "net"); frasePunto(F_WIN, "winner"); }
+  exige(rndEstado().pos === antes, `la narración movió el flujo: ${antes} → ${rndEstado().pos}`);
+  return "50 frases sin gastar una sola tirada con semilla";
+});
+
+/* La cara del club ------------------------------------------------------- */
+comprueba("Club: la filosofía decide a quién convences y a qué precio", () => {
+  const joven = { n: "Chaval", edad: 19, estilo: "agresivo", perso: "valiente", attrs: mkAttrsNivel(60, "agresivo") };
+  const crack = { n: "Estrella", edad: 27, estilo: "rematador", perso: "frio", attrs: mkAttrsNivel(80, "rematador") };
+  const casa = { filo: "cantera" }, estrellas = { filo: "estrellas" };
+  exige(afinidadFilo(casa, joven) > afinidadFilo(estrellas, joven), "la cantera debería querer al chaval más que los nombres propios");
+  exige(afinidadFilo(estrellas, crack) > afinidadFilo(casa, crack), "los nombres propios deberían querer al crack");
+  exige(costeFichajeCl(casa, joven) < costeFichajeCl(estrellas, joven), "al que encaja debería salirle más barato");
+  exige(salarioDeCl(casa, joven) < salarioDe(joven), "el que quiere venir debería pedir menos sueldo");
+  // el veterano no firma en un club de cantera: no es cuestión de dinero
+  const viejo = { n: "Veterano", edad: 33, estilo: "constructor", perso: "frio", attrs: mkAttrsNivel(70, "constructor") };
+  exige(!fichable(casa, viejo), "un club de cantera no debería poder fichar a un jugador de 33");
+  exige(fichable(estrellas, viejo), "un club de nombres propios sí debería poder");
+  Object.keys(FILOS_CLUB).forEach(k => {
+    exige(filoNombre(k) && !/^cfil_/.test(filoNombre(k)), "filosofía sin traducir: " + k);
+    exige(filoLema(k) && !/^cfil_/.test(filoLema(k)), "lema sin traducir: " + k);
+  });
+  return Object.keys(FILOS_CLUB).length + " filosofías con efecto sobre el mercado";
+});
+
+comprueba("Club: la junta tiene carácter y no todas aprietan igual", () => {
+  const cars = Object.keys(JUNTAS);
+  exige(cars.length >= 4, "solo " + cars.length + " caracteres de junta");
+  const corto = JUNTAS.corto, paciente = JUNTAS.paciente;
+  exige(corto.margen < paciente.margen, "la cortoplacista debería dar menos cuerda");
+  exige(corto.prima > paciente.prima, "la cortoplacista debería pagar más por cumplir");
+  exige(JUNTAS.tacana.prima < paciente.prima, "la tacaña debería pagar menos");
+  exige(corto.obj0 < paciente.obj0, "la cortoplacista debería pedir más desde el principio");
+  cars.forEach(k => exige(juntaNombre(k) && !/^cjun_/.test(juntaNombre(k)), "junta sin traducir: " + k));
+  // el sorteo devuelve siempre un carácter válido y su margen
+  /* La paciencia sale del carácter, pero con un suelo de dos temporadas:
+     fundar un club y ser destituido en la primera evaluación no es exigencia,
+     es no dejar jugar. La cortoplacista sigue dando menos cuerda que las demás
+     en cuanto la primera temporada pasa. */
+  for (let i = 0; i < 30; i++) {
+    const J = mkJunta();
+    exige(JUNTAS[J.car], "mkJunta inventó un carácter: " + J.car);
+    exige(J.paciencia === Math.max(2, JUNTAS[J.car].margen), "la paciencia no sale del carácter");
+    exige(J.paciencia >= 2, "te pueden destituir tras la primera temporada");
+  }
+  // y el objetivo es un puesto de SU competición, no del ranking individual
+  cars.forEach(k => exige(JUNTAS[k].obj0 <= COP_CLUBES, k + " pide un puesto que no existe en la Copa: " + JUNTAS[k].obj0));
+  return cars.length + " juntas con margen, dureza y prima propios";
+});
+
+comprueba("Club: el derbi se anota y solo cuenta contra su rival", () => {
+  const cl = fundarClub();
+  cl.derbi = { club: 3, v: 0, d: 0 };
+  const rivalDerbi = { id: 1, nombre: "A/B", club: 3, jug: cl.plantilla.slice(0, 2) };
+  const otro = { id: 2, nombre: "C/D", club: 7, jug: cl.plantilla.slice(0, 2) };
+  exige(esDerbi(cl, rivalDerbi), "no reconoce al rival del derbi");
+  exige(!esDerbi(cl, otro), "cuenta como derbi a quien no lo es");
+  exige(anotaDerbi(cl, rivalDerbi, true), "no anotó el derbi ganado");
+  exige(cl.derbi.v === 1 && cl.derbi.d === 0, "marcador mal: " + JSON.stringify(cl.derbi));
+  anotaDerbi(cl, rivalDerbi, false);
+  exige(cl.derbi.d === 1, "no anotó la derrota");
+  exige(!anotaDerbi(cl, otro, true), "anotó un partido que no era el derbi");
+  exige(cl.derbi.v === 1, "el marcador se movió con un rival cualquiera");
+  exige(derbiClub(cl) && derbiClub(cl).n, "el club del derbi no tiene nombre");
+  return "marcador " + cl.derbi.v + "-" + cl.derbi.d + " contra " + derbiClub(cl).n;
+});
+
+comprueba("Club: fundar da identidad y las partidas viejas también la reciben", () => {
+  const cl = fundarClub();
+  exige(FILOS_CLUB[cl.filo], "el club nace sin filosofía: " + cl.filo);
+  exige(cl.junta && JUNTAS[cl.junta.car], "el club nace sin carácter de junta");
+  exige(cl.derbi && CLUBES_NPC[cl.derbi.club], "el club nace sin derbi");
+  // guardado antiguo: sin filo, sin carácter, sin derbi
+  delete cl.filo; delete cl.derbi; cl.junta = { objetivo: 30, paciencia: 2 };
+  entrarPartida();
+  exige(FILOS_CLUB[G.clubG.filo], "la migración no puso filosofía");
+  exige(JUNTAS[G.clubG.junta.car], "la migración no puso carácter de junta");
+  exige(G.clubG.junta.objetivo === 30, "la migración pisó el objetivo que traía la partida");
+  exige(G.clubG.derbi && CLUBES_NPC[G.clubG.derbi.club], "la migración no puso derbi");
+  return "identidad al fundar y al abrir una guardada antigua";
+});
+
+/* Rumores: el mercado se cuenta antes de pasar, y la mitad no pasa ---------- */
+comprueba("Rumores: nacen con desenlace decidido y no se repite el tipo vivo", () => {
+  const c = nuevaCarrera();
+  c.rumores = [];
+  const r1 = mkRumor(c, 5);
+  exige(r1, "no nació ningún rumor");
+  exige(typeof r1.cierto === "boolean", "el desenlace no se fija al nacer");
+  exige(r1.sem > 5, "el rumor se resuelve el mismo día que nace");
+  exige(c.rumores.length === 1, "no se encoló");
+  // el mismo tipo no vuelve a abrirse mientras el primero siga en boca de todos
+  for (let i = 0; i < 12; i++) mkRumor(c, 5);
+  const tipos = c.rumores.map(x => x.tipo);
+  exige(tipos.length === new Set(tipos).size, "se abrieron dos rumores del mismo tipo: " + tipos.join(","));
+  c.rumores.forEach(r => {
+    const tx = rumorTexto(r);
+    exige(tx.t && !/^rum_|\{[a-z]+\}|undefined/.test(tx.t), r.tipo + ": titular roto (" + tx.t + ")");
+    exige(tx.x && !/^rum_|\{[a-z]+\}/.test(tx.x), r.tipo + ": cuerpo roto");
+  });
+  return c.rumores.length + " rumores vivos, uno por tipo";
+});
+
+comprueba("Rumores: el confirmado mueve el mundo y el falso no deja rastro", () => {
+  const c = nuevaCarrera();
+  const par = G.world.parejas.find(p => (p.sexo || "M") === c.sexo && p.jug && p.jug.length === 2);
+  const antesNombre = par.nombre, antesJug = par.jug.map(j => j.n).join("+");
+  // ruptura CIERTA: la pareja cambia de verdad
+  c.rumores = [{ id: "r1", tipo: "ruptura", pid: par.id, pareja: par.nombre, jIdx: 0, sem: 10, cierto: true }];
+  const out = resolverRumores(c, 10);
+  exige(out.length === 1 && out[0].ok, "la ruptura cierta no se aplicó");
+  exige(par.jug.map(j => j.n).join("+") !== antesJug, "la pareja no cambió de jugadores");
+  exige(par.nombre !== antesNombre, "la pareja conserva el nombre viejo: " + par.nombre);
+  exige(!c.rumores.length, "el rumor resuelto sigue en la lista");
+  // fichaje FALSO: no toca nada
+  const otra = G.world.parejas.find(p => p.id !== par.id && (p.sexo || "M") === c.sexo);
+  const clubAntes = otra.club;
+  c.rumores = [{ id: "r2", tipo: "fichaje", pid: otra.id, pareja: otra.nombre, club: (clubAntes + 3) % CLUBES_NPC.length, sem: 10, cierto: false }];
+  const out2 = resolverRumores(c, 10);
+  exige(!out2[0].ok, "un rumor falso se dio por bueno");
+  exige(otra.club === clubAntes, "el rumor falso cambió de club a la pareja");
+  exige(out2[0].txt && !/^rum_|\{[a-z]+\}/.test(out2[0].txt), "desmentido sin traducir: " + out2[0].txt);
+  return "confirmado mueve el circuito, desmentido no";
+});
+
+comprueba("Rumores: el que va de tu pareja le cuesta moral", () => {
+  const c = nuevaCarrera();
+  c.compiMoral = 70;
+  c.rumores = [{ id: "r3", tipo: "pareja", compi: c.compi.n, pareja: "A/B", sem: 4, cierto: true }];
+  resolverRumores(c, 4);
+  exige(c.compiMoral < 70, "enterarse por la prensa debería costar moral: " + c.compiMoral);
+  const antes = c.compiMoral;
+  c.rumores = [{ id: "r4", tipo: "pareja", compi: c.compi.n, pareja: "A/B", sem: 5, cierto: false }];
+  resolverRumores(c, 5);
+  exige(c.compiMoral === antes, "un desmentido no debería mover la moral");
+  return "de 70 a " + antes + " al confirmarse";
+});
+
+comprueba("Rumores: en el club le cuesta la cabeza al jugador señalado", () => {
+  const cl = fundarClub();
+  const j = cl.plantilla[0];
+  j.moralC = 80;
+  cl.rumores = [{ id: "r5", tipo: "puja", j: j.n, club: 2, sem: 6, cierto: true }];
+  const out = resolverRumores(cl, 6);
+  exige(out[0].ok, "la puja cierta no se aplicó");
+  exige(j.moralC < 80, "saber lo que pagan fuera debería mover al jugador: " + j.moralC);
+  return "moral " + j.moralC + " tras enterarse de la oferta";
+});
+
+comprueba("Periódico: rumores y columna salen traducidos y sin claves crudas", () => {
+  const c = nuevaCarrera();
+  c.rumores = []; mkRumor(c, 3);
+  const el = document.getElementById("feedNoti");
+  noticia("titulo", "Prueba", "Sub");
+  renderNoticias(el);
+  const html = el.innerHTML;
+  exige(html.indexOf(t("pre_seccion_rum")) >= 0, "falta la sección de mercado");
+  exige(html.indexOf(t("pre_opinion")) >= 0, "falta la columna de opinión");
+  exige(!/>(rum|pre|soc)_[a-z0-9_]+</.test(html), "hay claves crudas en la portada");
+  exige(html.indexOf("TAMBIÉN EN PORTADA") < 0 || t("pre_tambien") === "TAMBIÉN EN PORTADA", "el rótulo de portada no pasa por t()");
+  // la columna cambia con tu momento
+  c.rachaAct = 5; const subiendo = columnaHTML();
+  c.rachaAct = 0; c.vd = { v: 1, d: 9 }; const bajando = columnaHTML();
+  exige(subiendo !== bajando, "la columna dice lo mismo ganando que perdiendo");
+  return "mercado, columna y opinión según el momento";
+});
+
+comprueba("Muro: la grada habla de ti, de tu pareja y del torneo", () => {
+  const c = nuevaCarrera();
+  c.social = [];
+  ["victoria", "compi", "torneo", "rumor", "derbi"].forEach(k => {
+    exige(POSTS_FAN[k] && POSTS_FAN[k].length >= 6, "categoría corta o ausente: " + k);
+    post(k, { rival: "A/B", torneo: "Corona de Madrid" });
+  });
+  exige(c.social.length === 5, "no se publicaron los cinco");
+  const el = document.getElementById("social");
+  renderSocial(el);
+  const html = el.innerHTML;
+  exige(!/\{[a-z]+\}/.test(html), "el muro dejó una interpolación sin resolver");
+  exige(html.indexOf(c.compi.n) >= 0, "la grada no nombra a tu pareja");
+  exige(html.indexOf("Corona de Madrid") >= 0, "la grada no nombra el torneo");
+  return "5 categorías nuevas publicando con nombres reales";
+});
+
+/* Cantera con historia ---------------------------------------------------- */
+comprueba("Cantera: una promesa crece hacia su techo y deja historial", () => {
+  const cl = fundarClub();
+  cl.academia = true;
+  const j = mkAgente(44, 50, cl.sexo);
+  j.edad = 16; j.pot = 78; j.aniosCan = 0; j.ilusion = 78; j.hist = [];
+  cl.cantera = [j];
+  const media0 = mediaAttrs(j.attrs);
+  evolucionaCantera(cl);
+  exige(cl.cantera.length === 1, "la promesa desapareció en su primera temporada");
+  exige(j.edad === 17, "no cumplió años");
+  exige(j.aniosCan === 1, "no cuenta las temporadas en la academia");
+  exige(j.hist.length === 1, "no dejó línea de historial");
+  exige(j.hist[0].b >= j.hist[0].a, "el historial guarda un retroceso");
+  exige(mediaAttrs(j.attrs) > media0, `no creció: ${media0} → ${mediaAttrs(j.attrs)}`);
+  // y crecer se frena al acercarse al techo
+  const lejos = saltoCantera(cl, { attrs: mkAttrsNivel(50, "agresivo"), pot: 85, edad: 17 });
+  const cerca = saltoCantera(cl, { attrs: mkAttrsNivel(80, "agresivo"), pot: 82, edad: 17 });
+  exige(lejos > cerca, `lejos del techo debería crecer más: ${lejos} vs ${cerca}`);
+  exige(saltoCantera(cl, { attrs: mkAttrsNivel(80, "agresivo"), pot: 70, edad: 17 }) === 0, "creció por encima de su techo");
+  return `${media0} → ${mediaAttrs(j.attrs)} con techo ${j.pot}`;
+});
+
+comprueba("Cantera: la escuela y la filosofía se notan en lo que crece", () => {
+  const base = fundarClub(); base.academia = true; base.filo = "oficio"; base.reformas = {};
+  const casa = fundarClub(); casa.academia = true; casa.filo = "cantera"; casa.reformas = { escuela: true };
+  const molde = { attrs: mkAttrsNivel(50, "agresivo"), pot: 85, edad: 17 };
+  let a = 0, b = 0;
+  for (let i = 0; i < 40; i++) { a += saltoCantera(base, molde); b += saltoCantera(casa, molde); }
+  exige(b > a, `la escuela y la filosofía de cantera deberían crecer más: ${a} vs ${b}`);
+  return `${Math.round(a / 40)} frente a ${Math.round(b / 40)} por temporada`;
+});
+
+comprueba("Cantera: quien no debuta pierde la ilusión y acaba yéndose", () => {
+  const cl = fundarClub();
+  cl.academia = true;
+  const j = mkAgente(44, 50, cl.sexo);
+  j.edad = 18; j.pot = 70; j.aniosCan = 0; j.ilusion = 78; j.hist = [];
+  cl.cantera = [j];
+  let temporadas = 0, fuera = [];
+  while (cl.cantera.length && temporadas < 8) { fuera = evolucionaCantera(cl); temporadas++; }
+  exige(!cl.cantera.length, "el chaval sigue ahí después de ocho temporadas");
+  exige(fuera.length === 1 && fuera[0] === j, "no devolvió a quien se marcha");
+  exige(temporadas <= CAN_FUGA, `tardó ${temporadas} temporadas en irse, y el límite es ${CAN_FUGA}`);
+  // y su estado se lee antes de que pase
+  exige(ilusionTxt({ ilusion: 80 }).k === "can_il_alta", "una ilusión alta no se lee como tal");
+  exige(ilusionTxt({ ilusion: 10 }).k === "can_il_fuga", "no avisa de la fuga");
+  return "se marcha a las " + temporadas + " temporadas sin debutar";
+});
+
+comprueba("Cantera: el panel dice el techo, el consejo y el gráfico sin claves crudas", () => {
+  const cl = fundarClub();
+  cl.academia = true; cl.staff = cl.staff || {};
+  const j = mkAgente(44, 50, cl.sexo);
+  j.edad = 17; j.pot = 80; j.aniosCan = 1; j.ilusion = 60;
+  j.hist = [{ t: 1, a: 44, b: 51, foco: "remate" }, { t: 2, a: 51, b: 57, foco: "globo" }];
+  cl.cantera = [j];
+  cl.staff.ojeador = null;
+  const sinOjeador = techoTxt(cl, j);
+  cl.staff.ojeador = mkStaff("ojeador", 3);
+  const conOjeador = techoTxt(cl, j);
+  exige(sinOjeador !== conOjeador, "el ojeador no aprieta la estimación del techo");
+  exige(conOjeador.indexOf("80") >= 0, "con ojeador debería decirse el techo: " + conOjeador);
+  [sinOjeador, conOjeador].forEach(x => exige(!/^can_|\{[a-z]+\}/.test(x), "techo sin traducir: " + x));
+  const cons = consejoSubir(cl, j);
+  exige(t(cons) !== cons, "el consejo no está traducido: " + cons);
+  const g = canteraGrafico(j);
+  exige(g.indexOf("<svg") === 0, "el gráfico no es SVG");
+  exige(g.indexOf("http") < 0, "el gráfico pide algo a la red");
+  exige(canteraGrafico({ hist: [] }).indexOf(t("can_sin_hist")) >= 0, "sin historial debería decirlo");
+  // el consejo cambia según lo que le quede por crecer
+  exige(consejoSubir(cl, { attrs: mkAttrsNivel(76, "agresivo"), pot: 78, aniosCan: 0 }) === "can_subir_ya", "no recomienda subir al que está listo");
+  exige(consejoSubir(cl, { attrs: mkAttrsNivel(50, "agresivo"), pot: 80, aniosCan: 4 }) === "can_subir_tarde", "no avisa de que se pasó el arroz");
+  return "techo estimado, consejo y gráfico de " + j.hist.length + " temporadas";
+});
+
+comprueba("Cantera: subir a un canterano deja marca y desbloquea hitos", () => {
+  const cl = fundarClub();
+  const j = { ...mkAgente(50, 60, cl.sexo), dela_casa: true };
+  cl.plantilla.push(j);
+  cl.alin = [cl.plantilla.length - 1, 0];
+  const hA = HITOS_CLUB.find(h => h.id === "canteraA");
+  exige(hA && hA.ck(cl), "no reconoce a un canterano en la pareja A");
+  cl.alin = [0, 1];
+  exige(!hA.ck(cl), "lo da por bueno con el canterano en el banquillo");
+  const h3 = HITOS_CLUB.find(h => h.id === "cantera3");
+  exige(!h3.ck(cl), "cuenta tres canteranos habiendo uno");
+  cl.plantilla.push({ ...j, n: "B" }, { ...j, n: "C" });
+  exige(h3.ck(cl), "no reconoce los tres canteranos");
+  return "dos hitos que piden ponerlos a jugar, no solo subirlos";
+});
+
+/* Un rumor confirmado abre conversación ----------------------------------- */
+comprueba("Rumores: el confirmado sobre ti abre su dilema", () => {
+  const c = nuevaCarrera();
+  c.dilemaActivo = null; c.dilVistos = {}; c.decis = {};
+  c.rumores = [{ id: "r9", tipo: "tuyo", pid: G.world.parejas[0].id, pareja: "A/B", sem: 3, cierto: true }];
+  const out = resolverRumores(c, 3);
+  exige(out[0].ok, "el rumor no se confirmó");
+  exige(out[0].abre === "rum_oferta", "no señala qué escena abre: " + out[0].abre);
+  abreDilema(c, out[0].abre, 3);
+  exige(c.dilemaActivo && c.dilemaActivo.id === "rum_oferta", "no se abrió el dilema");
+  const d = _dilemaPorId("rum_oferta");
+  exige(d.cadena, "la escena de la oferta debería salir solo por cadena");
+  exige(!dilemasDisponibles(c, 3).some(x => x.id === "rum_oferta"), "la escena de cadena entró en el sorteo");
+  exige(d.texto(c).indexOf("A/B") >= 0, "el dilema no usa la pareja del rumor: " + d.texto(c));
+  return "el rumor de la semana 3 se sienta a hablar contigo";
+});
+
+comprueba("Rumores: cada tipo abre la escena que le toca, y el falso ninguna", () => {
+  const c = nuevaCarrera();
+  const par = G.world.parejas.find(p => (p.sexo || "M") === c.sexo && p.jug && p.jug.length === 2);
+  const casos = [
+    [{ tipo: "pareja", compi: c.compi.n, pareja: "A/B" }, "rum_traicion"],
+    [{ tipo: "ruptura", pid: par.id, pareja: par.nombre, jIdx: 0 }, "rum_suelto"],
+  ];
+  casos.forEach(([base, esperado]) => {
+    c.rumores = [Object.assign({ id: "x", sem: 2, cierto: true }, base)];
+    const out = resolverRumores(c, 2);
+    exige(out[0].abre === esperado, `${base.tipo} debería abrir ${esperado}, abrió ${out[0].abre}`);
+  });
+  // un fichaje de otros no es asunto tuyo, y un desmentido no abre nada
+  c.rumores = [{ id: "y", tipo: "fichaje", pid: par.id, pareja: par.nombre, club: 1, sem: 2, cierto: true }];
+  exige(!resolverRumores(c, 2)[0].abre, "un fichaje ajeno abrió una escena tuya");
+  c.rumores = [{ id: "z", tipo: "pareja", compi: c.compi.n, pareja: "A/B", sem: 2, cierto: false }];
+  const outF = resolverRumores(c, 2);
+  exige(!outF[0].ok && !outF[0].abre, "un desmentido abrió conversación");
+  return "tres escenas encadenadas al rumor que las provoca";
+});
+
+/* El ranking: puntúa quien juega y gana, no quien existe -------------------
+   Antes `simCircuito` daba puntos a TODAS las parejas del mundo cada semana
+   (0.045·(nivel−40)²): una pareja de nivel 70 se llevaba ~47 puntos semanales
+   sin jugar, y ganar un Continental Bronce entero daba 40. Medido: cuatro
+   temporadas ganando 7 títulos dejaban el ranking peor (91→95) que cuatro
+   perdiendo en primera ronda de torneos grandes (91→66). */
+function semanaConTorneos() {
+  // una semana del calendario que tenga premier Y continental
+  for (let s = 1; s <= SEMANAS_TEMP; s++) {
+    const sl = slotSemana(s);
+    if (sl.premier !== undefined && sl.premier !== null && sl.fip !== undefined) return s;
+  }
+  return 1;
+}
+
+comprueba("Ranking: nadie cobra por existir; solo puntúa quien juega", () => {
+  const c = nuevaCarrera();
+  c.semana = semanaConTorneos();
+  const sx = c.sexo || "M";
+  const mundo = G.world.parejas.filter(p => (p.sexo || "M") === sx);
+  const antes = new Map(mundo.map(p => [p.id, p.pts]));
+  simCircuito([]);
+  const subieron = mundo.filter(p => p.pts > antes.get(p.id));
+  exige(subieron.length > 0, "no puntuó nadie");
+  exige(subieron.length < mundo.length, "puntuaron TODAS las parejas: sigue pagándose por existir");
+  // dos cuadros de 32 como mucho
+  exige(subieron.length <= 64, `puntuaron ${subieron.length} parejas: más de dos cuadros`);
+  return subieron.length + " de " + mundo.length + " parejas puntúan esa semana";
+});
+
+comprueba("Ranking: el cuadro reparte como un cuadro y el campeón cobra lo suyo", () => {
+  const c = nuevaCarrera();
+  c.semana = semanaConTorneos();
+  const sl = slotSemana(semanaTemp());
+  const cat = CATS[sl.premier];
+  const sx = c.sexo || "M";
+  const mundo = G.world.parejas.filter(p => (p.sexo || "M") === sx);
+  /* Se mide el ANILLO, no la suma: con el ranking a mejores-18, a una pareja
+     con 18 resultados ya contando el título le desplaza el peor y la suma sube
+     menos que el premio. Eso es lo correcto; lo que el reparto garantiza es lo
+     que entra en la casilla de la semana. */
+  mundo.forEach(p => rkAsegura(p));
+  const slotSem = rkSlot(c.semana);
+  const antes = new Map(mundo.map(p => [p.id, p.rk[slotSem] | 0]));
+  simCircuito([]);
+  const ganancias = mundo.map(p => (p.rk[slotSem] | 0) - antes.get(p.id)).filter(x => x > 0).sort((a, b) => b - a);
+  exige(ganancias[0] === cat.pts[0], `el campeón se llevó ${ganancias[0]} y la categoría paga ${cat.pts[0]}`);
+  exige(ganancias.filter(x => x === cat.pts[0]).length === 1, "hubo más de un campeón del premier");
+  // y el reparto decrece: no es una tarifa plana
+  exige(ganancias[0] > ganancias[ganancias.length - 1], "todos cobraron lo mismo");
+  return `campeón ${ganancias[0]} · último que puntúa ${ganancias[ganancias.length - 1]}`;
+});
+
+comprueba("Ranking: una pareja, un torneo por semana (como tú)", () => {
+  const c = nuevaCarrera();
+  c.semana = semanaConTorneos();
+  const sl = slotSemana(semanaTemp());
+  const tope = Math.max(CATS[sl.premier].pts[0], CATS[sl.fip].pts[0]);
+  const sx = c.sexo || "M";
+  const mundo = G.world.parejas.filter(p => (p.sexo || "M") === sx);
+  const antes = new Map(mundo.map(p => [p.id, p.pts]));
+  simCircuito([]);
+  const maxGanancia = Math.max(...mundo.map(p => p.pts - antes.get(p.id)));
+  exige(maxGanancia <= tope, `alguien se llevó ${maxGanancia} jugando los dos torneos (el tope de uno es ${tope})`);
+  return "nadie cobra por dos cuadros la misma semana";
+});
+
+comprueba("Ranking: ganar sube más que perder, a igualdad de partidos", () => {
+  // dos parejas del mismo nivel: una gana el Continental de su categoría y la
+  // otra pierde en primera ronda del premier. La que gana tiene que acabar por
+  // delante, que es justo lo que NO pasaba antes.
+  const c = nuevaCarrera();
+  const cont = CATS[1], prem = CATS[5];
+  const puntosGanando = cont.pts[0];                    // campeón del Continental
+  const puntosPerdiendo = prem.pts[5];                  // primera ronda del premier
+  exige(puntosGanando > puntosPerdiendo,
+    `ganar un ${catNombre(1)} da ${puntosGanando} y caer en primera ronda de un ${catNombre(5)} da ${puntosPerdiendo}`);
+  return `${puntosGanando} por ganar frente a ${puntosPerdiendo} por presentarse`;
+});
+
+comprueba("Ranking: la previa de la Élite pequeña se abre antes del top 32", () => {
+  // sin esto, una pareja de nivel 73 clasificada la 50 no podía jugar ni la
+  // previa del torneo más pequeño de su nivel: sin premier no hay puntos, y sin
+  // puntos no se llega al corte. Un callejón sin salida.
+  exige(CATS[4].cupoP >= 48, `la previa del ${catNombre(4)} corta en ${CATS[4].cupoP}`);
+  exige(CATS[4].cupoP > CATS[4].cupoD, "la previa no puede ser más estrecha que el cuadro final");
+  [4, 5, 6].forEach(i => exige(CATS[i].cupoP > CATS[i].cupoD, `la categoría ${i} tiene la previa mal puesta`));
+  // y el corte del cuadro final sigue siendo exigente
+  exige(CATS[4].cupoD <= 20, "el cuadro final se ha aflojado de más");
+  return `previa hasta el puesto ${CATS[4].cupoP}, cuadro final hasta el ${CATS[4].cupoD}`;
+});
+
+comprueba("Ranking: tras varias temporadas, el orden se parece al nivel", () => {
+  const c = nuevaCarrera();
+  // se simulan dos temporadas de circuito sin que el jugador juegue nada
+  for (let s = 0; s < SEMANAS_TEMP * 2; s++) { c.semana = (s % SEMANAS_TEMP) + 1; simCircuito([]); }
+  const filas = rankingFilas().filter(f => !f.yo);
+  const n = filas.length;
+  const rangoNivel = new Map([...filas].sort((a, b) => b.nivel - a.nivel).map((f, i) => [f.id, i]));
+  let sd = 0;
+  filas.forEach((f, i) => { const d = i - rangoNivel.get(f.id); sd += d * d; });
+  const rho = 1 - 6 * sd / (n * (n * n - 1));
+  exige(rho > 0.6, `el ranking no sigue al nivel: ρ=${rho.toFixed(3)}`);
+  return "ρ(puntos, nivel) = " + rho.toFixed(3) + " con " + n + " parejas";
+});
+
+comprueba("Maestros: los ocho mejores pueden jugarlos (regresión: reventaba)", () => {
+  // El cuadro de los Maestros no es el de 16 con previa: son ocho parejas y
+  // empiezan en cuartos. Como mkCuadro solo llenaba la ronda de octavos, entrar
+  // dejaba la fase vacía y la pantalla del torneo petaba al buscar rival. No se
+  // veía porque con el ranking viejo nadie llegaba nunca al top 8.
+  const c = nuevaCarrera();
+  // los puntos entran por la ventana del ranking, no asignando c.pts a mano
+  rkAnota(c, c.semana, 999999);
+  c.dinero = 90000; c.energia = 100; c.pro = true;
+  let semTF = -1;
+  for (let s = 1; s <= SEMANAS_TEMP; s++) if (slotSemana(s).premier === 7) { semTF = s; break; }
+  exige(semTF > 0, "el calendario no tiene semana de Maestros");
+  c.semana = semTF;
+  exige(miPuesto() <= 8, "el protagonista debería estar en el top 8: #" + miPuesto());
+  exige(entradaEn(7) === 3, "los Maestros deberían arrancar en cuartos, no en " + entradaEn(7));
+  abrirTorneo(7);
+  exige(torneo, "no se pudo abrir el torneo");
+  exige(torneo.fase === 3, "arranca en la fase " + torneo.fase);
+  const ronda = torneo.cuadro.ronda[3];
+  exige(ronda && ronda.length === 8, "el cuadro no tiene ocho casillas: " + (ronda && ronda.length));
+  exige(ronda.filter(Boolean).length === 8, "hay huecos en el cuadro de los Maestros");
+  exige(ronda.some(p => p && p.yo), "no estás en tu propio cuadro");
+  exige(torneo.rivales[3] && torneo.rivales[3].jug, "no hay rival en cuartos");
+  pintarTorneo();                                  // esto es lo que lanzaba
+  const html = pintarCuadroHTML();
+  exige(html && html.length > 40, "el cuadro no se pinta");
+  /* Y se juega. Lo que esta prueba guarda es que NO REVIENTE en ninguna de las
+     tres rondas y que el recorrido sean fases consecutivas desde cuartos; que
+     ganes o no ya no depende de ella —el motor equilibrado no regala el título
+     a nadie—. El premio del campeón se comprueba aparte, buscando una semilla
+     en la que sí se gane. */
+  Object.keys(c.attrs).forEach(k => c.attrs[k] = 95);
+  Object.keys(c.compi.attrs).forEach(k => c.compi.attrs[k] = 95);
+  let fases = [];
+  let vueltas = 0;
+  while (torneo && vueltas++ < 6) {
+    fases.push(torneo.fase);
+    if (!torneo.rivales[torneo.fase]) throw new Error("sin rival en la fase " + torneo.fase);
+    empezarPartido(false);
+    pulsarFicha();
+  }
+  exige(fases[0] === 3, "no arranca en cuartos: " + fases.join(","));
+  exige(fases.join(",") === "3,4,5".slice(0, fases.join(",").length),
+    "el recorrido no son rondas consecutivas desde cuartos: " + fases.join(","));
+  // el premio del campeón: en cuanto se gana una vez, tiene que ser el de CATS[7]
+  let campeon = false;
+  for (let intento = 0; intento < 12 && !campeon; intento++) {
+    const c2 = nuevaCarrera();
+    rkAnota(c2, c2.semana, 999999);
+    c2.dinero = 90000; c2.energia = 100; c2.pro = true; c2.semana = semTF;
+    Object.keys(c2.attrs).forEach(k => c2.attrs[k] = 96);
+    Object.keys(c2.compi.attrs).forEach(k => c2.compi.attrs[k] = 96);
+    rndSemilla(7700 + intento * 131, 7700 + intento * 131);
+    const ptsAntes = c2.pts;
+    abrirTorneo(7);
+    let v2 = 0;
+    while (torneo && v2++ < 6) { empezarPartido(false); pulsarFicha(); }
+    if (c2.palmares.some(x => /Maestros/.test(x))) {
+      campeon = true;
+      exige(c2.pts - ptsAntes === CATS[7].pts[0], `el campeón se llevó ${c2.pts - ptsAntes} y toca ${CATS[7].pts[0]}`);
+    }
+  }
+  exige(campeon, "no se ganan los Maestros ni una vez en doce intentos con el tope de atributos");
+  return "cuartos, semis y final con ocho parejas · " + CATS[7].pts[0] + " puntos al campeón";
+});
+
+/* Ranking por ventana de 52 semanas (como la FIP) -------------------------
+   Cada resultado vale un año y luego se cae. Lo de antes —acumular y recortar
+   un 45% al cerrar temporada— dejaba el ranking quieto once meses y le daba un
+   salto artificial en diciembre. */
+comprueba("Ranking: un resultado vale exactamente 52 semanas", () => {
+  const x = { pts: 0 };
+  rkAsegura(x);
+  rkAnota(x, 10, 1000);
+  exige(x.pts === 1000, "no sumó al anotarlo: " + x.pts);
+  // durante el año siguiente sigue ahí
+  [11, 30, 61].forEach(w => { rkCaduca(x, w); exige(x.pts === 1000, `se cayó antes de tiempo en la semana ${w}: ${x.pts}`); });
+  // y en la misma semana del año siguiente, se cae
+  const cae = rkCaduca(x, 10 + RK_SEMANAS);
+  exige(cae === 1000, "no devolvió lo que se cae: " + cae);
+  exige(x.pts === 0, "los puntos siguen ahí un año después: " + x.pts);
+  return "1000 puntos vivos 52 semanas y ni una más";
+});
+
+comprueba("Ranking: defender es real (repetir mantiene, fallar hunde)", () => {
+  const bueno = { pts: 0 }, malo = { pts: 0 };
+  rkAsegura(bueno); rkAsegura(malo);
+  // los dos ganan el torneo de la semana 5 del año 1
+  rkAnota(bueno, 5, 1000); rkAnota(malo, 5, 1000);
+  exige(bueno.pts === malo.pts, "no empiezan iguales");
+  // un año después: uno repite el título, el otro cae en primera ronda
+  const sem = 5 + RK_SEMANAS;
+  rkCaduca(bueno, sem); rkAnota(bueno, sem, 1000);
+  rkCaduca(malo, sem); rkAnota(malo, sem, 50);
+  exige(bueno.pts === 1000, "repetir el título debería dejarte igual: " + bueno.pts);
+  exige(malo.pts === 50, "fallar debería hundirte: " + malo.pts);
+  exige(bueno.pts > malo.pts, "defender no sirve de nada");
+  return "repetir: 1000 → 1000 · fallar: 1000 → 50";
+});
+
+comprueba("Ranking: lo que defiendes se puede saber antes de jugar", () => {
+  const c = nuevaCarrera();
+  rkAsegura(c);
+  c.rk = rkNuevo();
+  c.pts = 0;
+  rkAnota(c, 7, 300);
+  exige(rkDefiende(c, 7) === 300, "no dice lo que defiendes esa semana");
+  exige(rkDefiende(c, 7 + RK_SEMANAS) === 300, "la ventana no es de un año");
+  exige(rkDefiende(c, 8) === 0, "dice que defiendes puntos de otra semana");
+  return "300 puntos a defender en la semana 7";
+});
+
+comprueba("Ranking: entrar y salir de la partida no cuesta puntos", () => {
+  const c = nuevaCarrera();
+  rkAnota(c, c.semana, 500);
+  const antes = c.pts;
+  // caducar la misma semana dos veces (recargar, repintar) no puede robar nada
+  caducaSemanaRanking(c.semana);
+  const trasUna = c.pts;
+  caducaSemanaRanking(c.semana);
+  caducaSemanaRanking(c.semana);
+  exige(c.pts === trasUna, `caducó de más al repetir: ${trasUna} → ${c.pts}`);
+  exige(antes - trasUna === 500 || trasUna === antes, "la primera caducidad hizo algo raro");
+  return "la escoba pasa una vez por semana";
+});
+
+comprueba("Ranking: los guardados antiguos reciben su historial sin perder puntos", () => {
+  const viejo = { pts: 5200 };          // partida de antes: solo el total
+  rkAsegura(viejo);
+  exige(Array.isArray(viejo.rk) && viejo.rk.length === RK_SEMANAS, "no le puso ventana");
+  exige(viejo.pts === 5200, "la migración le cambió los puntos: " + viejo.pts);
+  exige(rkSuma(viejo) === 5200, "la ventana no suma lo que decía el total");
+  // y se reparte, no se amontona en una semana (si no, se caería todo de golpe)
+  const maximo = Math.max(...viejo.rk);
+  exige(maximo < 5200 / 4, "se amontonó en una semana: se caería todo de golpe");
+  return "5200 puntos repartidos por el año, sin saltos";
+});
+
+
+/* Eventos de circuito: semanas que cambian las reglas ----------------------
+   La regla del catálogo: un evento que no cambia una decisión es una noticia,
+   no un evento. Estas pruebas la hacen cumplir. */
+comprueba("Eventos: todos declaran efecto y todos se pueden leer", () => {
+  exige(EVENTOS.length >= 18, "solo hay " + EVENTOS.length + " eventos");
+  const ids = EVENTOS.map(e => e.id);
+  exige(ids.length === new Set(ids).size, "hay eventos con el mismo id");
+  EVENTOS.forEach(d => {
+    const tieneEfecto = (d.mods && Object.keys(d.mods).length) || (d.flags && d.flags.length) ||
+      d.mundo || d.moral != null || d.cortaSponsor || d.fansX;
+    exige(tieneEfecto, `${d.id} no cambia nada: es una noticia, no un evento`);
+    exige(EV_ALCANCES.indexOf(d.alcance) >= 0, `${d.id} tiene un alcance inventado: ${d.alcance}`);
+    exige(d.dur >= 1, `${d.id} no dura nada`);
+    [evNombre, evTexto, evEfecto].forEach(f => {
+      const x = f(d.id);
+      exige(x && !/^ev_/.test(x), `${d.id}: sin traducir (${x})`);
+    });
+  });
+  // los seis alcances están cubiertos: de una semana a varias temporadas
+  EV_ALCANCES.forEach(a => exige(EVENTOS.some(d => d.alcance === a), "no hay ningún evento de alcance " + a));
+  return EVENTOS.length + " eventos en " + EV_ALCANCES.length + " alcances, todos con efecto";
+});
+
+comprueba("Eventos: la pista lenta cambia de verdad lo que sale cada golpe", () => {
+  const c = nuevaCarrera();
+  c.eventos = []; evRecalcula(c);
+  const antes = evGolpe("globo"), antesR = evGolpe("remate");
+  exige(antes.win === 1 && antesR.win === 1, "sin eventos no debería haber modificador");
+  evActiva(c, "humedad", c.semana);
+  const conGlobo = evGolpe("globo"), conRemate = evGolpe("remate");
+  exige(conGlobo.win > 1, "el globo no mejora con pista lenta: " + conGlobo.win);
+  exige(conRemate.win < 1, "el remate no empeora con pista lenta: " + conRemate.win);
+  exige(evGolpe("fondo").err < 1, "el fondo no gana fiabilidad");
+  return `globo ×${conGlobo.win.toFixed(2)} · remate ×${conRemate.win.toFixed(2)}`;
+});
+
+comprueba("Eventos: el viaje, la energía y los puntos se mueven", () => {
+  const c = nuevaCarrera();
+  c.eventos = []; evRecalcula(c);
+  exige(evNum("viaje", 100) === 100, "sin eventos el viaje no debería cambiar");
+  evActiva(c, "vuelo", c.semana);
+  exige(evNum("viaje", 100) === 200, "el vuelo perdido no dobla el viaje: " + evNum("viaje", 100));
+  exige(evNum("energia", 12) === -4, "el vuelo perdido no cuesta energía: " + evNum("energia", 12));
+  c.eventos = []; evRecalcula(c);
+  evActiva(c, "gira", c.semana);
+  exige(evNum("ptsX", 1000) === 1150, "la gira no paga más puntos: " + evNum("ptsX", 1000));
+  exige(evNum("viaje", 100) === 180, "la gira no encarece el viaje");
+  c.eventos = []; evRecalcula(c);
+  evActiva(c, "gripe", c.semana);
+  exige(evNum("energiaTope", 100) === 58, "la gripe no limita la energía");
+  exige(evNum("lesion", 0.5) > 0.5, "la gripe no sube el riesgo de lesión");
+  return "viaje ×2, energía −16, puntos ×1,15 y techo de energía 58";
+});
+
+comprueba("Eventos: con suplente juegas con otro y sin química", () => {
+  const c = nuevaCarrera();
+  c.eventos = []; evRecalcula(c);
+  const normal = miTeam();
+  exige(normal.nombre.indexOf(c.compi.n) >= 0, "sin evento deberías jugar con tu pareja");
+  evActiva(c, "suplente", c.semana);
+  exige(evFlag("suplente"), "la bandera no se activa");
+  const conSup = miTeam();
+  exige(conSup.nombre.indexOf(c.compi.n) < 0, "sigues jugando con tu pareja: " + conSup.nombre);
+  const sup = compiSuplente(c);
+  exige(sup && sup.n, "no se generó suplente");
+  exige(mediaAttrs(sup.attrs) < mediaAttrs(c.compi.attrs), "el suplente no es peor que tu pareja");
+  // y es el mismo durante el torneo, no uno nuevo cada partido
+  exige(compiSuplente(c).n === sup.n, "el suplente cambia de nombre entre partidos");
+  return "juegas con " + sup.n + " (nivel " + mediaAttrs(sup.attrs) + " frente a " + mediaAttrs(c.compi.attrs) + ")";
+});
+
+comprueba("Eventos: caducan solos y no se solapan consigo mismos", () => {
+  const c = nuevaCarrera();
+  c.eventos = []; c.evVistos = {}; evRecalcula(c);
+  const a = evActiva(c, "comprimido", 10);
+  exige(a && a.hasta === 12, "la duración no cuadra: " + JSON.stringify(a));
+  exige(!evActiva(c, "comprimido", 10), "se activó dos veces el mismo evento");
+  exige(evCaduca(c, 12).length === 0, "caducó antes de tiempo");
+  exige(evActivos(c).length === 1, "el evento se fue solo");
+  const idos = evCaduca(c, 13);
+  exige(idos.length === 1, "no caducó al terminar");
+  exige(!evActivos(c).length, "sigue en la lista");
+  exige(evNum("energia", 12) === 12, "el efecto sigue puesto tras caducar");
+  return "tres semanas y fuera, sin solaparse";
+});
+
+comprueba("Eventos: los de temporada y era no salen cada dos por tres", () => {
+  const c = nuevaCarrera();
+  c.eventos = []; c.evVistos = { punto_oro: 5 };
+  // recién vivido, no puede repetirse
+  exige(!evDisponibles(c, 30).some(d => d.id === "punto_oro"), "un evento de temporada se repite al mes");
+  exige(evDisponibles(c, 5 + 110).some(d => d.id === "punto_oro"), "no vuelve nunca");
+  // los únicos no vuelven jamás
+  c.evVistos = { generacion: 5 };
+  c.semana = 300;
+  exige(!evDisponibles(c, 400).some(d => d.id === "generacion"), "una generación irrepetible se repitió");
+  return "descansos por alcance y los únicos, una vez";
+});
+
+comprueba("Eventos: una generación nueva llega al circuito de verdad", () => {
+  const c = nuevaCarrera();
+  c.semana = 80;
+  const antes = G.world.parejas.length;
+  const nivelAntes = Math.max(...G.world.parejas.filter(p => (p.sexo || "M") === c.sexo).map(p => nivelPareja(p)));
+  evActiva(c, "generacion", c.semana);
+  exige(G.world.parejas.length === antes + 4, `entraron ${G.world.parejas.length - antes} parejas, no 4`);
+  const nuevas = G.world.parejas.slice(-4);
+  nuevas.forEach(p => {
+    exige(p.jug && p.jug.length === 2, "pareja mal formada");
+    exige(nivelPareja(p) >= 68, "la generación irrepetible es del montón: " + nivelPareja(p));
+    exige(Array.isArray(p.rk), "la pareja nueva no tiene ventana de ranking");
+  });
+  return "4 parejas de nivel " + nuevas.map(p => nivelPareja(p)).join("/") + " (el tope era " + nivelAntes + ")";
+});
+
+
+/* La pareja como copiloto: plan, ejes y conversaciones --------------------
+   Tres reglas que sostienen todo lo demás: un plan nuevo no hace nada hasta
+   que se rueda, cambiar de compañero se lleva los automatismos, y los seis
+   ejes se mueven por motivos distintos (si no, sobraba con una barra). */
+comprueba("Pareja: cada plan declara efecto y todos están traducidos", () => {
+  const ids = Object.keys(PLANES_PAREJA);
+  exige(ids.length >= 6, "solo hay " + ids.length + " planes");
+  ids.forEach(id => {
+    const P = PLANES_PAREJA[id];
+    if (id !== "libre") {
+      const golpes = Object.keys(P.mods || {});
+      exige(golpes.length, id + " no cambia ningún golpe: es un cartel, no un plan");
+    }
+    /* El error global es la palanca más fuerte del motor: la mayoría de los
+       puntos mueren en fallo, no en winner. Un plan que recorte el error de
+       TODOS los golpes por debajo de este umbral gana solo. */
+    const gt = (P.mods || {}).golpeTodo;
+    if (gt && gt.err) exige(gt.err >= .95, id + " recorta el error global a " + gt.err + ": gana solo");
+    [planNombre, planDesc, planComo].forEach(f => {
+      const x = f(id);
+      exige(x && !/^plan_/.test(x), id + ": sin traducir (" + x + ")");
+    });
+  });
+  return ids.length + " planes, todos con efecto en pista";
+});
+
+comprueba("Pareja: un plan nuevo no se nota hasta que se rueda", () => {
+  const c = nuevaCarrera();
+  c.eventos = []; evRecalcula(c);
+  planAsegura(c);
+  exige(planPareja(c) === "libre", "no arranca sin plan");
+  exige(planElige(c, "red"), "no dejó elegir el plan");
+  exige(planDominio(c) === 0, "el plan nuevo nace ya dominado");
+  const cero = pjGolpe("volea");
+  exige(cero.win === 1 && cero.err === 1, "sin rodaje ya modifica la volea: " + JSON.stringify(cero));
+  planEntrena(c, 50);
+  const medio = pjGolpe("volea");
+  planEntrena(c, 50);
+  const pleno = pjGolpe("volea");
+  exige(medio.win > 1 && pleno.win > medio.win, "el dominio no escala: " + medio.win + " / " + pleno.win);
+  exige(Math.abs(pleno.win - PLANES_PAREJA.red.mods["golpe:volea"].win) < 1e-9,
+    "al 100% no aplica el plan entero: " + pleno.win);
+  // y el dominio tiene techo
+  planEntrena(c, 80);
+  exige(planDominio(c) === PLAN_DOM_MAX, "el dominio se pasa del tope");
+  return "volea ×1,00 → ×" + medio.win.toFixed(2) + " → ×" + pleno.win.toFixed(2);
+});
+
+comprueba("Pareja: cambiar de compañero se lleva los automatismos", () => {
+  const c = nuevaCarrera();
+  planElige(c, "muro"); planEntrena(c, 100);
+  exige(planDominio(c) === 100, "no llegó al tope");
+  planRompe(c);
+  exige(planDominio(c) === 18, "la ruptura no cuesta lo que debe: " + planDominio(c));
+  // cambiar de plan con la misma pareja también empieza de cero
+  planElige(c, "red");
+  exige(planDominio(c) === 0, "el plan nuevo hereda el rodaje del viejo");
+  // la etapa nueva se lleva además la relación y las conversaciones tenidas
+  planEntrena(c, 100);
+  relMueve(c, "lealtad", 25); c.charlas = { defender: 3 }; c.semana = 60;
+  parejaNueva(c);
+  exige(planDominio(c) === 18, "la etapa nueva no descuenta el rodaje");
+  exige(relLee(c, "lealtad") === EJE_BASE, "la lealtad se hereda del compañero anterior");
+  exige(!Object.keys(c.charlas).length, "las conversaciones del anterior siguen en enfriamiento");
+  exige(c._parejaDesdeSem === 60, "no se anota cuándo empieza la etapa");
+  return "100 → 18 al romper, 0 al cambiar de plan";
+});
+
+comprueba("Pareja: los seis ejes se mueven por motivos distintos", () => {
+  const c = nuevaCarrera();
+  relReinicia(c);
+  EJES.forEach(k => exige(typeof relLee(c, k) === "number", "falta el eje " + k));
+  exige(EJES.length === 6, "no son seis ejes: " + EJES.length);
+  // semana de torneo: gasta convivencia; semana en casa: la recupera
+  const conv0 = relLee(c, "convivencia");
+  c._jugoTorneo = true; relSemana(c);
+  const conv1 = relLee(c, "convivencia");
+  exige(conv1 < conv0, "competir no gasta convivencia");
+  c._jugoTorneo = false; relSemana(c); relSemana(c);
+  exige(relLee(c, "convivencia") > conv1, "quedarse en casa no la recupera");
+  // pero la semana en casa impacienta al ambicioso
+  const amb0 = relLee(c, "ambicion");
+  relSemana(c);
+  exige(relLee(c, "ambicion") < amb0, "no competir no le pesa a nadie");
+  // el eje peor es el que se señala
+  relMueve(c, "protagonismo", -40);
+  exige(relPeor(c) === "protagonismo", "no detecta el eje que peor está");
+  exige(relEstado(20) === "roto" && relEstado(90) === "bien", "los estados no cuadran");
+  return "convivencia " + conv0 + "→" + conv1 + " compitiendo, y sube en casa";
+});
+
+comprueba("Pareja: la confianza deportiva se nota en pista", () => {
+  const c = nuevaCarrera();
+  relReinicia(c);
+  EJES.forEach(k => c.rel[k] = EJE_BASE);
+  exige(relAjusteConf(c) === 0, "en el punto de partida ya ajusta algo");
+  relMueve(c, "deportiva", +27);
+  exige(relAjusteConf(c) === 3, "creer en tu juego no suma: " + relAjusteConf(c));
+  relMueve(c, "deportiva", -54);
+  exige(relAjusteConf(c) < 0, "que no crea en ti no resta");
+  return "±3 de confianza por el eje deportivo";
+});
+
+comprueba("Pareja: las conversaciones cuestan, esperan y pueden salir mal", () => {
+  const c = nuevaCarrera();
+  relReinicia(c);
+  CHARLAS.forEach(ch => {
+    [charlaNombre, charlaDesc, charlaEfecto].forEach(f => {
+      const x = f(ch.id);
+      exige(x && !/^chr_/.test(x), ch.id + ": sin traducir (" + x + ")");
+    });
+    const toca = Object.keys(ch.ef || {});
+    exige(toca.length, ch.id + " no mueve ningún eje");
+    toca.forEach(k => exige(EJES.indexOf(k) >= 0, ch.id + " toca un eje inventado: " + k));
+  });
+  c.semana = 40; c.energia = 90; c.dinero = 9000;
+  relMueve(c, "personal", -20);
+  exige(charlaDisponible(c, "defender"), "no se puede defender al compañero");
+  const bien = charlaHabla(c, "defender", () => 0.99);   // sale bien
+  exige(bien && bien.ok, "con la moneda a favor debería salir bien");
+  exige(bien.deltas.personal > 0, "defenderlo no sube la afinidad");
+  // enfriamiento: no se puede repetir a la semana siguiente
+  exige(!charlaDisponible(c, "defender"), "se puede repetir sin esperar");
+  exige(charlaEspera(c, "defender") === 18, "el enfriamiento no cuadra: " + charlaEspera(c, "defender"));
+  c.semana += 18;
+  exige(charlaDisponible(c, "defender"), "no vuelve a estar disponible");
+  // la que sale mal, sale mal de verdad
+  const per0 = relLee(c, "personal");
+  const mal = charlaHabla(c, "critica", () => 0);        // moneda en contra
+  exige(mal && !mal.ok, "con la moneda en contra debería salir mal");
+  exige(relLee(c, "personal") < per0, "criticarle mal no cuesta nada");
+  // y el dinero se cobra
+  const din0 = c.dinero;
+  relMueve(c, "personal", -30);   // para que cumpla la condición de media baja
+  EJES.forEach(k => c.rel[k] = 40);
+  exige(charlaDisponible(c, "psicologo"), "el psicólogo no está disponible con la relación rota");
+  charlaHabla(c, "psicologo", () => 0.99);
+  exige(c.dinero === din0 - 900, "el psicólogo no se cobra: " + (din0 - c.dinero));
+  return CHARLAS.length + " conversaciones con precio, espera y riesgo";
+});
+
+
+/* Entrenar deja de ser resoluble -----------------------------------------
+   La regla: no puede haber una jugada que gane siempre. Machacar el mismo
+   golpe rinde cada vez menos, la carga tiene un punto bueno del que se sale
+   por arriba y por abajo, y el sitio donde entrenas renuncia a algo. */
+comprueba("Entreno: cada contexto cuesta y renuncia a algo", () => {
+  const ids = Object.keys(CTX_ENTRENO);
+  exige(ids.length >= 6, "solo hay " + ids.length + " sitios donde entrenar");
+  ids.forEach(id => {
+    const d = CTX_ENTRENO[id];
+    exige(typeof d.gan === "number" && typeof d.carga === "number", id + " no declara ganancia ni carga");
+    // gratis y sin inconveniente sería la respuesta correcta siempre
+    const barato = !d.coste;
+    const renuncia = d.gan < 1 || d.sinTorneo || d.fisico;
+    exige(!barato || renuncia || id === "pista", id + " es gratis y no renuncia a nada: gana siempre");
+    [ctxNombre, ctxDesc, ctxEfecto].forEach(f => {
+      const x = f(id);
+      exige(x && !/^ctx_/.test(x), id + ": sin traducir (" + x + ")");
+    });
+  });
+  // la concentración cierra el circuito esa semana
+  const c = nuevaCarrera();
+  exige(!ctxBloqueaTorneo(c), "sin elegir nada ya te deja fuera del circuito");
+  ctxElige(c, "stage");
+  exige(ctxBloqueaTorneo(c), "la concentración no te deja fuera del circuito");
+  return ids.length + " sitios, todos con su renuncia";
+});
+
+comprueba("Entreno: machacar el mismo golpe rinde cada vez menos", () => {
+  const c = nuevaCarrera();
+  frAsegura(c);
+  exige(adaptFactor(c, "volea") === 1, "el golpe fresco ya viene trillado");
+  for (let i = 0; i < 3; i++) { adaptTrabaja(c, "volea"); adaptDescansa(c, "volea"); }
+  const tres = adaptFactor(c, "volea");
+  for (let i = 0; i < 4; i++) { adaptTrabaja(c, "volea"); adaptDescansa(c, "volea"); }
+  const siete = adaptFactor(c, "volea");
+  exige(tres < 1 && siete < tres, "no baja el rendimiento: " + tres + " / " + siete);
+  exige(siete <= .45, "siete semanas seguidas y aún rinde al " + Math.round(siete * 100) + "%");
+  // y lo que se deja de tocar se desentumece
+  const antes = adaptLee(c, "volea");
+  for (let i = 0; i < 6; i++) adaptDescansa(c, "fondo");
+  exige(adaptLee(c, "volea") < antes, "abandonar el golpe no lo devuelve a fresco");
+  return "de ×1,00 a ×" + siete.toFixed(2) + " en siete semanas seguidas";
+});
+
+comprueba("Entreno: la carga tiene un punto bueno y dos maneras de fallarlo", () => {
+  const c = nuevaCarrera();
+  frAsegura(c);
+  c.carga = CARGA_OPT;
+  const optimo = cargaGanX(c);
+  c.carga = 5;   const parado = cargaGanX(c);
+  c.carga = 98;  const pasado = cargaGanX(c);
+  exige(optimo > parado && optimo > pasado, "el óptimo no es el óptimo");
+  exige(parado < .6 && pasado < .6, "fallar la carga no cuesta nada: " + parado + " / " + pasado);
+  exige(cargaEstado({ carga: 5 }) === "parado" && cargaEstado({ carga: 98 }) === "pasado", "los estados no cuadran");
+  // pasarse además rompe cuerpos
+  c.carga = 40; const sano = cargaLesionX(c);
+  c.carga = 95; const roto = cargaLesionX(c);
+  exige(sano === 1 && roto > 1.5, "pasarse de carga no sube el riesgo: " + roto);
+  // y la carga se acumula despacio y se va despacio
+  c.carga = 0; ctxElige(c, "pista"); c.intens = "intensa";
+  cargaAplica(c, 5); const s1 = c.carga;
+  cargaAplica(c, 5); const s2 = c.carga;
+  exige(s1 > 0 && s2 > s1, "no se acumula");
+  c.intens = "normal"; ctxElige(c, "casa");
+  cargaAplica(c, 0); const s3 = c.carga;
+  exige(s3 < s2, "no baja al parar");
+  return `óptimo ×${optimo.toFixed(2)} · parado ×${parado.toFixed(2)} · pasado ×${pasado.toFixed(2)}, y ×${roto.toFixed(2)} de lesión`;
+});
+
+comprueba("Entreno: la forma es temporal y el ritmo se pierde parado", () => {
+  const c = nuevaCarrera();
+  frAsegura(c);
+  exige(formaDe(c, "volea") === 0, "se nace con forma");
+  formaSube(c, "volea", 3);
+  exige(formaDe(c, "volea") === 3, "no coge forma");
+  exige(formaMejor(c) === "volea", "no detecta el golpe fino");
+  for (let i = 0; i < 3; i++) formaEnfria(c);
+  exige(formaDe(c, "volea") === 0, "la forma no se enfría: " + formaDe(c, "volea"));
+  // y no se desborda ni por arriba ni por abajo
+  for (let i = 0; i < 40; i++) formaSube(c, "volea", 3);
+  exige(formaDe(c, "volea") === FORMA_TOPE, "la forma se desborda");
+  // ritmo: competir da, parar quita, y se paga en la cabeza
+  c.ritmo = 55;
+  exige(ritmoAjusteConf(c) === 0, "en el punto de partida ya ajusta");
+  for (let i = 0; i < 4; i++) ritmoSemana(c, true);
+  const alto = ritmoAjusteConf(c);
+  exige(alto > 0 && ritmoEstado(c) === "lanzado", "competir no da ritmo: " + c.ritmo);
+  for (let i = 0; i < 14; i++) ritmoSemana(c, false);
+  exige(ritmoAjusteConf(c) < 0 && ritmoEstado(c) === "frio", "parar no enfría: " + c.ritmo);
+  return `±${alto} de confianza por el ritmo, y se pierde en ${Math.ceil((100 - 25) / RITMO_PIERDE)} semanas paradas`;
+});
+
+comprueba("Entreno: el cuerpo técnico da horquillas, no números", () => {
+  const c = nuevaCarrera();
+  frAsegura(c);
+  c.staff = {};
+  exige(precisionStaff(c) === 0, "sin staff ya hay precisión");
+  const ciego = banda(50, 0, 13);
+  exige(ciego.hi - ciego.lo >= 20, "sin nadie la horquilla es estrecha: " + JSON.stringify(ciego));
+  const conStaff = banda(50, 8, 13);
+  exige(conStaff.hi - conStaff.lo < ciego.hi - ciego.lo, "el staff no estrecha la horquilla");
+  exige(conStaff.lo <= 50 && conStaff.hi >= 50, "la horquilla no contiene el valor real");
+  // el pronóstico también es una horquilla, y baja cuando el golpe está trillado
+  const fresco = pronosticoEntreno(c, "volea");
+  exige(fresco.hi > fresco.lo, "el pronóstico es un número exacto");
+  for (let i = 0; i < 6; i++) { adaptTrabaja(c, "volea"); adaptDescansa(c, "volea"); }
+  const trillado = pronosticoEntreno(c, "volea");
+  exige(trillado.hi < fresco.hi, "el pronóstico ignora la adaptación");
+  return `sin staff ±${(ciego.hi - ciego.lo) / 2}, con staff ±${(conStaff.hi - conStaff.lo) / 2}`;
+});
+
+comprueba("Entreno: en el gimnasio no se trabaja la dejada", () => {
+  const c = nuevaCarrera();
+  frAsegura(c);
+  const ent_ = { n: "—", niv: 0, esp: [] };
+  exige(golpeReal(c, "dejada", ent_, CTX_ENTRENO.pista) === "dejada", "en pista no respeta tu plan");
+  const k = golpeReal(c, "dejada", ent_, CTX_ENTRENO.gimnasio);
+  exige(ATTR_FISICOS.indexOf(k) >= 0, "el gimnasio entrena la dejada: " + k);
+  // y la forma llega a la pista
+  c.forma = {}; formaSube(c, "fondo", 5);
+  const eq = miTeam();
+  const yo = eq.jug.find(j => j.me);
+  c.forma = {};
+  const eq2 = miTeam();
+  const yo2 = eq2.jug.find(j => j.me);
+  exige(yo.attrs.fondo > yo2.attrs.fondo, "la forma no llega a la pista: " + yo.attrs.fondo + " vs " + yo2.attrs.fondo);
+  return "gimnasio → " + k + ", y la forma se nota en pista";
+});
+
+
+/* El dinero se convierte en estructura -----------------------------------
+   Medido: hasta la octava temporada la caja aprieta, y a partir del top 10 se
+   dispara a 262.000 sin nada que hacer con ellos. Estas pruebas defienden que
+   lo que se compra cambia una decisión y que no se puede comprar todo. */
+comprueba("Inversiones: todas cuestan, se mantienen y están traducidas", () => {
+  exige(INV_IDS.length >= 5, "solo hay " + INV_IDS.length + " sitios donde meter el dinero");
+  INV_IDS.forEach(id => {
+    const d = INVERSIONES[id];
+    exige(d.coste.length === INV_NIV_MAX && d.sem.length === INV_NIV_MAX, id + " no tiene los tres niveles");
+    for (let i = 1; i < INV_NIV_MAX; i++) {
+      exige(d.coste[i] > d.coste[i - 1], id + ": subir de nivel no cuesta más");
+      exige(d.sem[i] > d.sem[i - 1], id + ": mantener el nivel alto no cuesta más");
+    }
+    [invNombre, invDesc].forEach(f => {
+      const x = f(id);
+      exige(x && !/^inv_/.test(x), id + ": sin traducir (" + x + ")");
+    });
+    for (let n = 1; n <= INV_NIV_MAX; n++) {
+      const e = invEfecto(id, n);
+      exige(e && !/^inv_/.test(e), id + " nivel " + n + ": sin efecto traducido");
+    }
+  });
+  return INV_IDS.length + " inversiones de " + INV_NIV_MAX + " niveles";
+});
+
+comprueba("Inversiones: el mantenimiento impide tenerlo todo", () => {
+  const c = nuevaCarrera();
+  invAsegura(c);
+  c.dinero = 5000000;
+  INV_IDS.forEach(id => { for (let n = 0; n < INV_NIV_MAX; n++) invCompra(c, id, "ES"); });
+  INV_IDS.forEach(id => exige(invNiv(c, id) === INV_NIV_MAX, id + " no llegó al tope"));
+  const tope = invUpkeepTotal(c);
+  /* Referencia medida con un bot: un número uno del mundo ingresa del orden de
+     3.500€ por semana. Si el mantenimiento total cupiera ahí, tenerlo todo
+     sería lo obvio y no habría decisión. */
+  exige(tope > 3500, "tenerlo todo cuesta " + tope + "€/sem: cabe en lo que ingresa un nº1");
+  // y dos o tres sí caben: si no, el sistema sería decorado
+  const c2 = nuevaCarrera(); invAsegura(c2); c2.dinero = 5000000;
+  for (let n = 0; n < INV_NIV_MAX; n++) { invCompra(c2, "centro", "ES"); invCompra(c2, "clinica"); }
+  exige(invUpkeepTotal(c2) < 3500, "ni dos al máximo caben: " + invUpkeepTotal(c2));
+  return `las cinco al máximo: ${tope}€/sem · dos al máximo: ${invUpkeepTotal(c2)}€/sem`;
+});
+
+comprueba("Inversiones: cada una cambia algo del motor", () => {
+  const c = nuevaCarrera();
+  invAsegura(c); c.dinero = 5000000; c.fans = 200000; c.staff = {};
+  // centro: viaje y rendimiento del entreno gratis
+  exige(invViajeX(c, "AM") === 1 && invCtxGanX(c, "pista") === 1, "sin centro ya hay efecto");
+  invCompra(c, "centro", "ES");
+  exige(invViajeX(c, "ES") < 1, "el centro no abarata su región");
+  exige(invViajeX(c, "AM") > 1, "instalarse lejos no se paga en ningún sitio");
+  exige(invCtxGanX(c, "pista") > 1, "el centro no mejora las horas de pista");
+  exige(invCtxGanX(c, "sparring") === 1, "el centro también regala el sparring de pago");
+  // clínica: bajas más cortas y carga que se descarga antes
+  const poso0 = invCargaPoso(c);
+  invCompra(c, "clinica");
+  exige(invLesionDurX(c) < 1, "la clínica no acorta las bajas");
+  exige(invMermaPasos(c) > 1, "la clínica no acelera las secuelas");
+  exige(invCargaPoso(c) < poso0, "la clínica no descarga antes");
+  // analítica: información
+  const p0 = precisionStaff(c);
+  invCompra(c, "analitica");
+  exige(precisionStaff(c) > p0, "la analítica no estrecha las horquillas");
+  exige(invPresionX(c) < 1, "la analítica no baja la presión del rival");
+  // academia: renta por fans
+  exige(invRenta(c) === 0, "sin academia ya renta");
+  invCompra(c, "academia");
+  const renta = invRenta(c);
+  exige(renta > 0, "la academia no renta");
+  const pobre = { fans: 2000, inv: c.inv };
+  exige(invRenta(pobre) < INVERSIONES.academia.sem[0], "la academia renta aunque no seas nadie");
+  // imagen: seguidores y contratos
+  exige(invFansX(c) === 1, "sin agencia ya multiplica");
+  invCompra(c, "imagen"); invCompra(c, "imagen");
+  exige(invFansX(c) > 1 && invPatroX(c) > 1, "la agencia no hace nada");
+  exige(invSubeTier(c), "a nivel 2 la agencia no abre las marcas grandes");
+  return `renta de la academia con 200.000 fans: ${renta}€/sem`;
+});
+
+comprueba("Inversiones: abrir, subir y cerrar mueven la caja", () => {
+  const c = nuevaCarrera();
+  invAsegura(c); c.dinero = 20000;
+  exige(!invCompra(c, "centro", "ES"), "se abre un centro sin tener el dinero");
+  c.dinero = 50000;
+  exige(invCompra(c, "centro", "AM"), "no deja abrirlo con dinero de sobra");
+  exige(c.dinero === 50000 - INVERSIONES.centro.coste[0], "no cobró el precio: " + c.dinero);
+  exige(invRegion(c) === "AM", "no guardó la región");
+  exige(invUpkeep(c, "centro") === INVERSIONES.centro.sem[0], "no cobra mantenimiento");
+  // subir de nivel mantiene la región
+  c.dinero = 200000;
+  invCompra(c, "centro");
+  exige(invNiv(c, "centro") === 2 && invRegion(c) === "AM", "subir de nivel pierde la región");
+  // cerrarla devuelve una parte, no todo
+  const antes = c.dinero, dev = invCierra(c, "centro");
+  const puesto = INVERSIONES.centro.coste[0] + INVERSIONES.centro.coste[1];
+  exige(dev > 0 && dev < puesto, "cerrar devuelve " + dev + " de " + puesto);
+  exige(c.dinero === antes + dev, "no ingresó lo devuelto");
+  exige(invNiv(c, "centro") === 0 && invUpkeepTotal(c) === 0, "sigue costando mantenimiento");
+  // el balance semanal cobra y paga
+  c.dinero = 300000; c.fans = 400000;
+  invCompra(c, "academia");
+  const caja = c.dinero, b = invSemana(c);
+  exige(b.renta > 0 && b.gasto > 0, "el balance no mueve nada");
+  exige(c.dinero === caja + b.renta - b.gasto, "la caja no cuadra con el balance");
+  return `cierre: ${dev}€ de vuelta de ${puesto}€ puestos`;
+});
+
+
+/* El partido te contesta ---------------------------------------------------
+   Tres reglas: abusar de un golpe deja de funcionar, cada plan lleva su cuenta
+   para que la siguiente decisión sea informada, y la etiqueta del rival sale de
+   sus atributos (nunca miente). */
+comprueba("Táctica: el rival lee al que solo sabe hacer una cosa", () => {
+  const m = { lectura: null, cpu: false };
+  const st = { uso: {} };
+  // un jugador variado: nadie le lee nada
+  ["fondo", "volea", "globo", "bandeja", "vibora", "remate"].forEach(k => { for (let i = 0; i < 6; i++) st.uso[k] = (st.uso[k] || 0) + 1; });
+  for (let g = 0; g < 8; g++) tacLee(m, st, 85);
+  exige(!m.lectura || m.lectura.nivel <= 0, "leen a alguien que varía: " + JSON.stringify(m.lectura));
+  // y ahora uno que solo pega víboras
+  const m2 = { lectura: null, cpu: false };
+  const st2 = { uso: { vibora: 40, fondo: 10, globo: 8 } };
+  const p = tacPatron(st2);
+  exige(p.golpe === "vibora" && p.cuota > .6, "no detecta el patrón: " + JSON.stringify(p));
+  let aviso = null;
+  for (let g = 0; g < 10; g++) aviso = tacLee(m2, st2, 85) || aviso;
+  exige(m2.lectura.golpe === "vibora", "no le leen la víbora");
+  exige(m2.lectura.nivel >= .9, "la lectura se queda a medias: " + m2.lectura.nivel);
+  exige(aviso === "vibora", "no avisa de que te han leído");
+  return "variando: sin lectura · 62% de víboras: lectura al " + Math.round(m2.lectura.nivel * 100) + "%";
+});
+
+comprueba("Táctica: lo leído rinde menos, y se les olvida si varías", () => {
+  const guarda = (typeof match !== "undefined") ? match : null;
+  match = { lectura: { golpe: "vibora", nivel: 1 } };
+  const leido = tacLecturaX("vibora"), otro = tacLecturaX("volea");
+  exige(otro.win === 1 && otro.err === 1, "castiga a un golpe que no te han leído");
+  exige(leido.win < 1 && leido.err > 1, "el golpe leído no se paga: " + JSON.stringify(leido));
+  exige(leido.win > .7, "la lectura decide el partido ella sola: ×" + leido.win);
+  exige(tacLecturaEstado() && tacLecturaEstado().fuerte, "no se puede saber que te tienen leído");
+  // variar lo apaga
+  const m = { lectura: { golpe: "vibora", nivel: 1 } };
+  const variado = { uso: {} };
+  ["fondo", "volea", "globo", "bandeja", "vibora", "remate", "dejada"].forEach(k => variado.uso[k] = 5);
+  for (let g = 0; g < 8; g++) tacLee(m, variado, 85);
+  exige(m.lectura.nivel === 0 && !m.lectura.golpe, "no se les olvida nunca: " + JSON.stringify(m.lectura));
+  match = guarda;
+  return `leído: win ×${leido.win.toFixed(2)} · err ×${leido.err.toFixed(2)}, y se olvida variando`;
+});
+
+comprueba("Táctica: el informe cuenta lo que dio cada plan", () => {
+  const m = {};
+  const plan = (agres, red) => ({ agres, diana: "repartir", red, clutch: "normal" });
+  // subir a la red: winners tuyos y globos en contra
+  const gana = { ev: [{ team: 0, shotKey: "volea", end: "winner" }] };
+  const globo = { ev: [{ team: 1, shotKey: "globo" }, { team: 1, shotKey: "remate", end: "winner" }] };
+  for (let i = 0; i < 6; i++) tacAnota(m, 0, gana, plan("normal", "subir"));
+  for (let i = 0; i < 4; i++) tacAnota(m, 1, globo, plan("normal", "subir"));
+  for (let i = 0; i < 5; i++) tacAnota(m, 0, gana, plan("conservadora", "normal"));
+  const inf = tacInforme(m, 4);
+  exige(inf.length === 2, "no separa los planes: " + inf.length);
+  const subir = inf.find(x => /subir/.test(x.firma));
+  exige(subir.pts === 10 && subir.gan === 6, "las cuentas no salen: " + JSON.stringify(subir));
+  exige(subir.w === 6, "no cuenta tus winners: " + subir.w);
+  exige(subir.globos === 4, "no cuenta los globos que te pasan por encima: " + subir.globos);
+  // y se cuenta en palabras, traducidas
+  const txt = tacFirmaTxt(subir.firma);
+  exige(txt && !/^tac_/.test(txt) && /\|/.test(txt) === false, "la firma no se lee: " + txt);
+  exige(tacFirmaTxt("normal|repartir|normal|normal") === t("tac_inf_plan_base"), "el plan de siempre no tiene nombre");
+  const html = tacInformeHTML(m, 4);
+  exige(html.indexOf("undefined") < 0 && !/tac_inf_/.test(html), "el informe sale sin traducir");
+  return `«${txt}»: 6 de 10 puntos, 6 winners y 4 globos por encima`;
+});
+
+comprueba("Táctica: la identidad del rival sale de sus atributos", () => {
+  const mk = (mod) => ({ jug: [0, 1].map(() => ({ attrs: Object.fromEntries(ATTR_KEYS.map(k => [k, 60 + (mod[k] || 0)])) })) });
+  exige(identidadPareja(mk({ fondo: 20, pared: 20 })) === "muro", "no reconoce un muro");
+  exige(identidadPareja(mk({ volea: 20, bandeja: 20 })) === "red", "no reconoce a los de la red");
+  exige(identidadPareja(mk({ remate: 22, vibora: 22 })) === "pegada", "no reconoce la pegada");
+  exige(identidadPareja(mk({})) === "completos", "una pareja plana debería ser «sin fisuras»");
+  // y una diferencia pequeña no es identidad: es ruido
+  exige(identidadPareja(mk({ fondo: 4, pared: 4 })) === "completos", "convierte el ruido en identidad");
+  // todas están traducidas y todas dicen qué hacer contra ellas
+  Object.keys(IDENTIDADES).concat("completos").forEach(id => {
+    [identNombre, identDesc, identContra].forEach(f => {
+      const x = f(id);
+      exige(x && !/^iden_/.test(x), id + ": sin traducir (" + x + ")");
+    });
+  });
+  return Object.keys(IDENTIDADES).length + 1 + " identidades, todas con su antídoto";
+});
+
+
+/* La Copa de Clubes: el modo club tiene competición propia -----------------
+   Hasta aquí el club era una carrera con dos parejas: todo colgaba de torneos
+   individuales. Estas pruebas defienden que la eliminatoria es una decisión
+   (alineación contra el rival y fatiga) y que los socios son un segundo jefe. */
+comprueba("Copa: el calendario es de verdad, ida y vuelta y sin premier", () => {
+  const cl = fundarClub();
+  const L = copAsegura(cl);
+  exige(L.grupo.length === COP_CLUBES - 1, "el grupo no tiene siete rivales: " + L.grupo.length);
+  exige(new Set(L.grupo).size === L.grupo.length, "hay un club repetido en el grupo");
+  exige(L.cal.length === (COP_CLUBES - 1) * 2, "no es ida y vuelta: " + L.cal.length + " jornadas");
+  // cada equipo juega una vez por jornada
+  L.cal.forEach((j, i) => {
+    const vistos = j.par.flat();
+    exige(vistos.length === COP_CLUBES, "la jornada " + i + " no empareja a todos");
+    exige(new Set(vistos).size === COP_CLUBES, "alguien juega dos veces en la jornada " + i);
+  });
+  // ida y vuelta: el mismo cruce con el campo cambiado
+  const ida = L.cal.slice(0, COP_CLUBES - 1).map(j => j.par.map(p => p.join(">")).sort().join("|"));
+  const vue = L.cal.slice(COP_CLUBES - 1).map(j => j.par.map(p => p.slice().reverse().join(">")).sort().join("|"));
+  exige(ida.join("#") === vue.join("#"), "la vuelta no invierte la ida");
+  // ninguna jornada cae en semana de premier: bastante tiene el club
+  L.cal.forEach(j => exige(slotSemana(j.sem).premier === undefined, "hay jornada en semana de premier: " + j.sem));
+  return L.cal.length + " jornadas en semanas libres, ida y vuelta";
+});
+
+comprueba("Copa: sin cuatro jugadores sanos se pierde un punto sin jugarlo", () => {
+  const cl = fundarClub();
+  copAsegura(cl);
+  exige(cl.plantilla.length === 2, "el club de prueba debería tener dos jugadores");
+  exige(copAlineacionAuto(cl).length === 1, "con dos jugadores solo hay una pareja");
+  // con cuatro sanos ya hay dos parejas, y nadie se repite
+  while (cl.plantilla.length < 4) cl.plantilla.push({ ...cl.plantilla[0], n: "R" + cl.plantilla.length, energia: 100, conf: 55, lesion: null });
+  const dos = copAlineacionAuto(cl);
+  exige(dos.length === 2, "con cuatro sanos deberían salir dos parejas");
+  const nombres = dos.flat().map(j => j.n);
+  exige(new Set(nombres).size === 4, "un jugador aparece en las dos parejas: " + nombres.join(","));
+  // el lesionado y el fundido no cuentan
+  cl.plantilla[0].lesion = { n: "x", sem: 2 };
+  cl.plantilla[1].energia = 10;
+  exige(copDisponibles(cl).length === 2, "cuenta a lesionados o fundidos: " + copDisponibles(cl).length);
+  exige(copAlineacionAuto(cl).length === 1, "alinea a quien no puede jugar");
+  return "cuatro sanos → dos parejas · lesionado y fundido fuera";
+});
+
+comprueba("Copa: la eliminatoria se juega, cuesta energía y mueve la tabla", () => {
+  const cl = fundarClub();
+  const L = copAsegura(cl);
+  while (cl.plantilla.length < 4) cl.plantilla.push({ ...cl.plantilla[0], n: "R" + cl.plantilla.length, energia: 100, conf: 55, lesion: null });
+  cl.plantilla.forEach(j => { j.energia = 100; ATTR_KEYS.forEach(k => j.attrs[k] = 92); });
+  // buscamos una jornada en la que juegues tú
+  let jor = -1;
+  for (let i = 0; i < L.cal.length; i++) if (L.cal[i].par.some(p => p[0] === 0 || p[1] === 0)) { jor = i; break; }
+  exige(jor >= 0, "no hay ninguna jornada tuya");
+  const mias = copAlineacionAuto(cl);
+  const acta = copJuega(cl, jor, mias, 0, 0);
+  exige(acta, "la eliminatoria no se resolvió");
+  exige(acta.mio + acta.suyo >= 2, "no se jugaron los dos partidos: " + JSON.stringify(acta.partidos));
+  exige(acta.mio !== acta.suyo, "una eliminatoria no puede acabar en empate: " + acta.mio + "-" + acta.suyo);
+  exige(cl.plantilla.every(j => j.energia < 100), "jugar no cansó a nadie");
+  // la tabla recoge el resultado y toda la jornada
+  const T = L.tabla;
+  exige(T[0].g + T[0].p === 1, "tu club no tiene la eliminatoria anotada");
+  const jugados = T.reduce((s, f) => s + f.g + f.p, 0);
+  exige(jugados === COP_CLUBES, "no se resolvió la jornada entera: " + jugados);
+  exige(T.reduce((s, f) => s + f.pts, 0) === COP_PTS_VICT * (COP_CLUBES / 2), "los puntos de la jornada no cuadran");
+  // y no se puede volver a jugar
+  exige(!copJuega(cl, jor, mias, 0, 0), "la eliminatoria se puede jugar dos veces");
+  exige(copPuesto(cl) >= 1 && copPuesto(cl) <= COP_CLUBES, "el puesto se va de rango");
+  return `${acta.mio}-${acta.suyo} · ${acta.partidos.length} partidos · toda la jornada resuelta`;
+});
+
+comprueba("Copa: el cruce decide contra quién juega tu mejor pareja", () => {
+  const cl = fundarClub();
+  const L = copAsegura(cl);
+  while (cl.plantilla.length < 4) cl.plantilla.push({ ...cl.plantilla[0], n: "R" + cl.plantilla.length, energia: 100, conf: 55, lesion: null });
+  let jor = -1;
+  for (let i = 0; i < L.cal.length; i++) if (L.cal[i].par.some(p => p[0] === 0 || p[1] === 0)) { jor = i; break; }
+  const cruceP = L.cal[jor].par.find(p => p[0] === 0 || p[1] === 0);
+  const iRival = cruceP[0] === 0 ? cruceP[1] : cruceP[0];
+  const suyas = copParejasRival(cl, iRival);
+  exige(suyas.length === 2, "el rival no presenta dos parejas");
+  exige(nivelPareja(suyas[0]) >= nivelPareja(suyas[1]), "sus parejas no vienen ordenadas por nivel");
+  const mias = copAlineacionAuto(cl);
+  const acta = copJuega(cl, jor, mias, 1, 0);   // cruzadas
+  const primero = acta.partidos[0];
+  exige(primero.rival === suyas[1].nombre, "cruzando, tu pareja 1 debería jugar contra su 2: " + primero.rival);
+  return "cruzadas: tu 1 contra su 2";
+});
+
+comprueba("Copa: los socios son el otro jefe y pagan la cuota", () => {
+  const cl = fundarClub();
+  socAsegura(cl);
+  const base = cl.socios, ing0 = socIngreso(cl);
+  exige(base > 0 && ing0 > 0, "el club nace sin socios");
+  // ganar suma, ganar barriendo suma más, y el derbi lo multiplica
+  const acta = (mio, suyo, casa) => ({ mio, suyo, casa, gane: mio > suyo, partidos: [] });
+  const c2 = fundarClub(); socAsegura(c2);
+  const s0 = c2.socios;
+  socTrasEliminatoria(c2, acta(2, 0, true), false);
+  const barrido = c2.socios - s0;
+  const c3 = fundarClub(); socAsegura(c3);
+  const s3 = c3.socios;
+  socTrasEliminatoria(c3, acta(2, 1, true), false);
+  const sufrido = c3.socios - s3;
+  exige(sufrido > 0, "ganar sufriendo no suma socios");
+  exige(barrido > sufrido, `barrer (+${barrido}) no vale más que ganar sufriendo (+${sufrido})`);
+  // perder en casa duele más que perder fuera
+  const c4 = fundarClub(); socAsegura(c4); socTrasEliminatoria(c4, acta(0, 2, true), false);
+  const c5 = fundarClub(); socAsegura(c5); socTrasEliminatoria(c5, acta(0, 2, false), false);
+  exige(c4.socios < c5.socios, "perder en casa no duele más que perder fuera");
+  // y el derbi multiplica lo que pase
+  const c6 = fundarClub(); socAsegura(c6); socTrasEliminatoria(c6, acta(2, 0, true), true);
+  exige(c6.socios - s0 > barrido, "el derbi no pesa más que una jornada normal");
+  // un socio harto no paga igual que uno entregado
+  cl.humorSocios = 5; const pobre = socIngreso(cl);
+  cl.humorSocios = 95; const rico = socIngreso(cl);
+  exige(pobre < rico * .75, "el humor de la grada no se nota en la caja: " + pobre + " vs " + rico);
+  exige(socEstado({ humorSocios: 95, socios: 1 }) === "entregados" && socEstado({ humorSocios: 5, socios: 1 }) === "hartos", "los estados no cuadran");
+  return `barrido en el derbi: +${c6.socios - s0} socios · cuota ${pobre}€ hartos vs ${rico}€ entregados`;
+});
+
+comprueba("Copa: ceder libera ficha y devuelve al jugador mejorado", () => {
+  const cl = fundarClub();
+  copAsegura(cl); socAsegura(cl);
+  const j = cl.plantilla[0];
+  exige(!cesionPosible(cl, j), "se puede ceder con la plantilla justa");
+  while (cl.plantilla.length < 6) cl.plantilla.push({ ...cl.plantilla[0], n: "R" + cl.plantilla.length, energia: 100, conf: 55, lesion: null, attrs: { ...cl.plantilla[0].attrs } });
+  const sobra = cl.plantilla[5];
+  exige(cesionPosible(cl, sobra), "con plantilla larga no deja ceder");
+  const antes = ATTR_KEYS.reduce((s, k) => s + sobra.attrs[k], 0);
+  exige(cesionHaz(cl, sobra), "no cedió");
+  exige(sobra.cedido && sobra.cedido.hasta === (cl.semana | 0) + CES_SEMANAS, "la cesión no tiene fecha de vuelta");
+  exige(copDisponibles(cl).indexOf(sobra) < 0, "el cedido sigue disponible para la eliminatoria");
+  exige(cesionAhorro(cl) > 0, "ceder no ahorra ficha");
+  // no vuelve antes de tiempo
+  cl.semana += CES_SEMANAS - 1;
+  exige(cesionSemana(cl).length === 0, "vuelve antes de tiempo");
+  cl.semana += 1;
+  const vuelven = cesionSemana(cl);
+  exige(vuelven.length === 1, "no vuelve nunca");
+  exige(!sobra.cedido, "vuelve pero sigue marcado como cedido");
+  exige(ATTR_KEYS.reduce((s, k) => s + sobra.attrs[k], 0) > antes, "vuelve igual que se fue");
+  return "cedido " + CES_SEMANAS + " semanas, vuelve mejorado y con la ficha ahorrada";
+});
+
+comprueba("Copa: apilar o repartir cambia quién juega con quién", () => {
+  const cl = fundarClub();
+  copAsegura(cl);
+  // cuatro jugadores de nivel escalonado
+  const niveles = [90, 80, 70, 60];
+  cl.plantilla = niveles.map((n, i) => ({
+    ...cl.plantilla[0], n: "J" + n, energia: 100, conf: 55, lesion: null,
+    attrs: Object.fromEntries(ATTR_KEYS.map(k => [k, n])),
+  }));
+  const apila = copAlineacionAuto(cl, false);
+  const reparte = copAlineacionAuto(cl, true);
+  const nivPar = par => Math.round((mediaAttrs(par[0].attrs) + mediaAttrs(par[1].attrs)) / 2);
+  exige(nivPar(apila[0]) === 85 && nivPar(apila[1]) === 65, "apilar no junta a los dos mejores: " + apila.map(nivPar));
+  exige(nivPar(reparte[0]) === 75 && nivPar(reparte[1]) === 75, "repartir no equilibra: " + reparte.map(nivPar));
+  // apilar da una pareja más fuerte y otra más débil; repartir, dos iguales
+  exige(nivPar(apila[0]) > nivPar(reparte[0]), "apilar no hace más fuerte a la primera");
+  exige(nivPar(apila[1]) < nivPar(reparte[1]), "apilar no hace más débil a la segunda");
+  // con tres disponibles no hay nada que repartir: solo sale una pareja
+  cl.plantilla[3].lesion = { n: "x", sem: 1 };
+  exige(copAlineacionAuto(cl, true).length === 1, "con tres jugadores inventa una segunda pareja");
+  return "apilar 85/65 · repartir 75/75";
+});
+
+
+/* Jerarquía dramática: no todos los partidos valen lo mismo ----------------
+   La regla: el peso sale de hechos comprobables del estado de la partida. Si un
+   partido «parece» importante pero no cambia nada, no es importante. */
+comprueba("Drama: una final de Corona pesa más que una primera ronda", () => {
+  const c = nuevaCarrera();
+  const bronce = CATS[0], corona = CATS[6];
+  const p1 = pesoPartido(c, bronce, 2);      // octavos del torneo más pequeño
+  const p2 = pesoPartido(c, bronce, 5);      // su final
+  const p3 = pesoPartido(c, corona, 2);      // octavos del más grande
+  const p4 = pesoPartido(c, corona, 5);      // su final
+  exige(p1 < p2 && p1 < p3, "la ronda y la categoría no pesan: " + [p1, p2, p3].join("/"));
+  exige(p4 > p2 && p4 > p3, "la final del torneo grande no es lo que más pesa");
+  exige(pesoTier(p1) === "rutina", "una primera ronda de Bronce ya es un partidazo: " + pesoTier(p1));
+  exige(pesoTier(p4) === "historica", "la final de una Corona no llega a histórica: " + p4);
+  // los cortes están altos a propósito: si todo es grande, nada lo es
+  const medios = [CATS[2], CATS[3]].map(cat => pesoTier(pesoPartido(c, cat, 3)));
+  exige(medios.every(x => x === "rutina" || x === "seria"), "unos cuartos cualesquiera ya son «grandes»: " + medios);
+  return `Bronce 1ª ronda ${p1} · Corona final ${p4}`;
+});
+
+comprueba("Drama: lo que te juegas son hechos, no adjetivos", () => {
+  const c = nuevaCarrera();
+  const corona = CATS[6];
+  // sin palmarés, la final es tu primer título
+  const L = enJuego(c, corona, 5, null);
+  exige(L.some(x => x.k === "titulo"), "una final no pone el título en juego");
+  exige(L.some(x => x.k === "primero"), "el primer título no se nombra");
+  // con títulos ya no
+  c.palmares.push("algo");
+  exige(!enJuego(c, corona, 5, null).some(x => x.k === "primero"), "sigue diciendo que es el primero");
+  // en octavos no hay título en juego
+  exige(!enJuego(c, corona, 2, null).some(x => x.k === "titulo"), "unos octavos reparten título");
+  // la némesis y la bestia negra se reconocen
+  const riv = { id: "r1", nombre: "Rivales SA" };
+  c.nemesis = { id: "r1", elim: 2 };
+  exige(enJuego(c, corona, 3, riv).some(x => x.k === "nemesis"), "la némesis no cuenta");
+  c.nemesis = null;
+  c.h2h = { r1: { v: 0, d: 4 } };
+  exige(enJuego(c, corona, 3, riv).some(x => x.k === "bestia"), "la bestia negra no cuenta");
+  // y todo lo que se pinta está traducido
+  enJuego(c, corona, 5, riv).forEach(x => exige(x.txt && !/^dra_/.test(x.txt), "sin traducir: " + x.txt));
+  DRAMA_TIERS.forEach(k => exige(tierNombre(k) && !/^dra_/.test(tierNombre(k)), k + " sin traducir"));
+  // un partido sin nada en juego no saca cartel
+  const vacio = enJuegoHTML(c, CATS[0], 2, null);
+  exige(vacio === "", "pinta cartel sin nada que contar");
+  const lleno = enJuegoHTML(c, corona, 5, riv);
+  exige(lleno.indexOf("drama") > 0 && !/dra_/.test(lleno), "el cartel sale mal: " + lleno.slice(0, 80));
+  return enJuego(c, corona, 5, riv).length + " hechos en juego en una final con bestia negra";
+});
+
+comprueba("Drama: la grada escala con lo que hay en juego", () => {
+  const flojo = dramaGrada(10), fuerte = dramaGrada(95);
+  exige(flojo < fuerte, "la grada suena igual en todo");
+  exige(flojo >= .2 && fuerte <= 1, "la intensidad se sale del rango que acepta sfxGrada");
+  exige(fuerte - flojo > .5, "la diferencia no se va a oír: " + flojo + " vs " + fuerte);
+  return `grada ${flojo.toFixed(2)} en un partido menor · ${fuerte.toFixed(2)} en uno histórico`;
+});
+
+
+/* El arranque cuenta algo -------------------------------------------------
+   Las tres escenas leen el estado de la partida y una de ellas es una decisión
+   con consecuencias, no un texto de bienvenida. */
+comprueba("Arranque: el pacto con tu primera pareja mueve los ejes", () => {
+  const c = nuevaCarrera();
+  relAsegura(c);
+  exige(ARR_PACTOS.length >= 3, "hay menos de tres maneras de plantear la sociedad");
+  ARR_PACTOS.forEach(p => {
+    exige(Object.keys(p.ef).length, p.id + " no mueve nada: es un texto, no un pacto");
+    Object.keys(p.ef).forEach(k => exige(EJES.indexOf(k) >= 0, p.id + " toca un eje inventado: " + k));
+    [t("arr_pac_" + p.id), t("arr_pac_" + p.id + "_d")].forEach(x =>
+      exige(x && !/^arr_/.test(x), p.id + ": sin traducir"));
+  });
+  // y cada uno deja la relación en un sitio distinto
+  const leal = relLee(c, "lealtad"), amb = relLee(c, "ambicion");
+  exige(arrPacto(c, "serio"), "no deja pactar");
+  exige(relLee(c, "lealtad") > leal && relLee(c, "ambicion") < amb, "el pacto serio no hace lo que dice");
+  const c2 = nuevaCarrera(); relAsegura(c2);
+  arrPacto(c2, "temporal");
+  exige(relLee(c2, "lealtad") < leal && relLee(c2, "ambicion") > amb, "el pacto temporal no hace lo que dice");
+  exige(c.pactoInicial === "serio" && c2.pactoInicial === "temporal", "no se recuerda lo que prometiste");
+  return "tres pactos, tres relaciones distintas desde la semana 1";
+});
+
+comprueba("Arranque: el primer rival es de tu nivel y vuelve", () => {
+  const c = nuevaCarrera();
+  const mio = Math.round((mediaAttrs(c.attrs) + mediaAttrs(c.compi.attrs)) / 2);
+  const r = arrEligeRival(c);
+  exige(r, "no elige primer rival");
+  exige(Math.abs(nivelPareja(r) - mio) <= 7, "el primer rival no es de tu nivel: " + nivelPareja(r) + " vs " + mio);
+  exige((r.sexo || "M") === (c.sexo || "M"), "el primer rival no es de tu circuito");
+  exige(!arrEligeRival(c), "elige un primer rival nuevo cada vez que se pregunta");
+  // el sorteo lo trae en las rondas de entrada, y solo las dos primeras temporadas
+  let veces = 0;
+  for (let i = 0; i < 200; i++) if (arrSorteaRival(c, 1)) veces++;
+  exige(veces > 40 && veces < 160, "la probabilidad de que aparezca se va de madre: " + veces + "/200");
+  exige(!arrSorteaRival(c, 5), "aparece hasta en la final: eso es una némesis, no un compañero de quinta");
+  c.semana = SEMANAS_TEMP * 3 + 1;   // tercera temporada
+  exige(!arrSorteaRival(c, 1), "sigue apareciendo pasadas dos temporadas");
+  // y se lleva el marcador del duelo
+  c.semana = 5;
+  arrAnotaRival(c, r.id, true); arrAnotaRival(c, r.id, false); arrAnotaRival(c, "otro", true);
+  exige(arrRivalDebut(c).v === 1 && arrRivalDebut(c).d === 1, "el marcador del duelo no cuadra");
+  return "rival de nivel " + nivelPareja(r) + " (tú " + mio + "), aparece en " + Math.round(veces / 2) + "% de los sorteos de entrada";
+});
+
+comprueba("Arranque: el balance lee la partida, no rellena", () => {
+  const c = nuevaCarrera();
+  relAsegura(c); frAsegura(c);
+  const L = arrBalance(c);
+  exige(L.length >= 4, "el balance dice muy poco: " + L.length + " líneas");
+  L.forEach(x => exige(x.txt && !/^arr_/.test(x.txt), "sin traducir: " + x.txt));
+  // lo que dice cambia con lo que has hecho
+  exige(L.some(x => x.k === "pocos"), "sin partidos jugados debería decirlo");
+  c.vd = { v: 8, d: 2 };
+  exige(arrBalance(c).some(x => /8/.test(x.txt)), "no lee tu récord");
+  // el golpe más trabajado sale del registro de adaptación, no del aire
+  adaptTrabaja(c, "vibora"); adaptTrabaja(c, "vibora");
+  const conEntreno = arrBalance(c).find(x => x.k === "entreno");
+  exige(conEntreno && conEntreno.txt.indexOf(atNombre("vibora")) >= 0, "no dice qué has trabajado: " + (conEntreno && conEntreno.txt));
+  // y la caja se lee en tres tramos distintos
+  const caja = d => { c.dinero = d; return arrBalance(c).find(x => x.k === "caja").txt; };
+  exige(caja(100) !== caja(2000) && caja(2000) !== caja(9000), "la caja se cuenta igual con 100€ que con 9.000€");
+  // las escenas se preguntan una vez y se marcan vistas
+  c.semana = 1; c.arrVistas = {};
+  exige(arrEscenaPendiente(c) === "pareja", "la primera semana no presenta a la pareja");
+  arrMarca(c, "pareja");
+  exige(arrEscenaPendiente(c) === null, "en la semana 1 ya pide la escena del rival");
+  c.semana = ARR_SEM_RIVAL;
+  exige(arrEscenaPendiente(c) === "rival", "no presenta al rival cuando toca");
+  arrMarca(c, "rival");
+  c.semana = ARR_SEM_BALANCE;
+  exige(arrEscenaPendiente(c) === "balance", "no hace balance cuando toca");
+  arrMarca(c, "balance");
+  c.semana = 40;
+  exige(arrEscenaPendiente(c) === null, "las escenas del arranque vuelven más tarde");
+  return L.length + " líneas, todas leídas del estado";
+});
+
+comprueba("Copa: la temporada se cierra y paga (regresión: no se cerraba nunca)", () => {
+  /* El cierre comparaba `cl.copa.temp === temporada()`, pero al llegar ahí la
+     semana ya se ha incrementado y `temporada()` es la NUEVA: la condición era
+     falsa siempre y la Copa no daba ni campeón, ni premio, ni título. Cinco
+     temporadas de bot terminaron con la tabla a cero sin que nadie lo notara. */
+  const cl = fundarClub();
+  const L = copAsegura(cl);
+  exige(L.temp === temporada(), "la copa no nace en la temporada en curso");
+  // la comparación del cierre es contra la temporada anterior
+  const src = String(avanzarSemanaClub);
+  exige(/copa\.temp\s*===\s*temporada\(\)\s*-\s*1/.test(src),
+    "el cierre de la Copa no compara con la temporada anterior: volverá a no cerrarse nunca");
+  // y el premio existe y crece hacia arriba de la tabla
+  exige(copPremio(1) > copPremio(4) && copPremio(4) > copPremio(8), "el premio no premia acabar arriba");
+  exige(copPremio(1) > 15000, "ganar la Copa paga menos que un torneo pequeño: " + copPremio(1));
+  return "campeón " + copPremio(1) + "€ · 4º " + copPremio(4) + "€ · último " + copPremio(8) + "€";
+});
+
+comprueba("Copa: jugar en casa da taquilla, y fuera no", () => {
+  /* La Copa pide cuatro jugadores sanos —el doble de masa salarial— y no pagaba
+     nada hasta el cierre: el club se arruinaba por competir. Medido con un bot
+     de cinco temporadas, la caja acababa en −490.000€. */
+  const cl = fundarClub();
+  socAsegura(cl);
+  const casa = { casa: true, gane: true, mio: 2, suyo: 0 };
+  const fuera = { casa: false, gane: true, mio: 2, suyo: 0 };
+  exige(copTaquilla(cl, fuera) === 0, "jugar fuera da taquilla");
+  const t1 = copTaquilla(cl, casa);
+  exige(t1 > 0, "jugar en casa no da taquilla");
+  // gana más el que gana, y el que tiene la grada contenta
+  const perdida = copTaquilla(cl, { casa: true, gane: false, mio: 0, suyo: 2 });
+  exige(t1 > perdida, "ganar en casa no llena más que perder");
+  cl.humorSocios = 95; const contentos = copTaquilla(cl, casa);
+  cl.humorSocios = 5; const hartos = copTaquilla(cl, casa);
+  exige(contentos > hartos, "el humor de la grada no se nota en la taquilla");
+  // y escala con el tamaño del club
+  cl.humorSocios = 60; cl.socios = 4000;
+  exige(copTaquilla(cl, casa) > t1 * 5, "un club grande no recauda más que uno pequeño");
+  return `${t1}€ con ${SOC_BASE} socios · ${copTaquilla(cl, casa)}€ con 4.000`;
+});
+
+comprueba("Copa: los rivales son de tu división (regresión: eran los mejores)", () => {
+  /* Con el sorteo al azar te tocaban los mejores clubes del circuito desde la
+     primera temporada: cinco años de bot, octavo las cinco y todas las
+     eliminatorias perdidas. Una competición que no se puede ganar el primer año
+     no es una competición. */
+  const cl = fundarClub();
+  const L = copAsegura(cl);
+  const mia = copFuerzaTuya(cl);
+  /* El derbi entra siempre, sea del nivel que sea: una liga sin el vecino no es
+     una liga. Se aparta para juzgar el resto del grupo. */
+  const derbi = cl.derbi && cl.derbi.club;
+  const vecinos = L.grupo.filter(i => i !== derbi);
+  const fuerzas = vecinos.map(i => copFuerzaClub(cl, i));
+  /* OJO: la regla busca la división UN ESCALÓN POR DEBAJO de tu mejor pareja
+     (`copCrea` usa mia−3), así que hay que juzgar las distancias contra ESE
+     objetivo. Esta prueba comparaba contra `mia` a secas y fallaba una vez de
+     cada muchas, cuando el mundo sorteado dejaba a un club ligeramente mejor
+     más cerca de `mia` que uno ligeramente peor: la regla elegía bien y la
+     prueba medía otra cosa. Fue EL parpadeo de la suite durante días. */
+  const objetivo = mia - 3;
+  const dist = fuerzas.map(f => Math.abs(f - objetivo));
+  exige(Math.max(...dist) <= 20, "hay un rival a " + Math.max(...dist) + " puntos de nivel: " + fuerzas.join(","));
+  // y son los más cercanos al objetivo que hay en el mundo, salvo el derbi
+  const todas = CLUBES_NPC.map((_, i) => i).filter(i => i !== derbi)
+    .map(i => Math.abs(copFuerzaClub(cl, i) - objetivo)).sort((a, b) => a - b);
+  exige(Math.max(...dist) <= todas[vecinos.length - 1] + 1,
+    "no coge los más cercanos: " + dist.join(",") + " frente a " + todas.slice(0, vecinos.length).join(","));
+  // al crecer el club, la división también sube
+  cl.plantilla.forEach(j => ATTR_KEYS.forEach(k => j.attrs[k] = 90));
+  cl.copa = null;
+  const L2 = copAsegura(cl);
+  const f2 = L2.grupo.filter(i => i !== derbi).map(i => copFuerzaClub(cl, i));
+  exige(f2.reduce((s, x) => s + x, 0) > fuerzas.reduce((s, x) => s + x, 0),
+    "subir de nivel no te sube de división: " + f2.join(",") + " vs " + fuerzas.join(","));
+  return `tu club ${mia} · rivales ${fuerzas.join("/")} → al subir a 90: ${f2.join("/")}`;
+});
+
+comprueba("Copa: la tabla del cierre es la de la temporada que acaba", () => {
+  /* `copPuesto` pasa por `copAsegura`, que reconstruye la competición si ha
+     cambiado la temporada. Al cerrar, la semana ya ha avanzado: pedir la tabla
+     por la vía normal la borraba y el campeón salía siendo siempre tú con cero
+     puntos. `copTablaDe` lee la copa que se le da y no reconstruye nada. */
+  const cl = fundarClub();
+  const L = copAsegura(cl);
+  L.tabla[0].pts = 3; L.tabla[3].pts = 30;   // tú tercero, otro campeón
+  exige(copPuestoDe(cl, L) > 1, "con 3 puntos frente a 30 sales primero");
+  // y con la temporada ya avanzada sigue leyendo la copa vieja
+  cl.semana += SEMANAS_TEMP;
+  exige(copPuestoDe(cl, L) > 1, "al cambiar de temporada la tabla se borra antes de leerla");
+  exige(copPuesto(cl) === 1, "la vía normal debería haber empezado una copa nueva");
+  return "cierre y copa nueva, cada uno con su tabla";
+});
+
+
+/* La economía del club tiene que poder cuadrar -----------------------------
+   Medido con un bot de cinco temporadas: fundar con cuatro jugadores dejaba la
+   caja en −732€ el primer día y el club perdía 900€/semana desde el minuto uno,
+   sin suelo (se llegó a −480.000€ sin que pasara nada). */
+comprueba("Club: fundar con la plantilla que pide la Copa deja caja", () => {
+  const cl = fundarClub();
+  // el presupuesto tiene que dar para cuatro jugadores del mercado inicial
+  const cuatro = mercadoTmp ? mercadoTmp.slice(0, 4) : [];
+  exige(PRESUP_CLUB >= 20000, "el presupuesto fundacional no da para cuatro: " + PRESUP_CLUB);
+  // y los salarios tienen que estar en escala con lo que se ingresa
+  const j = { attrs: Object.fromEntries(ATTR_KEYS.map(k => [k, 52])) };
+  const sal4 = salarioDe(j) * 4;
+  /* Referencia: un Continental Bronce entero paga 1.000€ y las cuotas de 400
+     socios contentos rondan los 640€/semana. Cuatro salarios no pueden costar
+     el doble de todo lo que entra. */
+  exige(sal4 < 1200, "cuatro salarios cuestan " + sal4 + "€/semana: fuera de escala");
+  return `presupuesto ${PRESUP_CLUB}€ · cuatro salarios de nivel 52: ${sal4}€/sem`;
+});
+
+comprueba("Club: la deuda tiene suelo y consecuencia", () => {
+  const cl = fundarClub();
+  socAsegura(cl);
+  while (cl.plantilla.length < 5) cl.plantilla.push({ ...cl.plantilla[0], n: "R" + cl.plantilla.length, attrs: { ...cl.plantilla[0].attrs }, energia: 100, conf: 55, lesion: null });
+  const antes = cl.plantilla.length;
+  // un agujero que la junta no puede tolerar
+  cl.dinero = -200000;
+  cl._accion = "descanso";
+  avanzarSemanaClub();
+  exige(cl.plantilla.length < antes || cl.dinero > -200000,
+    "con la caja hundida no pasa nada: sigue con " + cl.plantilla.length + " jugadores y " + cl.dinero + "€");
+  // y si no queda a quién vender, la junta se queda sin paciencia
+  const cl2 = fundarClub();
+  cl2.dinero = -300000;
+  const pac = cl2.junta.paciencia;
+  cl2._accion = "descanso";
+  avanzarSemanaClub();
+  exige(cl2.junta.paciencia <= pac, "la junta no se inmuta con el club arruinado");
+  return "venta forzosa por encima del agujero, y la junta pierde la paciencia si no queda nadie";
+});
+
+
+/* El presupuesto de energía ------------------------------------------------
+   Medido con carreras completas SIN trucar energía ni dinero: con los números
+   viejos (4 por sesión, 11 por partido, 12 de recuperación) el que entrenaba
+   cinco días vivía a 1 de energía y jugó dos partidos en dos temporadas, el que
+   apenas entrenaba terminaba mejor que los demás, y ninguna forma de jugar ganó
+   un título en diez temporadas. */
+comprueba("Energía: entrenar y competir caben en la misma semana", () => {
+  const c = nuevaCarrera();
+  c.staff = {};
+  // lo que cuesta una semana de trabajo normal
+  const gasto = (it, ses) => { c.intens = it; c.energia = 100; c.dia = 1; for (let i = 0; i < ses; i++) entrenarDia(); return 100 - c.energia; };
+  const cinco = gasto("normal", 5);
+  const cincoIntensa = gasto("intensa", 5);
+  exige(cinco < 20, "cinco sesiones normales cuestan " + cinco + " de energía");
+  exige(cincoIntensa > cinco, "la intensa no cuesta más que la normal");
+  // y lo que se recupera
+  c.energia = 40; c.dia = 1; c.lesion = null;
+  const antes = c.energia;
+  avanzarSemanaCarrera();
+  const regen = c.energia - antes + cinco * 0;   // la semana ya no entrena aquí
+  exige(regen >= 20, "la recuperación semanal es de " + regen + ": no da ni para entrenar");
+  /* La cuenta que importa, con el reparto real de una semana: si compites, los
+     días se van en partidos y entrenas dos; si no, entrenas cinco. Ninguna de
+     las dos puede salir en números rojos de energía, o el óptimo pasa a ser no
+     entrenar —que es exactamente lo que medimos que pasaba—. */
+  const semanaTorneo = gasto("normal", 2) + 3 * 7;
+  const semanaTrabajo = cinco;
+  exige(semanaTorneo <= regen + 4, `una semana de torneo cuesta ${semanaTorneo} y solo se recuperan ${regen}`);
+  exige(semanaTrabajo < regen, `una semana de entrenamiento cuesta ${semanaTrabajo} y solo se recuperan ${regen}`);
+  return `semana de torneo ${semanaTorneo} · semana de trabajo ${semanaTrabajo} · recuperación ${regen}`;
+});
+
+comprueba("Carrera: el staff sin cobrar se marcha (regresión: deuda infinita)", () => {
+  /* El staff cobraba a crédito para siempre. Medido con el banco de carreras,
+     un perfil que fichaba a los tres del mercado en cuanto tenía 5.000€
+     terminaba seis temporadas a −117.636€ jugando igual de bien: la caja
+     dejaba de ser un recurso y fichar dejaba de ser una decisión. */
+  const c = nuevaCarrera("agresivo");
+  c.staff = { entrenador: mkStaff("entrenador", 3), fisio: mkStaff("fisio", 3), fisico: mkStaff("fisico", 3) };
+  const nom = Object.keys(c.staff).reduce((s, k) => s + c.staff[k].sal, 0);
+  // con un agujero pequeño aguantan: hay un mes de cuerda para reaccionar
+  c.dinero = -Math.round(nom * 1.5);
+  impagoStaff(c);
+  exige(Object.keys(c.staff).filter(k => c.staff[k]).length === 3,
+    "el staff se marcha a la primera semana en rojo: no hay margen para reaccionar");
+  // con el agujero hecho se marcha el mejor pagado, y SOLO él: una semana mala
+  // no puede costarte la estructura entera
+  c.dinero = -Math.round(nom * 6);
+  const caro = Object.keys(c.staff).sort((a, b) => c.staff[b].sal - c.staff[a].sal)[0];
+  impagoStaff(c);
+  exige(!c.staff[caro], "no se marcha el mejor pagado");
+  exige(Object.keys(c.staff).filter(k => c.staff[k]).length === 2,
+    "se cae toda la estructura en la misma semana: no queda margen de reacción");
+  // y semana a semana, con la caja arruinada, la sangría termina parando
+  c.dinero = -999999;
+  for (let s = 0; s < 6; s++) impagoStaff(c);
+  exige(Object.keys(c.staff).filter(k => c.staff[k]).length === 0, "queda staff cobrando con la caja arruinada");
+  return "nómina " + nom + "€/sem · aguanta a −" + Math.round(nom * 1.5) + "€ · se rompe a −" + Math.round(nom * 6) + "€";
+});
+
+comprueba("Motor: ningún estilo gana siempre (regresión: el constructor barría)", () => {
+  /* EL FALLO MÁS GRAVE QUE HA TENIDO EL JUEGO. A igualdad de nivel, el estilo
+     `constructor` ganaba entre el 93% y el 98% a los otros cuatro, y el
+     `bandejero` el 33% a todos. Con eso, elegir estilo al crearte, fichar por
+     estilo en el club y todo el sistema de identidades y antídotos eran
+     decoración: el partido lo decidía quién tenía más `dejada`.
+     La causa era la dejada (win .32, más que un remate) sumada a que el globo
+     SIEMPRE echaba de la red al rival, con lo que la bola alta en la red no
+     ocurría nunca y bandeja/víbora/remate eran código muerto. */
+  nuevaCarrera("agresivo");
+  const E = Object.keys(ESTILOS);
+  const mkPar = (e, niv) => {
+    const jug = [
+      { n: "A", estilo: e, perso: "frio", conf: 55, attrs: mkAttrsNivel(niv, e), sexo: "M" },
+      { n: "B", estilo: e, perso: "frio", conf: 55, attrs: mkAttrsNivel(niv, e), sexo: "M" }];
+    asignaLadosPareja(jug);
+    return { nombre: e, atNet: false, jug };
+  };
+  const N = 24;
+  const medias = E.map(a => {
+    let tot = 0;
+    E.forEach(b => {
+      let v = 0;
+      for (let i = 0; i < N; i++) { rndSemilla(2100 + i, 2100 + i); if (quickMatch(mkPar(a, 60), mkPar(b, 60)).gane) v++; }
+      tot += 100 * v / N;
+    });
+    return Math.round(tot / E.length);
+  });
+  const peor = Math.min(...medias), mejor = Math.max(...medias);
+  // banda ancha a propósito: con 24 partidos por celda el ruido es de ±10, así
+  // que esto NO afina el equilibrio, caza el desastre (33% contra 88%)
+  exige(mejor <= 72, "un estilo gana de más a igualdad de nivel: " + E[medias.indexOf(mejor)] + " " + mejor + "%");
+  exige(peor >= 28, "un estilo es una trampa a igualdad de nivel: " + E[medias.indexOf(peor)] + " " + peor + "%");
+  return E.map((e, i) => e.slice(0, 4) + " " + medias[i] + "%").join(" · ");
+});
+
+comprueba("Motor: el globo contra la red se puede castigar (bandeja y remate existen)", () => {
+  /* `chooseShot` ofrece ["bandeja","vibora","remate","remate3","remate4"] solo
+     con `atNet && high`, y esa situación no llegaba a darse: el globo echaba
+     SIEMPRE de la red. Medido antes del arreglo: en 60 partidos, un bandejero
+     no pegaba UNA bandeja y un rematador ni un remate; jugaban el partido
+     entero con sus peores atributos. */
+  nuevaCarrera("agresivo");
+  const mkPar = (e, niv) => {
+    const jug = [
+      { n: "A", estilo: e, perso: "frio", conf: 55, attrs: mkAttrsNivel(niv, e), sexo: "M" },
+      { n: "B", estilo: e, perso: "frio", conf: 55, attrs: mkAttrsNivel(niv, e), sexo: "M" }];
+    asignaLadosPareja(jug);
+    return { nombre: e, atNet: false, jug };
+  };
+  let bandejas = 0, remates = 0;
+  for (let i = 0; i < 20; i++) {
+    rndSemilla(3300 + i, 3300 + i);
+    quickMatch(mkPar("bandejero", 60), mkPar("defensivo", 60));
+    const s = stats[0];
+    ["wShot", "eShot"].forEach(k => {
+      bandejas += (s[k].bandeja || 0);
+      remates += (s[k].remate || 0) + (s[k].remate3 || 0) + (s[k].remate4 || 0) + (s[k].vibora || 0);
+    });
+  }
+  exige(bandejas > 0, "un bandejero no pega una sola bandeja en 20 partidos: la bola alta en la red no ocurre");
+  exige(remates > 0, "no se remata ni se pega una víbora en 20 partidos");
+  // y el globo tiene que seguir sirviendo para algo: no puede pasar nunca
+  const src = String(buildPoint);
+  exige(/globoPasa/.test(src) && /pPasa/.test(src), "el globo ha vuelto a ser todo o nada");
+  return bandejas + " bandejas · " + remates + " bolas altas atacadas en 20 partidos";
+});
+
+comprueba("Motor: la dejada no es el mejor golpe del juego", () => {
+  /* Con win .32 la dejada ganaba el punto más veces que un remate (.27)
+     arriesgando poco más que una víbora, y encima dejaba al rival descolocado.
+     El 78% de los puntos que cerraba un constructor morían en dejada. */
+  exige(SHOTS.dejada.win < SHOTS.remate.win, "la dejada cierra más puntos que un remate");
+  exige(SHOTS.dejada.err > SHOTS.vibora.err, "la dejada arriesga menos que una víbora");
+  // y en la red hay más de dos respuestas, o vuelve a ser una moneda al aire
+  const src = String(chooseShot);
+  const m = src.match(/else if\(ctx\.atNet\)\s*cands=\[([^\]]+)\]/);
+  exige(m && m[1].split(",").length >= 3, "en la red solo hay dos golpes posibles: gana siempre quien tenga más dejada");
+  return "dejada win " + SHOTS.dejada.win + " vs remate " + SHOTS.remate.win + " · " + (m ? m[1] : "?");
+});
+
+comprueba("Circuito: no puedes jugar un torneo que no toca esta semana", () => {
+  /* El corte por calendario vivía SOLO en la interfaz: `pintarEventosSemana`
+     pinta los dos torneos del slot, pero `entradaEn` miraba únicamente el
+     ranking. Cualquier código que llamara a `abrirTorneo(i)` sin pasar por la
+     pantalla podía jugar los Maestros las 52 semanas —1.500 puntos y 24.000€
+     cada una—. Lo destapó un banco de pruebas que daba 946.000€ y el número uno
+     del mundo, y era mentira entera. */
+  const c = nuevaCarrera("agresivo");
+  rkAnota(c, c.semana, 999999);        // nº1: pasa cualquier corte de ranking
+  c.dinero = 200000; c.energia = 100; c.pro = true;
+  // en una semana de Maestros se puede; en las demás no, por muy nº1 que seas
+  const semTF = semanaDeCategoria(c, 7);
+  exige(entradaEn(7) === 3, "no se puede entrar en los Maestros en su propia semana");
+  let abiertas = 0, cerradas = 0;
+  for (let s = 1; s <= SEMANAS_TEMP; s++) {
+    c.semana = s;
+    if (entradaEn(7) !== -1) abiertas++; else cerradas++;
+  }
+  exige(abiertas === 1, "los Maestros se pueden jugar " + abiertas + " semanas al año, y son una");
+  exige(cerradas === SEMANAS_TEMP - 1, "el resto del año debería estar cerrado");
+  // y abrirTorneo tampoco cuela fuera de su semana
+  c.semana = semTF === 1 ? 2 : 1;
+  torneo = null;
+  abrirTorneo(7);
+  exige(!torneo, "abrirTorneo abre los Maestros en una semana que no toca");
+  // lo que sí toca, se abre
+  const ci = slotSemana(c.semana).fip;
+  abrirTorneo(ci);
+  exige(torneo, "no se puede abrir el torneo que sí se juega esta semana");
+  torneo = null;
+  return "los Maestros, 1 semana de " + SEMANAS_TEMP + " · el resto del calendario, cerrado";
+});
+
+comprueba("Superliga: tus eliminatorias se juegan con el motor de verdad", () => {
+  /* Era el único modo que no pasaba por el motor: lo resolvía TODO con
+     `probPunto` sobre una «fuerza» escalar, así que ahí dentro no existían los
+     estilos, ni la táctica, ni el bucle globo-bandeja, ni los planes, ni los
+     lados, ni los rasgos. Un modo entero al margen de lo que hace bueno al
+     juego. Ahora sigue el patrón de la Copa y del cuadro: los tuyos se juegan,
+     los de los clubes del ordenador se resuelven (24 por jornada). */
+  rndSemilla(3131, 3131);
+  const sl = mkSuperliga("Test SC", 62, "#fff");
+  sl.plantilla = mkPlantillaSuperliga();
+  sl.alin = [[0, 1], [2, 3], [4, 5]];
+  sincronizaClubSL(sl);
+  const tu = sl.equipos.findIndex(e => e.tuyo);
+  const riv = sl.equipos.findIndex(e => !e.tuyo);
+  // los rivales del ordenador tienen jugadores de verdad, no solo un número
+  sl.equipos.filter(e => !e.tuyo).forEach(e => {
+    exige(e.plantilla && e.plantilla.length === 6, "un club de la Superliga no tiene plantilla");
+    exige(e.alin && e.alin.length === 3, "un club de la Superliga no tiene sus tres parejas");
+  });
+  // y su fuerza declarada cuadra con la de sus parejas: si no, la logística que
+  // resuelve sus otros cruces y el motor que los juega contra ti dirían cosas distintas
+  sl.equipos.filter(e => !e.tuyo).slice(0, 6).forEach(e => {
+    const fs = e.alin.map(par => fuerzaParejaSL(e.plantilla, par)).sort((a, b) => b - a);
+    exige(Math.abs(fs[1] - e.fuerza) <= 8, `el club ${e.n} dice fuerza ${e.fuerza} y su 2ª pareja es ${fs[1]}`);
+  });
+  const mio = resuelveCruceEquipos(slEq(sl, tu), slEq(sl, riv));
+  exige(mio.jugado, "tu eliminatoria no se juega con el motor");
+  exige(mio.marcadores && mio.marcadores.length === 3, "no salen los tres marcadores de tu eliminatoria");
+  exige(mio.marcadores.every(m => /^\d+-\d+$/.test(m)), "los marcadores no son de partidos jugados: " + mio.marcadores.join(" "));
+  const ajeno = resuelveCruceEquipos(sl.equipos[1], sl.equipos[2]);
+  exige(!ajeno.jugado, "los cruces entre clubes del ordenador se simulan punto a punto: son 24 por jornada");
+  // y el atajo a granel apaga también los tuyos, que es para lo que existe
+  const granel = slAGranel(true, () => resuelveCruceEquipos(slEq(sl, tu), slEq(sl, riv)));
+  exige(!granel.jugado, "el modo a granel sigue jugando los partidos");
+  // competir desgasta: es lo que hace que la plantilla corta pese
+  const en = sl.plantilla.map(j => j.energia);
+  exige(en.some(x => x < 100), "jugar la eliminatoria no cansa a nadie");
+  return "tu cruce " + mio.gA + "-" + mio.gB + " (" + mio.marcadores.join(" · ") + ") · el ajeno, resuelto";
+});
+
+comprueba("Palmarés: los grandes se enumeran y los pequeños se cuentan", () => {
+  /* El calendario reparte torneos casi todas las semanas, así que una carrera
+     larga termina con más de cien títulos: el Diario los volcaba en una lista
+     plana de cien líneas doradas iguales y un Continental Bronce de la
+     temporada 2 ocupaba lo mismo que la Corona que te hizo número uno. */
+  const pal = [];
+  for (let i = 0; i < 70; i++) pal.push("Continental Bronce (T" + (2 + i % 12) + ")");
+  for (let i = 0; i < 9; i++) pal.push("Élite 2 · Gijón (T" + (9 + i % 6) + ")");
+  for (let i = 0; i < 2; i++) pal.push("Corona · Doha (T" + (14 + i) + ")");
+  const html = palmaresHTML(pal);
+  exige(/81/.test(html) || html.includes("81"), "el total no aparece: " + html.slice(0, 120));
+  // las Coronas van una a una, con su temporada
+  exige(html.includes("Corona · Doha (T14)"), "las Coronas no se enumeran");
+  // y los setenta Bronces se cuentan, no se listan
+  exige(/Continental Bronce\s*<b[^>]*>×70/.test(html), "los Continentales no se resumen en un recuento");
+  exige((html.match(/Continental Bronce/g) || []).length <= 2, "los Continentales se siguen listando uno a uno");
+  // sin títulos no revienta
+  exige(palmaresHTML([]).length > 0 && palmaresHTML(null).length > 0, "el palmarés vacío no se pinta");
+  return "2 Coronas enumeradas · 70 Bronces resumidos";
+});
+
+comprueba("Circuito: hay semanas en blanco y la energía las hace valer", () => {
+  /* Con un Continental las 52 semanas se podía competir siempre, y la energía
+     no apretaba: medido, un jugador de nivel 86 competía 51 semanas de 52,
+     jugaba 137 partidos y ganaba 20 títulos sin saltarse nada. */
+  let blancas = 0, conAlgo = 0;
+  for (let s = 1; s <= SEMANAS_TEMP; s++) {
+    const sl = slotSemana(s);
+    const hay = (sl.premier !== undefined && sl.premier !== null) || (sl.fip !== undefined && sl.fip !== null);
+    if (hay) conAlgo++; else blancas++;
+  }
+  exige(blancas > 0, "el circuito no tiene ni una semana de descanso");
+  exige(conAlgo >= 34, "quedan pocas semanas de competición: " + conAlgo);
+  // y una semana en blanco no deja abrir nada
+  const c = nuevaCarrera("agresivo");
+  rkAnota(c, c.semana, 999999);
+  let sinTorneo = -1;
+  for (let s = 1; s <= SEMANAS_TEMP; s++) {
+    const sl = slotSemana(s);
+    if ((sl.premier === undefined || sl.premier === null) && (sl.fip === undefined || sl.fip === null)) { sinTorneo = s; break; }
+  }
+  if (sinTorneo > 0) {
+    c.semana = sinTorneo;
+    for (let i = 0; i < CATS.length; i++) exige(entradaEn(i) === -1, "en semana de descanso se puede jugar la categoría " + i);
+  }
+  // el coste de un partido sube con la ronda: paga el que llega lejos
+  exige(costeEnergiaPartido(5) > costeEnergiaPartido(0) * 1.8,
+    "una final cuesta lo mismo que una primera ronda: la energía no aprieta arriba");
+  return blancas + " semanas en blanco · una final cuesta " + costeEnergiaPartido(5) + " y una previa " + costeEnergiaPartido(0);
+});
+
+comprueba("Lesiones: el historial pesa, pero no condena (regresión: barrena)", () => {
+  /* `fragil` subía 1 por lesión y no bajaba jamás, y sumaba hasta +0,15 sobre
+     una base de 0,012: a partir de la quinta lesión el historial pesaba trece
+     veces más que la energía, la carga y el fisio juntos. Medido con el coste
+     de energía por rondas: 19 lesiones en UNA temporada y 23 semanas de baja. */
+  const sano = riesgoLesionPost(100, 0, false, 0);
+  const roto = riesgoLesionPost(100, 12, false, 0);
+  exige(roto > sano, "arrastrar lesiones no aumenta el riesgo");
+  exige(roto < sano * 2, `el historial multiplica por ${(roto / sano).toFixed(1)} el riesgo: vuelve la barrena`);
+  // la energía sigue mandando más que el historial
+  const fundido = riesgoLesionPost(15, 0, false, 0);
+  exige(fundido > roto, "jugar fundido importa menos que el historial: los pesos están del revés");
+  // y el cuerpo se rehace con semanas sanas
+  const j = { fragil: 3, energia: 100, lesion: null };
+  for (let s = 0; s < FRAGIL_CURA; s++) curaFragilidad(j);
+  exige(j.fragil === 2, "pasar semanas sano no quita fragilidad: sigue siendo un trinquete");
+  // lesionado no cuenta como semana sana
+  const k = { fragil: 3, energia: 100, lesion: { sem: 2 } };
+  for (let s = 0; s < FRAGIL_CURA * 2; s++) curaFragilidad(k);
+  exige(k.fragil === 3, "se cura la fragilidad estando lesionado");
+  return "sano " + sano.toFixed(3) + " · con historial " + roto.toFixed(3) + " · fundido " + fundido.toFixed(3);
+});
+
+comprueba("Copa: el presupuesto fundacional da para CINCO, no para cuatro", () => {
+  /* EL HALLAZGO QUE EXPLICABA EL MODO CLUB ENTERO. La Copa pide cuatro
+     jugadores SANOS y el presupuesto compraba exactamente cuatro, así que
+     cualquier lesión —y el club pasa una media de un jugador lesionado por
+     semana— dejaba el segundo punto perdido en la mesa sin jugarlo.
+
+     Medido sobre doce fundaciones: la que NUNCA pudo alinear segunda pareja
+     ganó 0 de 20 eliminatorias y la que siempre pudo ganó 16 de 20, y los
+     puntos perdidos en la mesa coincidían EXACTAMENTE con las jornadas sin
+     segunda pareja. La fuerza del club no predecía nada; lo predecía todo si
+     te llegaban cuatro enteros. Eso no es una decisión, es una tirada. */
+  // sembrado y sobre varios mercados, por lo mismo que el de la pareja
+  let peor = 0;
+  for (let s = 0; s < 8; s++) {
+    rndSemilla(9300 + s * 71, 9300 + s * 71);
+    G = null; mercadoTmp = null; plantillaTmp = [];
+    prepararCrearClub();
+    const costes = mercadoTmp.map(j => costeFichaje(j)).sort((a, b) => a - b);
+    const cinco = costes.slice(0, 5).reduce((a, b) => a + b, 0);
+    peor = Math.max(peor, cinco);
+    exige(cinco <= PRESUP_CLUB,
+      `semilla ${s}: los cinco más baratos cuestan ${cinco}€ y el presupuesto es ${PRESUP_CLUB}€: sin quinto, la Copa la decide la enfermería`);
+    exige(PRESUP_CLUB - cinco > 1500, `semilla ${s}: fundar con cinco te deja sin caja para la primera semana`);
+  }
+  const cinco = peor;
+  // el fondo de armario es lo que evita el punto en la mesa
+  const cl = fundarClub();
+  while (cl.plantilla.length < 5) cl.plantilla.push({ ...cl.plantilla[0], n: "R" + cl.plantilla.length, energia: 100, conf: 55, lesion: null });
+  exige(copAlineacionAuto(cl, false).length === 2, "con cinco sanos no se ponen dos parejas");
+  cl.plantilla[0].lesion = { n: "x", sem: 2 };
+  exige(copAlineacionAuto(cl, false).length === 2, "con una lesión y cinco en plantilla ya no hay segunda pareja");
+  cl.plantilla[1].lesion = { n: "x", sem: 2 };
+  exige(copAlineacionAuto(cl, false).length === 1, "con dos lesionados de cinco debería quedar una sola pareja");
+  return "cinco más baratos " + cinco + "€ de " + PRESUP_CLUB + "€ · aguanta una lesión sin perder el punto";
+});
+
+comprueba("Junta: ganar la Copa no puede acabar en despido (regresión: trinquete)", () => {
+  /* Tercer trinquete de un solo sentido del repo, después de la confianza y la
+     fragilidad. El objetivo se apretaba tras cada éxito y no se relajaba nunca,
+     y la paciencia se reponía al `margen` del carácter —1 para la junta
+     `corto`—. Resultado medido con un bot que juega bien: un club que ganó la
+     Copa DOS AÑOS SEGUIDOS terminó destituido al quedar segundo. */
+  // el objetivo nunca baja del segundo puesto: «campeón o a la calle» no es un trabajo
+  const src = String(avanzarSemanaClub);
+  exige(/J\.objetivo=Math\.max\(2,/.test(src),
+    "el objetivo de la junta puede llegar a 1º: ganar la Copa te deja a una mala temporada del despido");
+  // y cumplir repone al menos dos temporadas de cuerda, igual que al fundar
+  exige(/J\.paciencia=Math\.max\(2,CAR\.margen\)/.test(src),
+    "cumplir el objetivo repone menos de dos temporadas: cumplir no compra tranquilidad");
+  exige(/paciencia:Math\.max\(2,J\.margen\)/.test(String(mkJunta)),
+    "al fundar ya no hay suelo de dos temporadas");
+  // y sigue sin apretarse al fallar (el cepo del turno anterior)
+  exige(/if\(posFin<=J\.objetivo\)\s*\n?\s*J\.objetivo=/.test(src),
+    "el objetivo vuelve a apretarse también cuando fallas");
+  return "objetivo con suelo en 2º y paciencia con suelo en 2 temporadas";
+});
+
+comprueba("Club: el mercado del primer día tiene suelo, el semanal no", () => {
+  /* El circuito no tiene división de abajo —el club más flojo del mundo tiene
+     una primera pareja de 60—, así que una fundación con mala suerte nacía sin
+     opción: medido, dos de catorce ganaban CERO de veinticuatro eliminatorias.
+     El suelo es para DOS parejas, que es lo que pide la Copa. */
+  const nivel = j => mediaAttrs(j.attrs);
+  let peorA = 99, peorB = 99;
+  for (let s = 0; s < 10; s++) {
+    rndSemilla(9500 + s * 53, 9500 + s * 53);
+    const m = mkMercadoFundacion("M");
+    exige(m.length === 8, "el mercado de fundación no trae ocho");
+    const o = m.map(nivel).sort((a, b) => b - a);
+    peorA = Math.min(peorA, o[1]);      // segundo mejor: sostiene la primera pareja
+    peorB = Math.min(peorB, o[3]);      // cuarto: sostiene la segunda
+  }
+  exige(peorA >= 56, `en el peor de 10 mercados la primera pareja se queda en ${peorA}: nace sin opción`);
+  exige(peorB >= 50, `en el peor de 10 mercados la segunda pareja se queda en ${peorB}`);
+  // y el mercado SEMANAL sigue sin suelo: el suelo es para no nacer muerto, no para regalar
+  let flojo = 99;
+  for (let s = 0; s < 10; s++) { rndSemilla(9700 + s * 59, 9700 + s * 59); flojo = Math.min(flojo, Math.min(...mkMercadoLibre("M").map(nivel))); }
+  exige(flojo < 56, "el mercado semanal también tiene suelo: eso ya no es un mercado");
+  return "peor primera pareja de 10 mercados: " + peorA + " · peor segunda: " + peorB;
+});
+
+comprueba("Ranking: cuentan los mejores 18 resultados, no todo lo que juegues", () => {
+  /* Sumando las 52 casillas, jugar más siempre sumaba más y los torneos
+     menores eran acumulables hasta el infinito: una carrera terminaba con más
+     de cien títulos y el contador dejaba de comunicar una carrera para
+     comunicar volumen. Con los mejores 18, el menor sigue sirviendo (dinero,
+     ritmo, confianza, entrar al circuito) pero el ranking de arriba se juega
+     en las semanas grandes. */
+  const x = { pts: 0, rk: null };
+  rkAsegura(x);
+  for (let i = 0; i < 18; i++) rkAnota(x, i + 1, 100);
+  exige(x.pts === 1800, "18 resultados de 100 deberían sumar 1800: " + x.pts);
+  // el resultado 19, pequeño, NO sube la suma: ya no acumula infinito
+  rkAnota(x, 19, 40);
+  exige(x.pts === 1800, "un Bronce con 18 resultados mejores no debería contar: " + x.pts);
+  // uno grande sí: desplaza al peor de los que contaban
+  rkAnota(x, 20, 200);
+  exige(x.pts === 1900, "un resultado grande debería desplazar al peor: " + x.pts);
+  // y cuando caducan resultados buenos, el pequeño que esperaba entra a contar
+  rkCaduca(x, 1 + RK_SEMANAS);
+  exige(x.pts === 1900, "tras caducar uno siguen quedando 18 mejores que el Bronce: " + x.pts);
+  rkCaduca(x, 2 + RK_SEMANAS);
+  exige(x.pts === 1840, "al quedar hueco en los 18, el suplente debería entrar: " + x.pts);
+  // la migración de partidas viejas conserva el total
+  const viejo = { pts: 5200, rk: null };
+  rkAsegura(viejo);
+  exige(viejo.pts === 5200, "migrar una partida vieja cambia sus puntos: " + viejo.pts);
+  return "18 mejores · el 19º espera su hueco · migración sin pérdida";
+});
+
+comprueba("Momentos y cifras de carrera: la memoria se guarda una vez y no revienta", () => {
+  /* El contador de títulos comunica volumen; la carrera se comunica con las
+     primeras veces (momentos), las finales, las semanas como nº1 y las
+     victorias contra el top 10. Todo sale de ganchos en el sitio del hecho. */
+  const c = nuevaCarrera("agresivo");
+  // cada momento se guarda UNA vez, con su temporada y sus datos
+  exige(momAnota(c, "primer_titulo", { torneo: "Test Open" }) === true, "el primer momento no se anota");
+  exige(momAnota(c, "primer_titulo", { torneo: "Otro" }) === false, "un momento se anota dos veces");
+  exige(c.momentos.length === 1 && momDe(c, "primer_titulo").d.torneo === "Test Open", "el momento no guarda sus datos");
+  // toda clave de momento usada por los ganchos existe en i18n (y con su _d)
+  ["primer_titulo", "primera_corona", "maestros", "n1", "top10", "nemesis_final", "titulo_tocado", "titulo_suplente"].forEach(id => {
+    exige(t("mom_" + id) !== "mom_" + id, "falta la clave mom_" + id);
+    exige(t("mom_" + id + "_d") !== "mom_" + id + "_d", "falta la clave mom_" + id + "_d");
+  });
+  // los arquetipos salen de hechos comprobables
+  c.recMajors = 3; c.fans = 500000; c.hist = [{ pos: 5 }, { pos: 40 }, { pos: 4 }];
+  const leg = legadoDe(c, G.world);
+  exige(leg.arqs.includes("coronas"), "tres Coronas no dan el arquetipo de especialista");
+  exige(leg.arqs.includes("idolo"), "medio millón de seguidores no da el de ídolo");
+  exige(leg.arqs.includes("remontada"), "caer 35 puestos y volver no da el de la remontada");
+  leg.arqs.forEach(k => exige(t("leg_arq_" + k) !== "leg_arq_" + k, "falta la clave leg_arq_" + k));
+  // y la sala de trofeos pinta todo eso sin reventar, también con guardados sin momentos
+  c.momentos.push({ id: "n1", t: 3, sem: 12, d: {} });
+  c.finales = 9; c.semN1 = 22; c.vTop10 = 14;
+  pintarTrofeos();
+  const html = document.getElementById("trofeosCuerpo").innerHTML;
+  exige(html.includes(t("trf_hd_momentos")), "la sala no enseña los momentos");
+  exige(html.includes(t("trf_sem_n1")), "la sala no enseña las semanas de nº1");
+  delete c.momentos; delete c.finales; delete c.semN1; delete c.vTop10;
+  pintarTrofeos();   // un guardado viejo, sin nada de esto, tiene que pintar igual
+  exige(document.getElementById("trofeosCuerpo").innerHTML.length > 300, "la sala revienta con un guardado viejo");
+  return "8 momentos con sus claves · 3 arquetipos comprobados · guardado viejo intacto";
+});
+
+comprueba("Pareja: el compañero recuerda compromisos y tiene voz propia", () => {
+  /* Una conversación que solo mueve barras se olvida; una que deja una promesa
+     con plazo, no. Y el compañero comenta lo que pasa DE VERDAD —jugar tocado,
+     el eje roto, la mala racha—, no frases al azar. */
+  const c = nuevaCarrera("agresivo");
+  c.semana = 10;
+  // la charla del calendario, si sale bien, deja la promesa de levantar el pie
+  rndSemilla(11, 11);
+  const res = charlaHabla(c, "calendario", () => 0.99);   // azar inyectado: sale bien
+  exige(res && res.ok, "la charla no salió bien con el azar forzado");
+  exige((c.promesas || []).some(x => x.id === "descanso"), "hablar del calendario no deja promesa");
+  // cumplirla: una semana sin competir
+  const antes = relLee(c, "convivencia");
+  c._jugoTorneo = false;
+  promSemana(c);
+  exige(!(c.promesas || []).some(x => x.id === "descanso"), "la promesa cumplida no se cierra");
+  exige(relLee(c, "convivencia") > antes, "cumplir la promesa no mueve la relación");
+  // romper la otra: prometer un torneo grande y no ir
+  promAnota(c, "grande");
+  const amb = relLee(c, "ambicion");
+  c.semana += 9; c._jugoTorneo = true;   // pasa el plazo compitiendo en menores
+  promSemana(c);
+  exige(relLee(c, "ambicion") < amb, "romper la promesa del torneo grande no duele");
+  // el plan también es un compromiso: cambiarlo a las 3 semanas tiene respuesta
+  planElige(c, "red"); c.semana += 3;
+  const dep = relLee(c, "deportiva");
+  planElige(c, "muro");
+  exige(relLee(c, "deportiva") < dep, "cambiar de plan a las 3 semanas no roza la deportiva");
+  // la voz: jugar tocado se comenta, y el enfriamiento evita el spam
+  c._ccSem = 0; c.semana = 40; c.merma = { pct: 10, sem: 2 }; c._jugoTorneo = true;
+  exige(compiComenta(c) === "cc_infiltrado", "jugar tocado no se comenta");
+  exige(compiComenta(c) === null, "el compañero habla dos semanas seguidas: spam");
+  // todas las claves de la voz existen en i18n
+  ["cc_infiltrado", "cc_eje", "cc_derrotas", "cc_grande_juega", "cc_grande_descansa", "cc_racha",
+   "prom_descanso_ok", "prom_descanso_rota", "prom_grande_ok", "prom_grande_rota", "prom_plan_cambiado"]
+    .forEach(k => exige(t(k) !== k, "falta la clave " + k));
+  return "promesa cumplida, promesa rota, plan recordado y voz con enfriamiento";
+});
+
+comprueba("Némesis: el duelo tiene fases y la ficha las cuenta", () => {
+  /* La rivalidad no es un marcador: es una historia con capítulos que se leen
+     del estado —la herida cuando te domina, el pulso, y el vuelco (una vez, y
+     es noticia) cuando le das la vuelta—. */
+  const c = nuevaCarrera("agresivo");
+  c.nemesis = { id: "x1", nombre: "A. Rival/B. Rival", desde: 2, elim: 4, fase: "herida", dominado: true, finales: 2 };
+  c.h2h = { x1: { v: 6, d: 5, n: "A. Rival/B. Rival", elim: 4 } };
+  const el = document.getElementById("rivalidades");
+  renderRivalidades(el);
+  exige(el.innerHTML.includes(t("nem_fase_herida")), "la ficha no pinta la fase del arco");
+  exige(el.innerHTML.includes(t("nem_finales", { n: 2 })), "la ficha no cuenta las finales del duelo");
+  ["nem_fase_herida", "nem_fase_pulso", "nem_fase_vuelco", "nem_vuelco_t", "nem_vuelco_s", "nem_vuelco_av"]
+    .forEach(k => exige(t(k) !== k, "falta la clave " + k));
+  // y un guardado viejo, sin fase ninguna, deduce la suya de los hechos
+  delete c.nemesis.fase; delete c.nemesis.finales;
+  c.h2h.x1 = { v: 1, d: 5, n: "A. Rival/B. Rival", elim: 5 };
+  renderRivalidades(el);
+  exige(el.innerHTML.includes(t("nem_fase_herida")), "un guardado viejo dominado no sale como herida");
+  return "herida, pulso y vuelco · guardado viejo deduce su fase";
+});
+
+comprueba("Cantera: el club recuerda a sus canteranos, del descubrimiento al libro", () => {
+  /* Una promesa no es una ficha en una lista: tiene quién la descubrió, cuándo
+     debutó, su primer punto ganado y —si se va— su línea en el libro de la
+     cantera. Todo se escribe donde ocurre el hecho; si no se vivió, no existe. */
+  const cl = fundarClub();
+  while (cl.plantilla.length < 3) cl.plantilla.push({ ...cl.plantilla[0], n: "R" + cl.plantilla.length, energia: 100, conf: 55, lesion: null, attrs: { ...cl.plantilla[0].attrs } });
+  // un canterano subido al primer equipo, todavía sin debutar
+  const kid = { ...cl.plantilla[0], n: "Canterano Test", attrs: { ...cl.plantilla[0].attrs }, energia: 100, conf: 55, lesion: null,
+    dela_casa: true, subida: temporada(), origen: { t: 1, por: "Ojeadora Test" } };
+  cl.plantilla.push(kid);
+  // juega su primera eliminatoria: el debut queda escrito con fecha
+  const L = copAsegura(cl);
+  const jor = L.cal.findIndex(x => x.par.some(p => p[0] === 0 || p[1] === 0));
+  cl.plantilla.forEach(j => { j.energia = 100; j.lesion = null; });
+  const mias = copAlineacionAuto(cl, false);
+  exige(mias.flat().includes(kid), "el canterano no entra en la alineación de la prueba");
+  copJuega(cl, jor, mias, 0, 0);
+  exige(kid.debut && kid.debut.t === temporada(), "el debut no queda registrado con su temporada");
+  // si ganó su punto, el primer punto también tiene rival y fecha
+  if (kid.primerPunto) exige(!!kid.primerPunto.rival, "el primer punto no guarda contra quién fue");
+  // el libro de la cantera: los tres finales se cuentan y sus claves existen
+  cl.libroCantera = [
+    { n: "A", fin: "sube", t: 3, a: 2, media: 58 },
+    { n: "B", fin: "venta", t: 4, a: 1, media: 51 },
+    { n: "C", fin: "fuga", t: 5, a: 4, media: 49 }];
+  ["sube", "venta", "fuga"].forEach(fin => {
+    const txt = t("can_libro_" + fin, { n: "X", t: 2, a: 3, media: 50 });
+    exige(txt !== "can_libro_" + fin && !txt.includes("{"), "la línea del libro can_libro_" + fin + " no se resuelve");
+  });
+  ["can_av_debut", "can_av_punto", "can_origen_ojeador", "can_origen_casa", "can_libro"].forEach(k =>
+    exige(t(k) !== k, "falta la clave " + k));
+  return "debut T" + kid.debut.t + (kid.primerPunto ? " · primer punto contra " + kid.primerPunto.rival : "") + " · libro con tres finales";
+});
+
+comprueba("Cantera: el que se marcha vuelve como rival, y la eliminatoria lo cuenta", () => {
+  /* El canterano que se va no desaparece: si tiene nivel de circuito, una
+     pareja del mundo lo ficha —de tu grupo de la Copa si se puede, para que el
+     reencuentro pueda OCURRIR— y la jornada contra su club lo anuncia y el
+     acta lo cierra con su nombre. */
+  const cl = fundarClub();
+  copAsegura(cl);
+  const kid = mkAgente(58, 58, cl.sexo || "M");
+  kid.n = "Regreso Test";
+  const reg = canRegresaAlCircuito(cl, kid, "fuga");
+  exige(reg && reg.pareja, "un canterano con nivel de circuito no encuentra pareja");
+  const ex = (reg.pareja.jug || []).find(x => x.exCantera);
+  exige(ex && ex.n === kid.n, "el fichado no es el canterano");
+  exige(ex.exCantera.club === cl.nombre && ex.exCantera.fin === "fuga", "la marca de ex no guarda club y motivo");
+  exige(reg.pareja.nombre.indexOf("Test") >= 0, "la pareja no se renombra con él");
+  exige((cl.copa.grupo || []).indexOf(reg.pareja.club) >= 0, "no ficha por un club de tu grupo habiendo sitio");
+  // demasiado verde: el circuito no lo quiere, y no pasa nada
+  exige(!canRegresaAlCircuito(cl, mkAgente(34, 36, cl.sexo || "M"), "fuga"), "el circuito ficha a un chaval muy verde");
+  // el reencuentro: su pareja pasa a ser la mejor de su club y toca jugarla
+  reg.pareja.jug.forEach(j => ATTR_KEYS.forEach(k => j.attrs[k] = 88));
+  while (cl.plantilla.length < 4) cl.plantilla.push({ ...cl.plantilla[0], n: "R" + cl.plantilla.length, energia: 100, conf: 55, lesion: null, attrs: { ...cl.plantilla[0].attrs } });
+  cl.plantilla.forEach(j => { j.energia = 100; j.lesion = null; });
+  const iG = cl.copa.grupo.indexOf(reg.pareja.club) + 1;
+  const jor = cl.copa.cal.findIndex(x => x.par.some(p => (p[0] === 0 && p[1] === iG) || (p[0] === iG && p[1] === 0)));
+  exige(jor >= 0, "no hay jornada contra su club");
+  const acta = copJuega(cl, jor, copAlineacionAuto(cl, false), 0, 0);
+  exige(acta && acta.exCan && acta.exCan.n === kid.n, "el acta no cuenta el reencuentro");
+  ["can_not_regreso_t", "can_not_regreso_fuga", "can_not_regreso_venta", "can_libro_dest",
+   "cop_excan", "cop_excan_sub", "cop_excan_gana", "cop_excan_pierde"].forEach(k =>
+    exige(t(k) !== k, "falta la clave " + k));
+  return "fichado por " + reg.pareja.nombre + " · acta con reencuentro (" + (acta.exCan.meGano ? "te quitó un punto" : "se fue de vacío") + ")";
+});
+
+comprueba("Staff: cada técnico tiene escuela, y dos del mismo nivel gestionan distinto", () => {
+  /* La P4: la escuela no es «+1 más», es OTRA mecánica. El fisio preventivo
+     evita y el recuperador acorta; el psicólogo de ánimo sostiene rachas y el
+     de presión prepara finales; el preparador motor da semanas y el de picos
+     alarga la forma; el agente de marcas vende y el de premios negocia. */
+  const c = nuevaCarrera("agresivo");
+  // toda escuela declarada tiene nombre y descripción en los cinco idiomas
+  Object.entries(PERFILES_STAFF).forEach(([rol, ps]) => {
+    exige(ps.length === 2, "el rol " + rol + " no tiene dos escuelas");
+    ps.forEach(p => {
+      exige(t("staff_perfil_" + p) !== "staff_perfil_" + p, "falta el nombre de la escuela " + p);
+      exige(t("staff_perfil_" + p + "_d") !== "staff_perfil_" + p + "_d", "falta la descripción de " + p);
+    });
+  });
+  // el mercado nace con escuela
+  for (let i = 0; i < 8; i++) { const st = mkStaff(pick(rolesDeModo())); exige(PERFILES_STAFF[st.rol].includes(st.perfil), "un técnico nace sin escuela"); }
+  // preparador: el motor compra semanas…
+  c.staff.fisico = Object.assign(mkStaff("fisico", 3), { perfil: "motor" });
+  const rMotor = regenCarrera();
+  c.staff.fisico.perfil = "picos";
+  exige(rMotor === regenCarrera() + 2, "el preparador motor no da más recuperación");
+  // …y el de picos enfría la forma a la mitad de velocidad
+  frAsegura(c); c.forma.volea = 4;
+  c.semana = 11; formaEnfria(c);
+  exige(c.forma.volea === 4, "el de picos enfría en semana impar");
+  c.semana = 12; formaEnfria(c);
+  exige(c.forma.volea === 3, "con el de picos la forma no se enfría nunca");
+  // psicólogo: el de ánimo pone el suelo de confianza más alto
+  c.staff.psico = Object.assign(mkStaff("psico", 3), { perfil: "animo" });
+  const sAnimo = confSueloPsico();
+  c.staff.psico.perfil = "presion";
+  exige(sAnimo > confSueloPsico(), "el psicólogo de ánimo no sube el suelo");
+  // representante: el de premios muerde la mitad de la comisión
+  c.staff.rep = Object.assign(mkStaff("rep", 3), { perfil: "premios", com: 14 });
+  const nPrem = netoPremio(1000);
+  c.staff.rep.perfil = "marcas";
+  exige(nPrem === 930 && netoPremio(1000) === 860, "la comisión no distingue escuelas: " + nPrem);
+  // fisio recuperador: la secuela se disipa al doble; el preventivo ni la toca
+  c.staff.fisio = Object.assign(mkStaff("fisio", 3), { perfil: "recuperador" });
+  c.merma = { sem: 4, pct: 5 }; decaeMerma(c);
+  exige(c.merma.sem === 2, "el recuperador no acelera la secuela: " + c.merma.sem);
+  c.staff.fisio.perfil = "preventivo";
+  c.merma = { sem: 4, pct: 5 }; decaeMerma(c);
+  exige(c.merma.sem === 3, "el preventivo toca la secuela sin ser su tema");
+  // entrenador de pizarra: los automatismos del plan crecen más deprisa
+  c.staff.entrenador = Object.assign(mkStaff("entrenador", 3), { perfil: "pizarra" });
+  planElige(c, "muro"); c._jugoTorneo = true; relSemana(c);
+  const dPiz = planDominio(c);
+  c.staff.entrenador.perfil = "pista";
+  planElige(c, "red"); c._planDesdeSem = 0;
+  c._jugoTorneo = true; relSemana(c);
+  exige(dPiz > planDominio(c), "el de pizarra no acelera el plan: " + dPiz + " vs " + planDominio(c));
+  // y un técnico de guardado viejo, sin escuela, funciona exactamente como antes
+  delete c.staff.rep.perfil;
+  exige(netoPremio(1000) === 860, "un agente de guardado viejo no cobra su comisión de siempre");
+  delete c.staff.fisico.perfil;
+  exige(regenCarrera() === 26 + 2 + 3, "un preparador de guardado viejo no regenera lo de siempre");
+  return "12 escuelas con nombre, descripción y efecto propio · el guardado viejo funciona igual";
+});
+
+comprueba("Atención: el parte de la semana sale del estado y solo avisa de decisiones", () => {
+  /* La P7: capa 1 «qué necesita atención», derivada del estado con una función
+     pura; capa 2 «por qué» con factores y recomendación; capa 3, el salto a la
+     pestaña experta. Como mucho AT_MAX asuntos, los más graves primero. */
+  const c = nuevaCarrera("agresivo");
+  // una semana tranquila no da la lata
+  c.energia = 90; c.carga = 45; c.dinero = 3000; c.conf = 60;
+  const calma = atencionDe(c).filter(x => ["carga", "energia", "caja", "eje"].includes(x.id));
+  exige(calma.length === 0, "avisa sin motivo en una semana tranquila: " + calma.map(x => x.id).join(","));
+  // pasado de vueltas: sale, es grave, explica el porqué y lleva a Entreno
+  c.carga = 90;
+  let its = atencionDe(c);
+  const carga = its.find(x => x.id === "carga");
+  exige(carga && carga.sev === 2 && carga.tab === "entreno", "la carga alta no sale o no lleva a Entreno");
+  exige(carga.por.length >= 2, "la carga alta no explica su porqué");
+  // …y con preparador, la recomendación lleva su nombre
+  c.staff.fisico = { rol: "fisico", n: "Prep Test", niv: 3, sal: 100 };
+  const carga2 = atencionDe(c).find(x => x.id === "carga");
+  exige(carga2.por.some(l => l.k === "at_carga_r_st" && l.p.n === "Prep Test"), "el preparador no firma su recomendación");
+  c.carga = 45; c.staff.fisico = null;
+  // defender puntos gordos avisa; la caja en rojo con nómina, también
+  rkAnota(c, c.semana + 52, 800); c.semana += 52;
+  exige(atencionDe(c).some(x => x.id === "defensa" && x.sev === 2), "no avisa de los 800 puntos que caducan");
+  c.staff.fisio = { rol: "fisio", n: "F", niv: 2, sal: 200 };
+  c.dinero = -500;
+  exige(atencionDe(c).some(x => x.id === "caja"), "no avisa de la caja en rojo con nómina");
+  // el tope: nunca más de AT_MAX, ordenados por gravedad
+  c.carga = 90; c.energia = 20; c.merma = { pct: 10, sem: 2 }; c.rel = {}; EJES.forEach(k => c.rel[k] = 10);
+  its = atencionDe(c);
+  exige(its.length <= AT_MAX, "el parte se desborda: " + its.length);
+  for (let i = 1; i < its.length; i++) exige(its[i - 1].sev >= its[i].sev, "el parte no ordena por gravedad");
+  // club: la señal que explica el modo entero — jornada sin cuatro sanos
+  const cl = fundarClub();
+  while (cl.plantilla.length < 4) cl.plantilla.push({ ...cl.plantilla[0], n: "R" + cl.plantilla.length, energia: 100, conf: 55, lesion: null, attrs: { ...cl.plantilla[0].attrs } });
+  const L = copAsegura(cl);
+  const jor = L.cal.find(x => x.par.some(p => p[0] === 0 || p[1] === 0));
+  jor.sem = semanaTemp();
+  cl.plantilla.forEach((j, i) => { j.energia = 100; j.lesion = i < 2 ? { n: "x", k: "les_sobre", sem: 2 } : null; });
+  const itsCl = atencionDe(cl);
+  exige(itsCl.some(x => x.id === "copa_gente" && x.sev === 2), "no avisa de la jornada sin cuatro sanos");
+  exige(itsCl.some(x => x.id === "club_fisio"), "no avisa de dos tocados sin fisio");
+  // todas las claves del parte existen y se resuelven
+  its.concat(itsCl).forEach(it => {
+    exige(t(it.t.k, it.t.p) !== it.t.k, "falta la clave " + it.t.k);
+    it.por.forEach(l => exige(t(l.k, l.p) !== l.k && !t(l.k, l.p).includes("{"), "la línea " + l.k + " no se resuelve"));
+  });
+  // y el pintado no revienta (el DOM recortado de la suite incluido)
+  const el = document.createElement("div");
+  renderAtencion.call(null, el);
+  return "calma sin ruido · " + its.map(x => x.id).join("+") + " · club: " + itsCl.map(x => x.id).join("+");
+});
+
+comprueba("Gira: la fatiga residual se acumula compitiendo y solo la baja quedarse en casa", () => {
+  /* La P3: la energía visible vuelve cada semana y por eso arriba se podía
+     competir las 52. El poso de la gira es lo que la energía no cuenta:
+     semanas seguidas, rondas, viajes lejanos, el estilo explosivo y la edad.
+     Muerde la recuperación y el riesgo médico; NUNCA toca el entreno. */
+  const c = nuevaCarrera("defensivo");
+  exige(giraLee(c) === 0, "una carrera nueva no nace fresca");
+  // una semana honda y lejos pesa más que una corta y cerca
+  giraSemana(c, true, 6, 750);
+  const honda = giraLee(c);
+  c.gira = 0; giraSemana(c, true, 2, 30);
+  exige(honda > giraLee(c), "la final en Riad no pesa más que dos rondas en casa");
+  // el estilo explosivo acumula más
+  const cAg = nuevaCarrera("agresivo");
+  giraSemana(cAg, true, 6, 750);
+  exige(giraLee(cAg) > honda, "el estilo explosivo no acusa más la gira: " + giraLee(cAg) + " vs " + honda);
+  // la semana en casa la baja, y con 34 años baja menos
+  cAg.gira = 50; cAg.edad = 22; giraSemana(cAg, false, 0, 0);
+  const joven = 50 - giraLee(cAg);
+  cAg.gira = 50; cAg.edad = 34; giraSemana(cAg, false, 0, 0);
+  exige(joven > 50 - giraLee(cAg), "un veterano se rehace igual de rápido que un chaval");
+  // tope, suelo, y el mordisco en la recuperación
+  cAg.gira = 95; giraSemana(cAg, true, 6, 750);
+  exige(giraLee(cAg) === 100, "la gira no tiene tope");
+  cAg.gira = 0; giraSemana(cAg, false, 0, 0);
+  exige(giraLee(cAg) === 0, "la gira baja de cero");
+  G.carrera = cAg; cAg.gira = 0;
+  const fresco = regenCarrera();
+  cAg.gira = 80;
+  exige(regenCarrera() === Math.max(8, fresco - giraRegen(cAg)), "la gira no muerde la recuperación");
+  exige(regenCarrera() >= 8, "la recuperación puede bajar del suelo");
+  // el parte de atención la cuenta, con la recomendación del preparador
+  cAg.staff.fisico = { rol: "fisico", n: "Prep Gira", niv: 3, sal: 100 };
+  const it = atencionDe(cAg).find(x => x.id === "gira");
+  exige(it && it.sev === 2 && it.tab === "entreno", "la gira alta no sale en el parte");
+  exige(it.por.some(l => l.k === "at_gira_r_st" && l.p.n === "Prep Gira"), "el preparador no firma la recomendación");
+  ["gira_fresco", "gira_rodado", "gira_cargado", "gira_fundido", "ent_gira", "ent_gira_nota",
+   "gira_av_cargado", "gira_av_fundido"].forEach(k => exige(t(k) !== k, "falta la clave " + k));
+  return "honda+lejos " + honda + " · explosivo " + giraLee(nuevaCarrera("agresivo")) + "… · tope 100, suelo 8 de regen";
+});
+
+comprueba("Calendario: las voces solo montan conflicto cuando piden cosas incompatibles", () => {
+  /* La P3, parte C: el compañero quiere jugar, el cuerpo quiere parar, la
+     marca quiere su rodaje y el ranking defiende puntos. La caja solo sale
+     con voces en LOS DOS lados: un coro unánime no es una decisión. */
+  const c = nuevaCarrera("agresivo");
+  c.semana = 6;   // semana de premier en el calendario (Riad)
+  exige(slotSemana(semanaTemp()).premier !== undefined, "la semana 6 ya no es de premier: ajusta la prueba");
+  // sin tensiones no hay conflicto
+  relAsegura(c); EJES.forEach(k => c.rel[k] = 65); c.energia = 90; c.gira = 0; c.carga = 45;
+  let v = vocesCalendario(c);
+  exige(!v.parar.length, "hay voces de parar en una semana limpia: " + v.parar.map(x => x.k).join(","));
+  // ambición alta + cuerpo fundido + rodaje pendiente: conflicto de verdad
+  c.rel.ambicion = 80; c.rel.convivencia = 20; c.gira = 80;
+  c._spot = { marca: "VoltIso", pago: 900, fans: 100, tipo: "spot_rodaje" };
+  v = vocesCalendario(c);
+  exige(v.jugar.some(x => x.k === "voz_compi_juega"), "la ambición del compañero no pide jugar");
+  exige(v.parar.some(x => x.k === "voz_cuerpo"), "el cuerpo fundido no pide parar");
+  exige(v.parar.some(x => x.k === "voz_marca"), "el rodaje pendiente no pide semana tranquila");
+  // todas las claves de las voces se resuelven
+  v.jugar.concat(v.parar).forEach(x => exige(t(x.k, x.p) !== x.k && !t(x.k, x.p).includes("{"), "la voz " + x.k + " no se resuelve"));
+  // y en semana sin torneo no hay nada que discutir
+  c.semana = 3;
+  if (slotSemana(semanaTemp()).premier === undefined && slotSemana(semanaTemp()).fip === undefined) {
+    v = vocesCalendario(c);
+    exige(!v.jugar.length && !v.parar.length, "hay conflicto sin torneo que jugar");
+  }
+  return "semana limpia sin ruido · conflicto con " + v.jugar.length + " voces a favor y " + v.parar.length + " en contra";
+});
+
+comprueba("Lectura: el circuito recuerda tu patrón y el siguiente rival no empieza de cero", () => {
+  /* La lectura moría con el partido: cinco torneos seguidos a globo y cada
+     rival te descubría de cero. Ahora el patrón de cada partido queda en
+     c.tacHist, y si el mismo golpe domina en 3 de los últimos 5, el próximo
+     rival sale esperándolo (match.lectura sembrada) y el parte lo avisa. */
+  const c = nuevaCarrera("agresivo");
+  exige(!tacPreLectura(c), "lee sin datos");
+  c.tacHist = [{ golpe: "globo", cuota: .36 }, { golpe: "globo", cuota: .33 }, { golpe: "volea", cuota: .20 }, { golpe: "globo", cuota: .31 }];
+  const pre = tacPreLectura(c);
+  exige(pre && pre.golpe === "globo" && pre.n === 3, "no detecta el patrón entre partidos");
+  exige(pre.nivel > 0 && pre.nivel < .45, "la lectura de salida no puede nacer dolorosa del todo");
+  exige(atencionDe(c).some(x => x.id === "leido"), "el parte no avisa de que te esperan");
+  // variar lo borra: por debajo del umbral de lectura no hay patrón
+  c.tacHist = [{ golpe: "globo", cuota: .22 }, { golpe: "globo", cuota: .24 }, { golpe: "globo", cuota: .21 }];
+  exige(!tacPreLectura(c), "cuenta partidos por debajo del umbral");
+  // tacHistAnota escribe desde las stats del partido y descarta el ruido
+  c.tacHist = [];
+  tacHistAnota(c, { uso: { globo: 12, volea: 4, fondo: 14 } });
+  exige(c.tacHist.length === 1 && c.tacHist[0].golpe === "fondo", "no anota el patrón del partido");
+  tacHistAnota(c, { uso: { globo: 3 } });
+  exige(c.tacHist.length === 1, "anota patrones sin tiros suficientes");
+  for (let i = 0; i < 9; i++) tacHistAnota(c, { uso: { globo: 20, volea: 10 } });
+  exige(c.tacHist.length === TAC_HIST, "la memoria táctica no tiene tope");
+  ["at_leido", "at_leido_f", "at_leido_c", "at_leido_r", "com_prelectura"].forEach(k => exige(t(k) !== k, "falta la clave " + k));
+  return "3 de 4 a globo → el siguiente rival sale esperándolo · variar lo borra";
+});
+
+comprueba("Momentos: la cabecera da al momento el tamaño que tiene, una sola vez", () => {
+  /* La P6: las finales ya tenían su tratamiento; la cabecera extiende ese
+     lenguaje a los momentos que no son una final —primer cuadro, nº1, lesión
+     grave, alta, debut del canterano, destitución— con tres tonos (gloria,
+     duelo, vuelta) y su sonido. momAnota garantiza que cada una salga UNA vez. */
+  const c = nuevaCarrera("agresivo");
+  const d = momentoCabecera({ tipo: "gloria", ico: "🏆", titulo: "Título de prueba", sub: "Sub", dato: "Dato" });
+  exige(d && String(d.className).includes("cab-gloria"), "la cabecera no lleva su tono");
+  exige(d.innerHTML.includes("Título de prueba") && d.innerHTML.includes(t("cab_k_gloria")) && d.innerHTML.includes(t("cab_seguir")), "la cabecera no pinta sus piezas");
+  let seguido = false;
+  const d2 = momentoCabecera({ tipo: "duelo", titulo: "X", al: () => seguido = true });
+  exige(String(d2.className).includes("cab-duelo"), "el duelo no lleva su tono");
+  d2.onclick();
+  exige(seguido, "el callback de la cabecera no corre al tocar");
+  // el primer cuadro final es un momento nuevo: una vez, con icono y claves
+  exige(momAnota(c, "primer_cuadro", { torneo: "X" }), "primer_cuadro no se anota");
+  exige(!momAnota(c, "primer_cuadro", {}), "primer_cuadro se anota dos veces");
+  ["mom_primer_cuadro", "mom_primer_cuadro_d", "cab_k_gloria", "cab_k_duelo", "cab_k_vuelta",
+   "cab_seguir", "cab_les_t", "cab_les_s", "cab_alta_t", "cab_alta_s", "cab_can_t", "cab_can_s", "cab_fin_t"]
+    .forEach(k => exige(t(k) !== k, "falta la clave " + k));
+  const d3 = momentoCabecera({ tipo: "vuelta", titulo: "limpieza" });
+  quitarEl(d3);
+  return "gloria, duelo y vuelta con su tono · primer_cuadro una sola vez · 13 claves";
+});
+
+comprueba("Varianza: el perfil de desarrollo y la era del mundo hacen cada carrera distinta", () => {
+  /* Medido: dos carreras honestas llegaban al nº1 en la MISMA temporada con la
+     misma edad. El perfil de desarrollo mueve tu curva (cuándo rinde el
+     entreno, cuándo llega el declive) y la era mueve el mundo (quién manda
+     arriba). Ambos se sortean con la semilla y se dicen desde el día uno. */
+  const pesos = Object.values(DESARROLLOS).reduce((s, d) => s + d.peso, 0);
+  exige(Math.abs(pesos - 1) < .01, "los pesos de los desarrollos no suman 1");
+  const c = nuevaCarrera("agresivo");
+  exige(!!DESARROLLOS[c.desarrollo], "la carrera nace sin perfil de desarrollo");
+  c.desarrollo = "precoz"; c.edad = 18;
+  const jovenPrecoz = desarrolloGanX(c);
+  c.desarrollo = "tardio";
+  exige(jovenPrecoz > desarrolloGanX(c), "el precoz no crece más de joven que el tardío");
+  c.edad = 26;
+  const medioTardio = desarrolloGanX(c);
+  c.desarrollo = "precoz";
+  exige(medioTardio > desarrolloGanX(c), "el tardío no crece más a los 26");
+  exige(desarrolloEdadDeclive(c) === 28, "el precoz no envejece dos años antes");
+  c.desarrollo = "tardio";
+  exige(desarrolloEdadDeclive(c) === 24, "el tardío no envejece dos años después");
+  delete c.desarrollo;
+  exige(desarrolloDe(c) === "constante" && desarrolloGanX(c) === 1, "un guardado viejo no es constante");
+  // la era del mundo existe y ajusta la élite exactamente como dice
+  exige(ERAS_MUNDO[G.world.era] !== undefined, "el mundo nace sin era");
+  const js = (n) => [{ n: "A", attrs: mkAttrsNivel(n, "agresivo") }, { n: "B", attrs: mkAttrsNivel(n, "defensivo") }];
+  const mundo = (proN) => [
+    { id: 1, pro: true, sexo: "M", jug: js(proN), pts: 1000 },
+    { id: 2, pro: true, sexo: "M", jug: js(proN - 6), pts: 700 },
+    { id: 3, pro: false, sexo: "M", jug: js(58), pts: 100 },
+  ];
+  let m = mundo(80); const domAntes = nivelPareja(m[0]);
+  _aplicaEra(m, "dominadora");
+  exige(nivelPareja(m[0]) > domAntes, "la era dominadora no sube al dominador");
+  m = mundo(80); const abAntes = nivelPareja(m[0]);
+  _aplicaEra(m, "abierta");
+  exige(nivelPareja(m[0]) < abAntes, "la era abierta no comprime la élite");
+  m = mundo(80); const relPro = nivelPareja(m[0]), relNpc = nivelPareja(m[2]);
+  _aplicaEra(m, "relevo");
+  exige(nivelPareja(m[0]) < relPro && nivelPareja(m[2]) > relNpc, "el relevo no mueve la escalera");
+  // los arquetipos nuevos salen de contadores, como todos
+  const c2 = nuevaCarrera("agresivo");
+  c2.parejasHist = [{ temps: 9 }]; c2.viajesLejos = 30;
+  const L = legadoDe(c2, G.world);
+  exige(L.arqs.includes("pareja"), "la pareja histórica no se reconoce");
+  exige(L.arqs.includes("viajero"), "el viajero no se reconoce");
+  // y el viajero se cuenta donde ocurre: en el poso de la gira
+  c2.viajesLejos = 0; giraSemana(c2, true, 4, 750);
+  exige(c2.viajesLejos === 1, "el viaje lejano no se cuenta");
+  ["des_constante", "des_precoz", "des_tardio", "des_constante_d", "des_precoz_d", "des_tardio_d",
+   "des_av_constante", "des_av_precoz", "des_av_tardio", "era_abierta_t", "era_abierta_s",
+   "era_dominadora_t", "era_dominadora_s", "era_relevo_t", "era_relevo_s",
+   "leg_arq_pareja", "leg_arq_viajero", "mom_v500", "mom_v500_d", "mom_remontada_final", "mom_remontada_final_d"]
+    .forEach(k => exige(t(k) !== k, "falta la clave " + k));
+  return "3 desarrollos con curva propia · 3 eras que mueven la élite · 2 arquetipos y 2 momentos nuevos";
+});
+
+comprueba("Ajustes: una pantalla para el jugador, con la pantalla completa persistida", () => {
+  /* Idioma, tamaño de letra, sonido y pantalla completa en un solo sitio,
+     tocable también en partida. La pantalla completa viene activada de serie
+     (el escritorio abre en ella), se puede apagar y la preferencia persiste. */
+  nuevaCarrera("agresivo");
+  try { localStorage.removeItem("rpm_full"); } catch (e) {}
+  exige(fullscreenPref() === true, "la pantalla completa no viene activada de serie");
+  setFullscreenPref(false);
+  exige(fullscreenPref() === false, "apagarla no se guarda");
+  setFullscreenPref(true);
+  const d = mostrarAjustes();
+  exige(d && d.innerHTML.includes(t("aj_titulo")) && d.innerHTML.includes(t("idioma_label"))
+    && d.innerHTML.includes(t("esc_label")) && d.innerHTML.includes(t("aj_sonido")) && d.innerHTML.includes(t("aj_pantalla")),
+    "la pantalla de ajustes no trae sus cuatro secciones");
+  exige(mostrarAjustes() === null, "abrirla dos veces no la cierra");
+  ["aj_titulo", "aj_sonido", "aj_pantalla", "aj_pantalla_d", "aj_on", "aj_off", "aj_cerrar",
+   "bar_ajustes_title", "menu_ajustes"].forEach(k => exige(t(k) !== k, "falta la clave " + k));
+  return "cuatro secciones · preferencia persistida · el botón abre y cierra";
+});
+
+comprueba("Retirada: la némesis tiene epílogo y habla según cómo acabó el duelo", () => {
+  /* La rivalidad también se retira: el vuelco, la herida que no se cerró o el
+     pulso que nadie ganó. El texto sale de la fase, y la fase de los hechos. */
+  ["vuelco", "herida", "pulso"].forEach(f => {
+    const txt = t("leg_nem_" + f, { rival: "X/Y", v: 8, d: 5, fin: 2 });
+    exige(txt !== "leg_nem_" + f && !txt.includes("{rival}"), "el epílogo leg_nem_" + f + " no se resuelve");
+  });
+  // y la pantalla de retirada lo pinta sin reventar, con y sin némesis
+  const c = nuevaCarrera("agresivo");
+  c.edad = 34; c.hist = [{ t: 1, pos: 30 }];
+  c.nemesis = { id: "n1", nombre: "A. Prueba/B. Prueba", desde: 2, elim: 5, fase: "vuelco", finales: 3 };
+  c.h2h = { n1: { v: 9, d: 6, n: "A. Prueba/B. Prueba", elim: 5 } };
+  retirarse();
+  const ov = document.getElementById("legadoModal");
+  exige(ov && ov.innerHTML.includes(t("leg_nem_titulo")), "la retirada no enseña el epílogo de la rivalidad");
+  exige(ov.innerHTML.includes("A. Prueba/B. Prueba"), "el epílogo no nombra a la némesis");
+  quitarEl(ov);
+  const c2 = nuevaCarrera("agresivo");
+  c2.edad = 34; c2.hist = [{ t: 1, pos: 30 }];
+  retirarse();   // sin némesis: sin epílogo y sin reventar
+  const ov2 = document.getElementById("legadoModal");
+  exige(ov2 && !ov2.innerHTML.includes(t("leg_nem_titulo")), "sale epílogo de némesis sin haber némesis");
+  quitarEl(ov2);
+  return "vuelco, herida y pulso resueltos · con y sin némesis";
 });

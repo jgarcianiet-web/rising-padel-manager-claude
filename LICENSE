@@ -1,0 +1,74 @@
+Rising Pádel Manager
+Copyright (c) 2026 Rising Games
+
+Todos los derechos reservados sobre el código y los contenidos originales del
+juego. Este fichero recoge además los avisos de licencia del software y las
+tipografías de terceros que se distribuyen junto al juego, tal y como exigen
+sus respectivas licencias.
+
+
+================================================================
+COMPONENTES DE TERCEROS
+================================================================
+
+----------------------------------------------------------------
+sql.js  ·  src/js/vendor/sql-asm.js
+----------------------------------------------------------------
+Copyright (c) 2017 sql.js authors
+Licencia MIT.
+
+Se concede permiso, libre de cargos, a cualquier persona que obtenga una copia
+de este software y de los ficheros de documentación asociados (el "Software"),
+a utilizar el Software sin restricción, incluyendo sin limitación los derechos
+a usar, copiar, modificar, fusionar, publicar, distribuir, sublicenciar y/o
+vender copias del Software, y a permitir a las personas a las que se les
+proporcione el Software a hacer lo mismo, sujeto a las siguientes condiciones:
+
+El aviso de copyright anterior y este aviso de permiso se incluirán en todas
+las copias o partes sustanciales del Software.
+
+EL SOFTWARE SE PROPORCIONA "TAL CUAL", SIN GARANTÍA DE NINGÚN TIPO, EXPRESA O
+IMPLÍCITA, INCLUYENDO PERO NO LIMITADA A LAS GARANTÍAS DE COMERCIABILIDAD,
+IDONEIDAD PARA UN PROPÓSITO PARTICULAR Y NO INFRACCIÓN. EN NINGÚN CASO LOS
+AUTORES O TITULARES DEL COPYRIGHT SERÁN RESPONSABLES DE NINGUNA RECLAMACIÓN,
+DAÑO U OTRA RESPONSABILIDAD, YA SEA EN UNA ACCIÓN CONTRACTUAL, EXTRACONTRACTUAL
+O DE OTRO TIPO, QUE SURJA DE, O EN CONEXIÓN CON, EL SOFTWARE O EL USO U OTRAS
+OPERACIONES CON EL SOFTWARE.
+
+
+----------------------------------------------------------------
+Tipografías  ·  src/css/fuentes.css
+----------------------------------------------------------------
+Las cuatro familias van incrustadas en el CSS como data: URI (subconjunto
+latin). Todas se distribuyen bajo SIL Open Font License, versión 1.1:
+
+  Inter             Copyright (c) 2016 The Inter Project Authors
+                    https://github.com/rsms/inter
+
+  Chakra Petch      Copyright (c) 2018 Cadson Demak
+                    https://github.com/cadsondemak/chakra-petch
+
+  IBM Plex Mono     Copyright (c) 2017 IBM Corp.
+                    https://github.com/IBM/plex
+
+  Playfair Display  Copyright (c) 2017 The Playfair Project Authors
+                    https://github.com/clauseggers/Playfair-Display
+
+La SIL Open Font License 1.1 permite usar, estudiar, modificar y redistribuir
+estas tipografías libremente, incluso incrustadas en un producto comercial,
+siempre que no se vendan por separado y que este aviso de copyright se
+distribuya con ellas. El texto completo de la licencia está disponible en:
+
+  https://openfontlicense.org
+
+Las tipografías NO se han modificado ni renombrado; solo se han subconjuntado
+al alfabeto latino y convertido a data: URI mediante tools/fuentes.js.
+
+
+================================================================
+NOTA SOBRE NOMBRES
+================================================================
+
+Las competiciones, clubes, marcas patrocinadoras y jugadores que aparecen en
+el juego son ficticios. Cualquier parecido con torneos, entidades o personas
+reales es casual y no implica relación, patrocinio ni respaldo alguno.

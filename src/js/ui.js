@@ -1,6 +1,57 @@
 /* ================================================================
    NAVEGACIÓN Y MENÚ
 ================================================================ */
+
+/* ---------- acciones declarativas (sin onclick inline) ----------
+
+   El juego pinta casi toda su interfaz con plantillas de texto, y durante mucho
+   tiempo los botones así generados llevaban onclick="funcion(arg)" dentro del
+   HTML. Eso dejó de funcionar al poner la CSP: un manejador escrito como
+   atributo es código en línea, y script-src 'self' lo bloquea. Los selectores
+   de dificultad e idioma se quedaron mudos sin que ninguna prueba lo notara.
+
+   La solución mantiene el estilo de plantillas pero saca el código del HTML: el
+   botón declara QUÉ quiere hacer con atributos de datos
+
+     <button ${ac("setDif","duro")}>…</button>   →   data-ac="setDif" data-a0="duro"
+
+   y un único escuchador delegado busca ese nombre en el registro ACCIONES y lo
+   llama. El nombre es una clave de un objeto, no código: un texto que no esté
+   registrado no hace nada. Los argumentos viajan como cadenas; si el registro
+   declara que son números, se convierten al llamar. */
+const ACCIONES = {};
+/* Registra acciones. `num` lista las que reciben argumentos numéricos. */
+function registraAcciones(mapa, num){
+  for(const k in mapa){ if(Object.prototype.hasOwnProperty.call(mapa,k)) ACCIONES[k]=mapa[k]; }
+  (num||[]).forEach(k=>{ if(ACCIONES[k]) ACCIONES[k]._num=true; });
+}
+/* Genera los atributos para meterlos en una plantilla. Escapa las comillas para
+   que un nombre con comillas dentro no pueda romper el marcado. */
+function ac(nombre,...args){
+  const esc=s=>String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+  return `data-ac="${esc(nombre)}"`+args.map((v,i)=>` data-a${i}="${esc(v)}"`).join("");
+}
+document.addEventListener("click",ev=>{
+  const el=ev.target && ev.target.closest && ev.target.closest("[data-ac]");
+  if(!el) return;
+  const fn=ACCIONES[el.getAttribute("data-ac")];
+  if(typeof fn!=="function") return;          // nombre no registrado: no pasa nada
+  if(el.disabled) return;
+  const args=[];
+  for(let i=0;el.hasAttribute("data-a"+i);i++){
+    const v=el.getAttribute("data-a"+i);
+    args.push(fn._num?Number(v):v);
+  }
+  fn.apply(null,args);
+});
+/* La guía mira el estado después de CUALQUIER clic, no solo de los que pasan
+   por el despachador: las pestañas se enganchan con .onclick y sin esto la
+   guía se quedaba parada en el primer paso. Va en su propio oyente para que
+   dispare aunque el clic no sea una acción registrada. */
+document.addEventListener("click",()=>{
+  if(typeof guiaComprueba==="function") guiaComprueba();
+});
+
 function irA(s){
   ["menu","crear","crearclub","club","clubm","torneo","partido","superliga"].forEach(x=>{
     const el=document.getElementById("scr-"+x);
@@ -12,28 +63,24 @@ function irA(s){
   if(typeof aplicarI18n==="function") aplicarI18n();   // traduce el texto estático de cada pantalla
   if(s==="partido"){resize();draw();}
 }
-function infoSlot(modo){
-  const raw=lsGet(SLOTS[modo]);
-  if(!raw) return null;
-  try{
-    const d=JSON.parse(raw);
-    const e=modo==="carrera"?d.carrera:d.clubG;
-    const t=Math.floor((e.semana-1)/SEMANAS_TEMP)+1, s=((e.semana-1)%SEMANAS_TEMP)+1;
-    const quien=modo==="carrera"?e.nombre:e.nombre;
-    return {d,txt:`${quien} · T${t} S${s}`};
-  }catch(e){ return null; }
+/* Cuántas ranuras de un modo tienen algo dentro (para el rótulo del menú). */
+function slotsOcupados(modo){
+  let n=0;
+  for(let i=1;i<=N_RANURAS;i++) if(slotInfo(modo,i)) n++;
+  return n;
 }
 function pintarMenu(){
-  const sc=infoSlot("carrera"), scl=infoSlot("club");
+  const sc=slotsOcupados("carrera"), scl=slotsOcupados("club");
   const bC=document.getElementById("btnCarrera"), bCl=document.getElementById("btnClub");
   const btnSl=document.getElementById("btnSuperliga");
-  bC.textContent  = t("btn_carrera")+(sc?t("menu_continuar"):"");
-  bCl.textContent = t("btn_club")+(scl?t("menu_continuar"):"");
+  bC.textContent  = t("btn_carrera")+(sc?t("menu_partidas",{n:sc}):"");
+  bCl.textContent = t("btn_club")+(scl?t("menu_partidas",{n:scl}):"");
   if(btnSl) btnSl.textContent = t("btn_superliga");
   document.getElementById("menuInfo").textContent = (sc||scl) ? t("menu_info_partida") : t("menu_info_guardado");
   document.getElementById("topCtx").innerHTML="<b>Rising Games</b>";
   pintarSelectorDif();
   pintarSelectorIdioma();
+  pintarSelectorEscala();
 }
 
 /* Selector de dificultad del menú. La elección se guarda como preferencia
@@ -45,7 +92,7 @@ function pintarSelectorDif(){
   const sel=difMenu();
   const chips=Object.keys(PERFILES_DIF).map(id=>{
     const p=PERFILES_DIF[id], on=id===sel;
-    return `<button type="button" class="difchip${on?" on":""}" onclick="setDif('${id}')" aria-pressed="${on}">${p.emoji} ${difNombre(id)}</button>`;
+    return `<button type="button" class="difchip${on?" on":""}" ${ac("setDif",id)} aria-pressed="${on}">${p.emoji} ${difNombre(id)}</button>`;
   }).join("");
   cont.innerHTML=`<div class="diflabel">${t("dif_label")}</div><div class="difrow">${chips}</div><div class="difdesc">${difDesc(sel)}</div>`;
 }
@@ -58,10 +105,109 @@ function pintarSelectorIdioma(){
   const sel=idiomaActual();
   const chips=IDIOMAS.map(l=>{
     const on=l.id===sel;
-    return `<button type="button" class="difchip${on?" on":""}" onclick="setIdioma('${l.id}')" aria-pressed="${on}" title="${l.n}">${l.bandera} ${l.n}</button>`;
+    return `<button type="button" class="difchip${on?" on":""}" ${ac("setIdioma",l.id)} aria-pressed="${on}" title="${l.n}">${l.bandera} ${l.n}</button>`;
   }).join("");
   cont.innerHTML=`<div class="diflabel">${t("idioma_label")}</div><div class="difrow difrow-wrap">${chips}</div>`;
 }
+/* ---------- tamaño de la interfaz ----------
+
+   El juego se dibujaba con tipografías de 8 a 15 px y ningún ajuste, para un
+   deporte cuyo público está sobre todo por encima de los 40 años. Todos los
+   font-size del CSS son calc(Npx * var(--esc)), así que basta con mover esa
+   variable en :root para escalar el texto entero.
+
+   La preferencia es global (no por partida) y se aplica al arrancar, antes de
+   pintar nada, para que no se vea el salto. */
+const ESCALAS=[["normal",1],["grande",1.15],["enorme",1.32]];
+function escalaActual(){
+  try{ const s=localStorage.getItem("rpm_escala"); if(ESCALAS.some(e=>e[0]===s)) return s; }catch(e){}
+  return "normal";
+}
+function aplicarEscala(){
+  const id=escalaActual();
+  const v=(ESCALAS.find(e=>e[0]===id)||ESCALAS[0])[1];
+  try{ document.documentElement.style.setProperty("--esc",String(v)); }catch(e){}
+}
+function setEscala(id){
+  if(!ESCALAS.some(e=>e[0]===id)) return;
+  try{ localStorage.setItem("rpm_escala",id); }catch(e){}
+  aplicarEscala();
+  pintarSelectorEscala();
+}
+function pintarSelectorEscala(){
+  const cont=document.getElementById("selEscala"); if(!cont) return;
+  const sel=escalaActual();
+  // la muestra de cada opción se pinta a su propio tamaño: se elige viendo
+  // el resultado, no leyendo la palabra "grande"
+  const chips=ESCALAS.map(([id,v])=>
+    `<button type="button" class="difchip${id===sel?" on":""}" ${ac("setEscala",id)} aria-pressed="${id===sel}" style="font-size:${Math.round(11*v)}px">${t("esc_"+id)}</button>`
+  ).join("");
+  cont.innerHTML=`<div class="diflabel">${t("esc_label")}</div><div class="difrow">${chips}</div><div class="difdesc">${t("esc_desc")}</div>`;
+}
+
+/* ================= PANTALLA DE AJUSTES =================
+   Un solo sitio para lo que el jugador puede tocar: idioma, tamaño de letra,
+   sonido y pantalla completa. El menú conserva sus selectores rápidos; esto
+   existe sobre todo para poder tocarlos EN PARTIDA (botón ⚙ de la barra). */
+function fullscreenPref(){ try{ return localStorage.getItem("rpm_full")!=="0"; }catch(e){ return true; } }
+function setFullscreenPref(on){
+  try{ localStorage.setItem("rpm_full",on?"1":"0"); }catch(e){}
+  aplicarFullscreen(on);
+}
+/* En el escritorio (Tauri) se cambia la VENTANA, sin gesto necesario; en el
+   navegador, el documento — y ahí solo funciona dentro de un clic del jugador,
+   por eso el arranque la pide al tocar el splash y no antes. */
+function aplicarFullscreen(on){
+  try{
+    if(typeof window!=="undefined"&&window.__TAURI__&&window.__TAURI__.window){
+      window.__TAURI__.window.getCurrentWindow().setFullscreen(!!on);
+      return;
+    }
+  }catch(e){}
+  try{
+    if(on&&!document.fullscreenElement&&document.documentElement.requestFullscreen){
+      const p=document.documentElement.requestFullscreen(); if(p&&p.catch) p.catch(()=>{});
+    } else if(!on&&document.fullscreenElement&&document.exitFullscreen){
+      const p=document.exitFullscreen(); if(p&&p.catch) p.catch(()=>{});
+    }
+  }catch(e){}
+}
+let _ajAbierto=null;   // estado propio: el DOM recortado de la suite no permite consultarlo
+function mostrarAjustes(){
+  if(_ajAbierto){ quitarEl(_ajAbierto); _ajAbierto=null; return null; }
+  const d=document.createElement("div"); d.id="ajModal";
+  d.style.cssText="position:fixed;inset:0;background:rgba(8,11,17,.94);z-index:86;display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto";
+  const sel=idiomaActual(), esc=escalaActual(), full=fullscreenPref();
+  d.innerHTML=`<div class="card" style="max-width:440px;width:100%">
+    <h3 style="margin-top:0">⚙ ${t("aj_titulo")}</h3>
+    <div class="diflabel">${t("idioma_label")}</div>
+    <div class="difrow difrow-wrap">${IDIOMAS.map(l=>`<button type="button" class="difchip${l.id===sel?" on":""}" data-aj-idioma="${l.id}">${l.bandera} ${l.n}</button>`).join("")}</div>
+    <div class="diflabel" style="margin-top:12px">${t("esc_label")}</div>
+    <div class="difrow">${ESCALAS.map(([id,v])=>`<button type="button" class="difchip${id===esc?" on":""}" data-aj-esc="${id}" style="font-size:${Math.round(11*v)}px">${t("esc_"+id)}</button>`).join("")}</div>
+    <div class="diflabel" style="margin-top:12px">${t("aj_sonido")}</div>
+    <div class="difrow"><button type="button" class="difchip${SND?" on":""}" data-aj-snd="1">🔊 ${t("aj_on")}</button><button type="button" class="difchip${SND?"":" on"}" data-aj-snd="0">🔇 ${t("aj_off")}</button></div>
+    <div class="diflabel" style="margin-top:12px">${t("aj_pantalla")}</div>
+    <div class="difrow"><button type="button" class="difchip${full?" on":""}" data-aj-full="1">${t("aj_on")}</button><button type="button" class="difchip${full?"":" on"}" data-aj-full="0">${t("aj_off")}</button></div>
+    <div class="difdesc">${t("aj_pantalla_d")}</div>
+    <button type="button" class="pri" data-aj-cerrar="1" style="width:100%;margin-top:14px">${t("aj_cerrar")}</button>
+  </div>`;
+  document.body.appendChild(d);
+  _ajAbierto=d;
+  const reabre=()=>{ quitarEl(d); _ajAbierto=null; mostrarAjustes(); };
+  if(typeof d.querySelectorAll==="function"){
+    d.querySelectorAll("[data-aj-idioma]").forEach(b=>b.onclick=()=>{ setIdioma(b.dataset.ajIdioma); if(G&&typeof pintarTodo==="function") pintarTodo(); reabre(); });
+    d.querySelectorAll("[data-aj-esc]").forEach(b=>b.onclick=()=>{ setEscala(b.dataset.ajEsc); reabre(); });
+    d.querySelectorAll("[data-aj-snd]").forEach(b=>b.onclick=()=>{
+      const on=b.dataset.ajSnd==="1";
+      if(SND!==on){ SND=on; try{localStorage.setItem("rpm_snd",on?"1":"0");}catch(e){} if(!on&&typeof musicaOff==="function") musicaOff(); if(typeof pintaSnd==="function") pintaSnd(); }
+      reabre();
+    });
+    d.querySelectorAll("[data-aj-full]").forEach(b=>b.onclick=()=>{ setFullscreenPref(b.dataset.ajFull==="1"); reabre(); });
+    const cx=d.querySelector("[data-aj-cerrar]"); if(cx) cx.onclick=()=>{ quitarEl(d); _ajAbierto=null; };
+  }
+  return d;
+}
+
 // modal de elección: continuar guardada o empezar nueva
 function quitarEl(el){
   if(!el) return;
@@ -218,38 +364,111 @@ function hidratarDesdeSql(){
   return "blob";
 }
 
+/* ---------- selector de ranuras ----------
+
+   Antes había una sola partida por modo y un modal de "continuar o empezar de
+   cero" que, además, estaba escrito en castellano dentro del código: salía en
+   español jugaras en el idioma que jugaras.
+
+   Ahora cada modo tiene N_RANURAS partidas y esta pantalla las enseña todas con
+   quién eres, por dónde vas y cuántos títulos llevas. La ranura elegida se
+   recuerda en G._slot, así que guardar sobrescribe esa y no otra. */
+let _slotDestino=1;
+function slotDestino(){ return _slotDestino; }
+
 function abrirModo(modo){
-  const s=infoSlot(modo);
-  const nueva=()=>{ if(modo==="carrera"){ pintarCrear(); irA("crear"); } else { prepararCrearClub(); irA("crearclub"); } };
-  const continuar=()=>{
-    const s2=infoSlot(modo);
-    if(!s2){ alert("La partida guardada no se pudo cargar."); lsDel(SLOTS[modo]); pintarMenu(); return; }
-    G=s2.d;
+  const ov=document.getElementById("modoModal")||(()=>{
+    const d=document.createElement("div");d.id="modoModal";
+    d.style.cssText="position:fixed;inset:0;background:rgba(10,13,19,.92);z-index:80;display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto";
+    document.body.appendChild(d);return d;
+  })();
+
+  const nueva=(n)=>{ _slotDestino=n; quitarEl(ov); if(modo==="carrera"){ pintarCrear(); irA("crear"); } else { prepararCrearClub(); irA("crearclub"); } };
+  const continuar=(n)=>{
+    const raw=lsGet(slotKey(modo,n));
+    let d=null; try{ d=raw?JSON.parse(raw):null; }catch(e){}
+    if(!d){ avisa(t("slot_ilegible"),"bad"); pintar(); return; }
+    quitarEl(ov);
+    G=d; G._slot=n;
     // Fase 4d·9: hidratación con SQLite como fuente primaria (blob de salvaguarda).
     G._fuenteSql=hidratarDesdeSql();
     entrarPartida();
   };
-  if(!s){ nueva(); return; }   // sin guardado: directo a crear
-  // hay guardado → ventana de elección
-  const ov=document.getElementById("modoModal")||(()=>{const d=document.createElement("div");d.id="modoModal";d.style.cssText="position:fixed;inset:0;background:rgba(10,13,19,.92);z-index:80;display:flex;align-items:center;justify-content:center;padding:16px";document.body.appendChild(d);return d;})();
-  const etq=modo==="carrera"?"carrera":"club";
-  ov.innerHTML=`<div class="card" style="max-width:400px;width:100%">
-    <h3 style="margin-top:0">${modo==="carrera"?"🎾 Carrera de jugador":"🏟 Modo club"}</h3>
-    <div class="opcion" style="margin-bottom:8px">
-      <b>Partida guardada</b>
-      <div class="d">${s.txt}</div>
-      <button class="pri" style="width:100%;margin-top:6px" id="mmCont">▸ Continuar esta partida</button>
-    </div>
-    <div class="opcion">
-      <b>Empezar de cero</b>
-      <div class="d">Crea una ${etq} nueva. ${modo==="carrera"?"Tu carrera":"Tu club"} guardada se conservará hasta que confirmes la nueva al terminar de crearla.</div>
-      <button style="width:100%;margin-top:6px" id="mmNueva">✦ Nueva ${etq}</button>
-    </div>
-    <button style="width:100%;margin-top:10px;background:none;color:var(--gris)" id="mmCerrar">Cancelar</button>
-  </div>`;
-  document.getElementById("mmCont").onclick=()=>{ quitarEl(ov); continuar(); };
-  document.getElementById("mmNueva").onclick=()=>{ quitarEl(ov); nueva(); };
-  document.getElementById("mmCerrar").onclick=()=>quitarEl(ov);
+  const borrar=(n)=>{
+    const inf=slotInfo(modo,n);
+    const quien=inf&&!inf.roto?inf.nombre:t("slot_ilegible_corta");
+    if(!confirm(t("slot_borrar_seguro",{quien}))) return;
+    borrarSlot(modo,n); pintar(); pintarMenu();
+  };
+
+  function pintar(){
+    const filas=[];
+    for(let n=1;n<=N_RANURAS;n++){
+      const inf=slotInfo(modo,n);
+      let cuerpo,botones;
+      // Cada botón lleva id propio (mmCont2, mmNueva3…) y se engancha por
+      // getElementById más abajo. No es capricho: el arnés de pruebas simula el
+      // DOM por id, así que así los casos pueden pulsarlos igual que un jugador.
+      if(!inf){
+        cuerpo=`<div class="d">${t("slot_vacia_d")}</div>`;
+        botones=`<button class="pri" style="width:100%" id="mmNueva${n}">✦ ${t("slot_nueva")}</button>`;
+      }else if(inf.roto){
+        cuerpo=`<div class="d" style="color:var(--rojo)">${t("slot_ilegible_d",{kb:Math.max(1,Math.round(inf.bytes/1024))})}</div>`;
+        botones=`<button style="width:100%" id="mmBorrar${n}">🗑 ${t("slot_borrar")}</button>`;
+      }else{
+        cuerpo=`<div class="d">${t("slot_resumen",{temporada:inf.temporada,semana:inf.semana,titulos:inf.titulos})}`
+          +(inf.dif?` · ${difNombre(inf.dif)}`:"")+`</div>`;
+        botones=`<button class="pri" style="width:100%" id="mmCont${n}">▸ ${t("slot_continuar")}</button>`
+          +`<button style="width:100%;margin-top:5px;font-size:11px" id="mmBorrar${n}">🗑 ${t("slot_borrar")}</button>`;
+      }
+      const titulo=inf&&!inf.roto?inf.nombre:t("slot_n",{n});
+      filas.push(`<div class="opcion" style="margin-bottom:8px">
+        <b>${inf&&!inf.roto?`<span style="color:var(--gris2);font-size:10px">${t("slot_n",{n})}</span> `:""}${titulo}</b>
+        ${cuerpo}<div style="margin-top:7px">${botones}</div></div>`);
+    }
+    ov.innerHTML=`<div class="card" style="max-width:430px;width:100%">
+      <h3 style="margin-top:0">${modo==="carrera"?"🎾 "+t("btn_carrera"):"🏟 "+t("btn_club")}</h3>
+      ${filas.join("")}
+      <div style="display:flex;gap:6px;margin-top:4px">
+        <button style="flex:1;font-size:11.5px" id="mmImportar">⤒ ${t("slot_importar")}</button>
+        <button style="flex:1;font-size:11.5px;background:none;color:var(--gris)" id="mmCerrar">${t("btn_cancelar")}</button>
+      </div>
+      <input type="file" id="mmFichero" accept="application/json,.json" style="display:none">
+      <div class="foot" style="text-align:left;margin-top:8px">${t("slot_pie")}</div>
+    </div>`;
+    // Los manejadores se enganchan desde código (nada de onclick en el marcado:
+    // la CSP no ejecuta código escrito dentro del HTML).
+    for(let n=1;n<=N_RANURAS;n++){
+      const bc=document.getElementById("mmCont"+n);   if(bc) bc.onclick=()=>continuar(n);
+      const bn=document.getElementById("mmNueva"+n);  if(bn) bn.onclick=()=>nueva(n);
+      const bb=document.getElementById("mmBorrar"+n); if(bb) bb.onclick=()=>borrar(n);
+    }
+    document.getElementById("mmCerrar").onclick=()=>quitarEl(ov);
+    const fich=document.getElementById("mmFichero");
+    document.getElementById("mmImportar").onclick=()=>fich.click();
+    fich.onchange=()=>{
+      const f=fich.files&&fich.files[0]; if(!f) return;
+      const lector=new FileReader();
+      lector.onload=()=>{
+        // se importa a la primera ranura libre; si están todas ocupadas, se pide destino
+        let destino=0;
+        for(let n=1;n<=N_RANURAS;n++) if(!slotInfo(modo,n)){ destino=n; break; }
+        if(!destino){
+          const r=prompt(t("imp_pide_ranura",{max:N_RANURAS}),"1");
+          destino=Math.min(N_RANURAS,Math.max(1,parseInt(r,10)||0));
+          if(!destino||!confirm(t("imp_sobrescribir",{n:destino}))) return;
+        }
+        const err=importarPartida(String(lector.result||""),modo,destino);
+        if(err){ avisa(t(err),"bad"); return; }
+        avisa(t("imp_ok",{n:destino}),"ok");
+        pintar(); pintarMenu();
+      };
+      lector.onerror=()=>avisa(t("imp_err_lectura"),"bad");
+      lector.readAsText(f);
+    };
+  }
+
+  pintar();
   ov.onclick=(e)=>{ if(e.target===ov) quitarEl(ov); };
 }
 document.getElementById("btnCarrera").onclick=()=>abrirModo("carrera");
@@ -267,11 +486,20 @@ function repartirClubes(){
   ["M","F"].forEach(sx=>{
     const pares=G.world.parejas.filter(p=>(p.sexo||"M")===sx);
     // clubes barajados; asignación round-robin → reparto parejo (2-3 por club)
-    const orden=CLUBES_NPC.map((_,i)=>i).sort(()=>Math.random()-.5);
+    const orden=CLUBES_NPC.map((_,i)=>i).sort(()=>rnd()-.5);
     pares.forEach((p,i)=>{ p.club=orden[i%orden.length]; });
   });
 }
 function entrarPartida(){
+  /* El torneo en curso es un global fuera de la partida y no se guarda: si se
+     entra en otra partida sin limpiarlo, el juego cree que hay un torneo
+     abierto que no es suyo. */
+  torneo=null; match=null;
+  /* Retoma el flujo de azar donde lo dejó esta partida. Las partidas anteriores
+     a la semilla no la traen: se les asigna una al vuelo, y a partir de ahí ya
+     son reproducibles como las nuevas. */
+  if(!G.semilla) G.semilla=semillaNueva();
+  rndSemilla(G.semilla,G._rngS);
   if(G.world&&G.world.parejas&&G.world.parejas[0]&&G.world.parejas[0].club===undefined){
     repartirClubes();
   }
@@ -287,17 +515,19 @@ function entrarPartida(){
       const j1=mkJovenNPC(sx), j2=mkJovenNPC(sx);
       j1.attrs=mkAttrsNivel(nivel,j1._est); j2.attrs=mkAttrsNivel(nivel,j2._est);
       G.world.parejas.push({id:G.world.nextId++,nombre:`${j1.n}/${j2.n}`,jug:[j1,j2],edad:Math.round(R(19,30)),pro:false,sexo:sx,
-        pts:Math.max(0,Math.round((nivel-40)*(nivel-40)*R(1.2,2.4))),club:Math.floor(Math.random()*9),atNet:false});
+        pts:Math.max(0,Math.round((nivel-40)*(nivel-40)*R(1.2,2.4))),club:clubAlAzar(),atNet:false});
     }
-    avisa("📰 La federación amplía el circuito: nuevas parejas entran al ranking. Ahora sois 41 por categoría.");
+    // El número sale de la constante, no escrito a mano: cuando el circuito
+    // creció de 40 a 90 por categoría, este aviso seguía diciendo 41.
+    avisa(t("aviso_circuito_amplia",{n:Math.round(WORLD_N/2)}));
   }
   if(!G.calV52){  // migración al calendario real de 52 semanas
     const e=G.modo==="carrera"?G.carrera:G.clubG;
     if(e&&e.semana>1){
-      const t=Math.floor((e.semana-1)/40), s2=(e.semana-1)%40;
-      e.semana=t*52+s2+1;
+      const temp=Math.floor((e.semana-1)/40), s2=(e.semana-1)%40;   // `temp`, no `t`: taparía la traducción
+      e.semana=temp*52+s2+1;
       e.calRes={};
-      avisa("📅 El circuito adopta el calendario real de 52 semanas con las sedes oficiales (Riad, Roma, París, Acapulco... y las Finals de Barcelona). Tu temporada se recoloca.");
+      avisa(t("aviso_calendario_52"));
     }
     G.calV52=1;
   }
@@ -331,7 +561,7 @@ function entrarPartida(){
       c.entrenador=0;
       c.mercadoStaff=mkMercadoStaff();
       c._staffV2=1;
-      avisa("🗂 Se abre el mercado de personal: entrenadores, fisios, psicólogos, preparadores y agentes con nombre y apellidos. Gestiónalo en la pestaña STAFF.");
+      avisa(t("aviso_mercado_staff_ca"));
     }
     if(c.wildcards===undefined) c.wildcards=2;
     if(!c.mercadoP) c.mercadoP=mkMercadoParejas();
@@ -340,25 +570,47 @@ function entrarPartida(){
   else {
     const cl=G.clubG;  // compatibilidad
     if(cl.alinB===undefined) cl.alinB=null;
+    // identidad del club: los guardados de antes no la traen y se les asigna una
+    if(!cl.filo) cl.filo="oficio";
+    if(!cl.junta) cl.junta=mkJunta();
+    if(!cl.junta.car) cl.junta.car="paciente";
+    if(!cl.derbi) cl.derbi=mkDerbi();
     if(!cl.staff) cl.staff={fisio:false,psico:false,fisico:false,ojeador:false};
     if(!cl.reformas) cl.reformas={techada:false,gym:false,residencia:false,video:false};
     if(cl._pendB===undefined) cl._pendB=null;
     if(!cl.sexo) cl.sexo="M";
     cl.plantilla.forEach(j=>{if(!j.sexo)j.sexo=cl.sexo; if(j.lado===undefined)j.lado=ladoPorAttrs(j.attrs,j.estilo);});
     repararAlin();
-    if(!cl.junta) cl.junta={objetivo:Math.max(3,Math.round(miPuesto()*.85)),paciencia:2};
+
     if(cl.fans===undefined) cl.fans=300+Math.max(0,(45-miPuesto())*20);
     if(!cl._staffV2){
       cl.staff=cl.staff||{};
       ["entrenador","fisio","psico","fisico","ojeador"].forEach(r=>{ if(cl.staff[r]===true) cl.staff[r]=Object.assign(mkStaff(r,2),{n:mkStaff(r).n+" (de la casa)"}); if(cl.staff[r]===undefined) cl.staff[r]=null; });
       cl.mercadoStaff=mkMercadoStaff();
       cl._staffV2=1;
-      avisa("🗂 Mercado de personal abierto: contrata a personas concretas para el club en el panel Club.");
+      avisa(t("aviso_mercado_staff_cl"));
     }
     if(!cl.social) cl.social=[];
     if(cl.wildcards===undefined) cl.wildcards=2;
     irA("clubm"); pintarClubM();
   }
+  // la pareja como personaje: plan conjunto y ejes de relación
+  if(typeof planAsegura==="function"&&G.modo==="carrera"&&G.carrera){
+    planAsegura(G.carrera); relAsegura(G.carrera);
+    if(typeof frAsegura==="function") frAsegura(G.carrera);
+    if(typeof invAsegura==="function") invAsegura(G.carrera);
+    if(G.carrera._parejaDesdeSem==null) G.carrera._parejaDesdeSem=G.carrera.semana|0;
+  }
+  /* Ranking por ventana de 52 semanas: las partidas anteriores no traen el
+     historial, así que se les reparte lo que tuvieran. Se hace aquí, una vez,
+     antes de pintar nada que lea el ranking. */
+  if(typeof rkAsegura==="function"){
+    (G.world&&G.world.parejas||[]).forEach(p=>rkAsegura(p));
+    const _e=ent(); if(_e) rkAsegura(_e);
+    if(G.world&&G.world._rkSem===undefined&&_e) G.world._rkSem=_e.semana;
+  }
+  // La guía se retoma donde estaba: quien recarga a mitad del tutorial no lo pierde.
+  if(typeof guiaEmpieza==="function") guiaEmpieza(G.modo==="carrera"?"carrera":"club");
   guardar();
 }
 

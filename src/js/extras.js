@@ -35,7 +35,9 @@ function chipRasgos(j){
   if(!rg||!rg.length) return "";
   return rg.map(id=>{ const r=(typeof RASGOS!=="undefined"&&RASGOS[id])||{n:id,bueno:0,desc:""};
     const col=r.bueno>0?"var(--verde)":r.bueno<0?"var(--rojo)":"var(--oro)";
-    return `<span class="rasgo" title="${r.desc||""}" style="border-color:${col};color:${col}">${r.n}</span>`; }).join("");
+    // n y desc son claves i18n; t() devuelve tal cual lo que no reconoce, así
+    // que los guardados antiguos con el literal dentro siguen pintando bien
+    return `<span class="rasgo" title="${r.desc?t(r.desc):""}" style="border-color:${col};color:${col}">${t(r.n)}</span>`; }).join("");
 }
 
 
@@ -53,8 +55,8 @@ function hudEvento(){
   if(torneo) return hudCaja(t("hud_enjuego"), hudFila(faseNombre(torneo.fase), `<span style="font-size:12px">${torneo.nombre}</span>`));
   let f=""; const sl=slotSemana(semanaTemp());
   if(sl){
-    if(sl.premier!==undefined) f+=hudFila("Premier",`<span style="font-size:12px">${CATS[sl.premier].n}</span>`);
-    if(sl.fip!==undefined) f+=hudFila("FIP",`<span style="font-size:12px">${CATS[sl.fip].n}</span>`);
+    if(sl.premier!==undefined) f+=hudFila(t("sem_tag_elite"),`<span style="font-size:12px">${catNombre(sl.premier)}</span>`);
+    if(sl.fip!==undefined) f+=hudFila(t("sem_tag_cont"),`<span style="font-size:12px">${catNombre(sl.fip)}</span>`);
   }
   return f?hudCaja(t("hud_estasem"),f):"";
 }
@@ -153,3 +155,41 @@ function pintarLogos(){
   set("splImgJuego",LOGO_JUEGO);     set("menuImgJuego",LOGO_JUEGO);
 }
 
+
+/* ================================================================
+   REGISTRO DE ACCIONES DE LA INTERFAZ
+
+   Va al final del último fichero cargado (ver el orden en index.html) porque
+   aquí ya están definidas todas las funciones que referencia. Es la lista
+   blanca del despachador de ui.js: los botones pintados con plantillas dicen
+   data-ac="nombre" y solo se ejecuta lo que aparezca aquí.
+
+   Al añadir un botón nuevo a una plantilla, regístralo también aquí — si no,
+   no hará nada (falla en silencio, a propósito: es la contrapartida de no
+   ejecutar código que venga escrito en el marcado).
+================================================================ */
+registraAcciones({
+  // menú
+  setDif, setIdioma, setEscala,
+  // staff
+  despedirStaff, ficharStaff,
+  filtroStaff:(rol)=>{ ent()._staffFiltro=rol; pintarTodo(); },
+  // editor de avatar
+  ciclaAva:(campo,mod)=>ciclaAva(campo,1,Number(mod)),
+  avaAleatorio,
+  // carrera
+  anunciarUltimoBaile, verClub,
+  cerrarLegado:()=>{ quitarEl(document.getElementById("legadoModal")); G=null; irA("menu"); pintarMenu(); },
+  // desde la pantalla de retirada: la sala es justo lo que quieres mirar ahí
+  verTrofeos:()=>abrirTrofeos(),
+  cerrarModal:(id)=>quitarEl(document.getElementById(id)),
+  // torneo y partido
+  setTact, setTactPrev,
+  aplicarTacticaRec,
+  setFiloClub,
+  // Superliga
+  accionSuperliga, nuevaTempSuperliga, rechazarInvitacionSL, asignaParejaSL, ficharSLui,
+  aceptarInvitSL:()=>{ quitarEl(document.getElementById("slInvitModal")); aceptarInvitacionSL(); },
+},
+// acciones cuyos argumentos son números
+["ficharStaff","verClub","asignaParejaSL","ficharSLui"]);

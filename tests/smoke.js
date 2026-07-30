@@ -31,6 +31,13 @@ console.log("\n  Rising Games · pruebas de Pádel Manager\n");
     res.push({ nombre: "sql.js (Ruta B) no disponible", ok: false, detalle: e.message });
   }
 
+  // 3) Comprobaciones estáticas sobre los ficheros (sin red, CSP, licencias).
+  try {
+    res = res.concat(require("./estatico")());
+  } catch (e) {
+    res.push({ nombre: "comprobaciones estáticas no disponibles", ok: false, detalle: e.message });
+  }
+
   let fallos = 0;
   for (const r of res) {
     if (r.ok) {

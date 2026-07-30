@@ -3,30 +3,31 @@
 ================================================================ */
 // lado natural: 0 = DRIVE (derecha, construcción/defensa), 1 = REVÉS (izquierda, remate/finalización)
 function ladoPorAttrs(attrs,est){
-  if(!attrs) return Math.random()<.5?0:1;
+  if(!attrs) return rnd()<.5?0:1;
   const fin=(attrs.remate+attrs.vibora+attrs.bandeja+attrs.volea)/4;      // finalización
   const con=(attrs.fondo+attrs.pared+attrs.globo+attrs.dejada+attrs.chiquita)/5; // construcción
   const sesgo=fin-con;
   // estilos rematadores tiran a revés, defensivos a drive
   const bonus=est==="rematador"?3:est==="agresivo"?1.5:est==="defensivo"?-3:est==="constructor"?-2:0;
   const p=clamp(.5+(sesgo+bonus)/14,.12,.88);
-  return Math.random()<p?1:0;
+  return rnd()<p?1:0;
 }
-function ladoTxt(l){ return l===1?"Revés":"Drive"; }
-function ladoChip(l){ if(l!==0&&l!==1) return ""; return `<span class="pill" style="background:${l===1?"#9B59D0":"#4FA3D8"}22;color:${l===1?"#B58BE0":"#6FB8E8"};border-color:${l===1?"#9B59D0":"#4FA3D8"}55">${l===1?"◀ Revés":"Drive ▶"}</span>`; }
+function ladoTxt(l){ return t(l===1?"lado_reves":"lado_drive"); }
+function ladoChip(l){ if(l!==0&&l!==1) return ""; return `<span class="pill" style="background:${l===1?"#9B59D0":"#4FA3D8"}22;color:${l===1?"#B58BE0":"#6FB8E8"};border-color:${l===1?"#9B59D0":"#4FA3D8"}55">${l===1?"◀ "+t("lado_reves"):t("lado_drive")+" ▶"}</span>`; }
 function parejaLadoAviso(j0,j1){
   if(!j0||!j1||j0.lado===undefined||j1.lado===undefined) return "";
-  if(j0.lado===j1.lado) return `<span style="color:#E0A030;font-size:10px">⚠ Dos ${ladoTxt(j0.lado).toLowerCase()}s: se pisan la pista</span>`;
-  return `<span style="color:var(--lima);font-size:10px">✓ Drive + Revés bien combinados</span>`;
+  if(j0.lado===j1.lado) return `<span style="color:#E0A030;font-size:10px">${t("lado_aviso_mal",{lado:ladoTxt(j0.lado).toLowerCase()})}</span>`;
+  return `<span style="color:var(--lima);font-size:10px">${t("lado_aviso_bien")}</span>`;
 }
 function mkAgente(nivMin,nivMax,sx){
   const est=pick(Object.keys(ESTILOS));
   const nivel=Math.round(R(nivMin,nivMax));
-  sx=sx||(Math.random()<.5?"M":"F");
-  const apodo=Math.random()<.28?` «${pick(APODOS)}»`:"";
-  const pot=Math.round(clamp(nivel+R(2,24)-(Math.random()<.2?10:0),nivel,93));
+  sx=sx||(rnd()<.5?"M":"F");
+  const apodo=rnd()<.28?` «${pick(APODOS)}»`:"";
+  const pot=Math.round(clamp(nivel+R(2,24)-(rnd()<.2?10:0),nivel,93));
+  const _p=pickPais();
   return {
-    n:nombrePorSexo(sx)+apodo+" "+pick(APELL),pais:pickPais(),sexo:sx,pot,edad:Math.round(R(17,31)),
+    n:nombrePorSexo(sx,_p)+apodo+" "+apellidoPais(_p),pais:_p,sexo:sx,pot,edad:Math.round(R(17,31)),
     estilo:est,perso:pick(Object.keys(PERSONALIDADES)),
     attrs:mkAttrsNivel(nivel,est),
     lado:ladoPorAttrs(mkAttrsNivel(nivel,est),est),
@@ -42,7 +43,311 @@ function nivelTxt(j){
   return `${Math.max(20,n-5)}-${Math.min(96,n+7)}`;
 }
 function costeFichaje(j){const n=mediaAttrs(j.attrs);return Math.round(n*n*1.1);}
+
+/* ================================================================
+   LA CARA DEL CLUB
+
+   El modo club compartía demasiada pantalla con el de carrera: cambiaba quién
+   jugaba, pero no quién eras. Tres cosas le dan identidad, y las tres se eligen
+   o se sortean al fundar, así que dos partidas de club ya no se parecen:
+
+   - La FILOSOFÍA decide a quién convences. No es un adorno: un jugador que no
+     encaja pide más dinero, y uno que no encaja nada no firma aunque tengas la
+     caja llena. Ficha condicionada, que es lo que hace que un club tenga estilo.
+   - La JUNTA tiene carácter. Cuánta cuerda te da, cuánto aprieta el objetivo,
+     cuánto paga por cumplirlo y en qué se fija (la tacaña mira los sueldos).
+   - El DERBI: un club rival desde el primer día, con su marcador.
+================================================================ */
+const FILOS_CLUB={
+  cantera:{  n:"cfil_cantera_n",  d:"cfil_cantera_d",  lema:"cfil_cantera_l"},
+  estrellas:{n:"cfil_estrellas_n",d:"cfil_estrellas_d",lema:"cfil_estrellas_l"},
+  garra:{    n:"cfil_garra_n",    d:"cfil_garra_d",    lema:"cfil_garra_l"},
+  oficio:{   n:"cfil_oficio_n",   d:"cfil_oficio_d",   lema:"cfil_oficio_l"},
+};
+function filoClub(cl){ return (cl&&cl.filo&&FILOS_CLUB[cl.filo])?cl.filo:"oficio"; }
+function filoNombre(k){ return t((FILOS_CLUB[k]||FILOS_CLUB.oficio).n); }
+function filoDesc(k){ return t((FILOS_CLUB[k]||FILOS_CLUB.oficio).d); }
+function filoLema(k){ return t((FILOS_CLUB[k]||FILOS_CLUB.oficio).lema); }
+
+/* Encaje de un jugador con la filosofía, de -2 a +2. Mira la edad, el estilo y
+   la personalidad, que es lo que el jugador ve en su ficha: la explicación de
+   por qué le sale caro está delante de sus ojos. */
+function afinidadFilo(cl,j){
+  if(!j) return 0;
+  const filo=filoClub(cl), ed=j.edad||24, est=j.estilo||"", per=j.perso||"";
+  const niv=mediaAttrs(j.attrs);
+  let a=0;
+  if(filo==="cantera"){
+    a = ed<=21?2 : ed<=24?1 : ed>=31?-2 : ed>=28?-1 : 0;
+  } else if(filo==="estrellas"){
+    a = niv>=74?2 : niv>=66?1 : niv<=54?-2 : niv<=60?-1 : 0;
+    if(ed<=20&&a>0) a--;                       // el proyecto no es lo suyo
+  } else if(filo==="garra"){
+    a = (per==="valiente"?1:0)+(per==="emocional"?1:0)+(per==="conservador"?-1:0)
+      + (est==="defensivo"||est==="agresivo"?1:0)+(est==="constructor"?-1:0);
+    a = clamp(a,-2,2);
+    if(per==="frio") a=Math.min(a,0);
+  } else {                                      // oficio
+    a = (est==="constructor"||est==="bandejero"?1:0)+(per==="frio"?1:0)
+      + (est==="rematador"?-2:0)+(per==="emocional"?-1:0);
+    a = clamp(a,-2,2);
+  }
+  return a;
+}
+const AFIN_TXT={2:"cfil_enc_2",1:"cfil_enc_1",0:"cfil_enc_0","-1":"cfil_enc_m1","-2":"cfil_enc_m2"};
+function afinidadTxt(a){ return t(AFIN_TXT[a]||"cfil_enc_0"); }
+function afinidadColor(a){ return a>=2?"var(--lima)":a===1?"var(--verde)":a<=-2?"var(--rojo)":a===-1?"var(--oro)":"var(--gris)"; }
+/* El encaje se cobra en la ficha y en el sueldo: quien no te ve claro pide más.
+   A -2 no hay dinero que valga, y por eso el botón se apaga con su motivo. */
+function costeFichajeCl(cl,j){ return Math.round(costeFichaje(j)*(1-afinidadFilo(cl,j)*.12)); }
+function salarioDeCl(cl,j){ return Math.round(salarioDe(j)*(1-afinidadFilo(cl,j)*.09)); }
+function fichable(cl,j){ return afinidadFilo(cl,j)>-2; }
+
+/* Carácter de la junta. `margen` son las temporadas de cuerda; `dureza` cuánto
+   aprieta el objetivo cada año; `prima` lo que paga por cumplirlo. */
+/* El objetivo es un PUESTO EN LA COPA, no en el ranking mundial. La junta de un
+   club juzga al club por su competición; pedirle el top 30 del circuito
+   individual a un club recién fundado —cuya pareja A es de nivel 55— era
+   despedirlo en la primera evaluación hiciera lo que hiciera. */
+const JUNTAS={
+  paciente:  {n:"cjun_paciente_n",  d:"cjun_paciente_d",  margen:3,dureza:.92,prima:1,   obj0:6},
+  corto:     {n:"cjun_corto_n",     d:"cjun_corto_d",     margen:1,dureza:.80,prima:1.8, obj0:3},
+  tacana:    {n:"cjun_tacana_n",    d:"cjun_tacana_d",    margen:2,dureza:.88,prima:.65, obj0:5,mirasueldos:true},
+  ambiciosa: {n:"cjun_ambiciosa_n", d:"cjun_ambiciosa_d", margen:2,dureza:.78,prima:1.4, obj0:4},
+};
+function juntaClub(cl){ const k=cl&&cl.junta&&cl.junta.car; return JUNTAS[k]?k:"paciente"; }
+function juntaNombre(k){ return t((JUNTAS[k]||JUNTAS.paciente).n); }
+function juntaDesc(k){ return t((JUNTAS[k]||JUNTAS.paciente).d); }
+/* La junta se sortea al fundar: no la eliges, igual que no eliges quién te
+   contrata. Su objetivo de partida y su paciencia salen de su carácter. */
+function mkJunta(){
+  const car=pick(Object.keys(JUNTAS)), J=JUNTAS[car];
+  /* El primer objetivo se mide DESDE DONDE EMPIEZAS, no en abstracto. Un club
+     recién fundado entra por el puesto 91 con jugadores de nivel 55: pedirle el
+     top 28 el primer año es despedirlo en la primera evaluación hagas lo que
+     hagas. Ahora el objetivo es un puesto de la Copa —su competición— y
+     `dureza` lo aprieta cada temporada, que es donde tiene que doler. */
+  /* Y siempre al menos dos temporadas de cuerda: fundar un club y que te
+     destituyan en la primera evaluación no es exigencia, es no dejarte jugar. */
+  return {car,objetivo:J.obj0,paciencia:Math.max(2,J.margen)};
+}
+/* El club rival del primer día. Sale de los clubes del circuito y se queda
+   para siempre: el marcador del derbi es de las pocas cosas que un club
+   arrastra temporada tras temporada. */
+function mkDerbi(){
+  return {club:clubAlAzar(),v:0,d:0};
+}
+/* ================================================================
+   LA CANTERA, CON HISTORIA
+
+   Antes una promesa aparecía con 17 años, se quedaba quieta en una lista y
+   acababa subida o vendida. No había nada que seguir: ni crecía, ni se
+   frustraba, ni te dejaba en evidencia por tenerla cuatro años en el banquillo.
+
+   Ahora cada promesa cierra temporada como cierra un jugador: crece hacia su
+   techo —más deprisa cuanto más lejos esté y mejor sea la escuela—, guarda en
+   qué golpe mejoró, y va gastando ilusión si cumple años sin debutar. A las
+   cuatro temporadas sin jugar se marcha, y eso sale en el periódico.
+
+   El techo (`pot`) no se enseña: se estima. Con ojeador, la estimación
+   aprieta. Es la única información del juego por la que merece la pena pagar
+   un sueldo, y por eso conviene que siga siendo cara.
+================================================================ */
+const CAN_ILUSION0=78, CAN_FUGA=6;
+/* Cuánto crece una promesa en una temporada. Lejos del techo se crece a
+   zancadas; pegado a él, a centímetros. */
+function saltoCantera(cl,j){
+  const media=mediaAttrs(j.attrs), techo=j.pot||media+6;
+  if(media>=techo) return 0;
+  const margen=techo-media;
+  let f=1;
+  if(cl.reformas&&cl.reformas.escuela) f+=.35;
+  if(cl.staff&&cl.staff.entrenador) f+=(cl.staff.entrenador.perfil==="pizarra"?.35:.2);   // el de pizarra construye estructura: la cantera lo nota
+  if(filoClub(cl)==="cantera") f+=.3;            // la filosofía se nota donde dice notarse
+  f+=(cl.instal||1)*.06;
+  if((j.edad||17)>=21) f*=.55;                    // a los 21 ya casi no se enseña nada
+  return Math.max(0, Math.min(margen, Math.round(margen*.28*f + R(-.6,1.2))));
+}
+/* Cierra la temporada de la academia: crece, se anota en su historial y decide
+   si sigue teniendo ganas. Devuelve los que se marchan. */
+function evolucionaCantera(cl){
+  const fuera=[];
+  (cl.cantera||[]).forEach(j=>{
+    j.edad=(j.edad||17)+1;
+    j.aniosCan=(j.aniosCan|0)+1;
+    if(j.ilusion==null) j.ilusion=CAN_ILUSION0;
+    const antes=mediaAttrs(j.attrs);
+    const salto=saltoCantera(cl,j);
+    let foco=null;
+    if(salto>0){
+      // el salto se reparte, pero se nota más en un golpe: es lo que se cuenta
+      foco=pick(ATTR_KEYS);
+      j.attrs[foco]=clamp((j.attrs[foco]||50)+Math.max(1,Math.round(salto*1.6)),20,99);
+      for(let i=0;i<2;i++){ const k=pick(ATTR_KEYS); j.attrs[k]=clamp((j.attrs[k]||50)+Math.round(salto*.7),20,99); }
+    }
+    const despues=mediaAttrs(j.attrs);
+    (j.hist=j.hist||[]).push({t:Math.max(1,temporada()-1),a:antes,b:despues,foco});
+    j.hist=j.hist.slice(-8);
+    if(despues>antes) avisa(t("can_av_crece",{n:j.n,media:despues,d:"+"+(despues-antes)}),"ok");
+    else if(mediaAttrs(j.attrs)>=(j.pot||0)) avisa(t("can_av_techo",{n:j.n,media:despues}));
+    // la ilusión se gasta con los años sin debutar, no con la edad a secas
+    if(j.aniosCan>=2) j.ilusion-=(j.edad>=21?26:j.edad>=19?18:10);
+    if(j.aniosCan===2||j.aniosCan===3) avisa(t("can_av_pide",{n:j.n,a:j.aniosCan}));
+    /* Se va cuando se le acaba la ilusión, no por calendario. La curva está
+       hecha para que la ficha enseñe «se va a final de temporada» al menos una
+       temporada antes: perder a un canterano tiene que ser culpa tuya, no una
+       sorpresa. `CAN_FUGA` queda como tope por si algo se descuadra. */
+    if(j.ilusion<=0||j.aniosCan>=CAN_FUGA) fuera.push(j);
+  });
+  fuera.forEach(j=>{
+    cl.cantera=cl.cantera.filter(x=>x!==j);
+    avisa(t("can_av_fuga",{n:j.n,a:j.aniosCan|0}));
+    noticia("ruptura",t("can_not_fuga_t",{n:j.n,club:cl.nombre}),t("can_not_fuga_s"));
+    // el club recuerda a los que se fueron: el libro de la cantera
+    const linea={n:j.n,fin:"fuga",t:temporada(),a:j.aniosCan|0,media:mediaAttrs(j.attrs)};
+    const reg=canRegresaAlCircuito(cl,j,"fuga");
+    if(reg) linea.dest=reg.pareja.nombre;
+    (cl.libroCantera=cl.libroCantera||[]).push(linea);
+  });
+  return fuera;
+}
+/* El canterano que se marcha no desaparece: si tiene nivel para el circuito,
+   una pareja del mundo lo ficha —con preferencia por los clubes de tu grupo de
+   la Copa, para que el regreso se pueda VER— y queda marcado como ex de tu
+   cantera. La elección es determinista (la pareja cuyo flojo mejora más de
+   cerca): no consume azar, así que no mueve la semilla de nadie. */
+const CAN_REGRESO_MIN=48;
+function canRegresaAlCircuito(cl,j,fin){
+  if(!G||!G.world||!G.world.parejas||!j||!j.attrs) return null;
+  const media=mediaAttrs(j.attrs);
+  if(media<CAN_REGRESO_MIN) return null;      // demasiado verde para el circuito
+  const sx=cl.sexo||"M";
+  const grupo=(cl.copa&&cl.copa.grupo)||[];
+  const cands=G.world.parejas.filter(p=>!p.pro&&(p.sexo||"M")===sx&&p.jug&&p.jug.length===2);
+  if(!cands.length) return null;
+  const enGrupo=cands.filter(p=>grupo.indexOf(p.club)>=0);
+  const bolsa=enGrupo.length?enGrupo:cands;
+  // ficha la pareja a la que MEJORA: sustituye a su flojo, y al que menos le sobra
+  let mejor=null,mDist=1e9;
+  bolsa.forEach(p=>{
+    const iF=mediaAttrs(p.jug[0].attrs)<=mediaAttrs(p.jug[1].attrs)?0:1;
+    const d=media-mediaAttrs(p.jug[iF].attrs);
+    if(d<0) return;                            // nadie ficha para empeorar
+    if(d<mDist){ mDist=d; mejor={p,iF}; }
+  });
+  if(!mejor) return null;
+  mejor.p.jug[mejor.iF]={
+    n:j.n,pais:j.pais||"🇪🇸",sexo:sx,estilo:j.estilo||"constructor",
+    perso:j.perso||"frio",attrs:{...j.attrs},conf:55,
+    exCantera:{club:cl.nombre,fin:fin||"fuga",t:temporada()}
+  };
+  const nom=p=>p.jug.map(x=>x.n.split(" ").slice(-1)[0]).join("/");
+  mejor.p.nombre=nom(mejor.p);
+  if(typeof asignaLadosPareja==="function") asignaLadosPareja(mejor.p.jug);
+  noticia("fichaje",t("can_not_regreso_t",{n:j.n}),
+    t(fin==="venta"?"can_not_regreso_venta":"can_not_regreso_fuga",{n:j.n,club:cl.nombre,pareja:mejor.p.nombre}));
+  return {pareja:mejor.p,club:(CLUBES_NPC[mejor.p.club]||{}).n||""};
+}
+/* Cómo se lee su ilusión, que es lo que de verdad decide cuándo subirlo. */
+function ilusionTxt(j){
+  const i=j.ilusion==null?CAN_ILUSION0:j.ilusion;
+  if(i>=65) return {k:"can_il_alta",col:"var(--verde)"};
+  if(i>=40) return {k:"can_il_media",col:"var(--gris)"};
+  if(i>=25) return {k:"can_il_baja",col:"var(--oro)"};
+  return {k:"can_il_fuga",col:"var(--rojo)"};
+}
+/* El techo, estimado. Sin ojeador es una horquilla ancha; con él, una lectura. */
+function techoTxt(cl,j){
+  const pot=j.pot||mediaAttrs(j.attrs)+6;
+  if(cl.staff&&cl.staff.ojeador) return t("can_techo_ojo",{n:pot});
+  return t("can_techo",{a:Math.max(30,pot-7),b:Math.min(99,pot+5)});
+}
+/* Consejo honesto sobre subirlo ya o esperar: mira lo que le queda por crecer. */
+function consejoSubir(cl,j){
+  const media=mediaAttrs(j.attrs), pot=j.pot||media+6;
+  // primero el techo: a quien ya no le queda nada por aprender aquí se le sube,
+  // lleve dos temporadas o cinco. Decir «se te pasó el arroz» de alguien que
+  // todavía crece es un consejo que se contradice a sí mismo.
+  if(pot-media<=4) return "can_subir_ya";
+  if((j.ilusion!=null&&j.ilusion<40)||(j.aniosCan|0)>=4) return "can_subir_tarde";
+  return "can_subir_pronto";
+}
+/* Gráfico de barras de su evolución. Es SVG generado, como todo aquí. */
+function canteraGrafico(j){
+  const h=(j.hist||[]);
+  if(!h.length) return `<div class="foot" style="text-align:left">${t("can_sin_hist")}</div>`;
+  const pot=j.pot||mediaAttrs(j.attrs)+6;
+  const min=Math.min(...h.map(x=>x.a))-3, max=Math.max(pot,...h.map(x=>x.b))+2;
+  const rango=Math.max(1,max-min), H=54;
+  // el lienzo reserva sitio para cuatro temporadas aunque solo haya una: con
+  // una sola barra el gráfico salía del tamaño de un sello
+  const cols=Math.max(4,h.length), paso=Math.floor(160/cols), W=cols*paso+8;
+  const barras=h.map((x,i)=>{
+    const y=H-((x.b-min)/rango)*H, y0=H-((x.a-min)/rango)*H;
+    const w=Math.max(8,paso-10);
+    return `<rect x="${i*paso+6}" y="${y}" width="${w}" height="${Math.max(2,H-y)}" fill="var(--lima)" opacity=".8"/>
+      <rect x="${i*paso+6}" y="${y0}" width="${w}" height="2" fill="var(--gris2)"/>`;
+  }).join("");
+  const yTecho=H-((pot-min)/rango)*H;
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:340px;height:54px;display:block;margin:5px 0">
+    <line x1="0" y1="${yTecho}" x2="${W}" y2="${yTecho}" stroke="var(--oro)" stroke-width="1" stroke-dasharray="3 3" opacity=".7"/>
+    ${barras}</svg>`;
+}
+function derbiClub(cl){ const d=cl&&cl.derbi; return (d&&CLUBES_NPC[d.club])?CLUBES_NPC[d.club]:null; }
+/* ¿Este rival es el del derbi? Los rivales del circuito llevan su club encima. */
+function esDerbi(cl,rival){
+  return !!(cl&&cl.derbi&&rival&&rival.club!==undefined&&rival.club===cl.derbi.club);
+}
+/* Anota el derbi y lo cuenta. Se llama al cerrar un partido del club. */
+function anotaDerbi(cl,rival,gane){
+  if(!esDerbi(cl,rival)) return false;
+  const nom=derbiClub(cl).n;
+  cl.derbi[gane?"v":"d"]++;
+  if(gane){ fansAdd(Math.round(120+(cl.fans||0)*.05),t("cder_hd")); avisa(t("cder_gana",{rival:nom})); }
+  else { avisa(t("cder_pierde",{rival:nom})); }
+  post("derbi",{rival:nom});
+  noticia(gane?"hito":"circuito",t("cder_not_t",{club:cl.nombre,rival:nom}),t("cder_not_s"));
+  return true;
+}
+
 function mkMercadoLibre(sx){const a=[],seen=new Set();for(let i=0;i<8;i++){let j,g=0;do{j=mkAgente(46,68,sx||"M");}while(seen.has(j.n)&&g++<20);seen.add(j.n);a.push(j);}return a;}
+/* EL MERCADO DEL PRIMER DÍA TIENE SUELO, y el de después no.
+
+   Fundar era una tirada antes de empezar a jugar: ocho agentes de 46 a 68 al
+   azar, y con un mal reparto salías con una plantilla de [59,48,47,46]. El
+   problema es que el circuito NO TIENE DIVISIÓN DE ABAJO —el club más flojo del
+   mundo tiene una primera pareja de 60—, así que ese club se enfrentaba a
+   rivales cinco puntos por encima en todas las jornadas y no podía ganar
+   ninguna. Medido con un bot que juega bien (funda con cinco, ficha fisio,
+   mantiene fondo de armario, no compite en semana de Copa): los clubes que
+   sobreviven ganan de 30 a 45 eliminatorias de 50 y los que caen ganan de 0 a
+   8 de 20. No es varianza, son dos poblaciones distintas, y la que cae nace sin
+   opción.
+
+   Esto no regala nada: garantiza que entre los ocho haya con qué formar una
+   primera pareja capaz de competir en la división más floja que existe. Los
+   demás siguen saliendo al azar, elegir sigue costando lo mismo, y el mercado
+   semanal de después (`cl.mercado`) sigue sin suelo ninguno. */
+function mkMercadoFundacion(sx){
+  const a=mkMercadoLibre(sx);
+  const nivel=j=>mediaAttrs(j.attrs);
+  /* Y el suelo es para DOS PAREJAS, no para una. La Copa pide cuatro jugadores
+     y se juega a dos puntos: con la primera pareja decente y la segunda salida
+     del sorteo crudo, el club perdía igual —medido, dos fundaciones de catorce
+     ganaban CERO de veinticuatro eliminatorias—. Así que se garantizan cuatro:
+     dos que puedan formar una primera pareja al nivel del club más flojo del
+     circuito (60) y otros dos que sostengan una segunda (54). */
+  const MIN_A=60, MIN_B=54;
+  const sube=(k,min)=>{
+    const cur=a.slice().sort((x,y)=>nivel(y)-nivel(x));
+    if(nivel(cur[k])>=min-2) return;
+    const flojo=a.indexOf(cur[cur.length-1]);
+    if(flojo<0) return;
+    a[flojo]=mkAgente(min-1,min+5,sx||"M");
+  };
+  sube(0,MIN_A); sube(1,MIN_A); sube(2,MIN_B); sube(3,MIN_B);
+  return a;
+}
 let mercadoTmp=null,plantillaTmp=[];
 
 function prepararCrearClub(){
@@ -56,25 +361,51 @@ function prepararCrearClub(){
   });
   document.getElementById("clubSexoM").className="selbtn"+(sexoClubSel==="M"?" on":"");
   document.getElementById("clubSexoF").className="selbtn"+(sexoClubSel==="F"?" on":"");
-  document.getElementById("clubSexoM").onclick=()=>{sexoClubSel="M";mercadoTmp=mkMercadoLibre("M");plantillaTmp=[];prepararCrearClub();};
-  document.getElementById("clubSexoF").onclick=()=>{sexoClubSel="F";mercadoTmp=mkMercadoLibre("F");plantillaTmp=[];prepararCrearClub();};
-  if(!mercadoTmp) mercadoTmp=mkMercadoLibre(sexoClubSel);
+  document.getElementById("clubSexoM").onclick=()=>{sexoClubSel="M";mercadoTmp=mkMercadoFundacion("M");plantillaTmp=[];prepararCrearClub();};
+  document.getElementById("clubSexoF").onclick=()=>{sexoClubSel="F";mercadoTmp=mkMercadoFundacion("F");plantillaTmp=[];prepararCrearClub();};
+  if(!mercadoTmp) mercadoTmp=mkMercadoFundacion(sexoClubSel);
   plantillaTmp=plantillaTmp.filter(j=>mercadoTmp.includes(j)===false); // conserva selección
+  pintarFilosClub();
   pintarMercadoInicial();
 }
-const PRESUP_CLUB=12000;
+/* La filosofía se elige antes de fichar, y el mercado de abajo se repinta al
+   cambiarla: se ve en el sitio quién te acepta y quién no. */
+function pintarFilosClub(){
+  const cont=document.getElementById("filosClub"); if(!cont) return;
+  cont.innerHTML=`<div class="difrow difrow-wrap">${Object.keys(FILOS_CLUB).map(k=>
+    `<button type="button" class="difchip${k===filoClubSel?" on":""}" ${ac("setFiloClub",k)} aria-pressed="${k===filoClubSel}">${filoNombre(k)}</button>`
+  ).join("")}</div><div class="difdesc">${filoDesc(filoClubSel)}</div>
+  <div class="foot" style="text-align:left;margin-top:3px">${t("cfil_ayuda")}</div>`;
+}
+function setFiloClub(k){ if(!FILOS_CLUB[k]) return; filoClubSel=k; prepararCrearClub(); }
+/* LA COPA PIDE CUATRO JUGADORES **SANOS**, Y ESO SON CINCO EN PLANTILLA.
+   Con 12.000 —el presupuesto de cuando bastaban dos— fundar con cuatro te
+   dejaba en −732€ el primer día, así que subió a 22.000. Pero 22.000 compra
+   exactamente cuatro, y cuatro no bastan: medido sobre doce fundaciones, el
+   club pasa una media de 1,1 jugadores lesionados por semana, y sin cuatro
+   sanos el segundo punto se pierde en la mesa sin jugarlo.
+
+   El dato que lo cierra: de esas doce fundaciones, la que NUNCA pudo alinear
+   segunda pareja ganó 0 de 20 eliminatorias y la que siempre pudo ganó 16 de
+   20 —y los puntos perdidos en la mesa coincidían exactamente con las jornadas
+   sin segunda pareja—. O sea que lo que decidía la Copa no era la fuerza del
+   club, sino si te llegaban cuatro enteros. Eso no es una decisión, es una
+   tirada. Con cinco en plantilla vuelve a serlo. */
+const PRESUP_CLUB=30000;
 function pintarMercadoInicial(){
   const el=document.getElementById("mercadoInicial");el.innerHTML="";
-  let gasto=plantillaTmp.reduce((s,j)=>s+costeFichaje(j),0);
+  let gasto=plantillaTmp.reduce((s,j)=>s+costeFichajeCl({filo:filoClubSel},j),0);
   document.getElementById("mercTitulo").textContent=t("clb_caja",{n:(PRESUP_CLUB-gasto).toLocaleString("es")});
+  const clFake={filo:filoClubSel};        // aún no hay club: la filosofía elegida basta
   mercadoTmp.forEach(j=>{
     const dentro=plantillaTmp.includes(j);
-    const coste=costeFichaje(j);
+    const coste=costeFichajeCl(clFake,j);
+    const af=afinidadFilo(clFake,j), ok=fichable(clFake,j);
     const d=document.createElement("div");d.className="opcion"+(dentro?" sel":"");
-    d.innerHTML=`<b>${j.n}</b> <span class="pill">${t("clb_nivel",{n:nivelTxt(j)})}</span> ${ladoChip(j.lado!==undefined?j.lado:ladoPorAttrs(j.attrs,j.estilo))} <span class="pill">${t("clb_anios",{n:j.edad})}</span> <span class="pill">${estiloNombre(j.estilo)}</span> <span class="pill">${persoNombre(j.perso)}</span><div class="d">${t("clb_ficha_linea",{coste,sal:salarioDe(j)})}${(G&&G.clubG&&G.clubG.staff&&G.clubG.staff.ojeador)?"":t("clb_informe_impreciso")}</div>`;
+    d.innerHTML=`<b>${j.n}</b> <span class="pill">${t("clb_nivel",{n:nivelTxt(j)})}</span> ${ladoChip(j.lado!==undefined?j.lado:ladoPorAttrs(j.attrs,j.estilo))} <span class="pill">${t("clb_anios",{n:j.edad})}</span> <span class="pill">${estiloNombre(j.estilo)}</span> <span class="pill">${persoNombre(j.perso)}</span> <span class="pill" style="color:${afinidadColor(af)}">${afinidadTxt(af)}</span><div class="d">${t("clb_ficha_linea",{coste,sal:salarioDeCl(clFake,j)})}${(G&&G.clubG&&G.clubG.staff&&G.clubG.staff.ojeador)?"":t("clb_informe_impreciso")}</div>`;
     const b=document.createElement("button");b.style.width="100%";
-    b.textContent=dentro?t("clb_quitar"):t("clb_fichar",{coste});
-    b.disabled=!dentro&&(plantillaTmp.length>=4||PRESUP_CLUB-gasto<coste);
+    b.textContent=!ok?t("cfil_no_firma"):dentro?t("clb_quitar"):t("clb_fichar",{coste});
+    b.disabled=!ok||(!dentro&&(plantillaTmp.length>=5||PRESUP_CLUB-gasto<coste));
     b.onclick=()=>{
       if(dentro) plantillaTmp=plantillaTmp.filter(x=>x!==j);
       else plantillaTmp.push(j);
@@ -87,35 +418,48 @@ function pintarMercadoInicial(){
   be.textContent=plantillaTmp.length<2?t("clb_necesitas",{n:plantillaTmp.length}):t("clb_comenzar");
   be.onclick=()=>{
     if(plantillaTmp.length<2) return;
-    const gasto2=plantillaTmp.reduce((s,j)=>s+costeFichaje(j),0);
+    const gasto2=plantillaTmp.reduce((s,j)=>s+costeFichajeCl({filo:filoClubSel},j),0);
     const nombre=document.getElementById("inClubNombre").value.trim()||"Rising Pádel Club";
-    G={v:1,modo:"club",dif:difMenu(),world:mkWorld(),carrera:null,clubG:{
+    G={v:1,modo:"club",_slot:slotDestino(),semilla:iniciaSemilla(),dif:difMenu(),world:mkWorld(),carrera:null,clubG:{
       nombre,color:colorClubSel,
       plantilla:plantillaTmp.map(j=>({...j})),
       alin:[0,1],alinB:null,quims:{},
       semana:1,pts:0,dinero:PRESUP_CLUB-gasto2,
       sexo:sexoClubSel,wildcards:2,fans:400,social:[],
-      junta:{objetivo:34,paciencia:2},sponsor:null,sponsorOferta:null,
+      filo:filoClubSel,
+      // la junta te toca, no se elige: parte de dirigir es el despacho que te ha caído
+      junta:mkJunta(),
+      derbi:mkDerbi(),
+      sponsor:null,sponsorOferta:null,
       instal:1,academia:false,cantera:[],mercado:mercadoTmp.filter(j=>!plantillaTmp.includes(j)).map(j=>({...j})),
       staff:{entrenador:null,fisio:null,psico:null,fisico:null,ojeador:null},mercadoStaff:null,_staffV2:1,
-      reformas:{techada:false,gym:false,residencia:false,video:false},
+      reformas:Object.fromEntries(Object.keys(REFORMAS).map(k=>[k,false])),
       _pendB:null,
       lesionNota:null,palmares:[],diario:[],h2h:{},_rivalesSemana:[]
     }};
     mercadoTmp=null;plantillaTmp=[];
     avisa(t("clb_nace",{nombre,lista:G.clubG.plantilla.map(j=>j.n).join(", ")}));
   noticia("debut",t("not_club_debut_t",{nombre}),t("not_club_debut_s"));
-    entrarPartida();
-    verTuto("club");
+    entrarPartida();   // arranca también la guía jugable
   };
 }
 const STAFF_CLUB={fisio:{n:"Fisioterapeuta",sal:210,desc:"Menos lesiones y recuperaciones más cortas para toda la plantilla."},psico:{n:"Psicólogo deportivo",sal:180,desc:"La confianza de la plantilla se recupera sola cada semana."},fisico:{n:"Preparador físico",sal:210,desc:"+4 de energía semanal extra para todos."},ojeador:{n:"Ojeador",sal:240,desc:"Mercados más grandes y con mejores jugadores."}};
 const STAFF_CARR={rep:{n:"Representante",sal:150,desc:"Se lleva el 15% de tus premios, pero te trae contratos de patrocinio de más nivel."},fisio:{n:"Fisioterapeuta",sal:120,desc:"La mitad de lesiones y una semana menos de baja."},psico:{n:"Psicólogo deportivo",sal:100,desc:"Tu confianza no baja de 40 y la moral de tu pareja no se desgasta sola."},fisico:{n:"Preparador físico",sal:120,desc:"+4 de energía semanal extra."}};
+/* Reformas de las instalaciones. Los campos n y desc son etiquetas muertas: lo
+   que se pinta son las claves t("ref_"+k) y t("ref_"+k+"_d").
+
+   Con cuatro reformas, un club solvente las tenía todas en pocas temporadas y
+   se quedaba sin nada en que gastar. Las cuatro nuevas suben el techo y están
+   escalonadas en precio, para que la última sea una meta de verdad. */
 const REFORMAS={
-  techada:{n:"Pista central techada",coste:12000,desc:"El club gana caché: +150€/sem de socios y +5 de prestigio."},
-  gym:{n:"Gimnasio propio",coste:7500,desc:"+4 de energía semanal para toda la plantilla."},
-  residencia:{n:"Residencia de jugadores",coste:9500,desc:"La confianza de la plantilla sube +1 cada semana."},
   video:{n:"Sala de vídeo",coste:5500,desc:"Los entrenos rinden más (otro +1 frecuente)."},
+  tienda:{n:"Tienda del club",coste:6500,desc:"La afición deja dinero: ingresos extra según los seguidores."},
+  gym:{n:"Gimnasio propio",coste:7500,desc:"+4 de energía semanal para toda la plantilla."},
+  medico:{n:"Sala médica",coste:8500,desc:"Menos lesiones y altas más rápidas para toda la plantilla."},
+  residencia:{n:"Residencia de jugadores",coste:9500,desc:"La confianza de la plantilla sube +1 cada semana."},
+  techada:{n:"Pista central techada",coste:12000,desc:"El club gana caché: +150€/sem de socios y +5 de prestigio."},
+  escuela:{n:"Escuela de tecnificación",coste:14000,desc:"La academia saca promesas bastante mejores."},
+  gradas:{n:"Gradas nuevas",coste:18000,desc:"Se llena: el club gana seguidores mucho más deprisa."},
 };
 function quimKeyP(par){const a=par.slice().sort();return a[0]+"|"+a[1];}
 function quimDe(cl,par){return cl.quims[quimKeyP(par)]??40;}
@@ -135,11 +479,21 @@ function repararAlin(){
     const idx=cl.plantilla.map((j,i)=>i).sort((a,b)=>(mediaAttrs(cl.plantilla[b].attrs)-(cl.plantilla[b].lesion?100:0))-(mediaAttrs(cl.plantilla[a].attrs)-(cl.plantilla[a].lesion?100:0)));
     cl.alin=idx.length>=2?[idx[0],idx[1]]:idx.length===1?[idx[0],idx[0]]:[0,1];
   }
-  if(cl.alinB&&!val(cl.alinB)) cl.alinB=null;
+  /* La pareja B se forma en dos clics, y entre uno y otro queda a medias. Como
+     cada clic repinta —y repintar pasa por aquí—, borrar todo lo que no midiera
+     dos dejaba la pareja B en null para siempre: era imposible formarla. Se
+     respeta el estado intermedio mientras el jugador elegido siga existiendo. */
+  if(cl.alinB&&cl.alinB.length===1){
+    if(!cl.plantilla[cl.alinB[0]]) cl.alinB=null;
+  } else if(cl.alinB&&!val(cl.alinB)) cl.alinB=null;
 }
 function alineacion(){ repararAlin(); return parejaDe(G.clubG&&G.clubG.alin); }
 function alineacionB(){return G.clubG&&G.clubG.alinB?parejaDe(G.clubG.alinB):null;}
-function salarioDe(j){return Math.round(mediaAttrs(j.attrs)*8);}
+/* Salario semanal de un jugador de club. Estaba en media×8: cuatro jugadores
+   de nivel 52 costaban 1.664€/semana contra unos ingresos de 765€, así que un
+   club recién fundado perdía 900€ todas las semanas desde el minuto uno y no
+   había forma de salir. Un Continental Bronce entero paga 1.000€. */
+function salarioDe(j){return Math.round(mediaAttrs(j.attrs)*4.5);}
 function staffSalarios(){
   const cl=G.clubG;
   return Object.keys(cl.staff||{}).reduce((s2,k)=>s2+((cl.staff[k]&&cl.staff[k].sal)||0),0);
@@ -152,21 +506,36 @@ function quickMatch(tA,tB){
   const _cpu=true;
   teams[1].jug.forEach(j=>{j.conf=j.conf??55;});
   stats=[mkStats(),mkStats()];
-  match={p:[0,0],j:[0,0],s:[0,0],hist:[],server:Math.random()<.5?0:1,fin:false,ver:false,cpu:true};
+  match={p:[0,0],j:[0,0],s:[0,0],hist:[],server:rnd()<.5?0:1,fin:false,ver:false,cpu:true};
   while(!match.fin){PRESION=calcPresion();resolverPunto(buildPoint(match.server).ganador);}
   const gane=match.s[0]>match.s[1];
   const marcador=`${match.s[0]}-${match.s[1]}`;
   match=null;
   return {gane,marcador};
 }
+/* Pasa una pareja del club al motor de partidos.
+
+   OJO CON LO QUE SE COPIA. Este objeto es lo único que ve `resolveShot`: lo que
+   no se ponga aquí, para el motor no existe. Durante mucho tiempo se dejaba
+   fuera el LADO de pista y los RASGOS, y eso era una desventaja sistemática
+   frente a las parejas del mundo, que sí los llevan: la combinación drive+revés
+   vale un 5% (`quimicaLado`) y jugar en tu lado natural hasta un 6% por golpe
+   (`ladoNatural`), más lo que aporte cada rasgo. Medido en la Copa: parejas de
+   nivel equivalente perdían 0-2 una y otra vez. */
 function teamDePareja(par){
   const cl=G.clubG, q=quimDe(cl,par.map(j=>cl.plantilla.indexOf(j)));
   const mkJ=(j)=>{
     const f=(0.86+0.14*(j.energia/100))*(0.94+0.12*(q/100));
     const o={};ATTR_KEYS.forEach(k=>o[k]=Math.round(j.attrs[k]*f));
-    return {n:j.n,estilo:j.estilo,perso:j.perso,conf:j.conf,attrs:o,_ref:j};
+    const lado=(j.lado===0||j.lado===1)?j.lado:ladoPorAttrs(j.attrs,j.estilo);
+    return {n:j.n,estilo:j.estilo,perso:j.perso,conf:j.conf,attrs:o,
+      lado, rasgos:(j.rasgos?j.rasgos.slice():undefined), sexo:j.sexo||cl.sexo, _ref:j};
   };
-  return {nombre:G.clubG.nombre+" B",jug:[mkJ(par[0]),mkJ(par[1])],atNet:false};
+  /* Y los dos lados se reparten: si los dos son del mismo, el segundo se
+     coloca en el otro, que es lo que haría cualquiera al formar la pareja. */
+  const a=mkJ(par[0]), b=mkJ(par[1]);
+  if(a.lado===b.lado) b.lado=1-a.lado;
+  return {nombre:G.clubG.nombre+" B",jug:[a,b],atNet:false};
 }
 function simTorneoParejaB(ci){
   const cl=G.clubG, cat=CATS[ci], parB=alineacionB();
@@ -183,7 +552,7 @@ function simTorneoParejaB(ci){
   while(fase<6){
     const rival=rivalDeFase(cat.base,fase,usados);
     const res=quickMatch(teamDePareja(parB),rival);
-    parB.forEach(j=>{j.energia=clamp(j.energia-11,0,100);j.conf=clamp(j.conf+(res.gane?3:-4),15,95);});
+    parB.forEach(j=>{j.energia=clamp(j.energia-7,0,100);j.conf=clamp(j.conf+(res.gane?3:-4),15,95);});
     const qk=quimKeyP(idxPar);
     cl.quims[qk]=clamp((cl.quims[qk]??40)+2,10,95);
     rival.pts+=cat.pts[loserIdx(fase)]||0;
@@ -192,14 +561,14 @@ function simTorneoParejaB(ci){
       resumen.push(`caen en ${faseNombre(fase).toLowerCase()} (${res.marcador}) vs ${rival.nombre}`);
       break;
     }
-    if(res.gane&&Math.random()<.2){const k=pick(ATTR_KEYS);const j=pick(parB);if(j.attrs[k]<88)j.attrs[k]++;}
+    if(res.gane&&rnd()<.2){const k=pick(ATTR_KEYS);const j=pick(parB);if(j.attrs[k]<88)j.attrs[k]++;}
     if(fase===5){ idxPts=0; titulo=true; break; }
     fase++;
     // lesión por fatiga a mitad de torneo
     const cansado=parB.find(j=>j.energia<20&&!j.lesion);
-    if(cansado&&Math.random()<kLesion(cl.staff.fisio?.15:.3)){
+    if(cansado&&rnd()<kLesion(cl.staff.fisio?(cl.staff.fisio.perfil==="preventivo"?.12:cl.staff.fisio.perfil==="recuperador"?.18:.15):.3)){
       cansado.lesion=pickLesion(clamp(1-cansado.energia/40,0,1));
-      if(cl.staff.fisio) cansado.lesion.sem=Math.max(1,cansado.lesion.sem-1);
+      if(cl.staff.fisio) cansado.lesion.sem=Math.max(1,cansado.lesion.sem-(cl.staff.fisio.perfil==="recuperador"?2:1));
       cansado.fragil=(cansado.fragil||0)+1;
       idxPts=loserIdx(fase);
       resumen.push(`retirada (W.O.): ${cansado.n}, ${cansado.lesion.n}`);
@@ -207,13 +576,13 @@ function simTorneoParejaB(ci){
     }
   }
   const pts=Math.round((cat.pts[idxPts]||0)*.5), premio=cat.premio[idxPts]||0;  // la pareja B puntúa al 50% para el club
-  cl.pts+=pts; cl.dinero+=premio;
+  rkAnota(cl,cl.semana,pts); cl.dinero+=premio;
   if(titulo){
-    cl.palmares.push(`${cat.n} — pareja B (T${temporada()})`);
-    noticia("titulo",t("not_parejab_t",{cat:cat.n}),t("not_parejab_s",{p1:parB[0].n,p2:parB[1].n,pts,premio}));
-    avisa(t("clb_b_gana",{j1:parB[0].n,j2:parB[1].n,cat:cat.n,premio}));
+    cl.palmares.push(`${catNombre(cat)} — pareja B (T${temporada()})`);
+    noticia("titulo",t("not_parejab_t",{cat:catNombre(cat)}),t("not_parejab_s",{p1:parB[0].n,p2:parB[1].n,pts,premio}));
+    avisa(t("clb_b_gana",{j1:parB[0].n,j2:parB[1].n,cat:catNombre(cat),premio}));
   } else {
-    avisa(t("clb_b_resumen",{cat:cat.n,resumen:resumen.join("; ")||t("clb_b_eliminados"),pts,premio}));
+    avisa(t("clb_b_resumen",{cat:catNombre(cat),resumen:resumen.join("; ")||t("clb_b_eliminados"),pts,premio}));
   }
 }
 
@@ -233,7 +602,10 @@ function pintarClubM(){
   if(G.clubG&&G.clubG._despedido){
     const cl=G.clubG;
     document.getElementById("cmTorneosDisp")&&(document.getElementById("cmTorneosDisp").innerHTML="");
-    alert(t("clb_fin",{club:cl.nombre,temps:cl.hist.length,tits:cl.palmares.length,mejor:Math.min(...cl.hist.map(h=>h.pos))}));
+    // la destitución cierra el proyecto con cabecera, no con un alert (P6)
+    const _finTxt=t("clb_fin",{club:cl.nombre,temps:cl.hist.length,tits:cl.palmares.length,mejor:Math.min(...cl.hist.map(h=>h.pos))});
+    if(typeof momentoCabecera==="function") momentoCabecera({tipo:"duelo",ico:"🪑",titulo:t("cab_fin_t"),sub:_finTxt});
+    else alert(_finTxt);
     G=null; irA("menu"); pintarMenu(); return;
   }
   const cl=G.clubG;
@@ -247,16 +619,18 @@ function pintarClubM(){
   kD.textContent=cl.dinero+"€";
   kD.style.color=cl.dinero<0?"var(--rojo)":cl.dinero<200?"var(--oro)":"";
   document.getElementById("cmSal").textContent="-"+salariosSemana()+"€";
-  if(cmTab==="semana") pintarCmSemana();
+  if(cmTab==="semana"){ pintarCmSemana(); pintarCopa(); }
   if(cmTab==="plantilla") pintarCmPlantilla();
   if(cmTab==="club") pintarCmClub();
-  if(cmTab==="ranking"){renderRanking(document.getElementById("cmTablaRk"));renderClubes(document.getElementById("cmTablaClubes"));renderN1(document.getElementById("cmN1hist"));renderRecords(document.getElementById("cmRecords"));}
+  if(cmTab==="ranking"){pintarCopaTabla();renderRanking(document.getElementById("cmTablaRk"));renderClubes(document.getElementById("cmTablaClubes"));renderN1(document.getElementById("cmN1hist"));renderRecords(document.getElementById("cmRecords"));}
   if(cmTab==="diario"){renderNoticias(document.getElementById("cmFeedNoti"));renderDiario(document.getElementById("cmDiario"),document.getElementById("cmPalmares"));renderSocial(document.getElementById("cmSocial"));renderTrayectoria(document.getElementById("cmTrayec"));}
 }
 function pintarCmSemana(){
   const cl=G.clubG,esT=esSemanaTorneo();
   document.getElementById("cmSemTitulo").innerHTML=(slotSemana(semanaTemp()).premier!==undefined?`${t("kpi_semana")} ${semanaTemp()} · <em>${t("ctx_premier_fip")}</em>`:`${t("kpi_semana")} ${semanaTemp()} · <em>${t("ctx_circuito_fip")}</em>`);
   const tor=document.getElementById("cmTorneo");tor.innerHTML="";
+  // la capa «qué necesita atención ahora» (P7), antes que el torneo de la semana
+  if(typeof renderAtencion==="function") renderAtencion(tor);
   const al=alineacion();
   if(esT){
     const listos=al&&al.every(j=>!j.lesion&&j.energia>=30);
@@ -272,14 +646,14 @@ function pintarCmSemana(){
       const d=document.createElement("div");d.className="opcion";
       const bDisp=[];
       if(slot.premier!==undefined&&entradaEn(slot.premier)!==-1) bDisp.push(slot.premier);
-      if(entradaEn(slot.fip)!==-1) bDisp.push(slot.fip);
-      d.innerHTML=`<b>Pareja B</b> <span class="pill">${alB.map(j=>j.n).join(" + ")}</span> <span class="pill">química ${quimDe(cl,cl.alinB)}</span><div class="d">${cl._pendB!==null?`✔ Irá al ${CATS[cl._pendB].n} — se resuelve al avanzar la semana.`:"Puede jugar su propio torneo esta semana (resultado rápido; sus puntos computan al 50% para el club)."}</div>`;
+      if(slot.fip!=null&&entradaEn(slot.fip)!==-1) bDisp.push(slot.fip);
+      d.innerHTML=`<b>${t("clb_pareja_b")}</b> <span class="pill">${alB.map(j=>j.n).join(" + ")}</span> <span class="pill">${t("clb_quimica",{n:quimDe(cl,cl.alinB)})}</span><div class="d">${cl._pendB!==null?t("clb_b_inscrita",{cat:catNombre(cl._pendB)}):t("clb_b_libre")}</div>`;
       if(listosB){
         const f=document.createElement("div");f.className="fila";
         bDisp.forEach(ci=>{
           const b=document.createElement("button");
           b.className=cl._pendB===ci?"pri":"";
-          b.textContent=`B → ${CATS[ci].n}`;
+          b.textContent=`B → ${catNombre(ci)}`;
           b.onclick=()=>{cl._pendB=cl._pendB===ci?null:ci;guardar();pintarClubM();};
           f.appendChild(b);
         });
@@ -298,7 +672,7 @@ function pintarCmSemana(){
     const mer=(!j.lesion&&j.merma)?` <span class="pill" style="color:#E0A030">mermado -${j.merma.pct}% (${j.merma.sem}s)</span>`:"";
     const plan=j.plan||"auto";
     const rasg=chipRasgos(j);
-    d.innerHTML=`<b>${j.n}</b> <span class="pill">nivel ${mediaAttrs(j.attrs)}</span> <span class="pill">EN ${j.energia}</span> <span class="pill">CF ${j.conf}</span> <span class="pill lima">plan: ${plan}</span>${les}${mer}${rasg?`<div style="margin-top:3px">${rasg}</div>`:""}`;
+    d.innerHTML=`<b>${j.n}</b> <span class="pill">${t("clb_nivel_n",{n:mediaAttrs(j.attrs)})}</span> <span class="pill">EN ${j.energia}</span> <span class="pill">CF ${j.conf}</span> <span class="pill lima">${t("clb_plan_de",{p:plan})}</span>${les}${mer}${rasg?`<div style="margin-top:3px">${rasg}</div>`:""}`;
     if(!j.lesion){
       const g=document.createElement("div");g.className="entreno";g.style.marginTop="8px";
       const bAuto=document.createElement("button");
@@ -322,7 +696,7 @@ function pintarCmSemana(){
     const b=document.createElement("button");
     b.className="selbtn"+((cl.intens||"normal")===it?" on":"");
     b.style.fontSize="11px";
-    b.textContent=it==="suave"?"Suave":it==="normal"?"Normal":"Intensa ⚠";
+    b.textContent=t("ent_int_"+it);
     b.onclick=()=>{cl.intens=it;guardar();pintarClubM();};
     fInt.appendChild(b);
   });
@@ -330,11 +704,156 @@ function pintarCmSemana(){
   const btnAll=document.createElement("button");
   btnAll.className="pri";btnAll.style.width="100%";btnAll.style.marginTop="4px";
   const aptos=cl.plantilla.filter(j=>!j.lesion&&j.energia>=25).length;
-  btnAll.textContent=`🏋 Semana de entrenamiento — entrenan ${aptos} jugador${aptos===1?"":"es"} a la vez`;
+  btnAll.textContent=t("clb_semana_entreno",{n:aptos});
   btnAll.disabled=aptos===0;
   btnAll.onclick=entrenarClubTodos;
   en.appendChild(btnAll);
   document.getElementById("cmCalendario").innerHTML=calHtml();
+}
+
+/* ================================================================
+   LA COPA DE CLUBES EN PANTALLA
+
+   La decisión de la jornada se toma aquí: ves sus dos parejas, colocas las
+   tuyas y eliges si vas de tú a tú o cruzas. Y de paso decides a quién guardas
+   para el desempate, sabiendo lo que le va a quedar de energía.
+================================================================ */
+function pintarCopa(){
+  const cl=G.clubG, bx=document.getElementById("cmCopa");
+  if(!bx||!cl) return;
+  bx.innerHTML="";
+  const jor=copJornadaDe(cl,semanaTemp());
+  const acta=(cl.copa&&cl.copa.ultima&&cl.copa.ultima._verSem===cl.semana)?cl.copa.ultima:null;
+  if(!jor&&!acta) return;
+  const card=document.createElement("div");card.className="card";
+  if(acta){
+    card.innerHTML=`<h3>${t("cop_acta_hd")} · <em>${acta.mio}-${acta.suyo}</em></h3>`
+      +acta.partidos.map(pt=>pt.wo
+        ? `<div class="brief" style="color:var(--rojo)">${t("cop_wo",{rival:pt.rival})}</div>`
+        : `<div class="brief"><b style="color:${pt.gane?"var(--verde)":"var(--rojo)"}">${pt.marcador}</b> ${pt.mios.join(" + ")} — ${pt.rival}${pt.desempate?` <span class="pill">${t("cop_pt_des")}</span>`:""}</div>`
+      ).join("")
+      +(acta.exCan?`<div class="foot" style="text-align:left;color:${acta.exCan.meGano?"var(--oro)":"var(--lima)"}">🌱 ${t(acta.exCan.meGano?"cop_excan_gana":"cop_excan_pierde",{n:acta.exCan.n})}</div>`:"");
+    bx.appendChild(card);
+    return;
+  }
+  const derbi=copEsDerbi(cl,jor.rival);
+  card.innerHTML=`<h3>${t("cop_hd")} · <em>${t("cop_jor",{n:jor.jor+1,rival:copNombreDe(cl,jor.rival)})}</em> ${derbi?`<span class="pill" style="color:var(--rojo)">${t("cop_derbi")}</span>`:""} <span class="pill">${t(jor.casa?"cop_casa":"cop_fuera")}</span></h3>
+    <div class="foot" style="text-align:left;margin-bottom:8px">${t("cop_sub")}</div>`;
+  // sus parejas, con la identidad táctica que ya sabe leer el juego
+  const suyas=copParejasRival(cl,jor.rival);
+  const sus=document.createElement("div");
+  sus.innerHTML=`<div class="phead">${t("cop_ellos")}</div>`
+    +suyas.map((p,i)=>{
+      const id=(typeof identidadPareja==="function"&&p.jug&&p.jug.length>1)?identidadPareja(p):null;
+      const ex=(p.jug||[]).find(x=>x&&x.exCantera&&x.exCantera.club===cl.nombre);
+      return `<div class="brief"><b>${i+1}.</b> ${p.nombre} <span class="pill">${t("clb_nivel_n",{n:nivelPareja(p)})}</span>${id?` <span class="pill" style="color:var(--oro)">${identNombre(id)}</span>`:""}${ex?` <span class="pill" style="color:var(--lima)">🌱 ${t("cop_excan")}</span>`:""}</div>`;
+    }).join("");
+  // el reencuentro se anuncia ANTES de alinear: es parte de la decisión
+  const exHoy=suyas.reduce((f,p)=>f||(p.jug||[]).find(x=>x&&x.exCantera&&x.exCantera.club===cl.nombre)||null,null);
+  if(exHoy) sus.innerHTML+=`<div class="foot" style="text-align:left;color:var(--lima)">${t("cop_excan_sub",{n:exHoy.n})}</div>`;
+  card.appendChild(sus);
+  // las tuyas
+  const mias=copAlineacionAuto(cl,!!cl._copReparte);
+  const disp=copDisponibles(cl).length;
+  const mis=document.createElement("div");mis.style.marginTop="9px";
+  mis.innerHTML=`<div class="phead">${t("cop_tuyas")}</div>`
+    +(mias.length?mias.map((par,i)=>`<div class="brief"><b>${i+1}.</b> ${par.map(j=>`${j.n} <span style="color:var(--gris2)">(${mediaAttrs(j.attrs)}·EN ${j.energia})</span>`).join(" + ")}</div>`).join("")
+      :`<div class="brief" style="color:var(--rojo)">${t("cop_nadie")}</div>`);
+  if(mias.length===1) mis.innerHTML+=`<div class="foot" style="text-align:left;color:var(--oro)">${t("cop_sin_gente",{n:disp})}</div>`;
+  card.appendChild(mis);
+  if(mias.length){
+    // reparto: apilar a los dos mejores o hacer dos parejas parejas
+    if(disp>=4){
+      const hdR=document.createElement("div");hdR.className="foot";hdR.style.textAlign="left";hdR.style.margin="9px 0 3px";
+      hdR.textContent=t("cop_rep_hd");
+      card.appendChild(hdR);
+      const fR=document.createElement("div");fR.className="fila";
+      [0,1].forEach(rp=>{
+        const b=document.createElement("button");
+        b.className="selbtn"+(((cl._copReparte?1:0)===rp)?" on":"");
+        b.style.fontSize="11px";
+        b.textContent=t("cop_rep_"+rp);
+        b.onclick=()=>{cl._copReparte=!!rp;pintarClubM();};
+        fR.appendChild(b);
+      });
+      card.appendChild(fR);
+      const dR=document.createElement("div");dR.className="foot";dR.style.textAlign="left";dR.style.marginTop="3px";
+      dR.textContent=t("cop_rep_"+(cl._copReparte?1:0)+"_d");
+      card.appendChild(dR);
+    }
+    // cruce
+    const hd=document.createElement("div");hd.className="foot";hd.style.textAlign="left";hd.style.margin="9px 0 3px";
+    hd.textContent=t("cop_cruce_hd");
+    card.appendChild(hd);
+    const fila=document.createElement("div");fila.className="fila";
+    [0,1].forEach(cr=>{
+      const b=document.createElement("button");
+      b.className="selbtn"+(((cl._copCruce|0)===cr)?" on":"");
+      b.style.fontSize="11px";
+      b.textContent=t("cop_cruce_"+cr);
+      b.onclick=()=>{cl._copCruce=cr;pintarClubM();};
+      fila.appendChild(b);
+    });
+    card.appendChild(fila);
+    const d=document.createElement("div");d.className="foot";d.style.textAlign="left";d.style.marginTop="3px";
+    d.textContent=t("cop_cruce_"+((cl._copCruce|0))+"_d");
+    card.appendChild(d);
+    // desempate
+    if(mias.length>1){
+      const hd2=document.createElement("div");hd2.className="foot";hd2.style.textAlign="left";hd2.style.margin="9px 0 3px";
+      hd2.textContent=t("cop_des_hd");
+      card.appendChild(hd2);
+      const f2=document.createElement("div");f2.className="fila";
+      mias.forEach((par,i)=>{
+        const b=document.createElement("button");
+        b.className="selbtn"+(((cl._copDes|0)===i)?" on":"");
+        b.style.fontSize="11px";
+        b.textContent=par.map(j=>j.n).join(" + ");
+        b.onclick=()=>{cl._copDes=i;pintarClubM();};
+        f2.appendChild(b);
+      });
+      card.appendChild(f2);
+    }
+  }
+  const b=document.createElement("button");b.className="pri";b.style.width="100%";b.style.marginTop="9px";
+  b.textContent=t("cop_jugar");
+  b.onclick=()=>jugarEliminatoria(jor.jor);
+  card.appendChild(b);
+  bx.appendChild(card);
+}
+function jugarEliminatoria(jor){
+  const cl=G.clubG; if(!cl) return;
+  const mias=copAlineacionAuto(cl,!!cl._copReparte);
+  const acta=copJuega(cl,jor,mias,cl._copCruce|0,cl._copDes|0);
+  if(!acta) return;
+  const derbi=copEsDerbi(cl,acta.rival);
+  const soc=socTrasEliminatoria(cl,acta,derbi);
+  const taq=copTaquilla(cl,acta);
+  if(taq){ cl.dinero+=taq; avisa(t("cop_taquilla",{n:taq.toLocaleString("es")})); }
+  if(derbi) anotaDerbi(cl,{club:cl.copa.grupo[acta.rival-1]},acta.gane);
+  acta._verSem=cl.semana;
+  // el debut de la casa merece cabecera, no solo un aviso (P6)
+  (cl.plantilla||[]).forEach(x=>{
+    if(x.dela_casa&&x.debut&&x.debut.t===temporada()&&x.debut.sem===semanaTemp()&&!x._cabDebut){
+      x._cabDebut=true;
+      if(typeof momentoCabecera==="function") momentoCabecera({tipo:"gloria",ico:"🌱",titulo:t("cab_can_t"),sub:t("cab_can_s",{n:x.n,club:cl.nombre})});
+    }
+  });
+  const rival=copNombreDe(cl,acta.rival);
+  avisa(t(acta.gane?"cop_gana":"cop_pierde",{a:acta.mio,b:acta.suyo,rival,soc:Math.abs(soc)}));
+  noticia(acta.gane?"titulo":"ruptura",
+    t("cop_hd")+" · "+t("cop_res",{marc:`${acta.mio}-${acta.suyo}`,rival}),
+    acta.partidos.filter(p=>!p.wo).map(p=>`${p.marcador} ${p.mios.join("+")}`).join(" · "));
+  guardar(); pintarClubM();
+}
+function pintarCopaTabla(){
+  const cl=G.clubG, el=document.getElementById("cmCopaTabla");
+  if(!el||!cl) return;
+  const filas=copTabla(cl);
+  el.innerHTML=`<tr class="hd"><td>#</td><td>${t("sl_col_club")}</td><td class="pts">${t("cop_col_j")}</td><td class="pts">${t("cop_col_g")}</td><td class="pts">${t("cop_col_p")}</td><td class="pts">Pts</td></tr>`
+    +filas.map((f,i)=>`<tr class="${f.yo?"yo":i===0?"top":""}"><td class="pos">${i+1}</td><td><span style="color:${f.color}">●</span> ${f.nombre}</td><td class="pts">${f.g+f.p}</td><td class="pts">${f.g}</td><td class="pts">${f.p}</td><td class="pts">${f.pts}</td></tr>`).join("");
+  const pie=document.getElementById("cmCopaPie");
+  if(pie) pie.textContent=t("cop_tabla_pie",{j:copJugadas(cl),n:cl.copa.cal.length,pos:copPuesto(cl),clubes:COP_CLUBES});
 }
 function pintarCmPlantilla(){
   const cl=G.clubG,el=document.getElementById("cm-plantilla");el.innerHTML="";
@@ -361,14 +880,14 @@ function pintarCmPlantilla(){
     fr.appendChild(bA);fr.appendChild(bR);oc.appendChild(fr);
     el.appendChild(oc);
   } else if(cl.ofertaRival){ cl.ofertaRival=null; }
-  const alCard=document.createElement("div");alCard.className="card";
-  alCard.innerHTML=`<h3>Alineaciones · <em>pareja A y pareja B</em></h3>`;
+  const alCard=document.createElement("div");alCard.className="card";alCard.id="cmAlin";
+  alCard.innerHTML=`<h3>${t("clb_hd_alin")}</h3>`;
   cl.plantilla.forEach((j,idx)=>{
     const row=document.createElement("div");row.className="fila";row.style.marginBottom="5px";row.style.alignItems="center";
     const enA=cl.alin.includes(idx), enB=cl.alinB&&cl.alinB.includes(idx);
     const nom=document.createElement("div");
     nom.style.flex="2";nom.style.fontSize="12px";nom.style.display="flex";nom.style.alignItems="center";nom.style.gap="6px";
-    nom.innerHTML=`<span>${avatarSVG(j,30)}</span><span>${enA?"🅰 ":enB?"🅱 ":""}${j.n} ${ladoChip(j.lado)} · <span style="color:var(--gris)">nivel ${mediaAttrs(j.attrs)}${j.lesion?" · LESIONADO":""}</span></span>`;
+    nom.innerHTML=`<span>${avatarSVG(j,30)}</span><span>${enA?"🅰 ":enB?"🅱 ":""}${j.n} ${ladoChip(j.lado)} · <span style="color:var(--gris)">${t("clb_nivel_n",{n:mediaAttrs(j.attrs)})}${j.lesion?" · "+t("clb_lesionado"):""}</span></span>`;
     const bA=document.createElement("button");bA.textContent="A";bA.className=enA?"selbtn on":"selbtn";bA.style.flex=".4";
     bA.onclick=()=>{
       if(enA) return;
@@ -376,6 +895,13 @@ function pintarCmPlantilla(){
       cl.alin=[cl.alin[1],idx];
       guardar();pintarClubM();
     };
+    // cesión: al que no juega se le presta. Ahorras ficha y él crece, pero no lo tienes.
+    if(j.cedido){
+      const ced=document.createElement("div");ced.className="foot";ced.style.flex="1";ced.style.textAlign="right";ced.style.color="var(--oro)";
+      ced.textContent=t("ces_cedido",{club:(CLUBES_NPC[j.cedido.club]||{n:"—"}).n,n:Math.max(0,j.cedido.hasta-(cl.semana|0))});
+      row.appendChild(nom);row.appendChild(ced);alCard.appendChild(row);
+      return;
+    }
     const bB=document.createElement("button");bB.textContent="B";bB.className=enB?"selbtn on":"selbtn";bB.style.flex=".4";
     bB.onclick=()=>{
       if(enA) return;
@@ -402,6 +928,7 @@ function pintarCmPlantilla(){
     d.innerHTML=`<h3>${j.pais||""} ${j.n} · <em>${mediaAttrs(j.attrs)}</em></h3>
       <div class="meta" style="margin-top:0">
         <div class="chip">${j.edad} años</div>
+        ${j.dela_casa?`<div class="chip" style="color:var(--lima)" title="${j.debut?t("can_pill_debut",{t:j.debut.t}):""}">🌱 ${t("can_pill_casa")}${j.debut?` · ${t("can_pill_debut",{t:j.debut.t})}`:""}</div>`:""}
         <div class="chip">${estiloNombre(j.estilo)}</div>
         <div class="chip">${persoNombre(j.perso)}</div>
         <div class="chip">Salario <b>${salarioDe(j)}€</b></div>
@@ -409,15 +936,33 @@ function pintarCmPlantilla(){
         <div class="chip">${t("kpi_confianza2")} <b style="color:${colAttr(j.conf)}">${j.conf}</b></div>
         <div class="chip">Moral <b style="color:${colAttr(moralC)}">${moralC}</b></div>
         <div class="chip">Contrato <b>${ct.temporadas||1} temp.</b></div>
-        <div class="chip">Cláusula <b>${(valorClausula(j)).toLocaleString("es")}€</b></div>
-        ${rolJ?`<div class="chip lima">titular ${rolJ}</div>`:""}
+        <div class="chip">${t("clb_clausula")} <b>${(valorClausula(j)).toLocaleString("es")}€</b></div>
+        ${rolJ?`<div class="chip lima">${t("clb_titular",{rol:rolJ})}</div>`:""}
       </div>
       <div class="foot" style="text-align:left;margin-top:6px;color:${est.col<0?"var(--rojo)":est.col>0?"var(--verde)":"var(--gris)"}">${est.clave==="salir"?"🚪":est.clave==="exige"?"😠":est.clave==="dudas"?"🤔":"🙂"} ${est.txt}</div>
       ${chipRasgos(j)?`<div style="margin-top:4px">${chipRasgos(j)}</div>`:""}
       <div class="attrs" style="margin-top:10px">${attrHtml(j.attrs)}</div>`;
-    if(cl.plantilla.length>2&&!cl.alin.includes(idx)&&!(cl.alinB&&cl.alinB.includes(idx))){
+    /* Ceder es la alternativa a vender: no cobras, pero no lo pierdes y vuelve
+       mejor. Solo se puede con el que sobra de verdad. */
+    if(j.cedido){
+      const cd=document.createElement("div");cd.className="foot";cd.style.textAlign="left";cd.style.color="var(--oro)";cd.style.marginTop="8px";
+      cd.textContent=t("ces_cedido",{club:(CLUBES_NPC[j.cedido.club]||{n:"—"}).n,n:Math.max(0,j.cedido.hasta-(cl.semana|0))});
+      d.appendChild(cd);
+    } else if(!cl.alin.includes(idx)&&!(cl.alinB&&cl.alinB.includes(idx))){
+      const bc=document.createElement("button");bc.style.width="100%";bc.style.marginTop="8px";
+      const puede=cesionPosible(cl,j);
+      bc.textContent=puede?t("ces_ceder",{n:CES_SEMANAS}):t("ces_no");
+      bc.disabled=!puede;
+      if(puede) bc.onclick=()=>{
+        if(!cesionHaz(cl,j)) return;
+        avisa(t("ces_av",{n:j.n,sem:CES_SEMANAS}));
+        guardar();pintarClubM();
+      };
+      d.appendChild(bc);
+    }
+    if(cl.plantilla.length>2&&!j.cedido&&!cl.alin.includes(idx)&&!(cl.alinB&&cl.alinB.includes(idx))){
       const b=document.createElement("button");b.style.width="100%";b.style.marginTop="10px";
-      b.textContent=`Traspasar (+${mediaAttrs(j.attrs)*4}€)`;
+      b.textContent=t("clb_traspasar",{n:mediaAttrs(j.attrs)*4});
       b.onclick=()=>{
         cl.dinero+=mediaAttrs(j.attrs)*4;
         cl.plantilla.splice(idx,1);
@@ -433,36 +978,58 @@ function pintarCmPlantilla(){
   const m=document.createElement("div");m.className="card";
   m.innerHTML=`<h3>${t("clb_mercado_hd")}</h3>`;
   if(cl.plantilla.length>=6){
-    m.innerHTML+=`<div class="foot" style="text-align:left">Plantilla completa (6). Traspasa antes de fichar.</div>`;
+    m.innerHTML+=`<div class="foot" style="text-align:left">${t("clb_plantilla_llena")}</div>`;
   } else {
     cl.mercado.forEach((j,mi)=>{
-      const coste=costeFichaje(j);
+      const coste=costeFichajeCl(cl,j), sal=salarioDeCl(cl,j);
+      const af=afinidadFilo(cl,j), ok=fichable(cl,j);
       const d=document.createElement("div");d.className="opcion";
-      d.innerHTML=`<b>${j.n}</b> <span class="pill">nivel ${nivelTxt(j)}</span> <span class="pill">${j.edad} años</span> <span class="pill">${estiloNombre(j.estilo)}</span><div class="d">Fichaje ${coste}€ · salario ${salarioDe(j)}€/sem</div>`;
+      d.innerHTML=`<b>${j.n}</b> <span class="pill">${t("clb_nivel",{n:nivelTxt(j)})}</span> ${ladoChip(j.lado)} <span class="pill">${t("clb_anios",{n:j.edad})}</span> <span class="pill">${estiloNombre(j.estilo)}</span> <span class="pill" style="color:${afinidadColor(af)}">${afinidadTxt(af)}</span><div class="d">${t("clb_merc_ficha",{coste,sal})}</div>`;
       const b=document.createElement("button");b.style.width="100%";
-      b.textContent=cl.dinero<coste?"Caja insuficiente":`Fichar (${coste}€)`;
-      b.disabled=cl.dinero<coste;
+      b.textContent=!ok?t("cfil_no_firma"):cl.dinero<coste?t("clb_sin_caja"):t("clb_ficha_btn",{coste});
+      b.disabled=!ok||cl.dinero<coste;
       b.onclick=()=>{
         cl.dinero-=coste;
-        cl.plantilla.push({...j});
+        cl.plantilla.push({...j,salario:sal});
         cl.mercado.splice(mi,1);
         avisa(t("clb_fichaje",{n:j.n,club:cl.nombre}));
         guardar();pintarClubM();
       };
       d.appendChild(b);m.appendChild(d);
     });
-    if(!cl.mercado.length) m.innerHTML+=`<div class="foot" style="text-align:left">Mercado vacío. Nuevos agentes libres al cierre de temporada.</div>`;
+    if(!cl.mercado.length) m.innerHTML+=`<div class="foot" style="text-align:left">${t("clb_mercado_vacio")}</div>`;
   }
   el.appendChild(m);
 }
 function pintarCmClub(){
   const cl=G.clubG,el=document.getElementById("cm-clubpan");el.innerHTML="";
   const pre=prestigioClub(),socios=25+Math.round(pre*1.5);
+  /* Lo primero del panel es quiénes sois: la filosofía que decide a quién
+     convencéis, la junta que os ha tocado y el club al que hay que ganar. */
+  const cId=document.createElement("div");cId.className="card";
+  const der=derbiClub(cl), D=cl.derbi||{v:0,d:0};
+  const filo=filoClub(cl), jun=juntaClub(cl);
+  cId.innerHTML=`<h3>${t("cid_hd")}</h3>
+    <div style="border-left:3px solid ${cl.color};padding-left:9px;margin-bottom:9px">
+      <div style="font-size:calc(13px * var(--esc));font-weight:600">${filoNombre(filo)}</div>
+      <div style="font-size:calc(11px * var(--esc));color:var(--gris);font-style:italic">«${filoLema(filo)}»</div>
+      <div style="font-size:calc(11px * var(--esc));color:var(--gris2);margin-top:4px;line-height:1.45">${filoDesc(filo)}</div>
+    </div>
+    <div style="border-left:3px solid var(--borde2);padding-left:9px;margin-bottom:9px">
+      <div style="font-size:calc(12px * var(--esc));font-weight:600">${juntaNombre(jun)}</div>
+      <div style="font-size:calc(11px * var(--esc));color:var(--gris2);margin-top:3px;line-height:1.45">${juntaDesc(jun)}</div>
+      <div class="foot" style="text-align:left;margin-top:4px">${t("cid_junta_obj",{obj:(cl.junta||{}).objetivo||"—",pac:(cl.junta||{}).paciencia||0})}</div>
+    </div>
+    ${der?`<div style="border-left:3px solid ${der.color};padding-left:9px">
+      <div style="font-size:calc(12px * var(--esc));font-weight:600">${t("cder_hd")} · <span style="color:${der.color}">${der.n}</span></div>
+      <div class="foot" style="text-align:left;margin-top:3px">${(D.v+D.d)?t("cder_marcador",{rival:der.n,v:D.v,d:D.d}):t("cid_derbi_sin")}</div>
+    </div>`:""}`;
+  el.appendChild(cId);
   const c1=document.createElement("div");c1.className="card";
   c1.innerHTML=`<h3>${cl.nombre} · <em>finanzas</em></h3>
     <div class="meta" style="margin-top:0">
       <div class="chip">Prestigio <b>${pre}</b></div>
-      <div class="chip">Socios <b>+${socios}€/sem</b></div>
+      <div class="chip">${t("soc_hd")} <b>${(socAsegura(cl),cl.socios)}</b> <span style="color:var(--gris2)">${t("soc_"+socEstado(cl))}</span> <b style="color:var(--lima)">+${socIngreso(cl)}€/sem</b></div>
       <div class="chip">Salarios <b>-${salariosSemana()}€/sem</b></div>
       <div class="chip">Instalaciones <b>Nv ${cl.instal}</b></div>
       <div class="chip">Récord <b>${(cl.vd||{v:0,d:0}).v}-${(cl.vd||{v:0,d:0}).d}</b></div>
@@ -470,42 +1037,74 @@ function pintarCmClub(){
     </div>`;
   el.appendChild(c1);
   const c2=document.createElement("div");c2.className="card";
-  c2.innerHTML=`<h3>Instalaciones</h3>`;
+  c2.innerHTML=`<h3>${t("clb_hd_instal")}</h3>`;
   if(cl.instal<3){
     const coste=cl.instal===1?400:900;
     const d=document.createElement("div");d.className="opcion";
-    d.innerHTML=`<b>Mejorar a nivel ${cl.instal+1}</b><div class="d">${cl.instal===1?"Pistas propias: los entrenos rinden más.":"Centro de alto rendimiento: aún más."} · ${coste}€</div>`;
+    d.innerHTML=`<b>${t("clb_instal_mejorar",{n:cl.instal+1})}</b><div class="d">${t(cl.instal===1?"clb_instal_1_d":"clb_car_desc")} · ${coste}€</div>`;
     const b=document.createElement("button");b.style.width="100%";
-    b.textContent=cl.dinero<coste?"Caja insuficiente":`Mejorar (${coste}€)`;
+    b.textContent=cl.dinero<coste?t("mkt_caja"):t("clb_instal_btn",{coste});
     b.disabled=cl.dinero<coste;
     b.onclick=()=>{cl.dinero-=coste;cl.instal++;avisa(t("clb_instal",{n:cl.instal}));guardar();pintarClubM();};
     d.appendChild(b);c2.appendChild(d);
-  } else c2.innerHTML+=`<div class="foot" style="text-align:left">Centro de alto rendimiento ✔</div>`;
+  } else c2.innerHTML+=`<div class="foot" style="text-align:left">${t("clb_car_hecho")}</div>`;
   el.appendChild(c2);
   const c3=document.createElement("div");c3.className="card";
-  c3.innerHTML=`<h3>Academia</h3>`;
+  c3.innerHTML=`<h3>${t("can_hd")}</h3>`;
   if(!cl.academia){
     const d=document.createElement("div");d.className="opcion";
-    d.innerHTML=`<b>Abrir academia</b><div class="d">Cada temporada forma una joven promesa. · 300€</div>`;
+    d.innerHTML=`<b>${t("clb_academia")}</b><div class="d">${t("clb_academia_d")}</div>`;
     const b=document.createElement("button");b.style.width="100%";
-    b.textContent=cl.dinero<300?"Caja insuficiente":"Abrir academia (300€)";
+    b.textContent=cl.dinero<300?t("mkt_caja"):t("clb_academia_btn");
     b.disabled=cl.dinero<300;
-    b.onclick=()=>{cl.dinero-=300;cl.academia=true;avisa("Academia abierta.");guardar();pintarClubM();};
+    b.onclick=()=>{cl.dinero-=300;cl.academia=true;avisa(t("clb_academia_ok"),"ok");guardar();pintarClubM();};
     d.appendChild(b);c3.appendChild(d);
   } else if(!cl.cantera.length){
-    c3.innerHTML+=`<div class="foot" style="text-align:left">La academia trabaja. Promesas al cierre de temporada.</div>`;
+    c3.innerHTML+=`<div class="foot" style="text-align:left">${t("clb_academia_trabaja")}</div>`;
   } else {
     cl.cantera.forEach((j,idx)=>{
       const d=document.createElement("div");d.className="opcion";
-      d.innerHTML=`<b>${j.n}</b> <span class="pill">nivel ${nivelTxt(j)}</span> <span class="pill">${j.edad} años</span> <span class="pill">${estiloNombre(j.estilo)}</span><div class="d">Promesa de la academia — nadie sabe su techo todavía</div>`;
+      const anios=j.aniosCan|0, il=ilusionTxt(j);
+      // el historial: en qué temporada creció, cuánto y en qué golpe
+      const hist=(j.hist||[]).slice(-4).map(x=>x.b>x.a
+        ? t("can_linea",{t:x.t,a:x.a,b:x.b,d:"+"+(x.b-x.a),golpe:atNombre(x.foco||"fondo")})
+        : t("can_estanca",{t:x.t,a:x.a,b:x.b})
+      ).map(l=>`<div style="font-size:calc(10.5px * var(--esc));color:var(--gris2);padding:1px 0">${l}</div>`).join("");
+      d.innerHTML=`<b>${j.n}</b> <span class="pill">${t("clb_nivel_n",{n:mediaAttrs(j.attrs)})}</span> <span class="pill">${t("clb_anios_n",{n:j.edad})}</span> <span class="pill">${estiloNombre(j.estilo)}</span> <span class="pill oro">${techoTxt(cl,j)}</span>
+        <div class="d">${anios<=1?t("can_anio1"):t("can_anios",{n:anios+1})}${j.origen?` · ${j.origen.por?t("can_origen_ojeador",{n:j.origen.por,t:j.origen.t}):t("can_origen_casa",{t:j.origen.t})}`:""}</div>
+        <div style="color:${il.col};font-size:calc(11px * var(--esc));margin-top:3px">${t(il.k)}</div>
+        ${canteraGrafico(j)}
+        ${hist?`<div style="margin-top:2px"><span class="foot" style="text-align:left">${t("can_evol")}</span>${hist}</div>`:""}
+        <div class="foot" style="text-align:left;margin-top:4px">${t(consejoSubir(cl,j))}</div>`;
       const f=document.createElement("div");f.className="fila";
-      const b1=document.createElement("button");b1.className="pri";b1.textContent="Subir al primer equipo";
+      const b1=document.createElement("button");b1.className="pri";b1.textContent=t("can_subir");
       b1.disabled=cl.plantilla.length>=6;
-      b1.onclick=()=>{cl.plantilla.push({...j,salario:Math.round(mediaAttrs(j.attrs)*.6),energia:100,conf:55,lesion:null});cl.cantera.splice(idx,1);avisa(t("clb_sube",{n:j.n}));guardar();pintarClubM();};
-      const b2=document.createElement("button");b2.textContent=`Traspasar (+${mediaAttrs(j.attrs)*6}€)`;
-      b2.onclick=()=>{cl.dinero+=mediaAttrs(j.attrs)*6;cl.cantera.splice(idx,1);avisa(t("clb_promesa_out",{n:j.n}));guardar();pintarClubM();};
+      b1.onclick=()=>{
+        cl.plantilla.push({...j,salario:Math.round(mediaAttrs(j.attrs)*.6),energia:100,conf:55,lesion:null,dela_casa:true,aniosCan:anios,subida:temporada()});
+        (cl.libroCantera=cl.libroCantera||[]).push({n:j.n,fin:"sube",t:temporada(),a:anios,media:mediaAttrs(j.attrs)});
+        cl.cantera.splice(idx,1);cl._subidos=(cl._subidos||0)+1;
+        avisa(t("clb_sube",{n:j.n}));
+        noticia("fichaje",t("can_not_debut_t",{n:j.n,club:cl.nombre}),t("can_not_debut_s",{a:anios+1}));
+        guardar();pintarClubM();
+      };
+      const b2=document.createElement("button");b2.textContent=t("clb_traspasar",{n:mediaAttrs(j.attrs)*6});
+      b2.onclick=()=>{cl.dinero+=mediaAttrs(j.attrs)*6;
+        const linea={n:j.n,fin:"venta",t:temporada(),a:j.aniosCan|0,media:mediaAttrs(j.attrs)};
+        // vendido no es borrado: si el circuito lo ficha, te lo puedes cruzar
+        const reg=canRegresaAlCircuito(cl,j,"venta");
+        if(reg) linea.dest=reg.pareja.nombre;
+        (cl.libroCantera=cl.libroCantera||[]).push(linea);
+        cl.cantera.splice(idx,1);avisa(t("clb_promesa_out",{n:j.n}));guardar();pintarClubM();};
       f.appendChild(b1);f.appendChild(b2);d.appendChild(f);c3.appendChild(d);
     });
+  }
+  /* El libro de la cantera: el club recuerda a todos los que pasaron por ella,
+     también a los que se fueron. Tres finales posibles y cada uno se cuenta. */
+  if(cl.libroCantera&&cl.libroCantera.length){
+    const d=document.createElement("div");d.className="opcion";
+    d.innerHTML=`<b>📖 ${t("can_libro")}</b>`+cl.libroCantera.slice(-6).reverse().map(x=>
+      `<div style="font-size:calc(10.5px * var(--esc));color:var(--gris2);padding:1px 0">${t("can_libro_"+x.fin,{n:x.n,t:x.t,a:x.a,media:x.media})}${x.dest?` · ${t("can_libro_dest",{pareja:x.dest})}`:""}</div>`).join("");
+    c3.appendChild(d);
   }
   el.appendChild(c3);
   // reformas
@@ -552,7 +1151,7 @@ function pintarCmClub(){
   renderEquipoStaff(c5.querySelector("#cmEquipoStaff"));
   renderMercadoStaff(c5.querySelector("#cmMercadoStaff"));
   const c6=document.createElement("div");c6.className="card";
-  c6.innerHTML=`<h3>Hitos del club</h3><div id="cmHitos"></div>`;
+  c6.innerHTML=`<h3>${t("clb_hd_hitos")}</h3><div id="cmHitos"></div>`;
   el.appendChild(c6);
   renderHitos(c6.querySelector("#cmHitos"));
   const c7=document.createElement("div");c7.className="card";
@@ -565,21 +1164,22 @@ function entrenaUnoClub(j,factor){
   if(j.lesion||factor<=0) return null;
   const k=(j.plan&&j.plan!=="auto")?j.plan:ATTR_KEYS.reduce((a,b)=>j.attrs[a]<=j.attrs[b]?a:b);
   const v=j.attrs[k];
-  let g=v<55?2:v<70?1:(Math.random()<.5?1:0);
-  if(cl.instal>=2&&Math.random()<.4) g+=1;
-  if(cl.instal>=3&&Math.random()<.3) g+=1;
-  if(cl.reformas&&cl.reformas.video&&Math.random()<.35) g+=1;
+  let g=v<55?2:v<70?1:(rnd()<.5?1:0);
+  if(cl.instal>=2&&rnd()<.4) g+=1;
+  if(cl.instal>=3&&rnd()<.3) g+=1;
+  if(cl.reformas&&cl.reformas.video&&rnd()<.35) g+=1;
   const entNiv=(cl.staff&&cl.staff.entrenador&&cl.staff.entrenador.niv)||0;
-  if(entNiv&&Math.random()<.12*entNiv) g+=1;   // buen entrenador jefe = mejor progresión
+  const entPista=(cl.staff&&cl.staff.entrenador&&cl.staff.entrenador.perfil==="pista")?1.5:1;
+  if(entNiv&&rnd()<.12*entNiv*entPista) g+=1;   // buen entrenador jefe = mejor progresión; el de pista, más aún
   g=ajustaGanancia(g,it,j.edad);
-  if(v>=58&&g>0&&Math.random()<.5) g--;
-  if(v>=72&&g>0&&Math.random()<.5) g--;
-  if(factor<1&&g>0&&Math.random()>factor) g=Math.max(0,g-1);
-  if(factor<1&&Math.random()>factor+.25) g=0;
-  if(g>0){ const rf=rasgosEntreno(j); if(rf>1&&Math.random()<rf-1) g++; else if(rf<1&&Math.random()<1-rf) g=Math.max(0,g-1); }   // talento / entrena mal
+  if(v>=58&&g>0&&rnd()<.5) g--;
+  if(v>=72&&g>0&&rnd()<.5) g--;
+  if(factor<1&&g>0&&rnd()>factor) g=Math.max(0,g-1);
+  if(factor<1&&rnd()>factor+.25) g=0;
+  if(g>0){ const rf=rasgosEntreno(j); if(rf>1&&rnd()<rf-1) g++; else if(rf<1&&rnd()<1-rf) g=Math.max(0,g-1); }   // talento / entrena mal
   j.attrs[k]=clamp(v+g,20,Math.min(96,(j.pot||96)+4));
-  if(factor===1) j.energia=clamp(j.energia-(it==="suave"?10:it==="intensa"?26:17),0,100);
-  if(factor===1&&it==="intensa"&&Math.random()<.05&&!j.lesion){
+  if(factor===1) j.energia=clamp(j.energia-(it==="suave"?7:it==="intensa"?19:12),0,100);
+  if(factor===1&&it==="intensa"&&rnd()<.05&&!j.lesion){
     j.lesion={n:"sobrecarga por exceso de entrenamiento",k:"les_sobre",sem:1};
     return `${j.n} ${k}+${g}⚠`;
   }
@@ -595,8 +1195,9 @@ document.getElementById("cmBtnDescanso").onclick=()=>{
     j.energia=clamp(j.energia+23,0,100);
     if(j.lesion){j.lesion.sem--;if(j.lesion.sem<=0){const s=curarLesion(j);avisa(t("les_alta_club",{n:j.n})+(s?t("les_merma_club",{pct:s.pct,sem:s.sem}):""));}}
     decaeMerma(j);
+    curaFragilidad(j);
   });
-  avisa("Semana de descanso y viajes del equipo.");
+  avisa(t("clb_descanso"));
   avanzarSemanaClub();
 };
 // Asegura que cada jugador tiene contrato y moral de plantilla (guardados viejos incluidos).
@@ -609,6 +1210,8 @@ function asegurarPlantillaClub(cl){
 function avanzarSemanaClub(){
   const cl=G.clubG;
   asegurarPlantillaClub(cl);
+  evSemana(cl,cl.semana,.16);      // el circuito también le cambia las reglas al club
+  semanaDeRumores(cl,cl.semana);   // el mercado también habla en el modo club
   const accion=cl._accion||"descanso"; cl._accion=null;
   const factor=accion==="entreno"?1:accion==="torneo"?0.5:0;
   if(factor>0){
@@ -619,13 +1222,29 @@ function avanzarSemanaClub(){
   simCircuito(cl._rivalesSemana);cl._rivalesSemana=[];
   prensaSemanal();
   cl.semana++;
-  const regen=10+(cl.reformas.gym?4:0)+(cl.staff.fisico?4:0);
+  const _cae=caducaSemanaRanking(cl.semana);
+  if(_cae>0) avisa(t("av_defiende_cae",{n:_cae}));
+  /* Mismo presupuesto que en carrera: con 10 de recuperación, un jugador que
+     entrena (17) y juega una eliminatoria (13) vivía a cero de energía, se caía
+     de `copDisponibles` y el club perdía las jornadas sin jugarlas. Medido:
+     0 de 20 eliminatorias con cuatro jugadores sanos en plantilla. */
+  const regen=24+(cl.reformas.gym?4:0)+(cl.staff.fisico?(cl.staff.fisico.perfil==="motor"?6:4):0);
   cl.plantilla.forEach((j,idx)=>{
     j.energia=clamp(j.energia+regen,0,100);
+    /* LA CONFIANZA SE ENFRÍA HACIA EL CENTRO. Sin esto era un trinquete de un
+       solo sentido: cada derrota resta 4 y nada devolvía nunca nada, así que
+       una mala racha dejaba a la segunda pareja clavada en 15 para siempre
+       —medido: conf 23 en la temporada 2 y ahí seguía en la 5—. Y encima era
+       una asimetría, porque las parejas del mundo se rehacen de cero en cada
+       eliminatoria y llegan siempre a 55: tus jugadores cargaban con las
+       cicatrices y los rivales no. Una mala racha tiene que doler unas
+       semanas, no marcarte la carrera. */
+    j.conf=clamp(j.conf+(j.conf<55?2:j.conf>55?-1:0),15,95);
     if(cl.reformas.residencia) j.conf=clamp(j.conf+1,15,95);
-    if(cl.staff.psico&&j.conf<50) j.conf=clamp(j.conf+2,15,95);
-    if(cl.staff.fisio&&j.lesion&&Math.random()<.3){j.lesion.sem--;if(j.lesion.sem<=0){const s=curarLesion(j);avisa(`El fisio adelanta el alta de ${j.n}.`+(s?` (mermado -${s.pct}%, ${s.sem} sem)`:""));}}
+    if(cl.staff.psico&&j.conf<50) j.conf=clamp(j.conf+(cl.staff.psico.perfil==="animo"?3:2),15,95);
+    if((cl.staff.fisio||cl.reformas.medico)&&j.lesion&&rnd()<(cl.staff.fisio&&cl.reformas.medico?.5:.3)+(cl.staff.fisio&&cl.staff.fisio.perfil==="recuperador"?.15:0)){j.lesion.sem--;if(j.lesion.sem<=0){const s=curarLesion(j);avisa(`El fisio adelanta el alta de ${j.n}.`+(s?` (mermado -${s.pct}%, ${s.sem} sem)`:""));}}
     decaeMerma(j);
+    curaFragilidad(j);   // el cuerpo se rehace con semanas sanas, también aquí
     // moral por minutos: el rol (titular A / B / banquillo) sube o quema la moral
     const rol=cl.alin.includes(idx)?"A":(cl.alinB&&cl.alinB.includes(idx))?"B":"banquillo";
     const antes=estadoJugadorClub(j).clave;
@@ -634,8 +1253,15 @@ function avanzarSemanaClub(){
     if(est.clave!==antes&&(est.clave==="exige"||est.clave==="salir")) avisa(`${est.clave==="salir"?"🚪":"😠"} ${j.n}: ${est.txt}`);
   });
   const posC_=miPuesto();
-  fansAdd(Math.round((cl.fans||0)*.002)+(posC_<=10?25:posC_<=20?8:1));
-  cl.dinero+=120+Math.round(prestigioClub()*10)+(cl.reformas.techada?150:0)+Math.round((cl.fans||0)*.01);
+  // Las gradas nuevas hacen que la afición crezca mucho más deprisa
+  fansAdd(Math.round((Math.round((cl.fans||0)*.002)+(posC_<=10?25:posC_<=20?8:1))*(cl.reformas.gradas?2.2:1)));
+  // Ingresos semanales. La tienda convierte afición en caja (el doble de lo que
+  // ya rendían los seguidores), así que cuanto más grande es el club más renta.
+  /* Un club vive de sus pistas y su bar todas las semanas, tenga prestigio o
+     no. Con 120€ de base un club recién fundado perdía 350€/semana haga lo que
+     haga, y ninguna decisión podía arreglarlo. */
+  cl.dinero+=420+Math.round(prestigioClub()*10)+(cl.reformas.techada?150:0)
+    +Math.round((cl.fans||0)*(cl.reformas.tienda?.03:.01));
   if(cl.sponsor) cl.dinero+=cl.sponsor.sem;
   // el patrocinador principal aparece/mejora con el prestigio
   if(!cl._sponsorCheck||cl._sponsorCheck<temporada()){
@@ -643,14 +1269,81 @@ function avanzarSemanaClub(){
     const pre=prestigioClub(), tr=pre>=60?4:pre>=35?3:pre>=15?2:1;   // ojo: no llamar `t` (taparía i18n)
     if(!cl.sponsor||cl.sponsor.tier<tr){
       const of=ofertaPatro(tr);
-      cl.sponsorOferta={marca:of.marca,sec:of.sec,tier:tr,sem:Math.round(of.sem*1.4),nombre:`${["","Bar","Deportes","","Grupo"][Math.floor(Math.random()*5)]} ${of.marca}`.trim()};
+      cl.sponsorOferta={marca:of.marca,sec:of.sec,tier:tr,sem:Math.round(of.sem*1.4),nombre:`${["","Bar","Deportes","","Grupo"][Math.floor(rnd()*5)]} ${of.marca}`.trim()};
       avisa(t("patro_club_av_oferta",{marca:cl.sponsorOferta.marca,tier:tierTxt(tr),sem:cl.sponsorOferta.sem}));
     }
   }
-  cl.dinero-=salariosSemana();
+  // los socios pagan cuota, y lo que pagan depende de cómo estén de contentos
+  socAsegura(cl);
+  cl.dinero+=socIngreso(cl);
+  if(cl.humorSocios<25&&!cl._avisoSoc){ cl._avisoSoc=true; avisa(t("soc_av_hartos")); }
+  if(cl.humorSocios>=45) cl._avisoSoc=false;
+  // los cedidos vuelven cuando toca, y vuelven crecidos
+  cesionSemana(cl).forEach(({j,k})=>avisa(t("ces_vuelve",{n:j.n,g:atNombre(k)})));
+  cl.dinero-=salariosSemana()-cesionAhorro(cl);
   if(cl.dinero<0) avisa(`⚠ Caja en números rojos (${cl.dinero}€). Los premios y socios tendrán que salvarte.`);
+  /* La deuda no puede crecer sola para siempre. A partir de cierto agujero la
+     junta interviene: primero vende al mejor que no sea titular, y si aun así
+     no se sanea, te destituye. Antes se llegaba a −480.000€ sin que pasara
+     nada, y eso convierte la economía en un adorno. */
+  const _tope=-Math.max(6000,salariosSemana()*8);
+  if(cl.dinero<_tope){
+    const _fuera=cl.plantilla
+      .map((j,i)=>({j,i}))
+      .filter(x=>!cl.alin.includes(x.i)&&!(cl.alinB&&cl.alinB.includes(x.i))&&!x.j.cedido)
+      // nunca por debajo de los cuatro que la Copa necesita: vender hasta
+      // dejarte sin segunda pareja es empujar al club al pozo, no salvarlo
+      .filter(()=>cl.plantilla.length>4)
+      .sort((a,b)=>mediaAttrs(b.j.attrs)-mediaAttrs(a.j.attrs))[0];
+    if(_fuera){
+      const monto=valorClausula(_fuera.j);
+      cl.dinero+=monto;
+      cl.plantilla.splice(_fuera.i,1);
+      cl.alin=cl.alin.map(a=>a>_fuera.i?a-1:a);
+      if(cl.alinB){ cl.alinB=cl.alinB.filter(x=>x!==_fuera.i).map(a=>a>_fuera.i?a-1:a); if(cl.alinB.length<2) cl.alinB=null; }
+      socMueve(cl,-40,-8);
+      avisa(t("clb_venta_forzosa",{n:_fuera.j.n,monto:monto.toLocaleString("es")}));
+      noticia("venta",t("clb_venta_forzosa_t"),t("clb_venta_forzosa",{n:_fuera.j.n,monto:monto.toLocaleString("es")}));
+    } else if(cl.junta){
+      cl.junta.paciencia=Math.min(cl.junta.paciencia,1);
+      if(!cl._avisoQuiebra){ cl._avisoQuiebra=true; avisa(t("clb_quiebra")); }
+    }
+  }
+  /* EL FISIO ES LA DECISIÓN QUE DECIDE LA COPA, Y HAY QUE DECIRLO. Medido
+     sobre diez fundaciones jugadas igual: sin fisio, mediana de 1,35
+     lesionados por semana y 8 destituciones de 10; con fisio, 0,42 y 4 de 10.
+     Es la diferencia entre llegar con cuatro sanos a la jornada o perder el
+     segundo punto en la mesa. Que sea una decisión está bien; que el jugador
+     tenga que deducirla a base de temporadas perdidas, no. */
+  if(!cl.staff.fisio){
+    const _tocados=cl.plantilla.filter(j=>j.lesion).length;
+    if(_tocados>=2&&!cl._avisoFisio){ cl._avisoFisio=true; avisa(t("clb_av_fisio",{n:_tocados})); }
+    if(_tocados===0) cl._avisoFisio=false;
+  }
   if((cl.semana-1)%SEMANAS_TEMP===0){
-    const posFin=miPuesto(), ptsFin=cl.pts;
+    /* La Copa se cierra antes que nada: es la competición del club. OJO con la
+       comparación: aquí `cl.semana` ya se ha incrementado, así que `temporada()`
+       devuelve la NUEVA, y la copa que hay que cerrar es la de la anterior. Con
+       `===temporada()` no se cerraba nunca: ni campeón, ni premio, ni título. */
+    if(cl.copa&&cl.copa.temp===temporada()-1){
+      // la tabla se lee de ESA copa, no por la vía normal: pedirla reconstruiría
+      // la competición a cero justo antes de mirar quién ha ganado
+      const pos=copPuestoDe(cl,cl.copa), premio=copPremio(pos);
+      cl.dinero+=premio;
+      if(pos===1){
+        cl.palmares.push(t("cop_palmares",{t:temporada()}));
+        socMueve(cl,320,12);
+        avisa(t("cop_fin_campeon",{club:cl.nombre,premio}));
+        noticia("titulo",t("cop_hd"),t("cop_fin_campeon",{club:cl.nombre,premio}));
+      } else {
+        socMueve(cl,pos<=3?90:pos>=7?-120:0,pos<=3?4:pos>=7?-6:0);
+        avisa(t("cop_fin_pos",{pos,n:COP_CLUBES,premio}));
+      }
+    }
+    /* Lo que se juzga es el puesto en la Copa de la temporada que acaba, leído
+       de esa copa (no por la vía normal, que la reconstruiría a cero). */
+    const posFin=(cl.copa&&typeof copPuestoDe==="function")?copPuestoDe(cl,cl.copa):miPuesto();
+    const ptsFin=cl.pts;
     const titsT=cl.palmares.filter(x=>x.includes(`(T${temporada()-1})`)).length;
     cl.hist=(cl.hist||[]); cl.hist.push({t:temporada()-1,pos:posFin,pts:ptsFin,tit:titsT});
     cl.calRes={}; cl.wildcards=2;
@@ -675,15 +1368,26 @@ function avanzarSemanaClub(){
     }
     repararAlin();
     // la junta pasa revista
-    const J=cl.junta||{objetivo:34,paciencia:2};
+    const J=cl.junta||{objetivo:34,paciencia:2,car:"paciente"};
+    const CAR=JUNTAS[juntaClub(cl)];
+    // la tacaña se fija en lo que cuesta la plantilla, no en dónde ha quedado
+    if(CAR.mirasueldos){
+      const sal=cl.plantilla.reduce((n,j)=>n+salarioDe(j),0)+staffSalarios();
+      if(sal>Math.max(900,(cl.fans||400)*1.6)) avisa(t("cjun_aviso_sal",{sal}));
+    }
     if(posFin<=J.objetivo){
-      J.paciencia=2;
+      /* El mismo suelo de dos temporadas que al fundar. Sin él, una junta
+         `corto` (margen 1) te dejaba con UNA temporada de cuerda cada vez que
+         cumplías, así que cumplir no compraba tranquilidad: compraba estar a
+         una mala temporada del despido, para siempre. */
+      J.paciencia=Math.max(2,CAR.margen);
       cl._juntaOk=(cl._juntaOk||0)+1;
-      const bonus=3000+Math.max(0,(J.objetivo-posFin))*200;
+      const bonus=Math.round((3000+Math.max(0,(J.objetivo-posFin))*200)*CAR.prima);
       cl.dinero+=bonus;
       avisa(t("clb_junta_ok",{pos:posFin,obj:J.objetivo,bonus}));
     } else {
       J.paciencia--;
+      if(J.paciencia===1) avisa(t("cjun_ultima"));
       if(J.paciencia<=0){
         noticia("hito",t("not_destituido_t"),t("not_destituido_s",{obj:J.objetivo}));
         avisa(t("clb_destituido",{pos:posFin,obj:J.objetivo}));
@@ -702,11 +1406,24 @@ function avanzarSemanaClub(){
         avisa(t("sl_av_llega"));
       }
     }
-    J.objetivo=Math.max(3,Math.round(Math.min(posFin,J.objetivo)*.85));
+    /* EL OBJETIVO SOLO SE APRIETA SI LO CUMPLES. Antes se apretaba siempre, y
+       como usaba `min(posFin, objetivo)`, FALLAR lo endurecía: quedabas 8º con
+       el 3º pedido y la temporada siguiente te pedían el 2º. Medido sobre diez
+       fundaciones jugadas con fisio y plantilla de cinco, seis acababan
+       destituidas en dos temporadas por esa escalera imposible.
+       Que te pidan más por haber ganado es la historia de cualquier banquillo;
+       que te pidan más por haber perdido no es exigencia, es un cepo. */
+    /* Y el objetivo no baja del segundo puesto. Al apretarse tras cada éxito
+       acababa en «1º o a la calle», y eso combinado con la paciencia corta era
+       una trampa cerrada: medido, un club que ganó la Copa DOS AÑOS SEGUIDOS
+       terminó destituido por quedar segundo al tercero. Ganar el título tiene
+       que comprar tranquilidad, no ponerte la soga. */
+    if(posFin<=J.objetivo)
+      J.objetivo=Math.max(2,Math.round(Math.min(posFin,J.objetivo)*CAR.dureza));
     cl.junta=J;
     avisa(t("clb_junta_nuevo",{obj:J.objetivo}));
     evolucionaMundo();
-    cl.pts=Math.round(cl.pts*.55);
+    // los puntos caducan solos a las 52 semanas: no hay recorte de cierre
     cl.plantilla.forEach(j=>{
       j.edad++;
       for(let i=0;i<2;i++){
@@ -716,31 +1433,43 @@ function avanzarSemanaClub(){
       }
     });
     cl.mercado=mkMercadoLibre(cl.sexo||"M");
-    if(cl.staff.ojeador){ for(let i=0;i<3;i++) cl.mercado.push(mkAgente(56,72,cl.sexo||"M")); }
+    // el ojeador «de mercado» trae mejores nombres a la lista; el «de cantera»
+    // hace su trabajo en la academia (mejor techo de lo que se presenta)
+    if(cl.staff.ojeador){ const _oM=cl.staff.ojeador.perfil==="mercado"; for(let i=0;i<3;i++) cl.mercado.push(_oM?mkAgente(60,78,cl.sexo||"M"):mkAgente(56,72,cl.sexo||"M")); }
     // los clubes rivales también fichan
-    if(cl.mercado.length>4&&Math.random()<.8){
-      const qi=Math.floor(Math.random()*cl.mercado.length);
+    if(cl.mercado.length>4&&rnd()<.8){
+      const qi=Math.floor(rnd()*cl.mercado.length);
       const jj=cl.mercado.splice(qi,1)[0];
       avisa(`📰 ${jj.n} ficha por el ${pick(CLUBES_NPC).n}.`);
     }
     // ...y vienen a por los tuyos (nunca por tu pareja A)
-    if(!cl.ofertaRival&&cl.plantilla.length>2&&Math.random()<.55){
+    if(!cl.ofertaRival&&cl.plantilla.length>2&&rnd()<.55){
       // van antes a por los descontentos (los que piden salir), y ofrecen en torno a la cláusula
       const cands=cl.plantilla.map((j,i)=>i).filter(i=>!cl.alin.includes(i));
       if(cands.length){
         const descon=cands.filter(i=>estadoJugadorClub(cl.plantilla[i]).clave==="salir");
-        const ji=pick(descon.length?descon:cands), cr=Math.floor(Math.random()*9), jj=cl.plantilla[ji];
+        const ji=pick(descon.length?descon:cands), cr=clubAlAzar(), jj=cl.plantilla[ji];
         const quiereIrse=estadoJugadorClub(jj).clave==="salir";
         cl.ofertaRival={clubIdx:cr,jugIdx:ji,monto:Math.round(valorClausula(jj)*R(quiereIrse?.75:.85,1.1))};
         avisa(`📋 El ${CLUBES_NPC[cr].n} ofrece ${cl.ofertaRival.monto}€ por ${jj.n} (cláusula ${valorClausula(jj).toLocaleString("es")}€).${quiereIrse?` ${jj.n} quiere salir: presiona por marcharse.`:""} Decide en Plantilla.`);
       }
     }
-    avisa(`— Cierre de temporada ${temporada()-1}. El ranking arrastra el 55% y llegan nuevos agentes libres${cl.staff.ojeador?" (el ojeador trae joyas extra)":""}.`);
+    avisa(`— Cierre de temporada ${temporada()-1}. El ranking arrastra el 55% y llegan nuevos agentes libres${cl.staff.ojeador?t("clb_ojeador_extra"):""}.`);
+    // la academia cierra su temporada: los de casa crecen, se cansan o se van
+    if(cl.academia) evolucionaCantera(cl);
     if(cl.academia&&cl.cantera.length<3){
-      const j=mkAgente(42+cl.instal*2,50+cl.instal*2,cl.sexo||"M");
-      j.edad=17;
+      // La escuela de tecnificación sube el suelo Y el techo de lo que sale
+      const bono=cl.reformas&&cl.reformas.escuela?8:0;
+      const j=mkAgente(42+cl.instal*2+bono,50+cl.instal*2+bono,cl.sexo||"M");
+      j.edad=Math.round(R(15,17));
+      if(bono) j.pot=Math.min(95,(j.pot||60)+6);
+      // el ojeador de cantera encuentra chavales con más techo: es SU tema
+      if(cl.staff&&cl.staff.ojeador&&cl.staff.ojeador.perfil==="cantera") j.pot=Math.min(95,(j.pot||60)+4);
+      j.aniosCan=0; j.ilusion=CAN_ILUSION0; j.hist=[];
+      // quién lo encontró y cuándo: es el principio de su historia
+      j.origen={t:temporada(),por:(cl.staff&&cl.staff.ojeador)?cl.staff.ojeador.n:null};
       cl.cantera.push(j);
-      avisa(`🎓 La academia presenta a ${j.n} (${mediaAttrs(j.attrs)} de media).`);
+      avisa(t("clb_academia_presenta",{n:j.n,media:mediaAttrs(j.attrs)}),"ok");
     }
   }
   ofertaStaffSemanal();

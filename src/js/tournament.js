@@ -3,6 +3,13 @@
 ================================================================ */
 function rivalDeFase(base,fase,usados){
   const _sx=miSexo();
+  /* El primer rival de tu carrera vuelve a aparecer: es lo que convierte a una
+     pareja cualquiera en «esos». Solo las dos primeras temporadas y solo en las
+     rondas de entrada; después manda el sistema de némesis. */
+  if(G.modo==="carrera"&&typeof arrSorteaRival==="function"){
+    const rd=arrSorteaRival(G.carrera,fase);
+    if(rd&&!usados.has(rd.id)&&(rd.sexo||"M")===_sx){ usados.add(rd.id); return rd; }
+  }
   const target=base+FASE_OFFSET[fase];
   let margen=5,cand=[];
   while(cand.length<1&&margen<30){
@@ -13,32 +20,241 @@ function rivalDeFase(base,fase,usados){
   usados.add(r.id);
   return r;
 }
+/* ================================================================
+   EL CUADRO
+
+   Hasta ahora un torneo eran seis rivales sueltos, uno por ronda, generados por
+   separado en el momento de inscribirse. No había torneo alrededor: nadie más
+   jugaba, no existía la otra mitad del cuadro y daba igual quién cayera. En un
+   juego de raqueta eso se nota, porque el cuadro es donde está la historia —
+   que el primer cabeza de serie caiga en octavos te cambia el camino y lo sabes
+   al mirar el papel.
+
+   Ahora hay un cuadro final de 16 con siembra: los mejores se reparten por las
+   esquinas para no cruzarse antes de tiempo, tú ocupas tu sitio según ranking,
+   y cada ronda se resuelven TODOS los cruces. Tu siguiente rival es quien
+   realmente haya ganado su partido, no una tirada nueva.
+
+   Los cruces entre parejas del ordenador se resuelven por probabilidad según la
+   diferencia de nivel, no simulando el partido punto a punto: son 15 partidos
+   por torneo y hay que abrir el cuadro sin que se note la espera.
+================================================================ */
+const CUADRO_N=16;                 // parejas del cuadro final (octavos → final)
+const CUADRO_FASE0=2;              // el cuadro final empieza en octavos
+
+/* Orden de siembra estándar: el 1 y el 2 en extremos opuestos, el 3 y el 4 en
+   los cuartos que no les tocan, etc. Así los favoritos solo se cruzan al final. */
+const SIEMBRA_16=[0,15,8,7,4,11,12,3,2,13,10,5,6,9,14,1];
+/* Los Maestros son ocho parejas y empiezan en cuartos: su cuadro es otro. */
+const SIEMBRA_8=[0,7,4,3,2,5,6,1];
+const CUADRO_TF_FASE=3;
+
+/* Probabilidad de que A gane a B por diferencia de nivel. Esto resuelve los
+   cruces del cuadro que NO juegas tú, así que su trabajo es predecir lo que
+   habría pasado de simularlos: la constante sale de medir el motor de verdad,
+   no de elegir un número redondo.
+
+   Con 12 el cuadro y el motor se contradecían —el cuadro daba un 91% a doce
+   puntos de diferencia y el motor medido da un 95%—, y esa grieta significaba
+   que las parejas del ordenador avanzaban con una lógica distinta de la que
+   sufres tú en la pista. Ajustada sobre la tabla medida (+4 → 70%, +6 → 77%,
+   +8 → 87%, +12 → 95%). Si tocas el motor, vuelve a medirla. */
+function probGana(nA,nB){ return 1/(1+Math.pow(10,(nB-nA)/9)); }
+/* LO QUE CUESTA UN PARTIDO, Y POR QUÉ SUBE CON LA RONDA.
+   Con un coste plano de 7 la energía dejaba de apretar en cuanto eras bueno:
+   medido, un jugador de nivel 86 competía 51 de las 52 semanas del año, jugaba
+   137 partidos y ganaba 20 títulos sin saltarse nada. Un profesional de verdad
+   juega veintitantos torneos, no cincuenta, y elegir la gira es media gracia
+   del juego.
+
+   Subirlo a secas era volver a la trampa de la que costó salir —con la energía
+   cara, entrenar deja de compensar y ese fue el fallo que casi hunde el modo
+   carrera—. Así que el coste escala con la RONDA: una primera ronda sigue
+   costando lo de antes y una final cuesta el doble. Con eso paga el que llega
+   lejos, que es el que se está llevando los puntos y el dinero, y no el que se
+   está construyendo. Además es lo que pasa: las rondas finales son partidos más
+   largos y contra gente que corre más.
+
+   **SOLO EN CARRERA.** El club tiene su propio presupuesto de energía —sesión
+   7/12/19, eliminatoria de Copa 10, recuperación 24— medido aparte, y aplicarle
+   esta escala sin volver a medirlo le rompió las cuentas: sus mejores jugadores
+   vivían fundidos, no llegaban cuatro sanos a la jornada y el segundo punto se
+   perdía en la mesa. Medido: de 12 eliminatorias ganadas de 20 se pasó a 3 de
+   24, con el club destituido teniendo 295.000€ en caja. Cada modo tiene su
+   presupuesto y se tocan de uno en uno. */
+function costeEnergiaPartido(fase){ return 6+2*clamp(fase|0,0,5); }
+const COSTE_PARTIDO_CLUB=7;
+/* Nivel de una entrada del cuadro. Tu propia entrada no es una pareja del
+   mundo (no tiene .jug), así que lleva su nivel calculado dentro. */
+function nivCuadro(p){ return p?(p.yo?(p.nivel||50):nivelPareja(p)):0; }
+/* Nombre visible de una entrada del cuadro, resuelto al pintar para que
+   cambiar de idioma a mitad de torneo lo traduzca. */
+function nomCuadro(p){ return p?(p.yo?t("cua_tu_pareja"):p.nombre):t("cua_pendiente"); }
+
+/* Construye el cuadro final. Devuelve {ronda:{2:[...16]}, mi:índice} */
+function mkCuadro(cat,usados){
+  const sx=miSugSexo();
+  const base=cat.base;
+  /* Los Maestros no son un cuadro de 16 con previa: son los ocho mejores del
+     año y arrancan en cuartos. Sin esto, entrar en ellos dejaba la ronda vacía
+     y la pantalla del torneo reventaba al buscar rival. El fallo llevaba ahí
+     desde siempre, escondido: con el ranking viejo nadie llegaba al top 8. */
+  if(cat.tf){
+    const mejores=[...G.world.parejas]
+      .filter(p=>!usados.has(p.id)&&(p.sexo||"M")===sx&&!p.retiraT)
+      .sort((a,b)=>(b.pts|0)-(a.pts|0))
+      .slice(0,7);
+    mejores.forEach(r=>usados.add(r.id));
+    const yoTF={yo:true,nivel:nivelPareja({jug:miTeam().jug}),pts:(ent().pts|0)};
+    const todosTF=mejores.map(r=>({p:r,pts:r.pts|0})).concat([{p:yoTF,pts:yoTF.pts}]);
+    todosTF.sort((a,b)=>b.pts-a.pts);
+    const casillas=new Array(8).fill(null);
+    todosTF.forEach((x,i)=>{ if(i<8) casillas[SIEMBRA_8[i]]=x.p; });
+    return {ronda:{[CUADRO_TF_FASE]:casillas}, mi:casillas.findIndex(p=>p&&p.yo), n:8, tf:true};
+  }
+  // 15 rivales del nivel del torneo, de más fuerte a más flojo
+  const rivales=[];
+  for(let i=0;i<CUADRO_N-1;i++){
+    const target=base+8-i*(16/(CUADRO_N-1));    // del cabeza de serie al último
+    let margen=5,cand=[];
+    while(cand.length<1&&margen<34){
+      cand=G.world.parejas.filter(p=>!usados.has(p.id)&&(p.sexo||"M")===sx&&Math.abs(nivelPareja(p)-target)<=margen);
+      margen+=4;
+    }
+    const r=pick(cand)||pick(G.world.parejas.filter(p=>!usados.has(p.id)&&(p.sexo||"M")===sx));
+    if(!r) break;
+    usados.add(r.id); rivales.push(r);
+  }
+  // tú entras en la lista y se ordena todo por nivel: eso decide la siembra
+  // La siembra va por PUNTOS de ranking, que es como se siembra un torneo de
+  // verdad: por lo que has hecho, no por lo bueno que eres. Así el que sube
+  // fuerte nota el premio de estar sembrado y evita a los gordos hasta el final.
+  const yo={yo:true,nivel:nivelPareja({jug:miTeam().jug}),pts:(ent().pts|0)};
+  const todos=rivales.map(r=>({p:r,pts:r.pts|0})).concat([{p:yo,pts:yo.pts}]);
+  todos.sort((a,b)=>b.pts-a.pts);
+  // se coloca cada uno en su casilla según la siembra
+  const slots=new Array(CUADRO_N).fill(null);
+  todos.forEach((x,i)=>{ if(i<CUADRO_N) slots[SIEMBRA_16[i]]=x.p; });
+  return {ronda:{[CUADRO_FASE0]:slots}, mi:slots.findIndex(p=>p&&p.yo), n:CUADRO_N};
+}
+/* Sexo del circuito en el que compites (envoltorio con respaldo). */
+function miSugSexo(){ return (typeof miSexo==="function")?miSexo():"M"; }
+
+/* Resuelve todos los cruces de una ronda del cuadro MENOS el tuyo, y deja
+   preparada la ronda siguiente. `miGane` dice cómo acabó el tuyo. */
+function resolverRondaCuadro(fase,miGane){
+  const c=torneo.cuadro; if(!c||!c.ronda[fase]) return [];
+  const act=c.ronda[fase], sig=[], sorpresas=[];
+  for(let i=0;i<act.length;i+=2){
+    const a=act[i], b=act[i+1];
+    if(!a&&!b){ sig.push(null); continue; }
+    if(!a||!b){ sig.push(a||b); continue; }
+    let gana;
+    if(a.yo||b.yo){ gana=(a.yo===!!miGane)?a:b; }   // el tuyo ya está jugado
+    else{
+      const nA=nivCuadro(a), nB=nivCuadro(b);
+      gana=rnd()<probGana(nA,nB)?a:b;
+      // campanada: gana el que tenía 6+ puntos menos de nivel
+      const perd=gana===a?b:a, dif=nivCuadro(perd)-nivCuadro(gana);
+      if(dif>=6) sorpresas.push({gana,perd,dif});
+    }
+    sig.push(gana);
+  }
+  c.ronda[fase+1]=sig;
+  return sorpresas;
+}
+/* Con quién te toca en la fase dada, según el cuadro. */
+function rivalDelCuadro(fase){
+  const c=torneo.cuadro; if(!c||!c.ronda[fase]) return null;
+  const r=c.ronda[fase], i=r.findIndex(p=>p&&p.yo);
+  if(i<0) return null;
+  const rival=r[i%2===0?i+1:i-1];
+  return (rival&&!rival.yo)?rival:null;
+}
+
+/* Pinta el papel: primero tu camino ronda a ronda y después el cuadro entero,
+   para que se vea quién anda por la otra mitad y quién ha caído. */
+function pintarCuadroHTML(){
+  const out=[];
+  // --- tu camino ---
+  out.push(`<div class="bclabel" style="border-top:none;padding-top:0">${t("cua_tu_camino")}</div>`);
+  FASES.forEach((fs,i)=>{
+    if(i<torneo.startFase){ out.push(`<div style="opacity:.35">${faseNombre(i)}: ${t("cua_exento")}</div>`); return; }
+    const rv=torneo.rivales[i];
+    const yaJugada=i<torneo.fase, ahora=i===torneo.fase;
+    const quien=rv?nomCuadro(rv):t("cua_pendiente");
+    out.push(`<div style="opacity:${ahora?1:yaJugada?.75:.5}">${faseNombre(i)}: ${t("cua_vs",{rival:quien})}`
+      +`${yaJugada?" ✔":""}${ahora?` <span style="color:var(--lima)">← ${t("cua_estais_aqui")}</span>`:""}</div>`);
+  });
+  // --- el cuadro completo ---
+  const c=torneo.cuadro;
+  if(c){
+    for(let f=CUADRO_FASE0;f<=5;f++){
+      const r=c.ronda[f]; if(!r||!r.length) break;
+      out.push(`<div class="bclabel">${faseNombre(f)}</div>`);
+      for(let i=0;i<r.length;i+=2){
+        const a=r[i], b=r[i+1];
+        if(!a&&!b) continue;
+        const mio=(a&&a.yo)||(b&&b.yo);
+        const col=mio?"var(--lima)":"var(--gris)";
+        out.push(`<div style="font-size:calc(10.5px * var(--esc));color:${col};padding:1px 0">`
+          +`${nomCuadro(a)} <span style="color:var(--gris2)">vs</span> ${nomCuadro(b)}</div>`);
+      }
+    }
+    const campeon=(c.ronda[6]||[])[0];
+    if(campeon) out.push(`<div class="bclabel">🏆 ${nomCuadro(campeon)}</div>`);
+  }
+  return out.join("");
+}
+
 function abrirTorneo(ci,wildcard){
   const cat=CATS[ci];
   if(G.modo==="club"){ repararAlin(); if(!alineacion()){ avisa(t("aviso_sin_plantilla")); return; } }
+  // irse de concentración es renunciar a competir esa semana: ese es su precio
+  if(G.modo==="carrera"&&typeof ctxBloqueaTorneo==="function"&&ctxBloqueaTorneo(G.carrera)){ avisa(t("ent_stage_bloquea")); return; }
   let ent2=entradaEn(ci);
   if(ent2===-1){ if(wildcard&&!cat.tf) ent2=0; else return; }
   const viaje=costeViaje(ci);
   const LIM_DEUDA=-800;   // puedes tirar de crédito para llegar a un torneo (los premios sanean)
   if(ent().dinero-viaje<LIM_DEUDA){ avisa(t("aviso_sin_viaje",{viaje})); return; }
   ent().dinero-=viaje;
+  if(G.modo==="carrera") G.carrera._giraViaje=viaje;   // el poso de la gira lo lee el cierre
   if(ent().dinero<0) avisa(t("aviso_numeros_rojos",{din:ent().dinero}));
   const startFase=ent2;
   const usados=new Set();
   const rivales=[];
-  for(let f=0;f<6;f++) rivales.push(f<startFase?null:rivalDeFase(cat.base,f,usados));
+  // El cuadro final decide los rivales de octavos en adelante; la previa sigue
+  // siendo un par de cruces sueltos, que es justo lo que es una previa.
+  const cuadro=mkCuadro(cat,usados);
+  for(let f=0;f<6;f++){
+    if(f<startFase){ rivales.push(null); continue; }
+    rivales.push(f<CUADRO_FASE0 ? rivalDeFase(cat.base,f,usados) : null);
+  }
   const _slot=slotSemana(semanaTemp());
   const _ciudad=(cat.premier&&_slot.premier===ci)?_slot.ciudad:null;
-  torneo={cat:ci,nombre:cat.n+(_ciudad?` · ${_ciudad}`:""),premierT:cat.premier,pts:cat.pts,premio:cat.premio,base:cat.base,fase:startFase,startFase,rivales,wildcard:!!wildcard};
+  torneo={cat:ci,nombre:catNombre(cat)+(_ciudad?` · ${_ciudad}`:""),premierT:cat.premier,pts:cat.pts,premio:cat.premio,base:cat.base,fase:startFase,startFase,rivales,cuadro,wildcard:!!wildcard};
+  // la promesa «grande» de la pareja se cumple ENTRANDO, no ganando
+  if(G.modo==="carrera"&&cat.premier) G.carrera._ultPremierSem=G.carrera.semana|0;
+  // si entras directo al cuadro final, tu primer rival ya está en el papel
+  if(startFase>=CUADRO_FASE0) torneo.rivales[startFase]=rivalDelCuadro(startFase);
+  /* «El sorteo no perdona»: cuando el evento está activo, tu primer rival es
+     tu archirrival. No es decoración: cambia si te inscribes o te guardas la
+     semana. */
+  if(typeof evFlag==="function"&&evFlag("nemesis")&&ent().nemesis){
+    const nem=G.world.parejas.find(p=>p.id===ent().nemesis.id);
+    if(nem&&nem.jug) torneo.rivales[startFase]=nem;
+  }
   if(cat.premier&&startFase===2&&G.modo==="carrera"&&!G.carrera.pro){
     G.carrera.pro=true;
     noticia("hito",t("not_prof_t"),t("not_prof_s"));
     avisa(t("aviso_cabezas_serie"));
   }
+  // el torneo de la semana también se comenta en la grada
+  if(rnd()<.35) post("torneo",{torneo:torneo.nombre});
   if(cat.premier){
-    const cuadro=rivales.filter(Boolean);
-    const cocoNiv=Math.max(...cuadro.map(r=>nivelPareja(r)));
-    const coco=cuadro.find(r=>nivelPareja(r)===cocoNiv);
+    const enJuego=(cuadro.ronda[CUADRO_FASE0]||[]).filter(p=>p&&!p.yo).concat(rivales.filter(Boolean));
+    const cocoNiv=Math.max(...enJuego.map(r=>nivCuadro(r)));
+    const coco=enJuego.find(r=>nivCuadro(r)===cocoNiv);
     const miNiv=G.modo==="carrera"?Math.round((mediaAttrs(G.carrera.attrs)+mediaAttrs(G.carrera.compi.attrs))/2):(alineacion()?Math.round(alineacion().reduce((a,j)=>a+mediaAttrs(j.attrs),0)/2):50);
     torneo.favNos=miNiv>=cocoNiv-1;
     avisa(torneo.favNos?t("aviso_fav_si",{torneo:torneo.nombre}):t("aviso_fav_no",{coco:coco.nombre,niv:cocoNiv}));
@@ -65,7 +281,7 @@ function pintarPlanPartido(){
   const ta=e.tactica; if(!ta.red)ta.red="normal"; if(!ta.clutch)ta.clutch="normal";
   const ent_=entrenadorActual();
   const row=document.getElementById("planPartido");
-  const btn=(g,v,txt)=>`<button class="selbtn${ta[g]===v?" on":""}" onclick="setTactPrev('${g}','${v}')">${txt}</button>`;
+  const btn=(g,v,txt)=>`<button class="selbtn${ta[g]===v?" on":""}" ${ac("setTactPrev",g,v)}>${txt}</button>`;
   const grupo=(lbl,g,opts)=>`<div class="pgrow"><span class="plbl">${lbl}</span><span class="pbtns">${opts.map(o=>btn(g,o[0],o[1])).join("")}</span></div>`;
   row.innerHTML=`<div class="phead">${t("tac_plan_hd")} <span>· ${t("tac_plan_sub")}</span></div>
   <div class="plangrid">
@@ -77,11 +293,14 @@ function pintarPlanPartido(){
   ${G.modo==="carrera"?`<div class="foot" style="text-align:left;margin-top:8px">${ent_.id>0?t("tac_coach_si",{n:ent_.n}):t("tac_coach_no")}</div>`:`<div class="foot" style="text-align:left;margin-top:8px">${t("tac_coach_club")}</div>`}`;
   document.getElementById("btnSimCoach").textContent=G.modo==="carrera"&&ent_.id>0?t("tac_sim_coach",{n:ent_.n}):t("tac_sim_banq");
 }
-function setTactPrev(g,v){ ent().tactica[g]=v; guardar(); pintarPlanPartido(); }
+/* `_plan` es la huella de que el jugador ha tocado el plan alguna vez. Hace
+   falta porque el plan neutro es una elección legítima: sin la marca no hay
+   forma de distinguir «lo he dejado en normal» de «ni lo he mirado». */
+function setTactPrev(g,v){ const ta=ent().tactica; ta[g]=v; ta._plan=1; guardar(); pintarPlanPartido(); }
 // Aplica la táctica que recomienda el informe del ojeador (un clic → plan listo).
 function aplicarTacticaRec(agres,diana,red,clutch){
   const ta=ent().tactica||(ent().tactica={agres:"normal",diana:"repartir"});
-  ta.agres=agres; ta.diana=diana; if(red)ta.red=red; if(clutch)ta.clutch=clutch;
+  ta.agres=agres; ta.diana=diana; if(red)ta.red=red; if(clutch)ta.clutch=clutch; ta._plan=1;
   guardar(); pintarPlanPartido();
   const agresTxt=(agres==="agresiva"?t("tac_op_deguello"):agres==="conservadora"?t("tac_op_segura"):t("tac_op_normal")).toLowerCase();
   const plan=(diana==="debil"?t("tac_av_flojo"):t("tac_av_repartir"))+" · "+agresTxt+
@@ -101,9 +320,31 @@ function coachTactica(){
   const diana = Math.abs((r.jug[0]?mediaAttrs(r.jug[0].attrs):50)-(r.jug[1]?mediaAttrs(r.jug[1].attrs):50))>=5?"debil":"repartir";
   TACT.agres=agres; TACT.diana=diana;
 }
+
+/* Levantar el trofeo. Solo para los títulos que pesan de verdad (ver
+   engine/drama.js): si saliera con cualquier torneo dejaría de significar nada. */
+function celebraTitulo(){
+  if(typeof document==="undefined"||!document.body||!torneo) return;
+  const e=ent(), cat=CATS[torneo.cat];
+  const n1=G.modo==="carrera"?G.carrera.nombre:(alineacion()?alineacion()[0].n:e.nombre);
+  const n2=G.modo==="carrera"?G.carrera.compi.n:(alineacion()?alineacion()[1].n:"");
+  const ov=document.getElementById("celebraModal")||(()=>{
+    const d=document.createElement("div");d.id="celebraModal";
+    d.style.cssText="position:fixed;inset:0;background:radial-gradient(ellipse at 50% 40%,#2A2410,#07090D 75%);z-index:88;display:flex;align-items:center;justify-content:center;padding:16px;text-align:center";
+    document.body.appendChild(d);return d;})();
+  ov.innerHTML=`<div style="max-width:460px">
+    <div style="font-size:calc(52px * var(--esc));line-height:1">🏆</div>
+    <div style="font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:calc(26px * var(--esc));color:var(--oro);margin:8px 0 2px;letter-spacing:1px">${torneo.nombre}</div>
+    ${(torneo.nombre||"").indexOf(catNombre(cat))<0?`<div class="foot" style="margin:0 0 4px">${t("dra_celebra_hd",{cat:catNombre(cat)})}</div>`:""}
+    <div style="font-size:calc(15px * var(--esc));margin:10px 0 16px">${t("dra_celebra_sub",{n1,n2})}</div>
+    <button class="pri" id="celebraOk" style="width:100%">${t("dra_celebra_cerrar")}</button>
+  </div>`;
+  const b=document.getElementById("celebraOk");
+  if(b) b.onclick=()=>quitarEl(ov);
+}
 function pintarTorneo(){
   pintarPlanPartido();
-  document.getElementById("tNombre").innerHTML=`${torneo.premierT?"PREMIER · ":"CIRCUITO FIP · "}${torneo.nombre} · <em>${faseNombre(torneo.fase)}</em>`;
+  document.getElementById("tNombre").innerHTML=`${t(torneo.premierT?"circ_elite":"circ_cont")} · ${torneo.nombre} · <em>${faseNombre(torneo.fase)}</em>`;
   const r=torneo.rivales[torneo.fase];
   const h2=ent().h2h[r.id];
   const h2txt=h2?`Os conocéis: ${h2.v}-${h2.d} a ${h2.v>=h2.d?"vuestro":"su"} favor.`:"Nunca os habéis enfrentado.";
@@ -115,26 +356,38 @@ function pintarTorneo(){
   let infoHTML="";
   if(inf){
     const li=(arr,col)=>arr.map(x=>`<div style="font-size:11px;color:${col};padding:1px 0;line-height:1.4">${x}</div>`).join("");
-    infoHTML=`<div class="scout">
+    infoHTML=`<div class="scout" id="scoutCaja">
       <div class="scoutHd">${t("scout_hd")}</div>
       ${li(inf.deb,"var(--verde)")}
       ${li(inf.fue,"var(--rojo)")}
       <div class="scoutRec"><b>${t("scout_plan")}</b> ${inf.recTxt}
-        <button class="selbtn" style="font-size:10px;padding:3px 8px;margin-left:4px" onclick="aplicarTacticaRec('${inf.rec.agres}','${inf.rec.diana}','${inf.rec.red}','${inf.rec.clutch}')">${t("scout_aplicar")}</button></div>
+        <button class="selbtn" style="font-size:10px;padding:3px 8px;margin-left:4px" ${ac("aplicarTacticaRec",inf.rec.agres,inf.rec.diana,inf.rec.red,inf.rec.clutch)}>${t("scout_aplicar")}</button></div>
     </div>`;
   }
-  document.getElementById("tInfo").innerHTML=`<span style="display:flex;gap:2px;margin-bottom:5px">${(r.jug||[]).map(j=>avatarSVG(j,38)).join("")}</span>Rival: <b>${r.nombre}</b>${clubR} <span class="pill">nivel ${nivelPareja(r)}</span> <span class="pill oro">#${rankingFilas().find(f=>f.id===r.id).pos}</span>${r.pro?' <span class="tagpro">PRO</span>':""}<br>
+  /* Qué clase de pareja tienes enfrente. Sale de sus atributos —los mismos que
+     ya deciden cómo juegan—, así que la etiqueta nunca miente. */
+  const _iden=(typeof identidadPareja==="function"&&r.jug)?identidadPareja(r):null;
+  const _idenHTML=_iden?`<div class="scout" style="margin:7px 0 0"><div class="scoutHd">${t("tac_riv_hd")} · ${identNombre(_iden)}</div><div style="font-size:11.5px;line-height:1.45">${identDesc(_iden)}</div><div class="scoutRec" style="margin-top:5px">${identContra(_iden)}</div></div>`:"";
+  document.getElementById("tInfo").innerHTML=`<span style="display:flex;gap:2px;margin-bottom:5px">${(r.jug||[]).map(j=>avatarSVG(j,38)).join("")}</span>Rival: <b>${r.nombre}</b>${clubR} <span class="pill">nivel ${nivelPareja(r)}</span> <span class="pill oro">#${rankingFilas().find(f=>f.id===r.id).pos}</span>${r.pro?' <span class="tagpro">PRO</span>':""}${_iden?` <span class="pill" style="color:var(--oro)">${identNombre(_iden)}</span>`:""}<br>
   <span style="font-size:11px;color:var(--gris)">${persos}</span><br>
   <span style="font-size:11px;color:var(--gris)">${h2txt}</span><br>
   <span style="font-size:11px;color:var(--gris)">${entrada}</span><br>
   <span style="font-size:11px;color:var(--gris)">${infoPropia()}</span>
+  ${(typeof enJuegoHTML==="function")?enJuegoHTML(ent(),CATS[torneo.cat],torneo.fase,r):""}
+  ${_idenHTML}
   ${infoHTML}`;
-  document.getElementById("tCuadro").innerHTML=FASES.map((fs,i)=>{
-    if(i<torneo.startFase) return `<div style="opacity:.35">${fs}: exentos (ranking)</div>`;
-    const rv=torneo.rivales[i];
-    const quien=i<=torneo.fase?`: vs ${rv.nombre}`:`: rival por definir (~${torneo.base+FASE_OFFSET[i]})`;
-    return `<div style="opacity:${i===torneo.fase?1:.55}">${fs}${i<torneo.fase?`: vs ${rv.nombre} ✔`:quien}${i===torneo.fase?"  ← estáis aquí":""}</div>`;
-  }).join("");
+  document.getElementById("tCuadro").innerHTML=pintarCuadroHTML();
+}
+/* Con el evento «suplente» tu pareja no puede jugar el torneo: juegas con
+   alguien de la lista de espera, peor y sin química. Es el evento que más
+   cambia una semana, porque obliga a replantear si merece la pena ir. */
+function compiSuplente(c){
+  if(!c._suplente){
+    const niv=Math.max(38,mediaAttrs(c.compi.attrs)-Math.round(R(8,16)));
+    const j=mkAgente(niv-2,niv+2,c.sexo||"M");
+    c._suplente={n:j.n,pais:j.pais,estilo:j.estilo,perso:j.perso,attrs:j.attrs,lado:j.lado};
+  }
+  return c._suplente;
 }
 function miTeam(){
   if(G.modo==="carrera"){
@@ -142,13 +395,24 @@ function miTeam(){
     const fBase=factorForma(c.energia,c.quimica,null);   // energía + química
     const fYo=factorForma(c.energia,c.quimica,c.merma);  // tú, además, con la secuela de tu última lesión
     const mk=(attrs,fac)=>{const o={};ATTR_KEYS.forEach(k=>o[k]=Math.round(attrs[k]*fac));return o;};
+    // tú además llevas la forma del golpe: lo que trabajaste hace dos semanas
+    // sale mejor hoy, y lo que abandonaste, peor
+    const mkYo=(attrs,fac)=>{const o={};ATTR_KEYS.forEach(k=>o[k]=Math.round(clamp(attrs[k]+(typeof formaDe==="function"?formaDe(c,k):0),20,99)*fac));return o;};
     const miLado=(c.lado===0||c.lado===1)?c.lado:0;
-    const yo={n:c.nombre,estilo:c.estilo,perso:c.perso,conf:c.conf,attrs:mk(c.attrs,fYo),me:true,sexo:c.sexo,ava:c.ava,_ropa:c._ropa||c.color,lado:miLado};
+    // el ritmo de competición se cobra donde se nota: en la cabeza
+    const confYo=clamp(c.conf+(typeof ritmoAjusteConf==="function"?ritmoAjusteConf(c):0),5,95);
+    const yo={n:c.nombre,estilo:c.estilo,perso:c.perso,conf:confYo,attrs:mkYo(c.attrs,fYo),me:true,sexo:c.sexo,ava:c.ava,_ropa:c._ropa||c.color,lado:miLado};
     // la moral del compañero se traduce en confianza real sobre la pista
-    const compi={n:c.compi.n,estilo:c.compi.estilo,perso:c.compi.perso,conf:clamp(55+moralAjusteConf(c.compiMoral),15,95),attrs:mk(c.compi.attrs,fBase),sexo:c.sexo,lado:1-miLado};
+    const sup=(typeof evFlag==="function"&&evFlag("suplente"))?compiSuplente(c):null;
+    const fuente=sup||c.compi;
+    // el suplente llega sin química: se juega con la de un primer día
+    const fCompi=sup?factorForma(c.energia,15,null):fBase;
+    const compi={n:fuente.n,estilo:fuente.estilo,perso:fuente.perso,
+      conf:sup?45:clamp(55+moralAjusteConf(c.compiMoral)+(typeof relAjusteConf==="function"?relAjusteConf(c):0),15,95),
+      attrs:mk(fuente.attrs,fCompi),sexo:c.sexo,lado:1-miLado};
     ME_COLOR=c.color;TEAM0_COLOR="#4FA3D8";
     const jug=c.lado===0?[yo,compi]:[compi,yo];
-    return {nombre:`${c.nombre}/${c.compi.n}`,jug,atNet:false};
+    return {nombre:`${c.nombre}/${fuente.n}`,jug,atNet:false};
   }
   const cl=G.clubG,al=alineacion(),q=quimActual(cl);
   if(!al){ return {nombre:cl.nombre||"Tu club",jug:[{n:"—",attrs:mkAttrsNivel(40,"agresivo"),perso:"frio",sexo:cl.sexo},{n:"—",attrs:mkAttrsNivel(40,"defensivo"),perso:"frio",sexo:cl.sexo}],atNet:false}; }
@@ -180,9 +444,25 @@ function empezarPartido(ver,coach){
   ent()._rivalesSemana.push(rival.id);
   teams=[miTeam(),rival];
   teams[1].jug.forEach(j=>{j.conf=j.conf??55;});
+  /* El psicólogo «de presión» trabaja los partidos que pesan: si lo que hay en
+     juego es serio o más, tu equipo sale con la cabeza preparada. Va aquí,
+     antes de la bifurcación, para que valga igual en el partido visto y en el
+     resuelto rápido. */
+  if(G.modo==="carrera"&&typeof staffPerfil==="function"&&staffPerfil("psico")==="presion"
+     &&typeof pesoPartido==="function"&&torneo){
+    const _pz0=pesoPartido(ent(),CATS[torneo.cat],torneo.fase,rival);
+    if(_pz0>=DRAMA_CORTES[0]) teams[0].jug.forEach(j=>j.conf=clamp((j.conf??55)+4+staffNiv("psico"),10,95));
+  }
   stats=[mkStats(),mkStats()];
-  match={p:[0,0],j:[0,0],s:[0,0],hist:[],server:Math.random()<.5?0:1,fin:false,ver,chall:[3,3],revisando:false,momento:{team:-1,run:0,best:[0,0],aviso:null}};
+  match={p:[0,0],j:[0,0],s:[0,0],hist:[],server:rnd()<.5?0:1,fin:false,ver,chall:[3,3],revisando:false,momento:{team:-1,run:0,best:[0,0],aviso:null}};
   match.autoCoach=!!coach;
+  /* Si tus últimos partidos fueron monotemáticos, el circuito te espera: la
+     lectura del rival NO empieza de cero. Variar entre partidos también es
+     táctica, y el parte de atención lo avisa antes de llegar aquí. */
+  if(G.modo==="carrera"&&typeof tacPreLectura==="function"){
+    const _pre=tacPreLectura(G.carrera);
+    if(_pre) match.lectura={golpe:_pre.golpe,nivel:_pre.nivel};
+  }
   if(coach) coachTactica();
   if(ver){
     document.getElementById("pEqA").textContent=teams[0].nombre;
@@ -192,24 +472,38 @@ function empezarPartido(ver,coach){
     document.getElementById("coms").innerHTML="";
     const esNem=G.modo==="carrera"&&G.carrera&&G.carrera.nemesis&&String(G.carrera.nemesis.id)===String(rival.id);
     if(esNem){
-      match.rivBoost=(match.rivBoost||0)+presionNemesis(G.carrera,rival.id);
+      match.rivBoost=(match.rivBoost||0)+presionNemesis(G.carrera,rival.id)
+        *((typeof invPresionX==="function")?invPresionX(G.carrera):1);
       addCom(t("com_nemesis",{rival:rival.nombre,n:G.carrera.nemesis.elim|0}),0);
     }
     if(clPre){
-      match.rivBoost=(match.rivBoost||0)+(clPre.tag==="RIVALIDAD"?.06:0);
+      match.rivBoost=(match.rivBoost||0)+(clPre.tag==="RIVALIDAD"?.06:0)
+        *((G.modo==="carrera"&&typeof invPresionX==="function")?invPresionX(G.carrera):1);
       if(clPre.tag==="BESTIA NEGRA") teams[0].jug.forEach(j=>j.conf=clamp((j.conf??55)-4,10,95));
       if(clPre.tag==="CLIENTE") teams[1].jug.forEach(j=>j.conf=clamp((j.conf??55)-3,10,95));
       addCom(`${clPre.emo} ${clPre.tag==="RIVALIDAD"?`¡Capítulo ${h2pre.v+h2pre.d+1} de la rivalidad! ${h2pre.v}-${h2pre.d} hasta hoy.`:clPre.tag==="BESTIA NEGRA"?`Vuestra bestia negra al otro lado: ${h2pre.v}-${h2pre.d}. A romper el muro.`:`Un viejo cliente: ${h2pre.v}-${h2pre.d} a favor. Que no se despierte.`}`,0);
     }
+    if(match.lectura&&match.lectura.golpe) addCom(t("com_prelectura",{golpe:atNombre(match.lectura.golpe)}),0);
     initPlayers();pintaMarcadorP();pintaChallenges();pintaTactica();
+    /* La grada del primer punto ya cuenta qué clase de partido es esto: en una
+       final llena se oye, en una primera ronda de Bronce no. */
+    if(typeof pesoPartido==="function"&&torneo){
+      const _pz=pesoPartido(ent(),CATS[torneo.cat],torneo.fase,rival);
+      match.peso=_pz;
+      if(_pz>=DRAMA_CORTES[1]) setTimeout(()=>sfxGrada(dramaGrada(_pz)),300);
+    }
     musicaOn();
+    // una final no suena como una ronda más: el tema lo dice antes del primer punto
+    if(torneo.fase===5&&typeof musicaTema==="function") musicaTema("final");
     irA("partido");
     setTimeout(()=>jugarPuntoAnim(),400);
   } else {
     let setsPrev=0;
     while(!match.fin){
       PRESION=calcPresion();
-      resolverPunto(buildPoint(match.server).ganador);
+      const _pt=buildPoint(match.server);
+      if(typeof tacAnota==="function") tacAnota(match,_pt.ganador,_pt);
+      resolverPunto(_pt.ganador);
       const setsAhora=match.s[0]+match.s[1];
       if(match.autoCoach&&setsAhora>setsPrev&&!match.fin){ coachTactica(); setsPrev=setsAhora; }
     }
@@ -254,6 +548,10 @@ function resolverPunto(g){
   // (deuce→ventaja→deuce→ventaja→deuce), se pasa a punto de oro (un punto decide).
   const o=1-g;
   let ganaJuego=false;
+  // temporada con punto de oro obligatorio: el 40-40 lo decide un punto, sin
+  // ventajas. Sube la varianza de toda la temporada, y eso cambia a qué
+  // torneos merece la pena ir siendo favorito.
+  if(!m.golden&&typeof evFlag==="function"&&evFlag("oro")&&m.p[g]===3&&m.p[o]===3) m.golden=true;
   if(m.golden){
     ganaJuego=true;                              // star point: el punto decide el juego
   } else if(m.p[g]===3 && m.p[o]===3){
@@ -272,6 +570,13 @@ function resolverPunto(g){
   if(ganaJuego){
     m.p=[0,0]; m.ventaja=null; m.ventajasFallidas=0; m.golden=false;
     m.j[g]++; m.server=1-m.server; r.juego=g;
+    /* Fin de juego: el rival mira lo que llevas jugado. Si abusas de un golpe,
+       empieza a esperarlo; si has variado, se le olvida. */
+    if(!m.cpu&&typeof tacLee==="function"&&stats&&stats[0]){
+      const _niv=(teams[1]&&teams[1].nivel)||(teams[1]?Math.round((mediaAttrs(teams[1].jug[0].attrs)+mediaAttrs(teams[1].jug[1].attrs))/2):60);
+      const _av=tacLee(m,stats[0],_niv);
+      if(_av&&m.ver) addCom(t("tac_leido",{golpe:golpeNombre(_av)}),1);
+    }
     if((m.j[g]>=6&&m.j[g]-m.j[o]>=2)||m.j[g]===7){
       r.set=g;r.marcadorSet=`${m.j[0]}-${m.j[1]}`;
       m.hist.push(r.marcadorSet);
@@ -285,13 +590,21 @@ const PTS=["0","15","30","40"];
 function pintaTactica(){
   const row=document.getElementById("tactRow");
   if(!match||match.cpu){row.innerHTML="";return;}
-  const t=ent().tactica; if(!t.red)t.red="normal"; if(!t.clutch)t.clutch="normal";
-  const btn=(grupo,val,txt)=>`<button class="selbtn${t[grupo]===val?" on":""}" style="font-size:10px;padding:4px 6px" onclick="setTact('${grupo}','${val}')">${txt}</button>`;
-  row.innerHTML=`<div class="chbar"><span>TÁCTICA</span><span style="display:flex;gap:4px;flex-wrap:wrap">${btn("agres","conservadora","Segura")}${btn("agres","normal","Normal")}${btn("agres","agresiva","A degüello")}<span style="color:var(--gris2)">·</span>${btn("diana","repartir","Repartir")}${btn("diana","debil","Al flojo")}</span></div>`
-    +`<div class="chbar" style="margin-top:4px"><span>RED · CALIENTES</span><span style="display:flex;gap:4px;flex-wrap:wrap">${btn("red","aguantar","Aguantar")}${btn("red","normal","Red normal")}${btn("red","subir","Subir")}<span style="color:var(--gris2)">·</span>${btn("clutch","conservar","Conservar")}${btn("clutch","normal","Normal")}${btn("clutch","arriesgar","Arriesgar")}</span></div>`;
+  // `ta`, no `t`: una variable local llamada t taparía la función de traducción
+  // y dejaría el juego en blanco. Ver la advertencia de CLAUDE.md.
+  const ta=ent().tactica; if(!ta.red)ta.red="normal"; if(!ta.clutch)ta.clutch="normal";
+  const btn=(grupo,val,clave)=>`<button class="selbtn${ta[grupo]===val?" on":""}" style="font-size:10px;padding:4px 6px" ${ac("setTact",grupo,val)}>${t(clave)}</button>`;
+  row.innerHTML=`<div class="chbar"><span>${t("tac_hd")}</span><span style="display:flex;gap:4px;flex-wrap:wrap">${btn("agres","conservadora","tac_segura")}${btn("agres","normal","tac_normal")}${btn("agres","agresiva","tac_deguello")}<span style="color:var(--gris2)">·</span>${btn("diana","repartir","tac_repartir")}${btn("diana","debil","tac_al_flojo")}</span></div>`
+    +`<div class="chbar" style="margin-top:4px"><span>${t("tac_hd_red")}</span><span style="display:flex;gap:4px;flex-wrap:wrap">${btn("red","aguantar","tac_aguantar")}${btn("red","normal","tac_red_normal")}${btn("red","subir","tac_subir")}<span style="color:var(--gris2)">·</span>${btn("clutch","conservar","tac_conservar")}${btn("clutch","normal","tac_normal")}${btn("clutch","arriesgar","tac_arriesgar")}</span></div>`;
 }
-const _TACT_TXT={agres:v=>v,diana:v=>"buscar "+(v==="debil"?"al flojo":"a los dos"),red:v=>"red: "+v,clutch:v=>"puntos calientes: "+v};
-function setTact(g,v){ ent().tactica[g]=v; guardar(); pintaTactica(); addCom(`⚙ Cambio táctico: ${(_TACT_TXT[g]||(x=>x))(v)}.`,0); }
+/* Cómo se nombra cada ajuste táctico en el comentario del partido. */
+const _TACT_TXT={
+  agres:v=>t("tac_ag_"+v),
+  diana:v=>t(v==="debil"?"tac_txt_diana_debil":"tac_txt_diana_dos"),
+  red:v=>t("tac_txt_red",{v:t("tac_red_"+v)}),
+  clutch:v=>t("tac_txt_clutch",{v:t("tac_cl_"+v)}),
+};
+function setTact(g,v){ ent().tactica[g]=v; guardar(); pintaTactica(); addCom(t("tac_cambio",{x:(_TACT_TXT[g]||(x=>x))(v)}),0); }
 function pintaChallenges(){
   const row=document.getElementById("challengeRow");
   if(!match){row.innerHTML="";return;}
@@ -304,7 +617,7 @@ function pintaChallenges(){
 }
 function fotoHawk(dentro){
   // línea de fondo y bola cerca de ella
-  const bx=150+(Math.random()*30-15), by=dentro?66:80;
+  const bx=150+(rnd()*30-15), by=dentro?66:80;
   return `<svg viewBox="0 0 300 110"><rect width="300" height="110" fill="#0C1017"/>
     <rect x="40" y="20" width="220" height="70" fill="#17466B"/>
     <line x1="40" y1="72" x2="260" y2="72" stroke="#E9F3FB" stroke-width="3"/>
@@ -319,27 +632,27 @@ function ofreceRevision(fin,g){
   const cerrado = fin.end==="out"||fin.end==="glass"||fin.end==="porTres"||fin.end==="winner";
   const importante = match.p[0]>=2||match.p[1]>=2||PRESION>.45;
   const perdedor = fin.end==="out"||fin.end==="glass" ? fin.team : 1-g; // quien puede pedir revisión
-  if(!cerrado||!importante||match.chall[perdedor]<=0||Math.random()<.55) return false;
+  if(!cerrado||!importante||match.chall[perdedor]<=0||rnd()<.55) return false;
   // solo el humano (equipo 0) decide; la IA revisa sola a veces
   if(perdedor===0){
     mostrarRevisionHumano(fin,g);
     return true;
   } else {
     // IA pide revisión ocasionalmente
-    if(Math.random()<.5){ resolverRevision(fin,g,1); return true; }
+    if(rnd()<.5){ resolverRevision(fin,g,1); return true; }
   }
   return false;
 }
 function mostrarRevisionHumano(fin,g){
   match.revisando=true;
   const row=document.getElementById("challengeRow");
-  row.innerHTML=`<div class="chbar"><span>¿PEDIR REVISIÓN DE VÍDEO?</span><span><button id="chSi" style="padding:4px 10px;font-size:11px" class="pri">Ojo de Halcón (${match.chall[0]})</button> <button id="chNo" style="padding:4px 10px;font-size:11px">Seguir</button></span></div>`;
+  row.innerHTML=`<div class="chbar"><span>${t("bc_pedir_revision")}</span><span><button id="chSi" style="padding:4px 10px;font-size:11px" class="pri">${t("bc_ojo_halcon",{n:match.chall[0]})}</button> <button id="chNo" style="padding:4px 10px;font-size:11px">Seguir</button></span></div>`;
   document.getElementById("chSi").onclick=()=>resolverRevision(fin,g,0);
   document.getElementById("chNo").onclick=()=>{ match.revisando=false; row.innerHTML=""; pintaTactica(); continuarTrasPunto(g); };
 }
 function resolverRevision(fin,g,quien){
   // el que pide es "quien"; gana la revisión (la bola era como él dice) con prob según su instinto
-  const acierta=Math.random()<.4;  // la mayoría de revisiones confirman la decisión original
+  const acierta=rnd()<.4;  // la mayoría de revisiones confirman la decisión original
   const dentro = quien===g ? acierta : !acierta; // si acierta, la bola cae a favor del que revisa
   if(!acierta) match.chall[quien]--;   // NORMA: solo pierdes la revisión si te equivocas
   sfxClick();
@@ -367,7 +680,15 @@ function resolverRevision(fin,g,quien){
 function mostrarTiempoMuerto(){
   match.pausaTM=true;
   const ov=document.getElementById("tmuerto");
-  document.getElementById("tmSit").textContent=`Marcador de sets: ${match.s[0]}-${match.s[1]}. ${match.s[0]>match.s[1]?"Vais por delante — administra.":match.s[0]<match.s[1]?"Toca remar. Tu pareja te mira.":"Todo igualado."}`;
+  document.getElementById("tmSit").textContent=t("bc_sets",{a:match.s[0],b:match.s[1]})+" "+t(match.s[0]>match.s[1]?"bc_por_delante":match.s[0]<match.s[1]?"bc_a_remar":"bc_igualado");
+  /* El descanso es donde se decide el plan del set siguiente, así que es donde
+     hay que contar qué ha dado cada plan hasta ahora. */
+  const _inf=document.getElementById("tmInforme");
+  if(_inf&&typeof tacInformeHTML==="function"){
+    const _lec=(typeof tacLecturaEstado==="function")?tacLecturaEstado():null;
+    _inf.innerHTML=`<div class="bclabel">${t("tac_inf_hd")}</div>${tacInformeHTML(match,4)}`
+      +(_lec?`<div class="scout" style="margin-top:7px"><div class="scoutHd">${t("tac_leido_hd")}</div><div style="font-size:11.5px;line-height:1.45">${t("tac_leido_txt",{golpe:golpeNombre(_lec.golpe)})}</div></div>`:"");
+  }
   ov.classList.remove("oculto");
   const e=ent(), c=G.modo==="carrera"?G.carrera:null;
   const cierra=(msg)=>{ov.classList.add("oculto");match.pausaTM=false;addCom(msg,0);setTimeout(()=>{if(match&&match.ver&&!match.fin)jugarPuntoAnim();},600);};
@@ -377,7 +698,7 @@ function mostrarTiempoMuerto(){
   };
   document.getElementById("tmArenga").onclick=()=>{
     teams[0].jug.forEach(j=>{if(j.perso==="valiente"||j.perso==="emocional")j.conf=clamp((j.conf??55)+8,10,95);else j.conf=clamp((j.conf??55)+3,10,95);});
-    if(c&&Math.random()<.3)c.compiMoral=clamp((c.compiMoral??65)+3,5,95);
+    if(c&&rnd()<.3)c.compiMoral=clamp((c.compiMoral??65)+3,5,95);
     cierra("🔥 Arenga: sangre en los ojos.");
   };
   document.getElementById("tmBronca").onclick=()=>{
@@ -393,7 +714,7 @@ function continuarTrasPunto(g){
   const r=resolverPunto(g);
   if(match&&match.momento&&match.momento.aviso===g){
     addCom(`🔥 Parcial de ${match.momento.run} puntos seguidos de ${teams[g].nombre}: se vienen arriba.`,g);
-    sfxGrada(.5);
+    sfxGrada((typeof dramaGrada==="function")?dramaGrada(match.peso||30):.5);
   }
   if(r.set!==undefined){ sfxSet(); addCom(`■ Set para ${teams[r.set].nombre} (${r.marcadorSet}).`,r.set); }
   pintaMarcadorP();
@@ -448,7 +769,7 @@ function pintaBroadcast(){
       +`<span class="bcchip">Errores <b style="color:var(--rojo)">${e[0]}</b>-${e[1]}</span>`
       +`<span class="bcchip">Rotura <b>${bp[0].ganados}/${bp[0].jugados}</b>-${bp[1].ganados}/${bp[1].jugados}</span>`
       +`<span class="bcchip">Fatiga <b>${fat[0]}</b>-${fat[1]}</span>`
-      +`<span class="bcchip${parcial?" hot":""}">Táctica: ${TACT.agres}${TACT.diana==="debil"?" · al flojo":""}${TACT.red&&TACT.red!=="normal"?" · red:"+TACT.red:""}${TACT.clutch&&TACT.clutch!=="normal"?" · calientes:"+TACT.clutch:""}</span>`
+      +`<span class="bcchip${parcial?" hot":""}">Táctica: ${TACT.agres}${TACT.diana==="debil"?" · "+t("tac_al_flojo").toLowerCase():""}${TACT.red&&TACT.red!=="normal"?" · red:"+TACT.red:""}${TACT.clutch&&TACT.clutch!=="normal"?" · calientes:"+TACT.clutch:""}</span>`
     +`</div>`;
 }
 function pintaMarcadorP(){
@@ -475,6 +796,8 @@ let anim=null;
 function jugarPuntoAnim(){
   if(!match||match.fin) return;
   PRESION=calcPresion();
+  // la grada se enciende ANTES del punto caliente: el break se oye venir (P6)
+  if(PRESION>=.55&&typeof sfxGrada==="function") sfxGrada(.3+PRESION*.4);
   const punto=buildPoint(match.server);
   const tl=[];let t0=0;
   punto.ev.forEach(evt=>{
@@ -488,6 +811,13 @@ function jugarPuntoAnim(){
 }
 function loopAnim(ts){
   if(!anim) return;
+  /* El partido puede haberse cerrado mientras este fotograma estaba en vuelo
+     —salir por el menú, terminar el torneo, cargar otra partida— y entonces
+     `match` ya no existe. Sin esta guarda, la animación petaba con «Cannot read
+     properties of null (reading 'ver')» sobre una pantalla que ya no es la del
+     partido. Lo destapó el generador de capturas al pasar del partido a la
+     siguiente foto. */
+  if(!match){ anim=null; return; }
   if(!anim.last) anim.last=ts;
   const dt=Math.min(.05,(ts-anim.last)/1000)*speed;anim.last=ts;
   anim.t+=dt;
@@ -502,6 +832,7 @@ function loopAnim(ts){
     if(match.ver && ofreceRevision(fin,g)){ anim=null; return; }  // espera decisión de revisión
     // ¿el punto cierra un set (sin acabar el partido)? → tiempo muerto
     const preS=[match.s[0],match.s[1]];
+    if(typeof tacAnota==="function") tacAnota(match,g,anim.punto);
     continuarTrasPunto(g);
     const cambioSet=match&&!match.fin&&(match.s[0]!==preS[0]||match.s[1]!==preS[1]);
     if(cambioSet&&match.autoCoach) coachTactica();
@@ -552,26 +883,26 @@ function resumenPartido(){
   const w=[0,1].map(t=>stats[t].jug.reduce((a,j)=>a+(j.w||0),0));
   const e=[0,1].map(t=>stats[t].jug.reduce((a,j)=>a+(j.e||0),0));
   const L=[];
-  if(gane&&match.s[1]===0&&h.every(x=>{const [a,b]=x.split("-").map(Number);return a-b>=3;})) L.push("Partido serio: dominio de principio a fin, sin dejar respirar.");
-  else if(gane&&remonta) L.push("Remontada de casta: primer set cedido y reacción de campeones.");
-  else if(!gane&&remonta) L.push("Duele: teníais el partido y se escapó en la remontada rival.");
-  else if(tie&&h.length===3) L.push("Al límite absoluto: tres sets y decidido en los detalles del tie-break.");
-  else if(tie) L.push("Igualadísimo: los tie-breaks marcaron el rumbo.");
-  else if(gane) L.push("Trabajado y bien cerrado: cada set con oficio.");
-  else L.push("No fue el día: el rival impuso su ritmo casi siempre.");
-  if(gane&&w[0]<w[1]) L.push(`Victoria con oficio: menos winners que ellos (${w[0]}-${w[1]}) pero muchos menos regalos (${e[0]}-${e[1]}).`);
-  else if(w[0]>w[1]*1.6) L.push(`Vendaval ofensivo: ${w[0]} winners vuestros por ${w[1]} suyos.`);
-  else if(e[0]>e[1]*1.5) L.push(`Ojo al dato: ${e[0]} errores propios. ${gane?"Ganar así es caro.":"Ahí se fue el partido."}`);
-  if(match.autoCoach) L.push(`El míster cerró el partido en modo ${TACT.agres}${TACT.diana==="debil"?", cargando sobre el flojo":""}.`);
+  if(gane&&match.s[1]===0&&h.every(x=>{const [a,b]=x.split("-").map(Number);return a-b>=3;})) L.push(t("res_dominio"));
+  else if(gane&&remonta) L.push(t("res_remontada"));
+  else if(!gane&&remonta) L.push(t("res_remontada_rival"));
+  else if(tie&&h.length===3) L.push(t("res_al_limite"));
+  else if(tie) L.push(t("res_igualado"));
+  else if(gane) L.push(t("res_trabajado"));
+  else L.push(t("res_no_fue"));
+  if(gane&&w[0]<w[1]) L.push(t("res_oficio",{w0:w[0],w1:w[1],e0:e[0],e1:e[1]}));
+  else if(w[0]>w[1]*1.6) L.push(t("res_vendaval",{w0:w[0],w1:w[1]}));
+  else if(e[0]>e[1]*1.5) L.push(t("res_errores",{n:e[0]})+" "+t(gane?"res_caro":"res_ahi_se_fue"));
+  if(match.autoCoach) L.push(t("res_mister",{modo:t("tac_ag_"+TACT.agres)})+(TACT.diana==="debil"?t("res_sobre_flojo"):"")+".");
   const red=[stats[0].red||0,stats[1].red||0];
   if(red[0]+red[1]>=6){
-    if(red[0]>=red[1]*1.6) L.push(`Dueños de la red: ${red[0]} puntos cerrados desde arriba por ${red[1]} del rival. Ahí se ganó.`);
-    else if(red[1]>=red[0]*1.6) L.push(`Os comieron la red: ${red[1]} puntos suyos desde arriba por ${red[0]} vuestros. Hay que subir mejor.`);
+    if(red[0]>=red[1]*1.6) L.push(t("res_red_nuestra",{a:red[0],b:red[1]}));
+    else if(red[1]>=red[0]*1.6) L.push(t("res_red_suya",{a:red[1],b:red[0]}));
   }
   const mo=match.momento;
   if(mo&&Math.max(mo.best[0]||0,mo.best[1]||0)>=5){
     const bt=(mo.best[0]||0)>=(mo.best[1]||0)?0:1;
-    L.push(`Rachas: el mejor parcial fue de ${mo.best[bt]} puntos seguidos ${bt===0?"vuestros":"del rival"}.`);
+    L.push(t(bt===0?"res_racha_nuestra":"res_racha_rival",{n:mo.best[bt]}));
   }
   return L;
 }
@@ -581,20 +912,23 @@ function analisisPartido(){
   if(!stats||!teams) return [];
   const L=[];
   const topKey=(obj)=>{ let bk=null,bv=0; for(const k in (obj||{})){ if(obj[k]>bv){bv=obj[k];bk=k;} } return bk?{k:bk,v:bv}:null; };
-  const lbl=(k)=>(typeof SHOTS!=="undefined"&&SHOTS[k])?SHOTS[k].label:k;
+  const lbl=(k)=>(typeof golpeNombre==="function")?golpeNombre(k):k;
   const arma=topKey(stats[0].wShot);
-  if(arma&&arma.v>=2) L.push(`🗡 Vuestra arma más letal: la ${lbl(arma.k)} (${arma.v} winners).`);
+  if(arma&&arma.v>=2) L.push(t("ana_arma",{golpe:lbl(arma.k),n:arma.v}));
   const fallo=topKey(stats[0].eShot);
-  if(fallo&&fallo.v>=2) L.push(`⚠ Vuestros errores llegaron sobre todo de la ${lbl(fallo.k)} (${fallo.v}).`);
+  if(fallo&&fallo.v>=2) L.push(t("ana_fallo",{golpe:lbl(fallo.k),n:fallo.v}));
   const re=[stats[1].jug[0].e||0, stats[1].jug[1].e||0];
   if(re[0]+re[1]>=3 && Math.abs(re[0]-re[1])>=2){
     const q=re[0]>=re[1]?0:1;
-    L.push(`🎯 Cargasteis con acierto sobre ${teams[1].jug[q].n}: le forzasteis ${re[q]} errores.`);
+    L.push(t("ana_carga",{n:teams[1].jug[q].n,errores:re[q]}));
   }
   const red=stats[0].red||0, pg=stats[0].pganados||0;
-  if(pg>=6){ const pct=Math.round(red/pg*100); L.push(pct>=45?`🥅 Dominasteis la red: el ${pct}% de vuestros puntos se cerraron arriba.`:`↔ Os faltó red: solo el ${pct}% de vuestros puntos se cerraron arriba.`); }
+  if(pg>=6){ const pct=Math.round(red/pg*100); L.push(t(pct>=45?"ana_red_si":"ana_red_no",{pct})); }
   const pr=stats[0].presion||{jug:0,gan:0};
-  if(pr.jug>=4){ const pct=Math.round(pr.gan/pr.jug*100); L.push(`${pct>=55?"💪":"🥵"} Bajo presión ganasteis ${pr.gan} de ${pr.jug} puntos calientes (${pct}%).`); }
+  if(pr.jug>=4){ const pct=Math.round(pr.gan/pr.jug*100); L.push((pct>=55?"💪 ":"🥵 ")+t("ana_presion",{gan:pr.gan,jug:pr.jug,pct})); }
+  // si te leyeron un golpe, es lo primero que hay que saber al acabar
+  const lec=(typeof tacLecturaEstado==="function")?tacLecturaEstado():null;
+  if(lec) L.push(t("tac_leido_txt",{golpe:lbl(lec.golpe)}));
   return L;
 }
 function mostrarFicha(cb){
@@ -607,7 +941,8 @@ function mostrarFicha(cb){
     <table class="rk">${filas.map(f=>{const jj=[...teams[0].jug,...teams[1].jug].find(x=>x.n===f.n);return `<tr${f.n===mvp.n?' style="color:var(--oro)"':""}><td style="font-size:11px"><span style="display:inline-block;vertical-align:middle;margin-right:4px">${avatarSVG(jj,20)}</span>${f.n===mvp.n?"★ ":""}${f.n}</td><td class="pts" style="color:var(--lima)">${f.w}W</td><td class="pts" style="color:#E05656">${f.e}E</td><td class="pts">${f.bal>0?"+":""}${f.bal}</td></tr>`;}).join("")}</table>
     <div class="foot" style="text-align:left;margin-top:7px">★ MVP del partido: <b style="color:var(--oro)">${mvp.n}</b> (${mvp.w} winners, balance ${mvp.bal>0?"+":""}${mvp.bal}).</div>
     <div class="foot" style="text-align:left;margin-top:2px">Tiros ${stats[0].tiros||0}-${stats[1].tiros||0} · Red ${stats[0].red||0}-${stats[1].red||0} · Roturas ${stats[0].bp?stats[0].bp.ganados:0}/${stats[0].bp?stats[0].bp.jugados:0}-${stats[1].bp?stats[1].bp.ganados:0}/${stats[1].bp?stats[1].bp.jugados:0} · Fatiga final ${Math.round(((stats[0].fatiga||[0,0]).reduce((a,f)=>a+f,0))/2)}-${Math.round(((stats[1].fatiga||[0,0]).reduce((a,f)=>a+f,0))/2)}</div>
-    ${(()=>{const an=analisisPartido();return an.length?`<div style="border-top:1px solid var(--borde);margin-top:9px;padding-top:7px"><div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--oro);margin-bottom:4px">🔍 Análisis táctico</div>${an.map(l=>`<div style="font-size:11.5px;line-height:1.5;color:var(--texto);padding:1px 0">${l}</div>`).join("")}</div>`:"";})()}
+    ${(()=>{const inf=(typeof tacInformeHTML==="function")?tacInformeHTML(match,5):"";return (inf&&!/tac_inf_vacio/.test(inf)&&match.tac&&Object.keys(match.tac).length>1)?`<div style="border-top:1px solid var(--borde);margin-top:9px;padding-top:7px"><div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--oro);margin-bottom:4px">${t("tac_inf_hd")}</div>${inf}</div>`:"";})()}
+    ${(()=>{const an=analisisPartido();return an.length?`<div style="border-top:1px solid var(--borde);margin-top:9px;padding-top:7px"><div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--oro);margin-bottom:4px">${t("ana_hd_tactico")}</div>${an.map(l=>`<div style="font-size:11.5px;line-height:1.5;color:var(--texto);padding:1px 0">${l}</div>`).join("")}</div>`:"";})()}
     ${match.ver?"":`<div style="border-top:1px solid var(--borde);margin-top:8px;padding-top:7px">${resumenPartido().map(l=>`<div style="font-size:11.5px;line-height:1.5;color:var(--gris);padding:1px 0">📋 ${l}</div>`).join("")}</div>`}`;
   const ov=document.getElementById("fichaP");
   ov.classList.remove("oculto");
@@ -625,6 +960,11 @@ function finPartido(){
   const f=torneo.fase;
   const rival=torneo.rivales[f];
   const e=ent();
+  // el patrón de ESTE partido queda en la memoria del circuito (c.tacHist)
+  if(G.modo==="carrera"&&typeof tacHistAnota==="function"&&stats&&stats[0]) tacHistAnota(G.carrera,stats[0]);
+  // el primer cuadro final de una carrera es un momento, no una ronda más
+  if(G.modo==="carrera"&&f>=2&&momAnota(G.carrera,"primer_cuadro",{torneo:torneo.nombre})&&typeof momentoCabecera==="function")
+    momentoCabecera({tipo:"gloria",ico:"🎫",titulo:t("mom_primer_cuadro"),sub:t("mom_primer_cuadro_d",{torneo:torneo.nombre,t:temporada(),sem:semanaTemp()})});
   if(!e.h2h[rival.id]) e.h2h[rival.id]={v:0,d:0};
   const h2r=e.h2h[rival.id];
   const clAntes=clasificaRiv(h2r);
@@ -642,8 +982,23 @@ function finPartido(){
       avisa(t("aviso_nemesis",{rival:nm.nombre,n:nm.elim}));
     } else if(e.nemesis&&String(e.nemesis.id)===String(rival.id)){
       e.nemesis.elim=h2r.elim|0;   // el marcador del duelo se mantiene al día
+      /* EL ARCO DE LA RIVALIDAD, derivado de hechos y no de un guion: cada
+         cruce recoloca la fase. «Herida» cuando te domina claramente, «pulso»
+         cuando está igualado, y «vuelco» —una sola vez, y es noticia— cuando
+         le das la vuelta a un duelo que ibas perdiendo. Las finales entre
+         vosotros se cuentan aparte: son las que hacen leyenda. */
+      if(f===5) e.nemesis.finales=(e.nemesis.finales|0)+1;
+      const _v=h2r.v|0,_d=h2r.d|0;
+      if(_d-_v>=3) e.nemesis.dominado=true;
+      const faseNem=(e.nemesis.dominado&&_v>=_d)?"vuelco":(_d-_v>=3?"herida":"pulso");
+      if(faseNem==="vuelco"&&e.nemesis.fase!=="vuelco"){
+        noticia("hito",t("nem_vuelco_t",{rival:rival.nombre}),t("nem_vuelco_s",{yo:nombreEntidad().replace("★ ",""),rival:rival.nombre,v:_v,d:_d}));
+        avisa(t("nem_vuelco_av",{rival:rival.nombre,v:_v,d:_d}),"ok");
+      }
+      e.nemesis.fase=faseNem;
     }
   }
+  if(G.modo==="carrera"&&typeof arrAnotaRival==="function") arrAnotaRival(G.carrera,rival.id,gane);
   const clAhora=clasificaRiv(h2r);
   if(clAhora&&clAhora.tag==="RIVALIDAD"&&(!clAntes||clAntes.tag!=="RIVALIDAD")){
     noticia("hito",t("not_rivalidad_t"),t("not_rivalidad_s",{yo:nombreEntidad().replace("★ ",""),rival:rival.nombre,n:h2r.v+h2r.d}));
@@ -658,17 +1013,36 @@ function finPartido(){
     post("maldicion",{rival:rival.nombre});
   }
   e.vd=e.vd||{v:0,d:0}; e.vd[gane?"v":"d"]++;
+  // los momentos de volumen y de carácter: 500 victorias, y la final remontada
+  if(G.modo==="carrera"&&gane&&e.vd.v===500&&momAnota(G.carrera,"v500",{})&&typeof momentoCabecera==="function")
+    momentoCabecera({tipo:"gloria",ico:"🎖",titulo:t("mom_v500"),sub:t("mom_v500_d",{t:temporada()})});
+  if(G.modo==="carrera"&&gane&&f===5&&match.hist.length){
+    const _s0=String(match.hist[0]).split("-").map(Number);
+    if(_s0.length===2&&_s0[0]<_s0[1]&&momAnota(G.carrera,"remontada_final",{torneo:torneo.nombre})&&typeof momentoCabecera==="function")
+      momentoCabecera({tipo:"gloria",ico:"🔄",titulo:t("mom_remontada_final"),sub:t("mom_remontada_final_d",{torneo:torneo.nombre})});
+  }
+  /* Victorias contra el top 10: una de las cifras que de verdad miden una
+     carrera, y hasta ahora no se contaba. Se mira el puesto del rival HOY,
+     antes de que la semana recoloque el ranking. */
+  if(gane&&G.modo==="carrera"&&typeof puestoDePareja==="function"&&puestoDePareja(rival.nombre)<=10){
+    G.carrera.vTop10=(G.carrera.vTop10|0)+1;
+    if(G.carrera.vTop10===1) momAnota(G.carrera,"top10",{rival:rival.nombre});
+  }
+  // el derbi del club: un rival del circuito al que se le tiene ganas desde el día uno
+  if(G.modo==="club"&&typeof anotaDerbi==="function") anotaDerbi(G.clubG,rival,gane);
   if(gane){ e.rachaAct=(e.rachaAct||0)+1; if(e.rachaAct>(e.rachaMax||0)){e.rachaMax=e.rachaAct;if(e.rachaMax===15)avisa(t("aviso_racha15"));} }
   else e.rachaAct=0;
   fansAdd(gane?(torneo&&torneo.premierT?Math.round(R(15,40)):Math.round(R(2,8))):-Math.round(R(1,4)));
-  if(Math.random()<(torneo&&torneo.premierT?.5:.15)) post(gane?"victoria":"derrota",{rival:rival.nombre,torneo:torneo?torneo.nombre:""});
+  if(rnd()<(torneo&&torneo.premierT?.5:.15)) post(gane?"victoria":"derrota",{rival:rival.nombre,torneo:torneo?torneo.nombre:""});
+  // la grada también habla de tu pareja, que es media pista y nunca sale en el titular
+  if(rnd()<.12) post("compi");
   if(gane&&(e.rachaAct===5||e.rachaAct===10)) post("forma",{racha:e.rachaAct});
   let seLesiona=false, lesionTxt="";
 
   if(G.modo==="carrera"){
     const c=G.carrera;
     const misW=stats[0].jug[c.lado].w;
-    c.energia=clamp(c.energia-11,0,100);
+    c.energia=clamp(c.energia-costeEnergiaPartido(f),0,100);
     c.conf=clamp(c.conf+(gane?5:-6),15,95);
     c.quimica=clamp(c.quimica+2,10,95);
     c.racha=(c.racha||[]).concat(gane?"V":"D").slice(-5);
@@ -680,13 +1054,17 @@ function finPartido(){
       seLesiona=true;lesionTxt=lesNombre(c.lesion);
       c.conf=clamp(c.conf-4,15,95);                              // lesionarse mina la cabeza
       c.compiMoral=clamp((c.compiMoral??65)-5,5,95);             // y preocupa al compañero
-      if(c.lesion.grav>=3) noticia("lesion",t("not_lesion_grave_t"),t("not_lesion_grave_s",{lesion:lesNombre(c.lesion),sem:c.lesion.sem}),miParejaProt());
+      if(c.lesion.grav>=3){
+        noticia("lesion",t("not_lesion_grave_t"),t("not_lesion_grave_s",{lesion:lesNombre(c.lesion),sem:c.lesion.sem}),miParejaProt());
+        // la lesión grave para la música: el silencio también es sonido (P6)
+        if(typeof momentoCabecera==="function") momentoCabecera({tipo:"duelo",ico:"🚑",titulo:t("cab_les_t"),sub:t("cab_les_s",{les:lesNombre(c.lesion),sem:c.lesion.sem})});
+      }
     }
-    if((gane||misW>=4)&&Math.random()<.45){
+    if((gane||misW>=4)&&rnd()<.45){
       const favor={defensivo:["globo","pared","chiquita","fondo"],agresivo:["remate","vibora","volea","bandeja"],bandejero:["bandeja","vibora","volea"],rematador:["remate","bandeja","volea"],constructor:["chiquita","dejada","fondo","globo"]}[c.estilo];
       const k=pick(favor);
       const freno=c.attrs[k]>=72?.4:1;
-      if(c.attrs[k]<95&&Math.random()<freno) c.attrs[k]++;
+      if(c.attrs[k]<95&&rnd()<freno) c.attrs[k]++;
     }
     avisa(t("aviso_res_carrera",{res:gane?"✔ "+t("res_victoria"):"✗ "+t("res_derrota"),marc:marcadorFinal,rival:rival.nombre,fase:faseNombre(f).toLowerCase(),w:misW,e:stats[0].jug[c.lado].e}));
   } else {
@@ -695,10 +1073,10 @@ function finPartido(){
     cl.quims[qk]=clamp((cl.quims[qk]??40)+2,10,95);
     teams[0].jug.forEach((jv,i)=>{
       const j=jv._ref;
-      j.energia=clamp(j.energia-11,0,100);
+      j.energia=clamp(j.energia-COSTE_PARTIDO_CLUB,0,100);
       j.conf=clamp(j.conf+(gane?4:-5),15,95);
       const w=stats[0].jug[i].w;
-      if((gane&&Math.random()<.25)||w>=6){
+      if((gane&&rnd()<.25)||w>=6){
         const k=pick(ATTR_KEYS);
         if(j.attrs[k]<88) j.attrs[k]++;
       }
@@ -718,24 +1096,62 @@ function finPartido(){
 
   // neto() aplica el margen económico de la dificultad a TODO premio de torneo
   // (un solo punto para carrera y club) y, en carrera, la comisión del representante.
-  const neto=(x)=>{x=ecoIngreso(x);const r=G.modo==="carrera"&&G.carrera.staff&&G.carrera.staff.rep;return r?Math.round(x*(1-(r.com||15)/100)):x;};
+  const neto=(x)=>netoPremio(ecoIngreso(x));   // margen de dificultad + comisión del agente (el «de premios» muerde la mitad)
   if(!gane){
-    const idx=loserIdx(f);
-    e.pts+=torneo.pts[idx]||0;e.dinero+=neto(torneo.premio[idx]||0);
-    rival.pts+=torneo.pts[Math.max(0,idx-1)]||0;
-    avisa(t("aviso_eliminados",{fase:faseNombre(f).toLowerCase(),torneo:torneo.nombre,pts:torneo.pts[idx]||0,din:neto(torneo.premio[idx]||0),resto:G.modo==="carrera"?t("aviso_resto_semana"):""})+(seLesiona?` ⚠ ${lesionTxt}.`:""));
+    const idx=loserIdx(f), idxP=loserPtsIdx(f);
+    // una temporada con puntuación nueva o una gira reparten distinto
+    const ptsGan=idxP<0?0:Math.round(evNum("ptsX",torneo.pts[idxP]||0));
+    rkAnota(e,e.semana,ptsGan);e.dinero+=neto(torneo.premio[idx]||0);
+    if(idxP>=0) rkAnota(rival,e.semana,torneo.pts[Math.max(0,idxP-1)]||0);
+    if(f===5&&G.modo==="carrera"){
+      G.carrera.finales=(G.carrera.finales|0)+1;   // una final perdida también es una final
+      // y también dice que la pareja va a algún sitio: la ambición se alimenta
+      // de las finales, no solo de los títulos
+      if(typeof relMueve==="function") relMueve(G.carrera,"ambicion",+2);
+    }
+    avisa(t("aviso_eliminados",{fase:faseNombre(f).toLowerCase(),torneo:torneo.nombre,pts:ptsGan,din:neto(torneo.premio[idx]||0),resto:G.modo==="carrera"?t("aviso_resto_semana"):""})+(seLesiona?` ⚠ ${lesionTxt}.`:""));
     cerrarTorneo();return;
   }
-  rival.pts+=torneo.pts[loserIdx(f)]||0;
+  { const _ip=loserPtsIdx(f); if(_ip>=0) rkAnota(rival,e.semana,torneo.pts[_ip]||0); }
   if(f===5){
-    e.pts+=torneo.pts[0];e.dinero+=neto(torneo.premio[0]);
+    rkAnota(e,e.semana,Math.round(evNum("ptsX",torneo.pts[0])));e.dinero+=neto(torneo.premio[0]);
     e.palmares.push(`${torneo.nombre} (T${temporada()})`);
   if(G.modo==="club") clubPalma(-1,`${torneo.nombre} (T${temporada()})`);   // -1 = tu club (se ignora, ya está en e.palmares)
     if(torneo.premierT) e._campPremSem=semanaTemp();
+    // Contador de títulos de la Serie Élite. Antes los hitos miraban si el
+    // palmarés contenía la palabra "Premier", lo cual dejó de funcionar al
+    // renombrar el circuito y además nunca fue de fiar (el palmarés es texto
+    // traducible). Con un contador, el hito no depende de cómo se llame nada.
+    if(torneo.premierT) e.recTitElite=(e.recTitElite||0)+1;
     if(torneo.cat===6){ e.recMajors=(e.recMajors||0)+1; }
     // los títulos de la etapa actual con tu compañero: la historia es de LOS DOS
     if(G.modo==="carrera") e._parejaTitulos=(e._parejaTitulos|0)+1;
     if(torneo.cat===7){ e.recFinals=(e.recFinals||0)+1; }
+    /* Los momentos: las primeras veces que hacen la carrera. Ganar el trofeo 74
+       no comunica nada; el primero, la primera Corona o levantarlo mermado, sí. */
+    if(G.modo==="carrera"){
+      const c9=G.carrera;
+      c9.finales=(c9.finales|0)+1;
+      // los títulos también son del cuerpo técnico que estaba ese día
+      Object.keys(c9.staff||{}).forEach(k=>{ if(c9.staff[k]) c9.staff[k].tits=(c9.staff[k].tits|0)+1; });
+      /* Y ALIMENTAN LA AMBICIÓN DE LA PAREJA. El eje pregunta «¿vamos a algún
+         sitio?», y hasta ahora solo tenía salidas: sin acceso a los premier en
+         las primeras temporadas, la ambición de cualquier carrera caía a cero
+         hacia la semana 100 y se quedaba allí —medido con la traza del eje—.
+         Ganar es la respuesta natural: un título dice que sí vais a algún
+         sitio, y uno grande lo dice más alto. */
+      if(typeof relMueve==="function") relMueve(c9,"ambicion",torneo.premierT?5:3);
+      /* Las primeras veces, además de guardarse, se CELEBRAN: cabecera a
+         pantalla completa con su tono y su sonido (P6). momAnota devuelve
+         false si ya se vivió, así que cada cabecera sale una sola vez. */
+      const _cab=(ico,id,d)=>{ if(typeof momentoCabecera==="function") momentoCabecera({tipo:"gloria",ico,titulo:t("mom_"+id),sub:t("mom_"+id+"_d",{t:temporada(),sem:semanaTemp(),torneo:torneo.nombre,rival:""}),dato:d||`${c9.nombre} / ${c9.compi.n}`}); };
+      if(e.palmares.length===1&&momAnota(c9,"primer_titulo",{torneo:torneo.nombre})) _cab("🏆","primer_titulo");
+      if(torneo.cat===6&&(e.recMajors||0)===1&&momAnota(c9,"primera_corona",{torneo:torneo.nombre})) _cab("👑","primera_corona");
+      if(torneo.cat===7&&(e.recFinals||0)===1&&momAnota(c9,"maestros",{})) _cab("🎓","maestros");
+      if(c9.nemesis&&rival&&rival.id===c9.nemesis.id) momAnota(c9,"nemesis_final",{rival:rival.nombre,torneo:torneo.nombre});
+      if(c9.merma) momAnota(c9,"titulo_tocado",{torneo:torneo.nombre});
+      if(typeof evFlag==="function"&&evFlag("suplente")) momAnota(c9,"titulo_suplente",{torneo:torneo.nombre});
+    }
     fansAdd([60,120,250,500,1500,3000,8000,5000][torneo.cat]||60,t("fan_titulo",{torneo:torneo.nombre}));
     post("titulo",{torneo:torneo.nombre});
     if(torneo.premierT&&torneo.favNos===false){
@@ -750,19 +1166,34 @@ function finPartido(){
     }
     ent()._ultCamp=true;
     sfxTitulo();
+    /* Un título histórico no se cuenta con el mismo aviso que uno más: si el
+       partido pesaba, se levanta el trofeo en pantalla. */
+    if(typeof pesoPartido==="function"&&match&&pesoTier(match.peso||0)==="historica") celebraTitulo();
     noticia("titulo",t("not_campeones_t",{torneo:torneo.nombre}),t("not_campeones_s",{entidad:G.modo==="carrera"?G.carrera.nombre+"/"+G.carrera.compi.n:G.clubG.nombre,pts:torneo.pts[0],premio:torneo.premio[0]}),miParejaProt());
     avisa(t("aviso_campeones",{torneo:torneo.nombre,pts:torneo.pts[0],din:neto(torneo.premio[0])})+extra+(seLesiona?` ⚠ ${lesionTxt}.`:""));
     cerrarTorneo();return;
   }
   if(seLesiona){
     const idx=loserIdx(f+1);
-    e.pts+=torneo.pts[idx]||0;e.dinero+=neto(torneo.premio[idx]||0);
+    rkAnota(e,e.semana,torneo.pts[idx]||0);e.dinero+=neto(torneo.premio[idx]||0);
     noticia("lesion",t("not_retirada_t"),t("not_retirada_s",{lesion:lesionTxt,torneo:torneo.nombre}),miParejaProt());
     post("lesion");
     avisa(t("aviso_retirada",{lesion:lesionTxt,pts:torneo.pts[idx]||0}));
     cerrarTorneo();return;
   }
+  /* El resto del cuadro juega su ronda a la vez que tú. Si cae un cabeza de
+     serie, se cuenta: eso es media gracia de mirar el papel. */
+  if(torneo.cuadro&&torneo.fase>=CUADRO_FASE0){
+    const sorpresas=resolverRondaCuadro(torneo.fase,true);
+    sorpresas.slice(0,2).forEach(s=>avisa(t("cua_campanada",{gana:nomCuadro(s.gana),perd:nomCuadro(s.perd)}),"info"));
+  }
   torneo.fase++;
+  // tu siguiente rival es quien haya ganado de verdad su partido, no una tirada nueva
+  if(torneo.cuadro&&torneo.fase>=CUADRO_FASE0&&torneo.fase<=5){
+    const r=rivalDelCuadro(torneo.fase);
+    if(r) torneo.rivales[torneo.fase]=r;
+    else if(!torneo.rivales[torneo.fase]) torneo.rivales[torneo.fase]=rivalDeFase(torneo.base,torneo.fase,new Set());
+  }
   if(torneo.premierT&&torneo.fase===2&&G.modo==="carrera"&&!G.carrera.pro){
     G.carrera.pro=true;
     noticia("hito",t("not_debut_prof_t"),t("not_debut_prof_s"));
@@ -800,7 +1231,7 @@ function ruedaDePrensa(gano,fase){
   });
   bA.onclick=()=>fin(t("pr_av_ambicion"),()=>{
     c.conf=clamp(c.conf+4,15,95);
-    if(c.sponsor&&Math.random()<.35){c.dinero+=100;avisa(t("pr_av_prima",{marca:c.sponsor.marca}));}
+    if(c.sponsor&&rnd()<.35){c.dinero+=100;avisa(t("pr_av_prima",{marca:c.sponsor.marca}));}
   });
   bP.onclick=()=>fin(t("pr_av_picante"),()=>{
     if(c.perso==="valiente"||c.perso==="emocional") c.conf=clamp(c.conf+7,15,95);
@@ -820,7 +1251,7 @@ function cerrarTorneo(){
   e._ultCamp=false;
   const eraPremier=torneo&&torneo.premierT, faseCaida=torneo?torneo.fase:0, fueCampeon=e._ultCampFlag;
   torneo_ultimo=torneo;
-  if(G.modo==="carrera"&&eraPremier&&(e.calRes[semanaTemp()]==="🏆"||faseCaida>=4)&&Math.random()<.75){
+  if(G.modo==="carrera"&&eraPremier&&(e.calRes[semanaTemp()]==="🏆"||faseCaida>=4)&&rnd()<.75){
     setTimeout(()=>ruedaDePrensa(e.calRes[semanaTemp()]==="🏆",faseCaida),600);
   }
   torneo=null;

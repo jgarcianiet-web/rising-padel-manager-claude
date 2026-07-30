@@ -3,7 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- El juego no pide NADA a la red: ni tipografías, ni scripts, ni telemetría.
+     Esta CSP lo hace cumplir en vez de confiar en que nadie añada un <script
+     src="https://..."> por descuido. 'unsafe-inline' aparece solo en style-src
+     porque el juego pinta con atributos style="" y con el.style desde código;
+     script-src no lo lleva, así que una inyección de <script> no se ejecuta.
+     Se permite data: en font-src (fuentes incrustadas), img-src (SVG y una
+     foto en base64) y media-src. connect-src 'none' corta fetch y XHR. -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'none';
+  script-src 'self';
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' data:;
+  font-src 'self' data:;
+  media-src 'self' data:;
+  connect-src 'none';
+  base-uri 'none';
+  form-action 'none'">
 <title>Rising Pádel Manager</title>
+<link rel="stylesheet" href="css/fuentes.css">
 <link rel="stylesheet" href="css/main.css">
 <link rel="stylesheet" href="css/dashboard.css">
 </head>
@@ -11,11 +29,13 @@
 <div class="wrap">
   <div class="topbar">
     <div class="logo">RISING <span>PÁDEL</span> MANAGER</div>
-    <div style="display:flex;align-items:center;gap:8px">
+    <div class="topder">
       <div class="mini" id="miniBtns" style="display:none">
-        <button id="btnSnd" title="Sonido"></button>
+        <button id="btnAjustes" title="Ajustes" data-i18n-title="bar_ajustes_title">⚙</button>
+        <button id="btnSnd" title="Sonido" data-i18n-title="bar_sonido_title"></button>
         <button id="btnAyuda" title="Tutorial" data-i18n-title="bar_tutorial_title">?</button>
-        <button id="btnAnalitica" title="Analítica (base de datos)">🔬</button>
+        <button id="btnTrofeos" title="Sala de trofeos" data-i18n-title="bar_trofeos_title">🏆</button>
+        <button id="btnAnalitica" title="Analítica" data-i18n-title="bar_analitica_title">🔬</button>
         <button id="btnExport" title="Exportar partida" data-i18n="bar_exportar" data-i18n-title="bar_export_title">⤓ Exportar</button>
         <button id="btnMenu" data-i18n="bar_menu">Menú</button>
       </div>
@@ -36,6 +56,62 @@
     </div>
   </div>
   <div id="scr-menu">
+    <!-- Escena de pista nocturna, dibujada por código como todo lo demás -->
+    <svg id="menuFondo" viewBox="0 0 1280 800" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <linearGradient id="mfCielo" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#0A1320"/><stop offset=".55" stop-color="#0C1626"/><stop offset="1" stop-color="#080B12"/>
+        </linearGradient>
+        <linearGradient id="mfPista" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#175073"/><stop offset="1" stop-color="#0D2C44"/>
+        </linearGradient>
+        <radialGradient id="mfFoco" cx=".5" cy=".5" r=".5">
+          <stop offset="0" stop-color="#DDEEFF" stop-opacity=".16"/><stop offset="1" stop-color="#DDEEFF" stop-opacity="0"/>
+        </radialGradient>
+        <linearGradient id="mfHaz" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#CFE6FF" stop-opacity=".07"/><stop offset="1" stop-color="#CFE6FF" stop-opacity="0"/>
+        </linearGradient>
+        <radialGradient id="mfBola" cx=".5" cy=".5" r=".5">
+          <stop offset="0" stop-color="#C6F53C" stop-opacity=".5"/><stop offset="1" stop-color="#C6F53C" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="mfVin" cx=".5" cy=".42" r=".75">
+          <stop offset=".45" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#04060A" stop-opacity=".82"/>
+        </radialGradient>
+      </defs>
+      <rect width="1280" height="800" fill="url(#mfCielo)"/>
+      <!-- focos -->
+      <ellipse cx="330" cy="95" rx="250" ry="95" fill="url(#mfFoco)"/>
+      <ellipse cx="950" cy="95" rx="250" ry="95" fill="url(#mfFoco)"/>
+      <rect x="318" y="80" width="24" height="8" rx="2" fill="#22303F"/><rect x="938" y="80" width="24" height="8" rx="2" fill="#22303F"/>
+      <rect x="328" y="88" width="4" height="120" fill="#161E29"/><rect x="948" y="88" width="4" height="120" fill="#161E29"/>
+      <polygon points="330,95 210,470 560,470" fill="url(#mfHaz)"/>
+      <polygon points="950,95 720,470 1070,470" fill="url(#mfHaz)"/>
+      <!-- cristal del fondo y su reflejo -->
+      <rect x="490" y="345" width="300" height="90" fill="#7AB6DE" opacity=".05"/>
+      <rect x="490" y="345" width="300" height="90" fill="none" stroke="#AFCFE8" stroke-opacity=".14"/>
+      <line x1="565" y1="345" x2="565" y2="435" stroke="#AFCFE8" stroke-opacity=".1"/>
+      <line x1="640" y1="345" x2="640" y2="435" stroke="#AFCFE8" stroke-opacity=".1"/>
+      <line x1="715" y1="345" x2="715" y2="435" stroke="#AFCFE8" stroke-opacity=".1"/>
+      <!-- la pista, en perspectiva -->
+      <polygon points="490,435 790,435 1040,745 240,745" fill="url(#mfPista)"/>
+      <polygon points="490,435 790,435 1040,745 240,745" fill="none" stroke="#EAF4FF" stroke-opacity=".3" stroke-width="2"/>
+      <!-- valla lateral -->
+      <polygon points="490,435 240,745 240,655 490,395" fill="#7AB6DE" opacity=".04"/>
+      <polygon points="790,435 1040,745 1040,655 790,395" fill="#7AB6DE" opacity=".04"/>
+      <!-- líneas: servicio, centro y red -->
+      <line x1="452" y1="493" x2="836" y2="493" stroke="#EAF4FF" stroke-opacity=".2" stroke-width="1.5"/>
+      <line x1="341" y1="632" x2="948" y2="632" stroke="#EAF4FF" stroke-opacity=".22" stroke-width="2"/>
+      <line x1="640" y1="493" x2="640" y2="632" stroke="#EAF4FF" stroke-opacity=".16" stroke-width="1.5"/>
+      <rect x="394" y="546" width="497" height="14" fill="#0A121C" opacity=".85"/>
+      <line x1="394" y1="546" x2="891" y2="546" stroke="#EAF4FF" stroke-opacity=".5" stroke-width="2.5"/>
+      <rect x="388" y="512" width="6" height="48" rx="2" fill="#1A2430"/>
+      <rect x="889" y="512" width="6" height="48" rx="2" fill="#1A2430"/>
+      <!-- la bola, suspendida (flota con CSS) -->
+      <g id="mfBolaG"><circle cx="792" cy="292" r="22" fill="url(#mfBola)"/>
+      <circle cx="792" cy="292" r="6.5" fill="#C6F53C"/></g>
+      <path d="M 700 340 Q 750 296 792 292" stroke="#C6F53C" stroke-opacity=".22" stroke-width="2" fill="none" stroke-dasharray="2 7"/>
+      <rect width="1280" height="800" fill="url(#mfVin)"/>
+    </svg>
     <div class="menu">
       <img id="menuImgJuego" alt="Pádel Manager" style="width:100%;max-width:340px;display:block;margin:2px auto 6px;-webkit-mask-image:radial-gradient(ellipse at center,#000 60%,rgba(0,0,0,0) 90%);mask-image:radial-gradient(ellipse at center,#000 60%,rgba(0,0,0,0) 90%)">
       
@@ -45,6 +121,8 @@
       <button class="pri" id="btnClub">🏟 Modo club</button>
       <button class="pri" id="btnSuperliga">🏆 Superliga</button>
       <div id="selIdioma" class="difsel" style="margin-top:18px"></div>
+      <div id="selEscala" class="difsel" style="margin-top:18px"></div>
+      <button id="btnAjustesMenu" type="button" style="margin-top:10px" data-i18n="menu_ajustes">⚙ Ajustes</button>
       <div class="foot" id="menuInfo" style="margin-top:14px"></div>
     </div>
   </div>
@@ -75,6 +153,12 @@
       <div class="foot" id="persoDesc" style="text-align:left;min-height:14px"></div>
       <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)" data-i18n="crea_color">Color</label>
       <div class="fila" id="colores" style="margin:5px 0"></div>
+      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris);display:block;margin-top:12px" data-i18n="crea_semilla">Semilla</label>
+      <div class="fila" style="margin:5px 0">
+        <input id="inSemilla" style="flex:3" spellcheck="false">
+        <button class="selbtn" id="btnSemillaOtra" style="flex:1">🎲</button>
+      </div>
+      <div class="foot" style="text-align:left" data-i18n="crea_semilla_d">Dos partidas con la misma semilla viven exactamente lo mismo. Déjala como está si no te importa.</div>
     </div>
     <div class="card">
       <h3 data-i18n="hd_estilo">Estilo de juego</h3>
@@ -95,6 +179,8 @@
       </div>
       <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)" data-i18n="clb_color">Color del club</label>
       <div class="fila" id="coloresClub" style="margin:5px 0 12px"></div>
+      <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris)" data-i18n="cfil_hd">Filosofía del club</label>
+      <div id="filosClub" style="margin:5px 0 12px"></div>
       <div style="font-size:12px;color:var(--gris);line-height:1.6" data-i18n-html="clb_presu">Presupuesto inicial: <b style="color:var(--texto)">1.200 €</b>. Ficha al menos <b style="color:var(--texto)">2 jugadores</b> del mercado para poder competir. Cada semana pagarás sus salarios; los premios y los socios sostienen la caja.</div>
     </div>
     <div class="card">
@@ -122,7 +208,7 @@
       <div class="kpi"><span class="num" id="kEne">100</span><span class="lbl" data-i18n="kpi_energia">Energía</span></div>
     </div>
     <div class="cont">
-      <div id="proBanner" class="oculto"><div class="banner-pro">CONTRATO PROFESIONAL · Bienvenido al circuito</div></div>
+      <div id="proBanner" class="oculto"><div class="banner-pro" data-i18n="banner_pro">CONTRATO PROFESIONAL · Bienvenido al circuito</div></div>
       <div id="tab-semana">
         <div class="card">
           <h3 id="semTitulo" data-i18n="hd_plan_semana">Plan de la semana</h3>
@@ -136,13 +222,16 @@
         <div class="card"><h3 data-i18n="hd_equipo_trabajo">Tu equipo de trabajo</h3><div id="equipoStaff"></div>
           <div class="foot" style="text-align:left;margin-top:6px" id="staffCoste"></div></div>
         <div class="card"><h3 data-i18n="hd_mercado_personal">Mercado de personal</h3><div id="mercadoStaff"></div></div>
+        <div class="card"><h3 data-i18n="inv_hd">Dónde metes el dinero</h3><div id="inversiones"></div></div>
       </div>
       <div id="tab-entreno" class="oculto">
         <div class="card">
           <h3 data-i18n-html="hd_plan_entreno_full">Plan de entrenamiento · <em>se aplica cada día que entrenas</em></h3>
           <div class="entreno" id="btnsEntreno"></div>
+          <div id="entCtx" style="margin-top:14px"></div>
           <div id="compiPlanRow" style="margin-top:8px"></div>
         </div>
+        <div class="card"><h3 data-i18n="ent_estado_hd">Lo que dice el cuerpo técnico</h3><div id="entEstado"></div></div>
       </div>
       <div id="tab-jugador" class="oculto">
         <div id="ultimoBaile"></div>
@@ -161,6 +250,9 @@
         <div class="card">
           <h3><span data-i18n="hd_pareja">Pareja</span> · <em id="compName"></em></h3>
           <div class="meta" id="compMeta" style="margin-top:0"></div>
+          <div id="parejaPlan" style="margin-top:12px"></div>
+          <div id="parejaEjes" style="margin-top:12px"></div>
+          <div id="parejaCharlas" style="margin-top:12px"></div>
           <div id="mercado" style="margin-top:10px"></div>
         </div>
         <div class="card"><h3 data-i18n="hd_tecnico_patro">Cuerpo técnico y patrocinios</h3><div id="staff"></div></div>
@@ -169,7 +261,7 @@
         <div class="card">
           <h3 data-i18n-html="hd_ranking_html">Circuito Rising · <em>ranking mundial</em></h3>
           <table class="rk" id="tablaRk"></table>
-          <div class="foot" style="text-align:left;margin-top:8px" data-i18n="foot_ranking_55">Al cerrar cada temporada, el ranking arrastra el 55% de los puntos.</div>
+          <div class="foot" style="text-align:left;margin-top:8px" data-i18n="foot_ranking_55">Cada resultado suma puntos que valen 52 semanas: al cumplir el año se caen y hay que defenderlos.</div>
         </div>
         <div class="card"><h3 data-i18n="hd_clubes">Clubes del circuito</h3><table class="rk" id="tablaClubes"></table></div>
         <div class="card"><h3 data-i18n="hd_n1">Nº1 de cada temporada</h3><table class="rk" id="n1hist"></table></div>
@@ -203,8 +295,9 @@
     </div>
     <div class="cont">
       <div id="cm-semana">
+        <div id="cmCopa"></div>
         <div class="card">
-          <h3 id="cmSemTitulo">Plan de la semana</h3>
+          <h3 id="cmSemTitulo" data-i18n="hd_plan_semana">Plan de la semana</h3>
           <div id="cmTorneo"></div>
           <div id="cmEntreno"></div>
           <button class="azul" id="cmBtnDescanso" style="width:100%;margin-top:8px" data-i18n="btn_descanso_equipo">Descanso del equipo (+energía)</button>
@@ -217,8 +310,9 @@
         <div class="card">
           <h3 data-i18n-html="hd_ranking_html">Circuito Rising · <em>ranking mundial</em></h3>
           <table class="rk" id="cmTablaRk"></table>
-          <div class="foot" style="text-align:left;margin-top:8px" data-i18n="foot_ranking_55">Al cerrar cada temporada, el ranking arrastra el 55% de los puntos.</div>
+          <div class="foot" style="text-align:left;margin-top:8px" data-i18n="foot_ranking_55">Cada resultado suma puntos que valen 52 semanas: al cumplir el año se caen y hay que defenderlos.</div>
         </div>
+        <div class="card"><h3 data-i18n="cop_hd">Copa de Clubes</h3><table class="rk" id="cmCopaTabla"></table><div class="foot" style="text-align:left;margin-top:6px" id="cmCopaPie"></div></div>
         <div class="card"><h3 data-i18n="hd_clubes">Clubes del circuito</h3><table class="rk" id="cmTablaClubes"></table></div>
         <div class="card"><h3 data-i18n="hd_n1">Nº1 de cada temporada</h3><table class="rk" id="cmN1hist"></table></div>
         <div class="card"><h3 data-i18n="hd_records">Libro de récords</h3><table class="rk" id="cmRecords"></table></div>
@@ -254,14 +348,14 @@
   <div id="scr-superliga" class="oculto">
     <div class="cont">
       <div class="card">
-        <h3>🏆 Superliga · <em id="slTit">clasificación</em></h3>
+        <h3 data-i18n-html="hd_superliga_full">🏆 Superliga · <em id="slTit">clasificación</em></h3>
         <div id="slInfo" class="foot" style="text-align:left;margin-bottom:8px"></div>
         <div id="slTabla"></div>
         <div id="slAccion" style="margin-top:12px"></div>
       </div>
       <div id="slCol2">
         <div class="card"><h3 data-i18n-html="hd_equipo_alin_html">Tu equipo · <em>alineación</em></h3><div id="slEquipo"></div></div>
-        <div class="card"><h3>Resultados</h3><div id="slResult" class="log"></div></div>
+        <div class="card"><h3 data-i18n="hd_resultados">Resultados</h3><div id="slResult" class="log"></div></div>
       </div>
     </div>
   </div>
@@ -287,7 +381,7 @@
         </div>
       </div>
       <div class="card broadcast">
-        <h3><span class="onair">● EN DIRECTO</span> Retransmisión</h3>
+        <h3 data-i18n-html="hd_retransmision_full"><span class="onair">● EN DIRECTO</span> Retransmisión</h3>
         <div id="bcScore" class="bcscore"></div>
         <div id="bcStats" class="bcstats"></div>
         <div class="bclabel">JUGADA A JUGADA</div>
@@ -298,14 +392,14 @@
 
   <div id="fichaP" class="oculto" style="position:fixed;inset:0;background:rgba(10,13,19,.9);z-index:56;display:flex;align-items:center;justify-content:center;padding:16px">
     <div class="card" style="max-width:420px;width:100%">
-      <h3>Ficha del partido</h3>
+      <h3 data-i18n="hd_ficha">Ficha del partido</h3>
       <div id="fichaCuerpo"></div>
-      <button class="pri" id="fichaOk" style="width:100%;margin-top:9px">Continuar</button>
+      <button class="pri" id="fichaOk" style="width:100%;margin-top:9px" data-i18n="btn_continuar">Continuar</button>
     </div>
   </div>
   <div id="rueda" class="oculto" style="position:fixed;inset:0;background:rgba(10,13,19,.88);z-index:54;display:flex;align-items:center;justify-content:center;padding:16px">
     <div class="card" style="max-width:400px;width:100%">
-      <h3>Rueda de prensa</h3>
+      <h3 data-i18n="hd_prensa">Rueda de prensa</h3>
       <div class="foot" id="ruedaQ" style="text-align:left;margin-bottom:9px"></div>
       <button id="ruedaHumilde" style="width:100%;margin-bottom:5px"></button>
       <button id="ruedaAmbi" style="width:100%;margin-bottom:5px"></button>
@@ -314,23 +408,33 @@
   </div>
   <div id="tmuerto" class="oculto" style="position:fixed;inset:0;background:rgba(10,13,19,.88);z-index:55;display:flex;align-items:center;justify-content:center;padding:16px">
     <div class="card" style="max-width:380px;width:100%">
-      <h3>Tiempo muerto · <em>fin de set</em></h3>
+      <h3 data-i18n-html="hd_tiempo_muerto_full">Tiempo muerto · <em>fin de set</em></h3>
       <div class="foot" id="tmSit" style="text-align:left;margin-bottom:9px"></div>
+      <div id="tmInforme" style="margin-bottom:9px"></div>
       <button id="tmCalma" style="width:100%;margin-bottom:5px">🧊 «Tranquilos, punto a punto»</button>
       <button id="tmArenga" style="width:100%;margin-bottom:5px">🔥 «¡Ahora o nunca, a por ellos!»</button>
       <button id="tmBronca" style="width:100%">⚡ «¡Así no! Espabilad ya»</button>
     </div>
   </div>
+  <!-- ============ SALA DE TROFEOS ============ -->
+  <div id="trofeos" class="oculto" style="position:fixed;inset:0;background:rgba(8,11,17,.94);z-index:58;display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow:auto">
+    <div class="card" style="max-width:900px;width:100%;margin:auto">
+      <h3 data-i18n-html="hd_trofeos_full">Sala de trofeos · <em>tu carrera</em></h3>
+      <div id="trofeosCuerpo"></div>
+      <button class="pri" id="trofeosCerrar" style="width:100%;margin-top:12px" data-i18n="btn_cerrar">Cerrar</button>
+    </div>
+  </div>
+
   <div id="analitica" class="oculto" style="position:fixed;inset:0;background:rgba(10,13,19,.9);z-index:57;display:flex;align-items:center;justify-content:center;padding:16px">
     <div class="card" style="max-width:460px;width:100%">
-      <h3>Analítica · <em>base de datos</em></h3>
+      <h3 data-i18n-html="hd_analitica_full">Analítica · <em>base de datos</em></h3>
       <div id="analiticaCuerpo"></div>
       <button class="pri" id="analiticaCerrar" style="width:100%;margin-top:10px" data-i18n="btn_cerrar">Cerrar</button>
     </div>
   </div>
   <div id="hawk" class="oculto">
     <div class="box card">
-      <h3>Ojo de Halcón</h3>
+      <h3 data-i18n="hd_ojo_halcon">Ojo de Halcón</h3>
       <div id="hawkSvg"></div>
       <div class="verd" id="hawkVerd"></div>
       <div class="foot" id="hawkTxt" style="text-align:center"></div>
@@ -351,10 +455,20 @@
 </div>
 
 <script src="js/vendor/sql-asm.js"></script>
+<script src="js/rng.js"></script>
 <script src="js/engine/match.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/court.js"></script>
 <script src="js/engine/world.js"></script>
+<script src="js/engine/eventos.js"></script>
+<script src="js/engine/pareja.js"></script>
+<script src="js/engine/forma.js"></script>
+<script src="js/engine/inversion.js"></script>
+<script src="js/engine/tactica.js"></script>
+<script src="js/engine/copa.js"></script>
+<script src="js/engine/drama.js"></script>
+<script src="js/engine/atencion.js"></script>
+<script src="js/engine/arranque.js"></script>
 <script src="js/engine/liga.js"></script>
 <script src="js/i18n.js"></script>
 <script src="js/state.js"></script>
@@ -363,6 +477,9 @@
 <script src="js/career.js"></script>
 <script src="js/club.js"></script>
 <script src="js/tournament.js"></script>
+<div id="guia" class="oculto"></div>
+<script src="js/trofeos.js"></script>
+<script src="js/guia.js"></script>
 <script src="js/extras.js"></script>
 <script src="js/boot.js"></script>
 </body>

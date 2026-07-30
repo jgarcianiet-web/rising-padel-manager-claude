@@ -3,6 +3,7 @@ const cv=document.getElementById("pista"),cx=cv.getContext("2d");
 let PW=0,PH=0,SC=0,OX=0,OY=0;
 let players=[],ball={x:5,y:2.5,z:0,vis:false,trail:[]};
 let TEAM0_COLOR="#4FA3D8", ME_COLOR="#C6F53C", TEAM1_COLOR="#E06456";
+let escCv=null;   // la escena estática, horneada una vez por tamaño
 function resize(){
   let w=cv.parentElement.clientWidth||360;
   // En escritorio, no dejar que la pista se haga gigante: se limita para que
@@ -20,6 +21,7 @@ function resize(){
   cv.style.width=PW+"px";cv.style.height=PH+"px";cv.style.margin="0 auto";
   cx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
   SC=(PH-40)/L;OX=(PW-W*SC)/2;OY=20;
+  escCv=null;   // el tamaño cambió: la escena se vuelve a hornear
 }
 window.addEventListener("resize",()=>{if(!document.getElementById("scr-partido").classList.contains("oculto")){resize();draw();}});
 const px=(x,y)=>({x:OX+x*SC,y:OY+(L-y)*SC});
@@ -54,63 +56,106 @@ function stepPlayers(dt){
     if(d>.02){const m=Math.min(1,v*dt/d);p.x+=dx*m;p.y+=dy*m;}
   });
 }
-function draw(){
-  cx.clearRect(0,0,PW,PH);
-  // fondo (grada en penumbra)
-  const bg=cx.createRadialGradient(PW/2,PH*.32,40,PW/2,PH/2,PH*.82);
+/* Ruido determinista para el público: mismo valor entre fotogramas (nada de
+   parpadeo) y sin tocar el azar de simulación ni el visual. */
+function _crowdHash(i,j){ const s=Math.sin(i*12.9898+j*78.233)*43758.5453; return s-Math.floor(s); }
+/* La escena estática —gradas con público, cristal, pista, líneas, red y
+   focos— se dibuja UNA vez en un lienzo aparte y cada fotograma solo la
+   estampa. Antes se recalculaban todos los degradados sesenta veces por
+   segundo para pintar exactamente lo mismo. */
+function bakeEscena(){
+  escCv=document.createElement("canvas");
+  escCv.width=PW*devicePixelRatio;escCv.height=PH*devicePixelRatio;
+  const e=escCv.getContext("2d");
+  e.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  // fondo (el pabellón en penumbra)
+  const bg=e.createRadialGradient(PW/2,PH*.32,40,PW/2,PH/2,PH*.82);
   bg.addColorStop(0,"#1A2C40");bg.addColorStop(1,"#080B11");
-  cx.fillStyle=bg;cx.fillRect(0,0,PW,PH);
+  e.fillStyle=bg;e.fillRect(0,0,PW,PH);
   const p0=px(0,L),p1=px(W,0);
   const cw=p1.x-p0.x, chh=p1.y-p0.y;
+  // GRADAS: los laterales dejan de estar vacíos. Filas de cabezas en
+  // penumbra, deterministas (nada parpadea), más densas hacia la pista.
+  const margen=p0.x-10;
+  if(margen>26){
+    [[0,margen-8],[p1.x+18,PW]].forEach(([x0,x1],lado)=>{
+      // el suelo de la grada, con su caída de luz hacia fuera
+      const gg=e.createLinearGradient(lado===0?x1:x0,0,lado===0?x0:x1,0);
+      gg.addColorStop(0,"#111927");gg.addColorStop(1,"#0A0F17");
+      e.fillStyle=gg;e.fillRect(x0,p0.y-8,x1-x0,chh+16);
+      const cols=Math.max(2,Math.floor((x1-x0-8)/11));
+      const filas=Math.max(8,Math.floor(chh/16));
+      for(let i=0;i<cols;i++) for(let j=0;j<filas;j++){
+        const h=_crowdHash(i+lado*37,j);
+        if(h<.22) continue;                       // asientos vacíos
+        const hx=x0+6+i*11+(_crowdHash(j,i)-.5)*3;
+        const hy=p0.y+4+j*(chh/filas)+(_crowdHash(i*3,j*7)-.5)*4;
+        // alguna prenda con color entre la penumbra
+        const tinte=h>.93?"rgba(198,245,60,.30)":h>.86?"rgba(79,163,216,.32)":h>.8?"rgba(224,100,86,.28)":`rgba(58,70,92,${.35+h*.25})`;
+        e.fillStyle=tinte;
+        e.beginPath();e.arc(hx,hy,2.4+h*1.2,0,7);e.fill();
+      }
+    });
+  }
   // muro de cristal (marco exterior con brillo azulado)
-  cx.save();
-  cx.shadowColor="rgba(95,175,235,.45)";cx.shadowBlur=18;
-  cx.strokeStyle="rgba(150,205,240,.28)";cx.lineWidth=7;
-  cx.strokeRect(p0.x-7,p0.y-7,cw+14,chh+14);
-  cx.restore();
+  e.save();
+  e.shadowColor="rgba(95,175,235,.45)";e.shadowBlur=18;
+  e.strokeStyle="rgba(150,205,240,.28)";e.lineWidth=7;
+  e.strokeRect(p0.x-7,p0.y-7,cw+14,chh+14);
+  e.restore();
   // superficie de la pista (moqueta)
-  const court=cx.createLinearGradient(0,p0.y,0,p1.y);
+  const court=e.createLinearGradient(0,p0.y,0,p1.y);
   court.addColorStop(0,"#20597F");court.addColorStop(.5,"#173F60");court.addColorStop(1,"#20597F");
-  cx.fillStyle=court;cx.fillRect(p0.x,p0.y,cw,chh);
+  e.fillStyle=court;e.fillRect(p0.x,p0.y,cw,chh);
+  // textura de moqueta: pasadas de cepillo alternadas, apenas visibles
+  for(let y=p0.y;y<p1.y;y+=SC*1.6){
+    e.fillStyle=(Math.floor((y-p0.y)/(SC*1.6))%2===0)?"rgba(255,255,255,.016)":"rgba(0,0,0,.02)";
+    e.fillRect(p0.x,y,cw,SC*1.6);
+  }
   // iluminación de estadio: 4 mástiles a cada lado (8 focos), como una pista real
   const yMast=[.15,.38,.62,.85];
   // charcos de luz proyectados sobre la pista desde ambos lados largos
-  cx.save();
-  cx.beginPath();cx.rect(p0.x,p0.y,cw,chh);cx.clip();
-  cx.globalCompositeOperation="lighter";
+  e.save();
+  e.beginPath();e.rect(p0.x,p0.y,cw,chh);e.clip();
+  e.globalCompositeOperation="lighter";
   yMast.forEach(fy=>{
     [px(2,L*fy),px(W-2,L*fy)].forEach(c=>{
-      const r=SC*3.8, lg=cx.createRadialGradient(c.x,c.y,2,c.x,c.y,r);
+      const r=SC*3.8, lg=e.createRadialGradient(c.x,c.y,2,c.x,c.y,r);
       lg.addColorStop(0,"rgba(222,236,255,.15)");lg.addColorStop(.6,"rgba(210,228,255,.05)");lg.addColorStop(1,"rgba(210,228,255,0)");
-      cx.fillStyle=lg;cx.beginPath();cx.arc(c.x,c.y,r,0,7);cx.fill();
+      e.fillStyle=lg;e.beginPath();e.arc(c.x,c.y,r,0,7);e.fill();
     });
   });
-  cx.restore();
+  e.restore();
   // áreas de saque, sombreadas suavemente para que se lea la estructura
-  const box=(x0,y0,x1,y1,al)=>{const A=px(x0,y1);cx.fillStyle=`rgba(255,255,255,${al})`;cx.fillRect(A.x,A.y,(x1-x0)*SC,(y1-y0)*SC);};
+  const box=(x0,y0,x1,y1,al)=>{const A=px(x0,y1);e.fillStyle=`rgba(255,255,255,${al})`;e.fillRect(A.x,A.y,(x1-x0)*SC,(y1-y0)*SC);};
   box(0,3,W/2,NET,.055); box(W/2,3,W,NET,.03); box(0,NET,W/2,L-3,.03); box(W/2,NET,W,L-3,.055);
   // líneas de pista
-  cx.strokeStyle="#EAF3FB";cx.lineWidth=1.6;
-  cx.strokeRect(p0.x,p0.y,cw,chh);
-  [3,L-3].forEach(y=>{const a=px(0,y),b=px(W,y);cx.beginPath();cx.moveTo(a.x,a.y);cx.lineTo(b.x,b.y);cx.stroke();});
+  e.strokeStyle="#EAF3FB";e.lineWidth=1.6;
+  e.strokeRect(p0.x,p0.y,cw,chh);
+  [3,L-3].forEach(y=>{const a=px(0,y),b=px(W,y);e.beginPath();e.moveTo(a.x,a.y);e.lineTo(b.x,b.y);e.stroke();});
   // línea central de saque (de una línea de servicio a la otra, cruzando la red)
-  let a=px(W/2,3),b=px(W/2,L-3);cx.beginPath();cx.moveTo(a.x,a.y);cx.lineTo(b.x,b.y);cx.stroke();
+  let a=px(W/2,3),b=px(W/2,L-3);e.beginPath();e.moveTo(a.x,a.y);e.lineTo(b.x,b.y);e.stroke();
   // red (con sus postes)
   a=px(0,NET);b=px(W,NET);
-  cx.strokeStyle="#070A0F";cx.lineWidth=5;cx.beginPath();cx.moveTo(a.x-7,a.y);cx.lineTo(b.x+7,b.y);cx.stroke();
-  cx.strokeStyle="rgba(233,243,251,.5)";cx.lineWidth=1;cx.beginPath();cx.moveTo(a.x-7,a.y-2);cx.lineTo(b.x+7,b.y-2);cx.stroke();
-  cx.fillStyle="#070A0F";[a.x-7,b.x+7].forEach(xx=>cx.fillRect(xx-1.5,a.y-5,3,10));
+  e.strokeStyle="#070A0F";e.lineWidth=5;e.beginPath();e.moveTo(a.x-7,a.y);e.lineTo(b.x+7,b.y);e.stroke();
+  e.strokeStyle="rgba(233,243,251,.5)";e.lineWidth=1;e.beginPath();e.moveTo(a.x-7,a.y-2);e.lineTo(b.x+7,b.y-2);e.stroke();
+  e.fillStyle="#070A0F";[a.x-7,b.x+7].forEach(xx=>e.fillRect(xx-1.5,a.y-5,3,10));
   // mástiles con sus focos a ambos lados largos, fuera del cristal (4 por lado)
   yMast.forEach(fy=>{
     const yy=px(0,L*fy).y;
     [p0.x-9,p1.x+9].forEach(x=>{
-      cx.save();
-      cx.shadowColor="rgba(232,242,255,.95)";cx.shadowBlur=11;
-      cx.fillStyle="#EAF2FF";
-      cx.beginPath();cx.ellipse(x,yy,3,4.6,0,0,7);cx.fill();
-      cx.restore();
+      e.save();
+      e.shadowColor="rgba(232,242,255,.95)";e.shadowBlur=11;
+      e.fillStyle="#EAF2FF";
+      e.beginPath();e.ellipse(x,yy,3,4.6,0,0,7);e.fill();
+      e.restore();
     });
   });
+}
+function draw(){
+  if(!escCv) bakeEscena();
+  cx.clearRect(0,0,PW,PH);
+  cx.drawImage(escCv,0,0,PW,PH);
   players.forEach(p=>{
     const q=px(p.x,p.y);
     cx.fillStyle="rgba(0,0,0,.42)";cx.beginPath();cx.ellipse(q.x,q.y+4,9,4,0,0,7);cx.fill();
@@ -137,4 +182,3 @@ function draw(){
     cx.restore();
   }
 }
-

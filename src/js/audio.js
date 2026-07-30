@@ -25,7 +25,7 @@ function ruido(d,vol,when){
     const t0=a.currentTime+(when||0);
     const buf=a.createBuffer(1,a.sampleRate*d,a.sampleRate);
     const ch=buf.getChannelData(0);
-    for(let i=0;i<ch.length;i++) ch[i]=Math.random()*2-1;
+    for(let i=0;i<ch.length;i++) ch[i]=Math.random()*2-1;   // azar-visual
     const src=a.createBufferSource();src.buffer=buf;
     const g=a.createGain(), fl=a.createBiquadFilter();
     fl.type="lowpass";fl.frequency.value=1400;
@@ -42,6 +42,30 @@ function sfxError(){ tone(150,.22,"sawtooth",.06,0,110); sfxGrada(.28); }
 function sfxSet(){ tone(660,.1,"sine",.09); tone(880,.2,"sine",.09,.11); sfxGrada(1); }
 function sfxTitulo(){ [523,659,784,1047].forEach((f,i)=>tone(f,.17,"square",.08,i*.13)); ruido(1.3,.06,.25); }
 function sfxClick(){ tone(720,.03,"square",.04); }
+/* El sonido de las cabeceras de momento: la gloria sube, el duelo baja y
+   apaga la música (el silencio tras una lesión también es sonido), y la
+   vuelta es una nota corta de alivio. */
+/* Temas musicales de contexto (P6/producción): motivos cortos sintetizados,
+   no bucles. El de final anuncia que hoy no es una ronda más; el de retirada
+   cierra la carrera con calma. Nada de esto toca el azar con semilla. */
+function musicaTema(tipo){
+  if(tipo==="final"){
+    [262,330,392,523,392,523].forEach((f,i)=>tone(f,.28,"triangle",.055,i*.22));
+    ruido(1.6,.03,.9);
+    return;
+  }
+  if(tipo==="retirada"){
+    musicaOff();
+    [392,349,330,262].forEach((f,i)=>tone(f,.85,"sine",.05,i*.7));
+    tone(196,2.4,"sine",.04,2.6);
+  }
+}
+function sfxMomento(tipo){
+  if(tipo==="duelo"){ musicaOff(); tone(196,.7,"sine",.05); tone(147,1.1,"sine",.045,.45); return; }
+  if(tipo==="vuelta"){ tone(440,.12,"sine",.06); tone(554,.22,"sine",.06,.14); return; }
+  [392,523,659,784].forEach((f,i)=>tone(f,.2,"square",.07,i*.14));
+  ruido(1.1,.05,.28);
+}
 // Blip de notificación para los avisos emergentes, con matiz según el tipo:
 // alegre y ascendente para lo bueno, grave y descendente para lo malo. Sutil
 // (volumen bajo) para no competir con los efectos del partido.
@@ -59,7 +83,7 @@ function sfxGrada(int){
     int=Math.max(.2,Math.min(1,int||.5));
     const t0=a.currentTime, d=.5+int*1.1;
     const buf=a.createBuffer(1,Math.floor(a.sampleRate*d),a.sampleRate), ch=buf.getChannelData(0);
-    for(let i=0;i<ch.length;i++) ch[i]=Math.random()*2-1;
+    for(let i=0;i<ch.length;i++) ch[i]=Math.random()*2-1;   // azar-visual
     const src=a.createBufferSource(); src.buffer=buf;
     const bp=a.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=650+int*550; bp.Q.value=.8;
     const g=a.createGain();
@@ -78,7 +102,7 @@ function musicaOn(){
   try{
     const dur=2.5, buf=a.createBuffer(1,Math.floor(a.sampleRate*dur),a.sampleRate), ch=buf.getChannelData(0);
     let last=0;
-    for(let i=0;i<ch.length;i++){ const w=Math.random()*2-1; last=(last+.02*w)/1.02; ch[i]=last*3.2; }
+    for(let i=0;i<ch.length;i++){ const w=Math.random()*2-1; last=(last+.02*w)/1.02; ch[i]=last*3.2; }   // azar-visual
     const src=a.createBufferSource(); src.buffer=buf; src.loop=true;
     const bp=a.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=500; bp.Q.value=.6;
     const g=a.createGain(); g.gain.value=0; g.connect(a.destination);
@@ -122,6 +146,10 @@ if(typeof document.addEventListener==="function"){
 }
 
 function buildPoint(server){
+  // El índice de equipo se llama `eq` y no `t`: una local llamada t taparía la
+  // función de traducción en TODA la función (zona muerta incluida), y este
+  // bucle necesita traducir. Es el mismo cuento que avisa CLAUDE.md.
+  const TXT_RED=t("com_ganan_red"), TXT_REMATE=t("com_remate_final"), TXT_PELOTEO=t("com_peloteo_eterno");
   const ev=[]; const A=teams[0],B=teams[1];
   A.atNet=false;B.atNet=false;A._scr=false;B._scr=false;
   // dominio de red: quien cierra el punto controlando la red se lleva el crédito
@@ -129,82 +157,124 @@ function buildPoint(server){
   const netCredit=(g)=>{ if(stats&&stats[g]&&teams[g]&&teams[g].atNet) stats[g].red=(stats[g].red||0)+1; };
   // entre punto y punto los cuatro recuperan un poco de fatiga
   if(stats){[0,1].forEach(tt=>{ if(stats[tt]&&stats[tt].fatiga) stats[tt].fatiga=stats[tt].fatiga.map(f=>clamp(f-.8,0,100)); });}
-  let t=server,rally=0;
-  let contact=contactPoint(t,true,t===0?7.6:2.4);
+  let eq=server,rally=0;
+  let contact=contactPoint(eq,true,eq===0?7.6:2.4);
   let ctx={atNet:false,high:false,afterGlass:false,pressure:0};
   let shotKey="saque";
   let hIdx=contact.x<5?0:1;
   while(true){
     rally++;
-    const team=teams[t],opp=teams[1-t];
+    const team=teams[eq],opp=teams[1-eq];
     const pl=team.jug[hIdx];
     if(shotKey!=="saque") shotKey=chooseShot(pl,{...ctx,atNet:team.atNet},opp);
     const jug=pl.n;
     const s=SHOTS[shotKey];
     // tiros y fatiga: cada golpe cuenta y desgasta a quien lo ejecuta
     let _fat=0;
-    if(stats&&stats[t]){
-      stats[t].tiros++;
-      _fat=stats[t].fatiga[hIdx];
+    if(stats&&stats[eq]){
+      stats[eq].tiros++;
+      // qué golpes juegas: es el patrón que el rival acabará leyendo
+      if(typeof tacUsoAnota==="function"&&shotKey!=="saque") tacUsoAnota(stats[eq],shotKey);
+      _fat=stats[eq].fatiga[hIdx];
       const coste=(shotKey==="saque"?.3:.7)+(AGRESIVOS.includes(shotKey)?.4:0)+rally*.04;
-      stats[t].fatiga[hIdx]=clamp(_fat+coste,0,100);
+      stats[eq].fatiga[hIdx]=clamp(_fat+coste,0,100);
     }
-    let com=`${jug} — ${s.label}`;
-    if(ctx.afterGlass&&!ctx.high) com=`${jug} — salida de pared → ${s.label}`;
-    if(shotKey==="bajada") com=`¡${jug} baja la pared con todo!`;
-    if(ctx.mia) com=`«¡Mía!» ${com}`;
-    if(PRESION>.6&&Math.random()<.3){
+    let com=t("com_golpe",{jug,golpe:golpeNombre(shotKey)});
+    if(ctx.afterGlass&&!ctx.high) com=t("com_pared",{jug,golpe:golpeNombre(shotKey)});
+    if(shotKey==="bajada") com=t("com_bajada",{jug});
+    if(ctx.mia) com=t("com_mia",{com});
+    if(PRESION>.6&&Math.random()<.3){   // azar-visual
       const p=pl.perso||"frio";
-      com+= p==="emocional" ? ((pl.conf??55)>=60?F_PERSO.emocionalAlto:F_PERSO.emocionalBajo) : F_PERSO[p];
-    } else if(s.attr&&pl.attrs[s.attr]>=85&&Math.random()<.35) com+=` (${s.attr} ${pl.attrs[s.attr]})`;
+      com+=t(pickVis(p==="emocional" ? ((pl.conf??55)>=60?F_PERSO.emocionalAlto:F_PERSO.emocionalBajo) : (F_PERSO[p]||F_PERSO.frio)));
+    } else if(s.attr&&pl.attrs[s.attr]>=85&&Math.random()<.35) com+=` (${atNombre(s.attr)} ${pl.attrs[s.attr]})`;   // azar-visual
 
-    if(opp._defQ===undefined) opp._defQ=Math.round((mediaAttrs(opp.jug[0].attrs)+mediaAttrs(opp.jug[1].attrs))/2);
-    if(team._quimLado===undefined) team._quimLado=quimicaLado(team);
-    const outcome=shotKey==="saque"?"sigue":resolveShot(pl,shotKey,{...ctx,team:t,oppDef:opp._defQ,oppScrambling:opp._scr,_quimLado:team._quimLado,fatiga:_fat},rally);
+    /* Lo que se calcula una vez por PARTIDO va colgado de `match`, no de la
+       pareja. Una pareja del mundo es un objeto que vive en `G.world` y dura
+       toda la partida: cachearle nada encima es dejárselo puesto para siempre
+       —`_defQ` se quedaba con el nivel que tenía el día que jugasteis por
+       primera vez, aunque el mundo llevara cinco temporadas mejorando—. */
+    if(!match._cache) match._cache={dia:[diaDePartido(),diaDePartido()],defQ:[,], quim:[,]};
+    const _c=match._cache;
+    if(_c.defQ[1-eq]===undefined) _c.defQ[1-eq]=Math.round((mediaAttrs(opp.jug[0].attrs)+mediaAttrs(opp.jug[1].attrs))/2);
+    if(_c.quim[eq]===undefined) _c.quim[eq]=quimicaLado(team);
+    const outcome=shotKey==="saque"?"sigue":resolveShot(pl,shotKey,{...ctx,team:eq,oppDef:_c.defQ[1-eq],oppScrambling:opp._scr,_quimLado:_c.quim[eq],_dia:_c.dia[eq],fatiga:_fat},rally);
 
     if(outcome==="error"){
-      stats[t].jug[hIdx].e++;
-      stats[t].eShot[shotKey]=(stats[t].eShot[shotKey]||0)+1;   // origen del error (por golpe)
+      stats[eq].jug[hIdx].e++;
+      stats[eq].eShot[shotKey]=(stats[eq].eShot[shotKey]||0)+1;   // origen del error (por golpe)
       pl.conf=clamp((pl.conf??55)-4,10,95);
       const modo=pick(["net","out","glass"]);
-      ev.push({team:t,jug,shotKey,com,from:contact,end:modo,endCom:`✗ ${jug}: ${pick(F_ERR)}`,net:[A.atNet,B.atNet]});
-      netCredit(1-t);
-      return {ev,ganador:1-t};
+      ev.push({team:eq,jug,shotKey,com,from:contact,end:modo,endCom:t("com_error",{jug,frase:t(frasePunto(F_ERR,modo))}),net:[A.atNet,B.atNet]});
+      netCredit(1-eq);
+      return {ev,ganador:1-eq};
     }
     if(outcome==="winner"){
-      stats[t].jug[hIdx].w++;
-      stats[t].wShot[shotKey]=(stats[t].wShot[shotKey]||0)+1;   // arma que cierra el punto (por golpe)
+      stats[eq].jug[hIdx].w++;
+      stats[eq].wShot[shotKey]=(stats[eq].wShot[shotKey]||0)+1;   // arma que cierra el punto (por golpe)
       pl.conf=clamp((pl.conf??55)+3,10,95);
       const lateral=["remate3","remate4"].includes(shotKey);
-      ev.push({team:t,jug,shotKey,com,from:contact,end:lateral?"porTres":"winner",endCom:`★ WINNER de ${jug}. ${pick(F_WIN)}`,net:[A.atNet,B.atNet]});
-      netCredit(t);
-      return {ev,ganador:t};
+      const fin=lateral?"porTres":"winner";
+      ev.push({team:eq,jug,shotKey,com,from:contact,end:fin,endCom:t("com_winner",{jug,frase:t(frasePunto(F_WIN,fin))}),net:[A.atNet,B.atNet]});
+      netCredit(eq);
+      return {ev,ganador:eq};
     }
 
-    const inc=incomingFor(shotKey,1-t,opp);
+    const inc=incomingFor(shotKey,1-eq,opp);
+    /* EL GLOBO CONTRA LA RED: O LOS PASA, O LES REGALA LA BOLA ARRIBA.
+       Antes el globo SIEMPRE echaba de la red al rival, y esa línea se llevaba
+       por delante medio juego: la situación «bola alta estando en la red» —la
+       única que abre las candidatas ["bandeja","vibora","remate",…]— no podía
+       ocurrir nunca, así que ese trozo de `chooseShot` era código muerto.
+       Medido: en 60 partidos un bandejero no pegaba UNA bandeja y un rematador
+       ni un remate; jugaban los puntos con sus peores atributos y ganaban el
+       29% y el 36% a igualdad de nivel, mientras el que menos fallaba se lo
+       llevaba todo.
+
+       Ahora el globo se mide contra la defensa aérea del rival: si es bueno,
+       los pasa y te quedas la red; si se queda corto, se la dejas alta y te la
+       van a pegar. Eso devuelve el bucle que ES el pádel —globo, bandeja,
+       globo, bandeja— y le pone al globo el riesgo que le faltaba. */
+    let globoPasa=null;
+    if(["globo","globoRapido"].includes(shotKey)&&opp.atNet){
+      const q=pl.attrs.globo||55;
+      const def=Math.max(opp.jug[0].attrs.bandeja||50,opp.jug[1].attrs.bandeja||50);
+      /* Y un globo se sube desde donde te dejan subirlo. Éste es el pago de la
+         BANDEJA: no gana puntos (win .10, la recompensa más baja del juego),
+         gana la posición —te mantiene arriba y obliga al de atrás a levantar
+         la bola incómodo, hasta que uno sale corto y se acaba—. Sin este
+         término el bandejero era el peor estilo con diferencia (33% a igualdad
+         de nivel) porque elegía siempre la más segura de las tres bolas altas
+         y la más segura no pagaba nada. */
+      const pPasa=clamp(.46+(q-def)/150,.22,.78)-(shotKey==="globoRapido"?.08:0)-(ctx.pressure||0)*.35;
+      globoPasa=rnd()<pPasa;
+      if(!globoPasa){ inc.ctx={atNet:true,high:true,afterGlass:false,pressure:.15}; inc.c=contactPoint(1-eq,false); inc.vuelo="volea"; }
+    }
     let nIdx=inc.c.x<5?0:1;
     if(inc.ctx.high||Math.abs(inc.c.x-5)<1.7){
       const val=j=>inc.ctx.high?opp.jug[j].attrs.remate+opp.jug[j].attrs.bandeja:opp.jug[j].attrs[opp.atNet?"volea":"fondo"]*2;
       const best=val(0)>=val(1)?0:1;
       if(best!==nIdx&&val(best)-val(1-best)>24){nIdx=best;inc.ctx.mia=true;}
     }
-    if(["globo","globoRapido"].includes(shotKey)&&opp.atNet){
+    if(globoPasa){
       opp.atNet=false;team.atNet=true;
-      ev.push({team:t,jug,shotKey,com:com+" · ¡y ganan la red!",from:contact,to:inc.c,vuelo:inc.vuelo,net:[A.atNet,B.atNet],recvIdx:nIdx});
+      ev.push({team:eq,jug,shotKey,com:com+" · "+TXT_RED,from:contact,to:inc.c,vuelo:inc.vuelo,net:[A.atNet,B.atNet],recvIdx:nIdx});
     } else {
       if(shotKey==="saque") team.atNet=true;
       if(shotKey==="dejada"&&!opp.atNet){opp.atNet=true;opp._scr=true;}
       if(shotKey==="bajada"){team.atNet=true;opp.atNet=false;}
-      ev.push({team:t,jug,shotKey,com,from:contact,to:inc.c,vuelo:inc.vuelo,net:[A.atNet,B.atNet],recvIdx:nIdx});
+      ev.push({team:eq,jug,shotKey,com,from:contact,to:inc.c,vuelo:inc.vuelo,net:[A.atNet,B.atNet],recvIdx:nIdx});
     }
-    teams[1-t]._scr=["dejada","vibora","remate"].includes(shotKey)&&Math.random()<.5;
-    contact=inc.c;ctx=inc.ctx;t=1-t;hIdx=nIdx;
+    // rnd() y no Math.random: esto decide oppScrambling, que multiplica por 1,7
+    // la probabilidad de winner del siguiente golpe. Es simulación, no adorno,
+    // aunque viva en el mismo fichero que el sonido.
+    teams[1-eq]._scr=["dejada","vibora","remate"].includes(shotKey)&&rnd()<.5;
+    contact=inc.c;ctx=inc.ctx;eq=1-eq;hIdx=nIdx;
     if(rally>26){
-      stats[t].jug[hIdx].w++;
-      stats[t].wShot["remate"]=(stats[t].wShot["remate"]||0)+1;
-      ev.push({team:t,jug:teams[t].jug[hIdx].n,shotKey:"remate",com:"remate definitivo",from:contact,end:"winner",endCom:"★ Cae el punto tras un peloteo eterno.",net:[A.atNet,B.atNet]});
-      netCredit(t);
-      return {ev,ganador:t};
+      stats[eq].jug[hIdx].w++;
+      stats[eq].wShot["remate"]=(stats[eq].wShot["remate"]||0)+1;
+      ev.push({team:eq,jug:teams[eq].jug[hIdx].n,shotKey:"remate",com:TXT_REMATE,from:contact,end:"winner",endCom:TXT_PELOTEO,net:[A.atNet,B.atNet]});
+      netCredit(eq);
+      return {ev,ganador:eq};
     }
     shotKey="_";
   }
