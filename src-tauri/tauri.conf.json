@@ -7,6 +7,7 @@
     "frontendDist": "../src"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "title": "Rising Pádel Manager",
@@ -15,7 +16,8 @@
         "minWidth": 940,
         "minHeight": 640,
         "resizable": true,
-        "center": true
+        "center": true,
+        "fullscreen": true
       }
     ],
     "security": {

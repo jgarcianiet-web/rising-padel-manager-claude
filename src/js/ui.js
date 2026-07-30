@@ -145,6 +145,69 @@ function pintarSelectorEscala(){
   cont.innerHTML=`<div class="diflabel">${t("esc_label")}</div><div class="difrow">${chips}</div><div class="difdesc">${t("esc_desc")}</div>`;
 }
 
+/* ================= PANTALLA DE AJUSTES =================
+   Un solo sitio para lo que el jugador puede tocar: idioma, tamaño de letra,
+   sonido y pantalla completa. El menú conserva sus selectores rápidos; esto
+   existe sobre todo para poder tocarlos EN PARTIDA (botón ⚙ de la barra). */
+function fullscreenPref(){ try{ return localStorage.getItem("rpm_full")!=="0"; }catch(e){ return true; } }
+function setFullscreenPref(on){
+  try{ localStorage.setItem("rpm_full",on?"1":"0"); }catch(e){}
+  aplicarFullscreen(on);
+}
+/* En el escritorio (Tauri) se cambia la VENTANA, sin gesto necesario; en el
+   navegador, el documento — y ahí solo funciona dentro de un clic del jugador,
+   por eso el arranque la pide al tocar el splash y no antes. */
+function aplicarFullscreen(on){
+  try{
+    if(typeof window!=="undefined"&&window.__TAURI__&&window.__TAURI__.window){
+      window.__TAURI__.window.getCurrentWindow().setFullscreen(!!on);
+      return;
+    }
+  }catch(e){}
+  try{
+    if(on&&!document.fullscreenElement&&document.documentElement.requestFullscreen){
+      const p=document.documentElement.requestFullscreen(); if(p&&p.catch) p.catch(()=>{});
+    } else if(!on&&document.fullscreenElement&&document.exitFullscreen){
+      const p=document.exitFullscreen(); if(p&&p.catch) p.catch(()=>{});
+    }
+  }catch(e){}
+}
+let _ajAbierto=null;   // estado propio: el DOM recortado de la suite no permite consultarlo
+function mostrarAjustes(){
+  if(_ajAbierto){ quitarEl(_ajAbierto); _ajAbierto=null; return null; }
+  const d=document.createElement("div"); d.id="ajModal";
+  d.style.cssText="position:fixed;inset:0;background:rgba(8,11,17,.94);z-index:86;display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto";
+  const sel=idiomaActual(), esc=escalaActual(), full=fullscreenPref();
+  d.innerHTML=`<div class="card" style="max-width:440px;width:100%">
+    <h3 style="margin-top:0">⚙ ${t("aj_titulo")}</h3>
+    <div class="diflabel">${t("idioma_label")}</div>
+    <div class="difrow difrow-wrap">${IDIOMAS.map(l=>`<button type="button" class="difchip${l.id===sel?" on":""}" data-aj-idioma="${l.id}">${l.bandera} ${l.n}</button>`).join("")}</div>
+    <div class="diflabel" style="margin-top:12px">${t("esc_label")}</div>
+    <div class="difrow">${ESCALAS.map(([id,v])=>`<button type="button" class="difchip${id===esc?" on":""}" data-aj-esc="${id}" style="font-size:${Math.round(11*v)}px">${t("esc_"+id)}</button>`).join("")}</div>
+    <div class="diflabel" style="margin-top:12px">${t("aj_sonido")}</div>
+    <div class="difrow"><button type="button" class="difchip${SND?" on":""}" data-aj-snd="1">🔊 ${t("aj_on")}</button><button type="button" class="difchip${SND?"":" on"}" data-aj-snd="0">🔇 ${t("aj_off")}</button></div>
+    <div class="diflabel" style="margin-top:12px">${t("aj_pantalla")}</div>
+    <div class="difrow"><button type="button" class="difchip${full?" on":""}" data-aj-full="1">${t("aj_on")}</button><button type="button" class="difchip${full?"":" on"}" data-aj-full="0">${t("aj_off")}</button></div>
+    <div class="difdesc">${t("aj_pantalla_d")}</div>
+    <button type="button" class="pri" data-aj-cerrar="1" style="width:100%;margin-top:14px">${t("aj_cerrar")}</button>
+  </div>`;
+  document.body.appendChild(d);
+  _ajAbierto=d;
+  const reabre=()=>{ quitarEl(d); _ajAbierto=null; mostrarAjustes(); };
+  if(typeof d.querySelectorAll==="function"){
+    d.querySelectorAll("[data-aj-idioma]").forEach(b=>b.onclick=()=>{ setIdioma(b.dataset.ajIdioma); if(G&&typeof pintarTodo==="function") pintarTodo(); reabre(); });
+    d.querySelectorAll("[data-aj-esc]").forEach(b=>b.onclick=()=>{ setEscala(b.dataset.ajEsc); reabre(); });
+    d.querySelectorAll("[data-aj-snd]").forEach(b=>b.onclick=()=>{
+      const on=b.dataset.ajSnd==="1";
+      if(SND!==on){ SND=on; try{localStorage.setItem("rpm_snd",on?"1":"0");}catch(e){} if(!on&&typeof musicaOff==="function") musicaOff(); if(typeof pintaSnd==="function") pintaSnd(); }
+      reabre();
+    });
+    d.querySelectorAll("[data-aj-full]").forEach(b=>b.onclick=()=>{ setFullscreenPref(b.dataset.ajFull==="1"); reabre(); });
+    const cx=d.querySelector("[data-aj-cerrar]"); if(cx) cx.onclick=()=>{ quitarEl(d); _ajAbierto=null; };
+  }
+  return d;
+}
+
 // modal de elección: continuar guardada o empezar nueva
 function quitarEl(el){
   if(!el) return;

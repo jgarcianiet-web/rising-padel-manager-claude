@@ -2,6 +2,10 @@
 // El tamaño de interfaz va lo primero: si se aplicara después de pintar, se
 // vería el menú saltar de tamaño al cargar.
 aplicarEscala();
+/* Pantalla completa: el escritorio ARRANCA en ella (tauri.conf) y aquí solo se
+   respeta al jugador que la apagó en Ajustes; el navegador no puede pedirla
+   sin un gesto, así que se pide al tocar el splash (más abajo). */
+try{ if(typeof window!=="undefined"&&window.__TAURI__&&!fullscreenPref()) aplicarFullscreen(false); }catch(e){}
 irA("menu");
 pintarMenu();
 pintarLogos();
@@ -21,7 +25,12 @@ if(typeof dbSqlInit==="function"){ dbSqlInit().then(()=>{ if(!G) pintarMenu(); }
     spl.style.transition="opacity .45s"; spl.style.opacity="0";
     setTimeout(()=>quitarEl(spl),470);
   };
-  spl.onclick=cerrar;                       // tocar la pantalla salta la intro
+  spl.onclick=()=>{
+    // el primer toque es el único gesto garantizado: aquí el navegador
+    // puede entrar en pantalla completa si el jugador la tiene activada
+    try{ if(!(typeof window!=="undefined"&&window.__TAURI__)&&fullscreenPref()) aplicarFullscreen(true); }catch(e){}
+    cerrar();                               // tocar la pantalla salta la intro
+  };
   T(()=>{ est.style.opacity="1"; },80);     // 1) logo del estudio
   T(()=>{ est.style.opacity="0"; },1650);
   T(()=>{ jue.style.opacity="1"; },2200);   // 2) logo del juego

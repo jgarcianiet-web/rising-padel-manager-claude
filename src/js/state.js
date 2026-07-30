@@ -269,6 +269,9 @@ function pintaSnd(){ document.getElementById("btnSnd").textContent=SND?"🔊":"�
 document.getElementById("btnSnd").onclick=()=>{ SND=!SND; try{localStorage.setItem("rpm_snd",SND?"1":"0");}catch(e){} if(!SND) musicaOff(); else if(match&&match.ver) musicaOn(); pintaSnd(); };
 pintaSnd();
 document.getElementById("btnAyuda").onclick=()=>{ if(G) verTuto(G.modo,true); };
+// la pantalla de ajustes vive en dos sitios: la barra (en partida) y el menú
+if(document.getElementById("btnAjustes")) document.getElementById("btnAjustes").onclick=()=>mostrarAjustes();
+if(document.getElementById("btnAjustesMenu")) document.getElementById("btnAjustesMenu").onclick=()=>mostrarAjustes();
 
 /* ---------- helpers de mundo compartidos ---------- */
 function mkAttrsNivel(nivel,estilo){

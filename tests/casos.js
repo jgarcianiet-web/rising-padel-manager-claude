@@ -4718,6 +4718,26 @@ comprueba("Varianza: el perfil de desarrollo y la era del mundo hacen cada carre
   return "3 desarrollos con curva propia · 3 eras que mueven la élite · 2 arquetipos y 2 momentos nuevos";
 });
 
+comprueba("Ajustes: una pantalla para el jugador, con la pantalla completa persistida", () => {
+  /* Idioma, tamaño de letra, sonido y pantalla completa en un solo sitio,
+     tocable también en partida. La pantalla completa viene activada de serie
+     (el escritorio abre en ella), se puede apagar y la preferencia persiste. */
+  nuevaCarrera("agresivo");
+  try { localStorage.removeItem("rpm_full"); } catch (e) {}
+  exige(fullscreenPref() === true, "la pantalla completa no viene activada de serie");
+  setFullscreenPref(false);
+  exige(fullscreenPref() === false, "apagarla no se guarda");
+  setFullscreenPref(true);
+  const d = mostrarAjustes();
+  exige(d && d.innerHTML.includes(t("aj_titulo")) && d.innerHTML.includes(t("idioma_label"))
+    && d.innerHTML.includes(t("esc_label")) && d.innerHTML.includes(t("aj_sonido")) && d.innerHTML.includes(t("aj_pantalla")),
+    "la pantalla de ajustes no trae sus cuatro secciones");
+  exige(mostrarAjustes() === null, "abrirla dos veces no la cierra");
+  ["aj_titulo", "aj_sonido", "aj_pantalla", "aj_pantalla_d", "aj_on", "aj_off", "aj_cerrar",
+   "bar_ajustes_title", "menu_ajustes"].forEach(k => exige(t(k) !== k, "falta la clave " + k));
+  return "cuatro secciones · preferencia persistida · el botón abre y cierra";
+});
+
 comprueba("Retirada: la némesis tiene epílogo y habla según cómo acabó el duelo", () => {
   /* La rivalidad también se retira: el vuelco, la herida que no se cerró o el
      pulso que nadie ganó. El texto sale de la fase, y la fase de los hechos. */

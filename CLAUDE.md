@@ -168,6 +168,13 @@ ajuste es la diferencia entre jugar cómodo o no jugar.
 Al tocar la maquetación, **prueba en «Enorme» y en 420 px de ancho**. Ahí es
 donde aparecen los desbordamientos (ya pasó con la barra superior).
 
+Los ajustes del jugador (idioma, tamaño, sonido y pantalla completa) viven en
+`mostrarAjustes()` (⚙, en la barra y en el menú). La pantalla completa viene
+activada de serie: el escritorio ARRANCA en ella (`fullscreen:true` en
+`tauri.conf.json`, con `withGlobalTauri` para poder apagarla desde dentro) y
+el navegador la pide en el primer toque del splash, porque sin gesto el
+navegador la rechaza. La preferencia es `rpm_full` y se respeta siempre.
+
 ## El azar de simulación va con semilla
 
 Todo el azar que **decide algo** sale de `rnd()` (`src/js/rng.js`), no de
