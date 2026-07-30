@@ -426,6 +426,7 @@ function empezarCarrera(estiloKey){
   const nombre=document.getElementById("inNombre").value.trim()||"Jugador";
   G={v:1,modo:"carrera",_slot:slotDestino(),semilla:iniciaSemilla(),dif:difMenu(),world:mkWorld(),clubG:null,carrera:{
     nombre,estilo:estiloKey,perso:persoSel,lado,color:colorSel,ava:{...AVA_EDIT},_ropa:colorSel,
+    desarrollo:sorteaDesarrollo(),   // precoz, tardío o constante: cada carrera arranca distinta
     attrs:{...ESTILOS[estiloKey].attrs},
     semana:1,edad:16,pts:0,dinero:2500,energia:100,conf:55,
     sexo:sexoSel,planJug:"auto",dia:1,_sesEntreno:0,fans:120,social:[],
@@ -440,6 +441,10 @@ function empezarCarrera(estiloKey){
   const pos=miPuesto();   // el circuito creció: el puesto de salida ya no es fijo
   avisa(t("av_debut",{nombre,estilo:estiloNombre(estiloKey).toLowerCase(),perso:persoNombre(persoSel).toLowerCase(),pos}));
   noticia("debut",t("not_debut_t",{nombre}),t("not_debut_s",{pos}));
+  // el perfil de desarrollo y la era del mundo se dicen desde el día uno:
+  // son información que cambia cómo planificas la carrera
+  avisa(t("des_av_"+G.carrera.desarrollo));
+  if(G.world.era) noticia("circuito",t("era_"+G.world.era+"_t"),t("era_"+G.world.era+"_s"));
   entrarPartida();   // arranca también la guía jugable; el tutorial de fichas queda como consulta (botón ?)
 }
 
@@ -523,6 +528,7 @@ function retirarse(){
   const c=G&&G.carrera; if(!c) return;
   const L=legadoDe(c,G.world);
   c.retirado=true;
+  if(typeof musicaTema==="function") musicaTema("retirada");   // la carrera se despide con su tema
   try{ lsDel(SLOTS.carrera); }catch(e){}
   const fila=(k,v)=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px solid var(--borde)"><span style="color:var(--gris)">${k}</span><b>${v}</b></div>`;
   const ov=document.getElementById("legadoModal")||(()=>{const d=document.createElement("div");d.id="legadoModal";d.style.cssText="position:fixed;inset:0;background:rgba(8,10,14,.96);z-index:90;display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto";document.body.appendChild(d);return d;})();
@@ -1127,7 +1133,10 @@ function pintarJugador(){
   hav.innerHTML=avatarSVG({n:c.nombre,sexo:c.sexo,ava:c.ava,_ropa:c._ropa||c.color},52);
   document.getElementById("hNom").textContent=c.nombre;
   const _hsub=document.getElementById("hSub");
-  _hsub.innerHTML=`${c.edad} años · ${ladoTxt(c.lado)} · ${estiloNombre(c.estilo)} · ${persoNombre(c.perso)}`+(()=>{const r=chipRasgos(c);return r?`<div style="margin-top:4px">${r}</div>`:"";})();
+  // el perfil de desarrollo se enseña siempre: planificar la carrera es saber
+  // cuándo rinde tu entreno y cuándo llegará el declive (guardado viejo: constante)
+  const _des=c.desarrollo?` · <span title="${t("des_"+c.desarrollo+"_d")}" style="color:var(--lima)">${t("des_"+c.desarrollo)}</span>`:"";
+  _hsub.innerHTML=`${c.edad} años · ${ladoTxt(c.lado)} · ${estiloNombre(c.estilo)} · ${persoNombre(c.perso)}${_des}`+(()=>{const r=chipRasgos(c);return r?`<div style="margin-top:4px">${r}</div>`:"";})();
   document.getElementById("hMedia").textContent=mediaAttrs(c.attrs);
   document.getElementById("hMeta").innerHTML=`
     <div class="chip">${t("kpi_confianza2")} <b style="color:${colAttr(c.conf)}">${c.conf}</b></div>
@@ -2046,7 +2055,7 @@ function avanzarSemanaCarrera(){
     c.edad++;evolucionaMundo();
     // EL ÚLTIMO BAILE · el cuerpo empieza a pasar factura: lo explosivo se va
     // antes que el toque, así el jugador se reconvierte solo.
-    const perdido=aplicaDeclive(c.attrs,c.edad);
+    const perdido=aplicaDeclive(c.attrs,(typeof desarrolloEdadDeclive==="function")?desarrolloEdadDeclive(c):c.edad);
     if(perdido>0) avisa(t("ub_declive",{n:perdido,edad:c.edad}));
     if(c.compi&&c.compi.attrs&&(c.compi.edad=(c.compi.edad||c.edad)+1)>=EDAD_DECLIVE) aplicaDeclive(c.compi.attrs,c.compi.edad);
     avisa(t("av_cierre",{t:temporada()-1,pos:posFin,pts:ptsFin,tit:titsT,ok:cumplidos,total:totalObj,edad:c.edad}));
@@ -2308,7 +2317,8 @@ function entrenoSemanalCarrera(factor){
        se resuelven con una moneda en vez de con una resta que dejaría todo a 0. */
     if(mio&&g>0){
       const mult=ctx.gan*gX*adaptFactor(c,k)
-        *((typeof invCtxGanX==="function")?invCtxGanX(c,ctxEntreno(c)):1);
+        *((typeof invCtxGanX==="function")?invCtxGanX(c,ctxEntreno(c)):1)
+        *((typeof desarrolloGanX==="function")?desarrolloGanX(c):1);   // precoz/tardío: la edad rinde distinto
       let ent=g*mult;
       g=Math.floor(ent); if(rnd()<ent-g) g++;
     }

@@ -45,6 +45,21 @@ function sfxClick(){ tone(720,.03,"square",.04); }
 /* El sonido de las cabeceras de momento: la gloria sube, el duelo baja y
    apaga la música (el silencio tras una lesión también es sonido), y la
    vuelta es una nota corta de alivio. */
+/* Temas musicales de contexto (P6/producción): motivos cortos sintetizados,
+   no bucles. El de final anuncia que hoy no es una ronda más; el de retirada
+   cierra la carrera con calma. Nada de esto toca el azar con semilla. */
+function musicaTema(tipo){
+  if(tipo==="final"){
+    [262,330,392,523,392,523].forEach((f,i)=>tone(f,.28,"triangle",.055,i*.22));
+    ruido(1.6,.03,.9);
+    return;
+  }
+  if(tipo==="retirada"){
+    musicaOff();
+    [392,349,330,262].forEach((f,i)=>tone(f,.85,"sine",.05,i*.7));
+    tone(196,2.4,"sine",.04,2.6);
+  }
+}
 function sfxMomento(tipo){
   if(tipo==="duelo"){ musicaOff(); tone(196,.7,"sine",.05); tone(147,1.1,"sine",.045,.45); return; }
   if(tipo==="vuelta"){ tone(440,.12,"sine",.06); tone(554,.22,"sine",.06,.14); return; }

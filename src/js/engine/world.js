@@ -634,6 +634,68 @@ function evaluaObjetivos(c,puesto){
 ================================================================ */
 const ATTR_EXPLOSIVOS=["remate","vibora","bandeja","volea"];
 const EDAD_DECLIVE=31;        // a partir de aquí el cuerpo empieza a pasar factura
+
+/* ---------------- perfiles de desarrollo: varianza entre carreras ----------
+   Medido con dos carreras honestas de 15 temporadas: el arco era demasiado
+   reproducible (nº1 en T12 con 27 años en las DOS semillas). La causa es que
+   la curva de crecimiento y el declive eran iguales en todas las partidas.
+   El perfil se sortea al crear la carrera (con la semilla, así que dos
+   partidas con la misma semilla siguen viviendo lo mismo), se ENSEÑA desde el
+   día uno (es información que cambia cómo planificas), y mueve las dos puntas
+   del arco: cuánto rinde el entreno según la edad y cuándo llega el declive. */
+const DESARROLLOS={
+  constante:{peso:.40, ganJoven:1,    ganMedio:1,    declive:0},   // lo de siempre
+  precoz:   {peso:.30, ganJoven:1.35, ganMedio:.85,  declive:+2},  // florece pronto, se apaga pronto
+  tardio:   {peso:.30, ganJoven:.75,  ganMedio:1.30, declive:-2},  // arranca lento, dura más
+};
+function sorteaDesarrollo(){
+  const r=rnd(); let acc=0;
+  for(const k in DESARROLLOS){ acc+=DESARROLLOS[k].peso; if(r<acc) return k; }
+  return "constante";
+}
+function desarrolloDe(c){ return (c&&DESARROLLOS[c.desarrollo])?c.desarrollo:"constante"; }
+/* Multiplicador de la ganancia de entreno según edad y perfil. Se aplica solo
+   al protagonista, junto a los demás multiplicadores del entreno semanal. */
+function desarrolloGanX(c){
+  const D=DESARROLLOS[desarrolloDe(c)], e=((c&&c.edad)|0);
+  if(e<=22) return D.ganJoven;
+  if(e>=24&&e<=29) return D.ganMedio;
+  return 1;
+}
+/* Edad EFECTIVA para el declive: el precoz envejece dos años antes y el
+   tardío dos después. Solo para el protagonista; el mundo declina a su ritmo. */
+function desarrolloEdadDeclive(c){ return ((c&&c.edad)|0)+DESARROLLOS[desarrolloDe(c)].declive; }
+
+/* ---------------- la era del mundo: cada circuito nace distinto ----------
+   La otra mitad de la varianza: no solo eres distinto tú, lo es el mundo que
+   te toca. Se sortea en mkWorld y ajusta la élite ANTES de calcular puntos:
+   una era dominadora te pone un muro arriba, una abierta te disputa el trono
+   y un relevo te abre la escalera. Se anuncia al debutar (noticia). */
+const ERAS_MUNDO={ abierta:.34, dominadora:.33, relevo:.33 };
+function sorteaEra(){
+  const r=rnd(); let acc=0;
+  for(const k in ERAS_MUNDO){ acc+=ERAS_MUNDO[k]; if(r<acc) return k; }
+  return "abierta";
+}
+/* Ajusta los ATRIBUTOS de las parejas según la era. Separada de mkWorld para
+   poder probarla con parejas sintéticas. Muta y devuelve la lista. */
+function _aplicaEra(parejas,era){
+  const ajusta=(p,d)=>p.jug.forEach(j=>ATTR_KEYS.forEach(k=>j.attrs[k]=clamp((j.attrs[k]||50)+d,25,96)));   // 96: el invariante del mundo
+  ["M","F"].forEach(sx=>{
+    const pros=parejas.filter(p=>p.pro&&(p.sexo||"M")===sx)
+      .sort((a,b)=>nivelPareja(b)-nivelPareja(a));
+    if(!pros.length) return;
+    if(era==="dominadora"){ ajusta(pros[0],+5); }                       // un muro arriba
+    else if(era==="abierta"){ pros.slice(0,2).forEach(p=>ajusta(p,-3)); } // el trono se disputa
+    else if(era==="relevo"){
+      pros.forEach(p=>ajusta(p,-2));                                    // la vieja guardia afloja
+      const npc=parejas.filter(p=>!p.pro&&(p.sexo||"M")===sx)
+        .sort((a,b)=>nivelPareja(b)-nivelPareja(a));
+      npc.slice(0,Math.ceil(npc.length/4)).forEach(p=>ajusta(p,+2));    // y la nueva empuja
+    }
+  });
+  return parejas;
+}
 const EDAD_RETIRO_MIN=33;     // desde aquí puedes anunciar la última temporada
 const EDAD_RETIRO_FORZADO=44; // el cuerpo dice basta
 
@@ -715,6 +777,13 @@ function legadoDe(c,world){
   if(menores>=30&&majors===0) arqs.push("menor");
   if(((c&&c.fans)||0)>=400000) arqs.push("idolo");
   if((c&&c.vTop10|0)>=25) arqs.push("matagigantes");
+  /* pareja histórica: una sociedad que duró lo que duran pocas. Se mira la
+     etapa más larga: las cerradas (parejasHist) y la que sigue viva. */
+  const etapas=((c&&c.parejasHist)||[]).map(x=>x.temps|0);
+  if(c&&c._parejaDesde) etapas.push(Math.max(1,(((c.hist||[]).length+1)-(c._parejaDesde|0))+1));
+  if(Math.max(0,...etapas)>=8) arqs.push("pareja");
+  // viajero del circuito: las giras lejanas dejan cuenta (la lleva giraSemana)
+  if(((c&&c.viajesLejos)|0)>=25) arqs.push("viajero");
   // la remontada: caer 25 puestos o más y volver a lo más alto de tu carrera
   for(let i=0;i<hist.length;i++) for(let j=i+1;j<hist.length;j++)
     if(hist[j].pos-hist[i].pos>=25&&hist.slice(j+1).some(h=>h.pos<=hist[i].pos)){ arqs.push("remontada"); i=j=hist.length; }

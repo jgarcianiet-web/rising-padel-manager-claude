@@ -4662,6 +4662,62 @@ comprueba("Momentos: la cabecera da al momento el tamaño que tiene, una sola ve
   return "gloria, duelo y vuelta con su tono · primer_cuadro una sola vez · 13 claves";
 });
 
+comprueba("Varianza: el perfil de desarrollo y la era del mundo hacen cada carrera distinta", () => {
+  /* Medido: dos carreras honestas llegaban al nº1 en la MISMA temporada con la
+     misma edad. El perfil de desarrollo mueve tu curva (cuándo rinde el
+     entreno, cuándo llega el declive) y la era mueve el mundo (quién manda
+     arriba). Ambos se sortean con la semilla y se dicen desde el día uno. */
+  const pesos = Object.values(DESARROLLOS).reduce((s, d) => s + d.peso, 0);
+  exige(Math.abs(pesos - 1) < .01, "los pesos de los desarrollos no suman 1");
+  const c = nuevaCarrera("agresivo");
+  exige(!!DESARROLLOS[c.desarrollo], "la carrera nace sin perfil de desarrollo");
+  c.desarrollo = "precoz"; c.edad = 18;
+  const jovenPrecoz = desarrolloGanX(c);
+  c.desarrollo = "tardio";
+  exige(jovenPrecoz > desarrolloGanX(c), "el precoz no crece más de joven que el tardío");
+  c.edad = 26;
+  const medioTardio = desarrolloGanX(c);
+  c.desarrollo = "precoz";
+  exige(medioTardio > desarrolloGanX(c), "el tardío no crece más a los 26");
+  exige(desarrolloEdadDeclive(c) === 28, "el precoz no envejece dos años antes");
+  c.desarrollo = "tardio";
+  exige(desarrolloEdadDeclive(c) === 24, "el tardío no envejece dos años después");
+  delete c.desarrollo;
+  exige(desarrolloDe(c) === "constante" && desarrolloGanX(c) === 1, "un guardado viejo no es constante");
+  // la era del mundo existe y ajusta la élite exactamente como dice
+  exige(ERAS_MUNDO[G.world.era] !== undefined, "el mundo nace sin era");
+  const js = (n) => [{ n: "A", attrs: mkAttrsNivel(n, "agresivo") }, { n: "B", attrs: mkAttrsNivel(n, "defensivo") }];
+  const mundo = (proN) => [
+    { id: 1, pro: true, sexo: "M", jug: js(proN), pts: 1000 },
+    { id: 2, pro: true, sexo: "M", jug: js(proN - 6), pts: 700 },
+    { id: 3, pro: false, sexo: "M", jug: js(58), pts: 100 },
+  ];
+  let m = mundo(80); const domAntes = nivelPareja(m[0]);
+  _aplicaEra(m, "dominadora");
+  exige(nivelPareja(m[0]) > domAntes, "la era dominadora no sube al dominador");
+  m = mundo(80); const abAntes = nivelPareja(m[0]);
+  _aplicaEra(m, "abierta");
+  exige(nivelPareja(m[0]) < abAntes, "la era abierta no comprime la élite");
+  m = mundo(80); const relPro = nivelPareja(m[0]), relNpc = nivelPareja(m[2]);
+  _aplicaEra(m, "relevo");
+  exige(nivelPareja(m[0]) < relPro && nivelPareja(m[2]) > relNpc, "el relevo no mueve la escalera");
+  // los arquetipos nuevos salen de contadores, como todos
+  const c2 = nuevaCarrera("agresivo");
+  c2.parejasHist = [{ temps: 9 }]; c2.viajesLejos = 30;
+  const L = legadoDe(c2, G.world);
+  exige(L.arqs.includes("pareja"), "la pareja histórica no se reconoce");
+  exige(L.arqs.includes("viajero"), "el viajero no se reconoce");
+  // y el viajero se cuenta donde ocurre: en el poso de la gira
+  c2.viajesLejos = 0; giraSemana(c2, true, 4, 750);
+  exige(c2.viajesLejos === 1, "el viaje lejano no se cuenta");
+  ["des_constante", "des_precoz", "des_tardio", "des_constante_d", "des_precoz_d", "des_tardio_d",
+   "des_av_constante", "des_av_precoz", "des_av_tardio", "era_abierta_t", "era_abierta_s",
+   "era_dominadora_t", "era_dominadora_s", "era_relevo_t", "era_relevo_s",
+   "leg_arq_pareja", "leg_arq_viajero", "mom_v500", "mom_v500_d", "mom_remontada_final", "mom_remontada_final_d"]
+    .forEach(k => exige(t(k) !== k, "falta la clave " + k));
+  return "3 desarrollos con curva propia · 3 eras que mueven la élite · 2 arquetipos y 2 momentos nuevos";
+});
+
 comprueba("Retirada: la némesis tiene epílogo y habla según cómo acabó el duelo", () => {
   /* La rivalidad también se retira: el vuelco, la herida que no se cerró o el
      pulso que nadie ganó. El texto sale de la fase, y la fase de los hechos. */

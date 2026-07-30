@@ -272,6 +272,29 @@ Corona y perder el primer partido daba 100 puntos, más que ganar un Continental
 Plata entero (80): presentarse a perder era la estrategia óptima y se medía
 —48-196 sin un título daba el puesto 3—.
 
+## Cada carrera nace distinta: desarrollo y era
+
+Medido con dos carreras honestas de 15 temporadas: el arco era demasiado
+reproducible —nº1 en T12 con 27 años en las DOS semillas—. Dos palancas lo
+arreglan, ambas sorteadas con la semilla y **dichas desde el día uno** (son
+información que cambia cómo planificas, no una sorpresa):
+
+1. **El perfil de desarrollo** (`DESARROLLOS`, en `engine/world.js`):
+   constante, precoz o tardío. Mueve las dos puntas del arco: cuánto rinde el
+   entreno según la edad (`desarrolloGanX`, multiplicador en el entreno
+   semanal) y cuándo llega el declive (`desarrolloEdadDeclive`, ±2 años).
+   Solo afecta al protagonista; se enseña como chip en la pestaña Jugador con
+   su explicación. Un guardado viejo sin perfil es `constante` y funciona
+   exactamente como antes.
+2. **La era del mundo** (`ERAS_MUNDO` + `_aplicaEra`): abierta (élite
+   comprimida), dominadora (una pareja +5 por encima de todas) o relevo (la
+   vieja guardia −2 y el mejor cuarto de la generación nueva +2). Se aplica en
+   `mkWorld` ANTES de nada y los puntos se REESCALAN de los ya sorteados
+   (∝ (nivel−40)²) en vez de volver a tirarse: la era no consume azar extra.
+   Se anuncia con noticia al debutar. `_aplicaEra` está separada de `mkWorld`
+   para poder probarla con parejas sintéticas, y respeta el invariante de
+   atributos del mundo (25..96 — la suite lo caza si te pasas).
+
 ## Momentos, cifras de carrera y arquetipos
 
 Tres piezas de la misma idea: **el contador de títulos comunica volumen; la

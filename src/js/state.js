@@ -320,7 +320,19 @@ function mkWorld(){
     asignaLadosPareja(jug);
     parejas.push({id:PROS.length+PROS_F.length+i,nombre:`${jug[0].n}/${jug[1].n}`,jug,edad:Math.round(R(18,32)),pro:false,sexo:sx,pts:Math.max(0,Math.round((nivel-40)*(nivel-40)*R(2.6,3.6))),club:clubAlAzar(),atNet:false});
   }
-  return {parejas,lider:null};
+  /* La era del mundo: cada circuito nace con una forma distinta arriba. Los
+     puntos se REESCALAN de los ya sorteados (∝ (nivel−40)²) en vez de volver a
+     tirarlos: así la era no consume azar extra ni mueve el resto del mundo. */
+  const era=(typeof sorteaEra==="function")?sorteaEra():"abierta";
+  if(typeof _aplicaEra==="function"){
+    const nivAntes=new Map(parejas.map(p=>[p.id,nivelPareja(p)]));
+    _aplicaEra(parejas,era);
+    parejas.forEach(p=>{
+      const a=nivAntes.get(p.id), b=nivelPareja(p);
+      if(a!==b&&a>41) p.pts=Math.max(0,Math.round(p.pts*Math.pow((b-40)/(a-40),2)));
+    });
+  }
+  return {parejas,lider:null,era};
 }
 // Entidad protagonista. Devuelve null sin partida abierta: se llama desde sitios
 // que también existen en el menú (avisos, selector de ranuras) y antes reventaba

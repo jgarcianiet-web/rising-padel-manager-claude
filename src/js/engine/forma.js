@@ -158,7 +158,7 @@ function giraSemana(c,jugo,partidos,viaje){
   let g=giraLee(c);
   if(jugo){
     let sube=5+Math.min(6,partidos|0);              // llegar lejos pesa más
-    if((viaje|0)>=400) sube+=4;                     // cruzar medio mundo se paga
+    if((viaje|0)>=400){ sube+=4; c.viajesLejos=(c.viajesLejos|0)+1; }   // cruzar medio mundo se paga (y se cuenta: arquetipo viajero)
     if(c.estilo==="agresivo"||c.estilo==="rematador") sube=Math.round(sube*1.15);
     g+=sube;
   } else {

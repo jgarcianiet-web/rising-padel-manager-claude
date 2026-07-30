@@ -493,6 +493,8 @@ function empezarPartido(ver,coach){
       if(_pz>=DRAMA_CORTES[1]) setTimeout(()=>sfxGrada(dramaGrada(_pz)),300);
     }
     musicaOn();
+    // una final no suena como una ronda más: el tema lo dice antes del primer punto
+    if(torneo.fase===5&&typeof musicaTema==="function") musicaTema("final");
     irA("partido");
     setTimeout(()=>jugarPuntoAnim(),400);
   } else {
@@ -1011,6 +1013,14 @@ function finPartido(){
     post("maldicion",{rival:rival.nombre});
   }
   e.vd=e.vd||{v:0,d:0}; e.vd[gane?"v":"d"]++;
+  // los momentos de volumen y de carácter: 500 victorias, y la final remontada
+  if(G.modo==="carrera"&&gane&&e.vd.v===500&&momAnota(G.carrera,"v500",{})&&typeof momentoCabecera==="function")
+    momentoCabecera({tipo:"gloria",ico:"🎖",titulo:t("mom_v500"),sub:t("mom_v500_d",{t:temporada()})});
+  if(G.modo==="carrera"&&gane&&f===5&&match.hist.length){
+    const _s0=String(match.hist[0]).split("-").map(Number);
+    if(_s0.length===2&&_s0[0]<_s0[1]&&momAnota(G.carrera,"remontada_final",{torneo:torneo.nombre})&&typeof momentoCabecera==="function")
+      momentoCabecera({tipo:"gloria",ico:"🔄",titulo:t("mom_remontada_final"),sub:t("mom_remontada_final_d",{torneo:torneo.nombre})});
+  }
   /* Victorias contra el top 10: una de las cifras que de verdad miden una
      carrera, y hasta ahora no se contaba. Se mira el puesto del rival HOY,
      antes de que la semana recoloque el ranking. */

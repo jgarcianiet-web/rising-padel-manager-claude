@@ -184,6 +184,22 @@ De las prioridades 2-8 del último plan:
   sale esperándolo (`tacPreLectura` siembra `match.lectura`) y el parte lo
   avisa antes.
 
+## Tras la revisión de 9,0: varianza, amplitud y producción
+
+- **Varianza entre carreras — implementada, midiéndose.** Perfil de
+  desarrollo (constante/precoz/tardío: curva de entreno por edad y declive
+  ±2 años) y era del mundo (abierta/dominadora/relevo), ambos con la semilla
+  y visibles desde el debut. Ver «Cada carrera nace distinta» en CLAUDE.md.
+- **Amplitud**: arquetipos «pareja histórica» (etapa ≥8 temporadas) y
+  «viajero del circuito» (≥25 giras lejanas, contadas en `giraSemana`), y
+  momentos «500 victorias» y «la final remontada», con cabecera y tarjeta.
+- **Producción**: temas musicales sintetizados de final (antes del primer
+  punto de una final vista) y de retirada (`musicaTema`). El salto de
+  sql.js a WASM queda descartado por ahora con motivo: la CSP lleva
+  `connect-src 'none'`, así que el `.wasm` habría que incrustarlo en base64
+  (~1,1 MB frente a los 1,3 del asm.js): se ganaría arranque, no peso, y es
+  la capa de persistencia — no se toca sin una buena razón.
+
 ## Contenido: lo que sube la nota y no está hecho
 
 Por orden de retorno, según la auditoría:
