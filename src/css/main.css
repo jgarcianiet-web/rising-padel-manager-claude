@@ -410,3 +410,18 @@ button.pri:active{transform:translateY(0);box-shadow:none}
   background:linear-gradient(180deg,#131A26,#0C1119);border:1px solid var(--borde2);
   box-shadow:0 0 0 1px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.05);
   text-shadow:0 0 12px rgba(198,245,60,.35)}
+/* Fondos por contexto: la sala de trofeos huele a oro y las cabeceras llevan
+   su atmósfera. Todo CSS: cero activos externos. */
+#trofeos{background:radial-gradient(820px 460px at 50% -60px, rgba(232,160,48,.12), rgba(8,11,17,0) 68%),
+  radial-gradient(600px 800px at 50% 110%, rgba(198,245,60,.05), rgba(8,11,17,0) 60%),
+  rgba(8,11,17,.95) !important}
+.cabMom{overflow:hidden}
+.cabIn{position:relative;z-index:1}
+.cab-gloria::before{content:"";position:absolute;left:-40%;top:-40%;width:180%;height:180%;
+  background:repeating-conic-gradient(from 0deg at 50% 42%, rgba(232,160,48,.032) 0 5deg, transparent 5deg 13deg);
+  animation:cabRayos 80s linear infinite}
+@keyframes cabRayos{to{transform:rotate(360deg)}}
+.cab-duelo::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(180deg, rgba(224,86,86,.05), transparent 22%, transparent 78%, rgba(0,0,0,.4))}
+.cab-vuelta::after{content:"";position:absolute;inset:0;
+  background:radial-gradient(640px 260px at 50% 96%, rgba(198,245,60,.08), transparent 70%)}

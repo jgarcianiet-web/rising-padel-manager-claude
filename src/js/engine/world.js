@@ -1697,18 +1697,35 @@ function avatarSVG(jug,tam,edadOverride){
   const cmp=av.compl!==undefined?(av.compl%AVA_COMPL.length):[0,0,0,1,1,2,3,4][(h>>15)%8];
   const S1=aclara(piel,.80), S2=aclara(piel,.62), S3=aclara(piel,.46),
         LUZ=aclara(piel,1.13), LUZ2=aclara(piel,1.24), lab=_avaMez(piel,"#8E4038",.55);
+  /* La cara cuenta quién es: cejas y sonrisa según el carácter. El valiente
+     frunce con decisión, el emocional arquea, el frío ni se inmuta y el
+     conservador queda como estaba (que ya era neutro). */
+  const per=(jug&&jug.perso)||"";
+  const cejaI=per==="valiente"?`M22.4 25.7 q3.2 -.9 6.4 1.1 q-3.2 -1.7 -6.4 -1.1z`
+    :per==="emocional"?`M22.3 25 q3.3 -2.9 6.5 -1.3 q-3.2 -.4 -6.5 1.3z`
+    :per==="frio"?`M22.4 26.2 q3.2 -1 6.4 -.5 q-3.2 -.2 -6.4 .5z`
+    :`M22.4 26.2 q3.2 -2.3 6.4 -.8 q-3.2 -.4 -6.4 .8z`;
+  const cejaD=per==="valiente"?`M35.2 26.8 q3.2 -2 6.6 -1.1 q-3.4 -.3 -6.6 1.1z`
+    :per==="emocional"?`M35.2 23.7 q3.2 -1.6 6.6 1.3 q-3.4 -1.5 -6.6 -1.3z`
+    :per==="frio"?`M35.2 25.7 q3.2 -.5 6.6 .5 q-3.4 -.7 -6.6 -.5z`
+    :`M35.2 25.4 q3.2 -1.5 6.6 1 q-3.4 -1.2 -6.6 -1z`;
+  const sonrisa=per==="emocional"?`M27.6 42.4 q4.5 4.4 8.9 -.4 q-4.4 2.1 -8.9 .4z`
+    :per==="frio"?`M27.6 42.9 q4.5 1.6 8.9 -.2 q-4.4 1 -8.9 .2z`
+    :`M27.6 42.6 q4.5 3.2 8.9 -.2 q-4.4 1.7 -8.9 .2z`;
   return `<svg viewBox="0 0 64 76" width="${tam}" height="${Math.round(tam*76/64)}" preserveAspectRatio="xMidYMid meet">
  <defs>
   <filter id="b${id}" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="1.7"/></filter>
   <filter id="bb${id}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3.2"/></filter>
   <filter id="bs${id}" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation=".7"/></filter>
   <filter id="gr${id}" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="1.9" numOctaves="3" seed="${h%97}" result="n"/><feColorMatrix in="n" type="saturate" values="0"/><feComponentTransfer><feFuncA type="linear" slope=".13"/></feComponentTransfer></filter>
-  <linearGradient id="bg${id}" x1=".2" y1="0" x2=".9" y2="1"><stop offset="0" stop-color="#2B3543"/><stop offset="1" stop-color="#121820"/></linearGradient>
+  <linearGradient id="bg${id}" x1=".2" y1="0" x2=".9" y2="1"><stop offset="0" stop-color="${_avaMez("#2B3543",ropa,.14)}"/><stop offset="1" stop-color="${_avaMez("#121820",ropa,.08)}"/></linearGradient>
   <linearGradient id="tr${id}" x1="0" y1="0" x2="1" y2=".7"><stop offset="0" stop-color="${aclara(ropa,1.18)}"/><stop offset=".55" stop-color="${ropa}"/><stop offset="1" stop-color="${aclara(ropa,.58)}"/></linearGradient>
   <clipPath id="cf${id}"><path d="M32 10.5 C41 10.5 45.6 17.5 45.6 27 C45.6 33.5 43.8 39 41 43.2 C38.4 47.2 35.2 50 32 50 C28.8 50 25.6 47.2 23 43.2 C20.2 39 18.4 33.5 18.4 27 C18.4 17.5 23 10.5 32 10.5z"/></clipPath>
  </defs>
  <rect width="64" height="76" fill="url(#bg${id})"/>
  <ellipse cx="30" cy="26" rx="24" ry="26" fill="#fff" opacity=".055" filter="url(#bb${id})"/>
+ <path d="M43.5 13.5 C46.8 17.5 47.6 25 46 33.5" stroke="#fff" stroke-width="1.5" fill="none" opacity=".14" filter="url(#b${id})"/>
+ <path d="M41 56.5 C46.5 58.5 50.5 63 52.5 70" stroke="#fff" stroke-width="1.8" fill="none" opacity=".1" filter="url(#b${id})"/>
  <path d="M32 55 C22.5 55 12.5 61.5 10.5 76 h43 C51.5 61.5 41.5 55 32 55z" fill="url(#tr${id})"/>
  <path d="M23 57.5 C20 62 18 68 17.4 76 h-6.9 C12.5 63.5 17 58 23 57.5z" fill="#000" opacity=".16" filter="url(#b${id})"/>
  <path d="M26.4 44 h11.2 v10 q-5.6 3.4 -11.2 0z" fill="${S1}"/>
@@ -1742,10 +1759,10 @@ function avatarSVG(jug,tam,edadOverride){
    <path d="M35.4 29.5 q2.9 -2.5 5.8 .5" stroke="${S3}" stroke-width=".65" fill="none" opacity=".85"/>
    <path d="M23.6 31.1 q2.5 1.3 5 -.35" stroke="${S1}" stroke-width=".5" fill="none" opacity=".6"/>
    <path d="M35.8 30.8 q2.5 1.4 5 -.4" stroke="${S1}" stroke-width=".5" fill="none" opacity=".6"/>
-   <path d="M22.4 26.2 q3.2 -2.3 6.4 -.8 q-3.2 -.4 -6.4 .8z" fill="${pelo}" opacity=".92"/>
-   <path d="M35.2 25.4 q3.2 -1.5 6.6 1 q-3.4 -1.2 -6.6 -1z" fill="${pelo}" opacity=".92"/>
+   <path d="${cejaI}" fill="${pelo}" opacity=".92"/>
+   <path d="${cejaD}" fill="${pelo}" opacity=".92"/>
    <path d="M27.4 42.6 q4.6 -1.9 9.2 -.2 q-4.6 1.5 -9.2 .2z" fill="${lab}" opacity=".85"/>
-   <path d="M27.6 42.6 q4.5 3.2 8.9 -.2 q-4.4 1.7 -8.9 .2z" fill="${_avaMez(lab,'#000',.25)}" opacity=".7"/>
+   <path d="${sonrisa}" fill="${_avaMez(lab,'#000',.25)}" opacity=".7"/>
    <path d="M28.6 44.4 q3.4 1.2 6.8 -.2" stroke="${LUZ}" stroke-width=".7" fill="none" opacity=".35" filter="url(#bs${id})"/>
    <path d="M27.3 42.5 q4.7 -1.6 9.4 -.1" stroke="${S3}" stroke-width=".6" fill="none" opacity=".5"/>
    <ellipse cx="32" cy="47" rx="3.4" ry="2.2" fill="${LUZ}" opacity=".28" filter="url(#b${id})"/>
