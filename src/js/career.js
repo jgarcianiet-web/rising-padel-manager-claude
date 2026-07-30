@@ -695,6 +695,9 @@ function pintarSemana(){
   document.getElementById("semTitulo").innerHTML=c.lesion?`${t("sem_baja")} · <em>${c.lesion.n} (${c.lesion.sem} ${t("sem_abrev")})</em>`:`${t("kpi_semana")} ${semanaTemp()} · <em>${diaNombre(dia-1).toUpperCase()}</em>`+(c.merma?` · <span style="color:#E0A030">${t("sem_mermado")} -${c.merma.pct}% (${c.merma.sem} ${t("sem_abrev")})</span>`:"");
   pintarObjetivos();
   const td=document.getElementById("torneosDisp");td.innerHTML="";
+  /* La capa «qué necesita atención ahora» (P7): como mucho cuatro asuntos,
+     solo los que cambian una decisión de esta semana, con su porqué al pulsar. */
+  if(typeof renderAtencion==="function") renderAtencion(td);
   /* Lo que está pasando en el circuito, antes que nada: si la pista está lenta
      o tu pareja no juega, eso decide si te inscribes. */
   const evs=evActivos(c);

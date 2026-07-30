@@ -161,8 +161,15 @@ De las prioridades 2-8 del último plan:
   con su nombre.
 - **P6 · Jerarquía audiovisual** — pendiente (cabeceras de momento, audio
   contextual). `pesoPartido` y `dramaGrada` son la base.
-- **P7 · Tres capas de información** — pendiente, y es la más de interfaz de
-  todas: capa «qué necesita atención ahora», capa «por qué», capa experta.
+- **P7 · Tres capas de información — HECHA en su núcleo.** El parte de
+  atención (`engine/atencion.js`) abre la pestaña Semana en carrera y club:
+  capa 1 con como mucho cuatro asuntos que cambian una decisión de esta
+  semana (carga, defensa de puntos, pareja, promesas, caja, patrocinador;
+  en club: la jornada sin cuatro sanos, el fisio, la deuda, la junta y la
+  cantera), capa 2 al pulsar con números y la recomendación firmada por el
+  técnico, y capa 3 saltando a la pestaña experta. Queda para más adelante
+  la señal «el rival te está leyendo», que pide persistir la lectura táctica
+  entre partidos.
 
 ## Contenido: lo que sube la nota y no está hecho
 

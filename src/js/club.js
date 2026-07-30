@@ -626,6 +626,8 @@ function pintarCmSemana(){
   const cl=G.clubG,esT=esSemanaTorneo();
   document.getElementById("cmSemTitulo").innerHTML=(slotSemana(semanaTemp()).premier!==undefined?`${t("kpi_semana")} ${semanaTemp()} · <em>${t("ctx_premier_fip")}</em>`:`${t("kpi_semana")} ${semanaTemp()} · <em>${t("ctx_circuito_fip")}</em>`);
   const tor=document.getElementById("cmTorneo");tor.innerHTML="";
+  // la capa «qué necesita atención ahora» (P7), antes que el torneo de la semana
+  if(typeof renderAtencion==="function") renderAtencion(tor);
   const al=alineacion();
   if(esT){
     const listos=al&&al.every(j=>!j.lesion&&j.energia>=30);

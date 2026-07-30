@@ -4488,6 +4488,58 @@ comprueba("Staff: cada técnico tiene escuela, y dos del mismo nivel gestionan d
   return "12 escuelas con nombre, descripción y efecto propio · el guardado viejo funciona igual";
 });
 
+comprueba("Atención: el parte de la semana sale del estado y solo avisa de decisiones", () => {
+  /* La P7: capa 1 «qué necesita atención», derivada del estado con una función
+     pura; capa 2 «por qué» con factores y recomendación; capa 3, el salto a la
+     pestaña experta. Como mucho AT_MAX asuntos, los más graves primero. */
+  const c = nuevaCarrera("agresivo");
+  // una semana tranquila no da la lata
+  c.energia = 90; c.carga = 45; c.dinero = 3000; c.conf = 60;
+  const calma = atencionDe(c).filter(x => ["carga", "energia", "caja", "eje"].includes(x.id));
+  exige(calma.length === 0, "avisa sin motivo en una semana tranquila: " + calma.map(x => x.id).join(","));
+  // pasado de vueltas: sale, es grave, explica el porqué y lleva a Entreno
+  c.carga = 90;
+  let its = atencionDe(c);
+  const carga = its.find(x => x.id === "carga");
+  exige(carga && carga.sev === 2 && carga.tab === "entreno", "la carga alta no sale o no lleva a Entreno");
+  exige(carga.por.length >= 2, "la carga alta no explica su porqué");
+  // …y con preparador, la recomendación lleva su nombre
+  c.staff.fisico = { rol: "fisico", n: "Prep Test", niv: 3, sal: 100 };
+  const carga2 = atencionDe(c).find(x => x.id === "carga");
+  exige(carga2.por.some(l => l.k === "at_carga_r_st" && l.p.n === "Prep Test"), "el preparador no firma su recomendación");
+  c.carga = 45; c.staff.fisico = null;
+  // defender puntos gordos avisa; la caja en rojo con nómina, también
+  rkAnota(c, c.semana + 52, 800); c.semana += 52;
+  exige(atencionDe(c).some(x => x.id === "defensa" && x.sev === 2), "no avisa de los 800 puntos que caducan");
+  c.staff.fisio = { rol: "fisio", n: "F", niv: 2, sal: 200 };
+  c.dinero = -500;
+  exige(atencionDe(c).some(x => x.id === "caja"), "no avisa de la caja en rojo con nómina");
+  // el tope: nunca más de AT_MAX, ordenados por gravedad
+  c.carga = 90; c.energia = 20; c.merma = { pct: 10, sem: 2 }; c.rel = {}; EJES.forEach(k => c.rel[k] = 10);
+  its = atencionDe(c);
+  exige(its.length <= AT_MAX, "el parte se desborda: " + its.length);
+  for (let i = 1; i < its.length; i++) exige(its[i - 1].sev >= its[i].sev, "el parte no ordena por gravedad");
+  // club: la señal que explica el modo entero — jornada sin cuatro sanos
+  const cl = fundarClub();
+  while (cl.plantilla.length < 4) cl.plantilla.push({ ...cl.plantilla[0], n: "R" + cl.plantilla.length, energia: 100, conf: 55, lesion: null, attrs: { ...cl.plantilla[0].attrs } });
+  const L = copAsegura(cl);
+  const jor = L.cal.find(x => x.par.some(p => p[0] === 0 || p[1] === 0));
+  jor.sem = semanaTemp();
+  cl.plantilla.forEach((j, i) => { j.energia = 100; j.lesion = i < 2 ? { n: "x", k: "les_sobre", sem: 2 } : null; });
+  const itsCl = atencionDe(cl);
+  exige(itsCl.some(x => x.id === "copa_gente" && x.sev === 2), "no avisa de la jornada sin cuatro sanos");
+  exige(itsCl.some(x => x.id === "club_fisio"), "no avisa de dos tocados sin fisio");
+  // todas las claves del parte existen y se resuelven
+  its.concat(itsCl).forEach(it => {
+    exige(t(it.t.k, it.t.p) !== it.t.k, "falta la clave " + it.t.k);
+    it.por.forEach(l => exige(t(l.k, l.p) !== l.k && !t(l.k, l.p).includes("{"), "la línea " + l.k + " no se resuelve"));
+  });
+  // y el pintado no revienta (el DOM recortado de la suite incluido)
+  const el = document.createElement("div");
+  renderAtencion.call(null, el);
+  return "calma sin ruido · " + its.map(x => x.id).join("+") + " · club: " + itsCl.map(x => x.id).join("+");
+});
+
 comprueba("Retirada: la némesis tiene epílogo y habla según cómo acabó el duelo", () => {
   /* La rivalidad también se retira: el vuelco, la herida que no se cerró o el
      pulso que nadie ganó. El texto sale de la fase, y la fase de los hechos. */

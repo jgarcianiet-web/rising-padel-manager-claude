@@ -530,6 +530,28 @@ media por debajo, entrenar siempre suave 10 por debajo, y varias estrategias
 sensatas (alternar cargas, pagar sparring, rotar objetivos) empatan arriba. Eso
 es lo que se busca: varios caminos buenos y dos maneras claras de hacerlo mal.
 
+## El parte de atención: tres capas de información
+
+`engine/atencion.js`. El juego maneja veinte sistemas y no todos merecen la
+misma intensidad a la vez. El parte de la semana (carrera y club) reduce la
+fricción con tres capas: **qué necesita atención ahora** (una línea por
+asunto), **por qué** (al pulsar: factores con números, consecuencia y, si hay
+técnico del tema, su recomendación con su nombre) y **el detalle experto**
+(un botón que salta a la pestaña de siempre).
+
+Reglas al añadir una señal:
+
+1. **Solo entra lo que cambia una decisión DE ESTA SEMANA** —la misma regla
+   que los eventos—. «Vas 47º» no es una señal; «defiendes 800 puntos hoy» sí.
+2. **`atencionDe(e)` es pura**: lee el estado, no muta nada y no consume
+   azar. Por eso la suite la prueba sin montar pantalla. El pintado
+   (`renderAtencion`) es aparte, y aguanta el DOM recortado de la suite.
+3. **Como mucho `AT_MAX` asuntos, los graves primero.** Un parte que lo
+   cuenta todo es la sobrecarga que venía a arreglar.
+4. **El «por qué» es donde el staff vende conocimiento**: la recomendación
+   lleva el nombre del técnico si lo tienes (y su escuela cuando toca, como
+   el fisio recuperador con la merma). Sin técnico, la línea es más genérica.
+
 ## El staff tiene escuela: mismo nivel, otra gestión
 
 `PERFILES_STAFF` (en `career.js`). Cada rol tiene **dos escuelas** y todo
