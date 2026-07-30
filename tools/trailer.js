@@ -24,7 +24,7 @@ const ANCHO = 1280, ALTO = 720;
 /* Al añadir un modal nuevo al juego hay que añadirlo aquí: si no, se cuela en
    el plano o bloquea el bot que siembra la partida. */
 const MODALES = ["anuarioModal", "legadoModal", "dilModal", "ruptModal", "negModal", "clubModal", "modoModal",
-                 "arrModal", "celebraModal", "tmuerto"];
+                 "arrModal", "celebraModal", "tmuerto", "cabMomento"];
 
 /* Cada plano dura lo que dice el guion. Se respeta al segundo porque un plano
    corto en un juego de leer no enseña nada. */

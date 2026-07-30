@@ -31,7 +31,7 @@ const ANCHO = 1280, ALTO = 720, DENSIDAD = 1.5;
    clics. Al añadir uno nuevo al juego, hay que añadirlo aquí o el bot se queda
    colgado en la semana 3 (pasó con las escenas del arranque). */
 const MODALES = ["anuarioModal", "legadoModal", "dilModal", "ruptModal", "negModal", "clubModal", "modoModal",
-                 "arrModal", "celebraModal", "tmuerto"];
+                 "arrModal", "celebraModal", "tmuerto", "cabMomento"];
 const BORRA_MODALES = "__limpiaModales();";
 
 const SEMBRAR = (semanas) => `
