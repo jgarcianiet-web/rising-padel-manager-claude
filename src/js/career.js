@@ -222,9 +222,13 @@ function staffPerfil(rol){ const e=ent(); const st=e&&e.staff&&e.staff[rol]; ret
 /* Los tres números que cambian de escuela, extraídos para poder MEDIRLOS:
    una regla que solo vive inline en el cierre semanal no se puede probar. */
 function regenCarrera(){
-  const n=staffNiv("fisico"); if(!n) return 26;
+  const n=staffNiv("fisico");
   // el preparador «motor» compra semanas: su tema es que siempre haya depósito
-  return 26+(staffPerfil("fisico")==="motor"?4:2)+n;
+  let r=26+(n?(staffPerfil("fisico")==="motor"?4:2)+n:0);
+  // la gira se cobra aquí: el poso de las semanas seguidas frena la recuperación
+  const c=(G&&G.modo==="carrera")?G.carrera:null;
+  if(c&&typeof giraRegen==="function") r-=giraRegen(c);
+  return Math.max(8,r);
 }
 function confSueloPsico(){
   const n=staffNiv("psico"); if(!n) return 0;
@@ -698,6 +702,8 @@ function pintarSemana(){
   /* La capa «qué necesita atención ahora» (P7): como mucho cuatro asuntos,
      solo los que cambian una decisión de esta semana, con su porqué al pulsar. */
   if(typeof renderAtencion==="function") renderAtencion(td);
+  // y el conflicto de calendario (P3), solo cuando hay voces en los dos lados
+  if(typeof renderVoces==="function") renderVoces(td);
   /* Lo que está pasando en el circuito, antes que nada: si la pista está lenta
      o tu pareja no juega, eso decide si te inscribes. */
   const evs=evActivos(c);
@@ -1017,6 +1023,12 @@ function pintarEstadoFisico(){
   bx.appendChild(linea(t("ent_carga"),`${t("car_"+est)} · ${bandaTxt(c.carga,prec,13)}`,c.carga,colC));
   const rit=ritmoEstado(c), colR=rit==="lanzado"?"var(--verde)":rit==="frio"?"var(--rojo)":"var(--oro)";
   bx.appendChild(linea(t("ent_ritmo"),`${t("rit_"+rit)} · ${bandaTxt(c.ritmo,prec,13)}`,c.ritmo,colR));
+  // el poso de la gira: lo que la energía no cuenta
+  if(typeof giraLee==="function"){
+    const gEst=giraEstado(c), colG=gEst==="fresco"?"var(--verde)":gEst==="rodado"?"var(--gris)":gEst==="cargado"?"var(--oro)":"var(--rojo)";
+    bx.appendChild(linea(t("ent_gira"),`${t("gira_"+gEst)} · ${bandaTxt(giraLee(c),prec,13)}`,giraLee(c),colG,
+      giraRegen(c)>0?t("ent_gira_nota",{n:giraRegen(c)}):""));
+  }
   // adaptación al golpe que estás trabajando
   const k=golpeReal(c,c.planJug,entrenadorActual(),ctxDatos(c));
   const ad=adaptLee(c,k), colA=ad>=70?"var(--rojo)":ad>=40?"var(--oro)":"var(--verde)";
@@ -1918,6 +1930,7 @@ function avanzarSemanaCarrera(){
   }
   // el contexto de entreno se cobra y deja sus efectos propios
   cierraSemanaEntreno(c,factor);
+  const _nPart=c._rivalesSemana.length;   // partidos de esta semana, para el poso de la gira
   simCircuito(c._rivalesSemana);c._rivalesSemana=[];
   prensaSemanal();
   // el agente «de marcas» vive del teléfono: más rodajes y mejor pagados
@@ -1944,6 +1957,14 @@ function avanzarSemanaCarrera(){
   }
   decaeMerma(c);   // la secuela de la última lesión se va disipando
   curaFragilidad(c);  // y el cuerpo se rehace si le das semanas sanas
+  /* El poso de la gira se anota ANTES de calcular la recuperación: la semana
+     que acabas de jugar es la que te pasa factura en este mismo cierre. */
+  if(typeof giraSemana==="function"){
+    const gAntes=giraEstado(c);
+    giraSemana(c,!!c._jugoTorneo,_nPart,c._giraViaje|0); c._giraViaje=0;
+    const gAhora=giraEstado(c);
+    if(gAhora!==gAntes&&(gAhora==="cargado"||gAhora==="fundido")) avisa(t("gira_av_"+gAhora));
+  }
   let regen=regenCarrera();
   // los eventos mandan sobre la recuperación y sobre el techo de energía
   regen=Math.round(evNum("energia",regen));

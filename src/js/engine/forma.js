@@ -140,6 +140,41 @@ function formaEnfria(c){
     if(v>0) c.forma[k]=v-1; else if(v<0) c.forma[k]=v+1;
   });
 }
+/* ---------------- fatiga residual: el poso de la gira (P3) ----------------
+   La energía visible se recupera cada semana, y eso dejaba el calendario sin
+   dientes arriba: medido, un nivel 86 competía 51 semanas de 52. La gira es lo
+   que la energía no cuenta: semanas de torneo seguidas, rondas jugadas, viajes
+   lejanos, el estilo explosivo y la edad. No se gasta compitiendo UNA semana:
+   se acumula compitiendo SIEMPRE, y solo la baja quedarse en casa.
+
+   OJO: esto NO toca el entreno (la trampa histórica del repo es que entrenar
+   deje de compensar). Sube solo con torneos; entrenar en casa la baja. */
+const GIRA_MAX=100;
+function giraLee(c){ return clamp(((c&&c.gira)|0),0,GIRA_MAX); }
+/* Una llamada por cierre semanal, con lo vivido: si hubo torneo, cuántos
+   partidos se jugaron y cuánto costó el viaje (TRAVEL de la sede). */
+function giraSemana(c,jugo,partidos,viaje){
+  if(!c) return 0;
+  let g=giraLee(c);
+  if(jugo){
+    let sube=5+Math.min(6,partidos|0);              // llegar lejos pesa más
+    if((viaje|0)>=400) sube+=4;                     // cruzar medio mundo se paga
+    if(c.estilo==="agresivo"||c.estilo==="rematador") sube=Math.round(sube*1.15);
+    g+=sube;
+  } else {
+    let baja=13;
+    if((c.edad|0)>=30) baja-=3;                     // con 30 el cuerpo tarda más
+    if((c.edad|0)>=34) baja-=2;
+    g-=baja;
+  }
+  c.gira=clamp(g,0,GIRA_MAX);
+  return c.gira;
+}
+/* Lo que la gira le come a la recuperación semanal: es SU único gran efecto,
+   y por eso se nota justo donde duele —en si puedes encadenar otra semana—. */
+function giraRegen(c){ return Math.round(giraLee(c)*.18); }
+function giraEstado(c){ const g=giraLee(c); return g<30?"fresco":g<55?"rodado":g<75?"cargado":"fundido"; }
+
 /* El golpe en el que mejor y peor estás, para contarlo sin dar el número. */
 function formaMejor(c){ frAsegura(c); return ATTR_KEYS.reduce((p,k)=>formaLee(c,k)>formaLee(c,p)?k:p,ATTR_KEYS[0]); }
 function formaPeor(c){ frAsegura(c); return ATTR_KEYS.reduce((p,k)=>formaLee(c,k)<formaLee(c,p)?k:p,ATTR_KEYS[0]); }

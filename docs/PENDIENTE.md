@@ -113,11 +113,11 @@ sacó a la luz cosas que ninguna prueba de claves ni de interfaz veía:
   que entrena cuatro días y compite todas las semanas sin descansar nunca, así
   que puede ser correcto, pero no está comprobado que un jugador que gestione la
   carga baje de ahí. Merece una medición propia.
-- **La energía ya no aprieta arriba.** Una carrera larga termina temporada tras
-  temporada con 80-100 de energía: se puede competir las 52 semanas. Es el
-  reverso del arreglo que hizo que entrenar volviera a compensar, y habría que
-  buscar el punto en que el calendario obligue a elegir sin que entrenar deje de
-  merecer la pena.
+- ~~**La energía ya no aprieta arriba.**~~ **Resuelto con la gira (P3)**: la
+  energía visible se recupera, pero el poso de las semanas de torneo seguidas
+  no, y muerde justo la recuperación. Medido: machacar el calendario sin
+  gestionarla cuesta 7-11 lesiones y quince puestos; entrenar sigue
+  compensando porque la gira solo se alimenta de torneos.
 
 ---
 
@@ -134,9 +134,14 @@ De las prioridades 2-8 del último plan:
   identidades de carrera desde contadores reales; se pintan en la sala de
   trofeos. Faltan los arquetipos que piden datos que aún no se guardan (pareja
   histórica, jugador de un solo club).
-- **P3 · Que las 52 semanas no sean rutina** — pendiente. Lo ya hecho (parones,
-  coste por rondas, carga) empuja en esa dirección; faltan la fatiga residual
-  fina (viajes, finales, edad) y el conflicto de calendario dentro de la pareja.
+- **P3 · Que las 52 semanas no sean rutina — HECHA.** La fatiga residual es
+  el poso de la gira (`c.gira`): sube compitiendo (rondas, viaje lejano,
+  estilo explosivo), baja en casa (menos a partir de los 30) y muerde la
+  recuperación semanal y el riesgo médico. Medido: el que juega todas las
+  semanas sin mirarla acaba 22º-31º con 7-11 lesiones; el que para cuando
+  aprieta juega casi lo mismo y acaba top 10. Y el conflicto de calendario se
+  enseña (`vocesCalendario`): la caja solo sale cuando el compañero, el
+  ranking, la marca, el técnico y el cuerpo piden cosas incompatibles.
 - **P4 · Staff que cambia cómo se juega — HECHA.** Cada rol tiene dos
   escuelas (`PERFILES_STAFF`) y todo técnico nace con una: el fisio preventivo
   evita la lesión y el recuperador la acorta; el psicólogo de ánimo sostiene
@@ -161,15 +166,17 @@ De las prioridades 2-8 del último plan:
   con su nombre.
 - **P6 · Jerarquía audiovisual** — pendiente (cabeceras de momento, audio
   contextual). `pesoPartido` y `dramaGrada` son la base.
-- **P7 · Tres capas de información — HECHA en su núcleo.** El parte de
+- **P7 · Tres capas de información — HECHA.** El parte de
   atención (`engine/atencion.js`) abre la pestaña Semana en carrera y club:
   capa 1 con como mucho cuatro asuntos que cambian una decisión de esta
-  semana (carga, defensa de puntos, pareja, promesas, caja, patrocinador;
-  en club: la jornada sin cuatro sanos, el fisio, la deuda, la junta y la
-  cantera), capa 2 al pulsar con números y la recomendación firmada por el
-  técnico, y capa 3 saltando a la pestaña experta. Queda para más adelante
-  la señal «el rival te está leyendo», que pide persistir la lectura táctica
-  entre partidos.
+  semana (carga, gira, defensa de puntos, pareja, promesas, caja,
+  patrocinador; en club: la jornada sin cuatro sanos, el fisio, la deuda, la
+  junta y la cantera), capa 2 al pulsar con números y la recomendación
+  firmada por el técnico, y capa 3 saltando a la pestaña experta. La señal
+  «el rival te está leyendo» también está: el patrón de tus últimos partidos
+  persiste (`c.tacHist`), y si un golpe domina en 3 de 5, el siguiente rival
+  sale esperándolo (`tacPreLectura` siembra `match.lectura`) y el parte lo
+  avisa antes.
 
 ## Contenido: lo que sube la nota y no está hecho
 

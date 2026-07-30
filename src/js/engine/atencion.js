@@ -51,6 +51,16 @@ function _atCarrera(c,out){
              prep?{k:"at_carga_r_st",p:{n:prep.n}}:{k:"at_carga_r",p:{}}],tab:"entreno"});
     }
   }
+  // el poso de la gira: la energía vuelve, la maleta sin deshacer no
+  if(typeof giraEstado==="function"){
+    const gEst=giraEstado(c);
+    if(gEst==="cargado"||gEst==="fundido"){
+      const prep=c.staff&&c.staff.fisico;
+      out.push({id:"gira",sev:gEst==="fundido"?2:1,ico:"🧳",t:{k:"at_gira",p:{estado:t("gira_"+gEst)}},
+        por:[{k:"at_gira_f",p:{g:giraLee(c)}},{k:"at_gira_c",p:{n:giraRegen(c)}},
+             prep?{k:"at_gira_r_st",p:{n:prep.n}}:{k:"at_gira_r",p:{}}],tab:"entreno"});
+    }
+  }
   // sin depósito para la semana grande
   const sl=(typeof slotSemana==="function")?slotSemana(semanaTemp()):null;
   if(!c.lesion&&sl&&sl.premier!==undefined&&c.energia<40){
@@ -84,6 +94,13 @@ function _atCarrera(c,out){
     const tope=Math.max(1200,nomina*4);
     out.push({id:"caja",sev:c.dinero<-tope*.5?2:1,ico:"💸",t:{k:"at_caja",p:{n:c.dinero}},
       por:[{k:"at_caja_f",p:{nomina}},{k:"at_caja_c",p:{}}],tab:"staff"});
+  }
+  // el circuito ya espera tu golpe: variar entre partidos también es táctica
+  if(typeof tacPreLectura==="function"){
+    const pre=tacPreLectura(c);
+    if(pre) out.push({id:"leido",sev:1,ico:"👁",t:{k:"at_leido",p:{golpe:atNombre(pre.golpe)}},
+      por:[{k:"at_leido_f",p:{golpe:atNombre(pre.golpe),n:pre.n,m:pre.m}},
+           {k:"at_leido_c",p:{}},{k:"at_leido_r",p:{}}],tab:null});
   }
   // el patrocinador mira el objetivo al cierre, y el cierre se acerca
   if(c.sponsor&&typeof miPuesto==="function"&&typeof semanaTemp==="function"){
@@ -132,6 +149,58 @@ function _atClub(cl,out){
       out.push({id:"cantera",sev:1,ico:"🌱",t:{k:"at_club_cantera",p:{n:j.n}},
         por:[{k:"at_club_cantera_f",p:{}},{k:"at_club_cantera_r",p:{}}],tab:"club"});
   });
+}
+
+/* ---------------- las voces del calendario (P3) ----------------
+   El calendario genera conflicto cuando varias voces quieren cosas
+   incompatibles: el compañero pide jugar, el cuerpo pide parar, la marca
+   quiere su rodaje y el ranking defiende puntos. La caja solo aparece cuando
+   HAY conflicto (voces en los dos lados): un coro unánime no es una decisión.
+   Pura sobre el estado, como atencionDe. */
+function vocesCalendario(c){
+  const jugar=[],parar=[];
+  if(!c||!c.compi||typeof slotSemana!=="function") return {jugar,parar};
+  const sl=slotSemana(semanaTemp());
+  if(sl.premier===undefined&&sl.fip===undefined) return {jugar,parar};   // sin torneo no hay qué discutir
+  // el compañero: la ambición pide pista, el desgaste pide casa
+  if(typeof relLee==="function"){
+    if(relLee(c,"ambicion")>=60&&sl.premier!==undefined) jugar.push({k:"voz_compi_juega",p:{n:c.compi.n}});
+    if(relLee(c,"convivencia")<=35) parar.push({k:"voz_compi_para",p:{n:c.compi.n}});
+  }
+  // las promesas vivas empujan cada una hacia su lado
+  (c.promesas||[]).forEach(pr=>{
+    if(pr.id==="descanso") parar.push({k:"voz_prom_descanso",p:{n:c.compi.n}});
+    if(pr.id==="grande"&&sl.premier!==undefined) jugar.push({k:"voz_prom_grande",p:{n:c.compi.n}});
+  });
+  // el ranking: lo que caduca hoy solo se defiende jugando
+  if(typeof rkDefiende==="function"){
+    const def=rkDefiende(c,c.semana);
+    if(def>=250) jugar.push({k:"voz_ranking",p:{n:def}});
+  }
+  // la marca: el rodaje pendiente pide una semana tranquila
+  if(c._spot) parar.push({k:"voz_marca",p:{marca:c._spot.marca,pago:c._spot.pago}});
+  // el técnico: pasado de vueltas, el que sepa del tema pide levantar el pie
+  if(typeof cargaEstado==="function"&&cargaEstado(c)==="pasado"){
+    const tec=(c.staff&&(c.staff.fisico||c.staff.entrenador))||null;
+    parar.push(tec?{k:"voz_tecnico_st",p:{n:tec.n}}:{k:"voz_tecnico",p:{}});
+  }
+  // y el cuerpo, que no negocia
+  if(typeof giraEstado==="function"&&(giraEstado(c)==="cargado"||giraEstado(c)==="fundido")) parar.push({k:"voz_cuerpo",p:{}});
+  else if(c.energia<40) parar.push({k:"voz_cuerpo_en",p:{en:c.energia|0}});
+  return {jugar,parar};
+}
+function renderVoces(el){
+  if(!G||G.modo!=="carrera") return;
+  const v=vocesCalendario(G.carrera);
+  if(!v.jugar.length||!v.parar.length) return;   // sin conflicto no hay caja
+  const caja=document.createElement("div");
+  caja.className="evbox";
+  caja.style.borderColor="#4FA3D8";
+  caja.innerHTML=`<div class="evhd" style="color:#6FB8E8">🗣 ${t("voz_hd")}</div>
+    <div class="evrow"><b style="color:var(--lima)">${t("voz_lado_juega")}</b>${v.jugar.map(x=>`<div>· ${t(x.k,x.p)}</div>`).join("")}</div>
+    <div class="evrow"><b style="color:var(--oro)">${t("voz_lado_para")}</b>${v.parar.map(x=>`<div>· ${t(x.k,x.p)}</div>`).join("")}</div>
+    <div class="foot" style="text-align:left;margin-top:3px">${t("voz_pie")}</div>`;
+  el.appendChild(caja);
 }
 
 /* ---------------- pintado: las tres capas ---------------- */

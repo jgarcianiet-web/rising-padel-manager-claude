@@ -218,6 +218,7 @@ function abrirTorneo(ci,wildcard){
   const LIM_DEUDA=-800;   // puedes tirar de crédito para llegar a un torneo (los premios sanean)
   if(ent().dinero-viaje<LIM_DEUDA){ avisa(t("aviso_sin_viaje",{viaje})); return; }
   ent().dinero-=viaje;
+  if(G.modo==="carrera") G.carrera._giraViaje=viaje;   // el poso de la gira lo lee el cierre
   if(ent().dinero<0) avisa(t("aviso_numeros_rojos",{din:ent().dinero}));
   const startFase=ent2;
   const usados=new Set();
@@ -455,6 +456,13 @@ function empezarPartido(ver,coach){
   stats=[mkStats(),mkStats()];
   match={p:[0,0],j:[0,0],s:[0,0],hist:[],server:rnd()<.5?0:1,fin:false,ver,chall:[3,3],revisando:false,momento:{team:-1,run:0,best:[0,0],aviso:null}};
   match.autoCoach=!!coach;
+  /* Si tus últimos partidos fueron monotemáticos, el circuito te espera: la
+     lectura del rival NO empieza de cero. Variar entre partidos también es
+     táctica, y el parte de atención lo avisa antes de llegar aquí. */
+  if(G.modo==="carrera"&&typeof tacPreLectura==="function"){
+    const _pre=tacPreLectura(G.carrera);
+    if(_pre) match.lectura={golpe:_pre.golpe,nivel:_pre.nivel};
+  }
   if(coach) coachTactica();
   if(ver){
     document.getElementById("pEqA").textContent=teams[0].nombre;
@@ -475,6 +483,7 @@ function empezarPartido(ver,coach){
       if(clPre.tag==="CLIENTE") teams[1].jug.forEach(j=>j.conf=clamp((j.conf??55)-3,10,95));
       addCom(`${clPre.emo} ${clPre.tag==="RIVALIDAD"?`¡Capítulo ${h2pre.v+h2pre.d+1} de la rivalidad! ${h2pre.v}-${h2pre.d} hasta hoy.`:clPre.tag==="BESTIA NEGRA"?`Vuestra bestia negra al otro lado: ${h2pre.v}-${h2pre.d}. A romper el muro.`:`Un viejo cliente: ${h2pre.v}-${h2pre.d} a favor. Que no se despierte.`}`,0);
     }
+    if(match.lectura&&match.lectura.golpe) addCom(t("com_prelectura",{golpe:atNombre(match.lectura.golpe)}),0);
     initPlayers();pintaMarcadorP();pintaChallenges();pintaTactica();
     /* La grada del primer punto ya cuenta qué clase de partido es esto: en una
        final llena se oye, en una primera ronda de Bronce no. */
@@ -947,6 +956,8 @@ function finPartido(){
   const f=torneo.fase;
   const rival=torneo.rivales[f];
   const e=ent();
+  // el patrón de ESTE partido queda en la memoria del circuito (c.tacHist)
+  if(G.modo==="carrera"&&typeof tacHistAnota==="function"&&stats&&stats[0]) tacHistAnota(G.carrera,stats[0]);
   if(!e.h2h[rival.id]) e.h2h[rival.id]={v:0,d:0};
   const h2r=e.h2h[rival.id];
   const clAntes=clasificaRiv(h2r);

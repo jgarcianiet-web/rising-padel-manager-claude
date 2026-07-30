@@ -4540,6 +4540,103 @@ comprueba("Atención: el parte de la semana sale del estado y solo avisa de deci
   return "calma sin ruido · " + its.map(x => x.id).join("+") + " · club: " + itsCl.map(x => x.id).join("+");
 });
 
+comprueba("Gira: la fatiga residual se acumula compitiendo y solo la baja quedarse en casa", () => {
+  /* La P3: la energía visible vuelve cada semana y por eso arriba se podía
+     competir las 52. El poso de la gira es lo que la energía no cuenta:
+     semanas seguidas, rondas, viajes lejanos, el estilo explosivo y la edad.
+     Muerde la recuperación y el riesgo médico; NUNCA toca el entreno. */
+  const c = nuevaCarrera("defensivo");
+  exige(giraLee(c) === 0, "una carrera nueva no nace fresca");
+  // una semana honda y lejos pesa más que una corta y cerca
+  giraSemana(c, true, 6, 750);
+  const honda = giraLee(c);
+  c.gira = 0; giraSemana(c, true, 2, 30);
+  exige(honda > giraLee(c), "la final en Riad no pesa más que dos rondas en casa");
+  // el estilo explosivo acumula más
+  const cAg = nuevaCarrera("agresivo");
+  giraSemana(cAg, true, 6, 750);
+  exige(giraLee(cAg) > honda, "el estilo explosivo no acusa más la gira: " + giraLee(cAg) + " vs " + honda);
+  // la semana en casa la baja, y con 34 años baja menos
+  cAg.gira = 50; cAg.edad = 22; giraSemana(cAg, false, 0, 0);
+  const joven = 50 - giraLee(cAg);
+  cAg.gira = 50; cAg.edad = 34; giraSemana(cAg, false, 0, 0);
+  exige(joven > 50 - giraLee(cAg), "un veterano se rehace igual de rápido que un chaval");
+  // tope, suelo, y el mordisco en la recuperación
+  cAg.gira = 95; giraSemana(cAg, true, 6, 750);
+  exige(giraLee(cAg) === 100, "la gira no tiene tope");
+  cAg.gira = 0; giraSemana(cAg, false, 0, 0);
+  exige(giraLee(cAg) === 0, "la gira baja de cero");
+  G.carrera = cAg; cAg.gira = 0;
+  const fresco = regenCarrera();
+  cAg.gira = 80;
+  exige(regenCarrera() === Math.max(8, fresco - giraRegen(cAg)), "la gira no muerde la recuperación");
+  exige(regenCarrera() >= 8, "la recuperación puede bajar del suelo");
+  // el parte de atención la cuenta, con la recomendación del preparador
+  cAg.staff.fisico = { rol: "fisico", n: "Prep Gira", niv: 3, sal: 100 };
+  const it = atencionDe(cAg).find(x => x.id === "gira");
+  exige(it && it.sev === 2 && it.tab === "entreno", "la gira alta no sale en el parte");
+  exige(it.por.some(l => l.k === "at_gira_r_st" && l.p.n === "Prep Gira"), "el preparador no firma la recomendación");
+  ["gira_fresco", "gira_rodado", "gira_cargado", "gira_fundido", "ent_gira", "ent_gira_nota",
+   "gira_av_cargado", "gira_av_fundido"].forEach(k => exige(t(k) !== k, "falta la clave " + k));
+  return "honda+lejos " + honda + " · explosivo " + giraLee(nuevaCarrera("agresivo")) + "… · tope 100, suelo 8 de regen";
+});
+
+comprueba("Calendario: las voces solo montan conflicto cuando piden cosas incompatibles", () => {
+  /* La P3, parte C: el compañero quiere jugar, el cuerpo quiere parar, la
+     marca quiere su rodaje y el ranking defiende puntos. La caja solo sale
+     con voces en LOS DOS lados: un coro unánime no es una decisión. */
+  const c = nuevaCarrera("agresivo");
+  c.semana = 6;   // semana de premier en el calendario (Riad)
+  exige(slotSemana(semanaTemp()).premier !== undefined, "la semana 6 ya no es de premier: ajusta la prueba");
+  // sin tensiones no hay conflicto
+  relAsegura(c); EJES.forEach(k => c.rel[k] = 65); c.energia = 90; c.gira = 0; c.carga = 45;
+  let v = vocesCalendario(c);
+  exige(!v.parar.length, "hay voces de parar en una semana limpia: " + v.parar.map(x => x.k).join(","));
+  // ambición alta + cuerpo fundido + rodaje pendiente: conflicto de verdad
+  c.rel.ambicion = 80; c.rel.convivencia = 20; c.gira = 80;
+  c._spot = { marca: "VoltIso", pago: 900, fans: 100, tipo: "spot_rodaje" };
+  v = vocesCalendario(c);
+  exige(v.jugar.some(x => x.k === "voz_compi_juega"), "la ambición del compañero no pide jugar");
+  exige(v.parar.some(x => x.k === "voz_cuerpo"), "el cuerpo fundido no pide parar");
+  exige(v.parar.some(x => x.k === "voz_marca"), "el rodaje pendiente no pide semana tranquila");
+  // todas las claves de las voces se resuelven
+  v.jugar.concat(v.parar).forEach(x => exige(t(x.k, x.p) !== x.k && !t(x.k, x.p).includes("{"), "la voz " + x.k + " no se resuelve"));
+  // y en semana sin torneo no hay nada que discutir
+  c.semana = 3;
+  if (slotSemana(semanaTemp()).premier === undefined && slotSemana(semanaTemp()).fip === undefined) {
+    v = vocesCalendario(c);
+    exige(!v.jugar.length && !v.parar.length, "hay conflicto sin torneo que jugar");
+  }
+  return "semana limpia sin ruido · conflicto con " + v.jugar.length + " voces a favor y " + v.parar.length + " en contra";
+});
+
+comprueba("Lectura: el circuito recuerda tu patrón y el siguiente rival no empieza de cero", () => {
+  /* La lectura moría con el partido: cinco torneos seguidos a globo y cada
+     rival te descubría de cero. Ahora el patrón de cada partido queda en
+     c.tacHist, y si el mismo golpe domina en 3 de los últimos 5, el próximo
+     rival sale esperándolo (match.lectura sembrada) y el parte lo avisa. */
+  const c = nuevaCarrera("agresivo");
+  exige(!tacPreLectura(c), "lee sin datos");
+  c.tacHist = [{ golpe: "globo", cuota: .36 }, { golpe: "globo", cuota: .33 }, { golpe: "volea", cuota: .20 }, { golpe: "globo", cuota: .31 }];
+  const pre = tacPreLectura(c);
+  exige(pre && pre.golpe === "globo" && pre.n === 3, "no detecta el patrón entre partidos");
+  exige(pre.nivel > 0 && pre.nivel < .45, "la lectura de salida no puede nacer dolorosa del todo");
+  exige(atencionDe(c).some(x => x.id === "leido"), "el parte no avisa de que te esperan");
+  // variar lo borra: por debajo del umbral de lectura no hay patrón
+  c.tacHist = [{ golpe: "globo", cuota: .22 }, { golpe: "globo", cuota: .24 }, { golpe: "globo", cuota: .21 }];
+  exige(!tacPreLectura(c), "cuenta partidos por debajo del umbral");
+  // tacHistAnota escribe desde las stats del partido y descarta el ruido
+  c.tacHist = [];
+  tacHistAnota(c, { uso: { globo: 12, volea: 4, fondo: 14 } });
+  exige(c.tacHist.length === 1 && c.tacHist[0].golpe === "fondo", "no anota el patrón del partido");
+  tacHistAnota(c, { uso: { globo: 3 } });
+  exige(c.tacHist.length === 1, "anota patrones sin tiros suficientes");
+  for (let i = 0; i < 9; i++) tacHistAnota(c, { uso: { globo: 20, volea: 10 } });
+  exige(c.tacHist.length === TAC_HIST, "la memoria táctica no tiene tope");
+  ["at_leido", "at_leido_f", "at_leido_c", "at_leido_r", "com_prelectura"].forEach(k => exige(t(k) !== k, "falta la clave " + k));
+  return "3 de 4 a globo → el siguiente rival sale esperándolo · variar lo borra";
+});
+
 comprueba("Retirada: la némesis tiene epílogo y habla según cómo acabó el duelo", () => {
   /* La rivalidad también se retira: el vuelco, la herida que no se cerró o el
      pulso que nadie ganó. El texto sale de la fase, y la fase de los hechos. */

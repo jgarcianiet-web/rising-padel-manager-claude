@@ -84,6 +84,32 @@ function tacLecturaEstado(){
   return {golpe:l.golpe, nivel:l.nivel, fuerte:l.nivel>=.55};
 }
 
+/* ---------------- 1b · el circuito también te lee (entre partidos) ----------------
+   La lectura moría con el partido: podías jugar CINCO torneos seguidos a globo
+   y cada rival te descubría de cero. Ahora el patrón de cada partido tuyo se
+   guarda (`c.tacHist`, los últimos TAC_HIST), y si el mismo golpe domina en
+   tres o más, el siguiente rival NO empieza de cero: sale esperándolo. Variar
+   entre partidos pasa a ser táctica, no solo variar dentro de uno. */
+const TAC_HIST=5;
+function tacHistAnota(c,st){
+  if(!c||!st) return;
+  const p=tacPatron(st);
+  if(!p.golpe||p.tiros<LEC_MIN_TIROS) return;
+  (c.tacHist=c.tacHist||[]).push({golpe:p.golpe,cuota:Math.round(p.cuota*100)/100});
+  c.tacHist=c.tacHist.slice(-TAC_HIST);
+}
+/* ¿Te espera ya el circuito? {golpe, n de m, nivel de salida} o null. */
+function tacPreLectura(c){
+  const h=(c&&c.tacHist)||[];
+  if(h.length<3) return null;
+  const cnt={};
+  h.forEach(x=>{ if(x.cuota>=LEC_CUOTA) cnt[x.golpe]=(cnt[x.golpe]||0)+1; });
+  let golpe=null,n=0;
+  for(const k in cnt) if(cnt[k]>n){ n=cnt[k]; golpe=k; }
+  if(!golpe||n<3) return null;
+  return {golpe, n, m:h.length, nivel:.18};
+}
+
 /* ---------------- 2 · el informe táctico ---------------- */
 /* La firma es la combinación de ajustes en vigor. Cambiar cualquiera abre una
    línea nueva del informe, que es justo lo que se quiere comparar. */

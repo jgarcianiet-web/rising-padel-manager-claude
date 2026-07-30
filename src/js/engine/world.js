@@ -1527,6 +1527,8 @@ function intentaLesion(port,tieneFisio){
   let r=kLesion(riesgoLesionPost(port.energia,fragilEf,tieneFisio,port.carga));  // la dificultad modula el riesgo médico
   if(tieneFisio&&perfF==="preventivo") r*=.8;    // .5 de fisio × .8 = .4 efectivo
   if(tieneFisio&&perfF==="recuperador") r*=1.2;  // su fuerte no es evitarla
+  // el poso de la gira también rompe: hasta +40% con la maleta sin deshacer
+  if(typeof giraLee==="function") r*=1+giraLee(port)/250;
   if(rnd()>=r) return null;
   const les=pickLesion(clamp(1-(port.energia==null?100:port.energia)/40,0,1));
   if(tieneFisio) les.sem=Math.max(1,les.sem-(perfF==="recuperador"?2:1));

@@ -470,6 +470,21 @@ correr. Tres reglas que se sostienen entre sí:
    llevando los puntos y no el que se está construyendo.
 3. **El calendario es parte del corte.** `entradaEn` lo comprueba, no solo la
    interfaz. Ver «El circuito puntúa como puntúas tú».
+4. **La energía vuelve; la gira, no** (`c.gira`, en `engine/forma.js`). Con la
+   recuperación semanal cuadrada, arriba se podía competir siempre: el torneo
+   pequeño costaba menos de lo que se recuperaba. El poso de la gira sube solo
+   compitiendo (más con rondas, viaje lejano y estilo explosivo), baja solo en
+   casa (menos a partir de los 30) y muerde donde duele: la recuperación
+   semanal (`regenCarrera`, suelo 8) y el riesgo de lesión. Medido a nivel 80
+   con tres temporadas: el que juega todas las semanas sin mirarla vive a gira
+   75, encadena 7-11 lesiones y acaba 22º-31º; el que para cuando pasa de 55
+   juega casi las mismas semanas, vive fresco y acaba top 10. **No toca el
+   entreno**: la trampa histórica del repo es que entrenar deje de compensar,
+   y por eso la gira solo se alimenta de torneos. Y el conflicto que crea se
+   ENSEÑA: `vocesCalendario` (en `engine/atencion.js`) pinta la caja de
+   «conflicto de calendario» solo cuando hay voces pidiendo cosas
+   incompatibles —la ambición del compañero, sus promesas, el ranking que
+   defiende puntos, el rodaje de la marca, el técnico y el cuerpo—.
 
 ### El palmarés cuenta lo que importa
 
@@ -600,7 +615,13 @@ cuarenta víboras seguidas igual de bien la última que la primera.
 
 1. **La lectura del rival** (`tacLee`, `tacLecturaX`). Al cerrar cada juego el
    rival mira qué llevas jugado; si un golpe pasa del umbral, empieza a
-   esperarlo y ese golpe rinde menos. Se les olvida si varías.
+   esperarlo y ese golpe rinde menos. Se les olvida si varías. Y la lectura
+   ya **no muere con el partido**: el patrón de cada partido tuyo queda en
+   `c.tacHist` (últimos `TAC_HIST`), y si el mismo golpe domina en 3 o más,
+   `tacPreLectura` hace que el siguiente rival salga esperándolo
+   (`match.lectura` sembrada a nivel bajo) y el parte de atención lo avisa
+   ANTES («el circuito ya espera tu globo»). Variar entre partidos también es
+   táctica.
    **Los umbrales salen de medir, no de la intuición**: el golpe más repetido de
    un partido real está en el 27% para una pareja completa y sube al 31-37% para
    un muro, porque la situación de pista ya limita lo que se puede jugar. Con el
