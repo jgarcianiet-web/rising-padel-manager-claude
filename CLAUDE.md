@@ -722,6 +722,25 @@ Dos reglas:
    palmarés hecho 46 (seria), octavos de Corona 34 (seria) y final de Corona 78
    (histórica). Si tocas los pesos, vuelve a sacar esa tabla.
 
+### Las cabeceras de momento
+
+`momentoCabecera` (en `engine/drama.js`) extiende el lenguaje de las finales a
+los momentos que no lo son: primer título, primera Corona, Maestros, nº1,
+primer cuadro final, lesión grave, alta médica, debut del canterano y
+destitución del club. Tres tonos —`gloria`, `duelo`, `vuelta`— con su color,
+su tipografía y su sonido (`sfxMomento`; el duelo APAGA la música: el
+silencio tras una lesión también es sonido). Reglas:
+
+1. **Cada cabecera sale una sola vez**, y eso no lo garantiza ella: lo
+   garantiza `momAnota` (o un flag como `_cabDebut`). Engánchala siempre
+   detrás de la comprobación de primera vez.
+2. **No secuestra la partida**: se cierra al tocar y sola a los 8 segundos.
+   El cierre usa `quitarEl`, no `.remove()` (el DOM de la suite no lo trae).
+3. **El estado se cambia ANTES de pintarla**, nunca en su callback: la
+   destitución del club pone `G=null` y va al menú aunque nadie toque.
+4. La grada también es jerarquía: en el partido visto, `sfxGrada` se
+   enciende ANTES del punto caliente (`PRESION>=.55`), no solo al resolverlo.
+
 ## El club tiene competición propia: la Copa de Clubes
 
 `engine/copa.js`. Antes el modo club era una carrera con dos parejas: todo

@@ -1950,8 +1950,11 @@ function avanzarSemanaCarrera(){
   if(c.lesion){
     c.lesion.sem--;
     if(c.lesion.sem<=0){
-      const nom=lesNombre(c.lesion), sec=curarLesion(c);
+      const nom=lesNombre(c.lesion), _grav=c.lesion.grav|0, sec=curarLesion(c);
       avisa(t("les_alta",{n:nom})+(sec?t("les_merma",{pct:sec.pct,sem:sec.sem}):""));
+      // volver de una lesión seria también es un momento (P6)
+      if(_grav>=2&&typeof momentoCabecera==="function")
+        momentoCabecera({tipo:"vuelta",ico:"💪",titulo:t("cab_alta_t"),sub:t("cab_alta_s",{les:nom})});
     }
     else avisa(t("les_recup",{n:lesNombre(c.lesion),sem:c.lesion.sem}));
   }
@@ -1973,7 +1976,10 @@ function avanzarSemanaCarrera(){
   /* Semanas como número 1: la medida de una era, no un salto de una semana.
      Se cuenta aquí, en el cierre, para que valga estar arriba el lunes de
      verdad y no un instante entre dos repintados. */
-  if(pos_===1){ c.semN1=(c.semN1|0)+1; if(c.semN1===1) momAnota(c,"n1",{}); }
+  if(pos_===1){ c.semN1=(c.semN1|0)+1;
+    if(c.semN1===1&&momAnota(c,"n1",{})&&typeof momentoCabecera==="function")
+      momentoCabecera({tipo:"gloria",ico:"⭐",titulo:t("mom_n1"),sub:t("mom_n1_d",{t:temporada(),sem:semanaTemp()}),dato:`${c.nombre} / ${c.compi.n}`});
+  }
   fansAdd(Math.round((c.fans||0)*.002)+(pos_<=10?25:pos_<=20?8:1));
   if(!c._jugoTorneo&&c.dinero<600){
     c.dinero+=90;

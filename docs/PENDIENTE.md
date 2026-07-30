@@ -164,8 +164,14 @@ De las prioridades 2-8 del último plan:
   rival: una pareja del mundo lo ficha (`canRegresaAlCircuito`), la jornada de
   Copa contra su club lo anuncia antes de alinear y el acta cierra la historia
   con su nombre.
-- **P6 · Jerarquía audiovisual** — pendiente (cabeceras de momento, audio
-  contextual). `pesoPartido` y `dramaGrada` son la base.
+- **P6 · Jerarquía audiovisual — HECHA.** `momentoCabecera` (tres tonos:
+  gloria, duelo y vuelta, con su sonido; el duelo apaga la música) da pantalla
+  completa a lo que la merece: primer título, primera Corona, Maestros, nº1,
+  primer cuadro final (momento nuevo, con su tarjeta en la sala de trofeos),
+  lesión grave, alta médica, debut del canterano y destitución del club (que
+  ya no es un `alert`). Y la grada del partido visto se enciende ANTES del
+  punto caliente. Cada cabecera sale una sola vez (lo garantiza `momAnota`) y
+  ninguna secuestra la partida: se retira sola a los 8 segundos.
 - **P7 · Tres capas de información — HECHA.** El parte de
   atención (`engine/atencion.js`) abre la pestaña Semana en carrera y club:
   capa 1 con como mucho cuatro asuntos que cambian una decisión de esta

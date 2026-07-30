@@ -602,7 +602,10 @@ function pintarClubM(){
   if(G.clubG&&G.clubG._despedido){
     const cl=G.clubG;
     document.getElementById("cmTorneosDisp")&&(document.getElementById("cmTorneosDisp").innerHTML="");
-    alert(t("clb_fin",{club:cl.nombre,temps:cl.hist.length,tits:cl.palmares.length,mejor:Math.min(...cl.hist.map(h=>h.pos))}));
+    // la destitución cierra el proyecto con cabecera, no con un alert (P6)
+    const _finTxt=t("clb_fin",{club:cl.nombre,temps:cl.hist.length,tits:cl.palmares.length,mejor:Math.min(...cl.hist.map(h=>h.pos))});
+    if(typeof momentoCabecera==="function") momentoCabecera({tipo:"duelo",ico:"🪑",titulo:t("cab_fin_t"),sub:_finTxt});
+    else alert(_finTxt);
     G=null; irA("menu"); pintarMenu(); return;
   }
   const cl=G.clubG;
@@ -829,6 +832,13 @@ function jugarEliminatoria(jor){
   if(taq){ cl.dinero+=taq; avisa(t("cop_taquilla",{n:taq.toLocaleString("es")})); }
   if(derbi) anotaDerbi(cl,{club:cl.copa.grupo[acta.rival-1]},acta.gane);
   acta._verSem=cl.semana;
+  // el debut de la casa merece cabecera, no solo un aviso (P6)
+  (cl.plantilla||[]).forEach(x=>{
+    if(x.dela_casa&&x.debut&&x.debut.t===temporada()&&x.debut.sem===semanaTemp()&&!x._cabDebut){
+      x._cabDebut=true;
+      if(typeof momentoCabecera==="function") momentoCabecera({tipo:"gloria",ico:"🌱",titulo:t("cab_can_t"),sub:t("cab_can_s",{n:x.n,club:cl.nombre})});
+    }
+  });
   const rival=copNombreDe(cl,acta.rival);
   avisa(t(acta.gane?"cop_gana":"cop_pierde",{a:acta.mio,b:acta.suyo,rival,soc:Math.abs(soc)}));
   noticia(acta.gane?"titulo":"ruptura",

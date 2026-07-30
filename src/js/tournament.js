@@ -794,6 +794,8 @@ let anim=null;
 function jugarPuntoAnim(){
   if(!match||match.fin) return;
   PRESION=calcPresion();
+  // la grada se enciende ANTES del punto caliente: el break se oye venir (P6)
+  if(PRESION>=.55&&typeof sfxGrada==="function") sfxGrada(.3+PRESION*.4);
   const punto=buildPoint(match.server);
   const tl=[];let t0=0;
   punto.ev.forEach(evt=>{
@@ -958,6 +960,9 @@ function finPartido(){
   const e=ent();
   // el patrón de ESTE partido queda en la memoria del circuito (c.tacHist)
   if(G.modo==="carrera"&&typeof tacHistAnota==="function"&&stats&&stats[0]) tacHistAnota(G.carrera,stats[0]);
+  // el primer cuadro final de una carrera es un momento, no una ronda más
+  if(G.modo==="carrera"&&f>=2&&momAnota(G.carrera,"primer_cuadro",{torneo:torneo.nombre})&&typeof momentoCabecera==="function")
+    momentoCabecera({tipo:"gloria",ico:"🎫",titulo:t("mom_primer_cuadro"),sub:t("mom_primer_cuadro_d",{torneo:torneo.nombre,t:temporada(),sem:semanaTemp()})});
   if(!e.h2h[rival.id]) e.h2h[rival.id]={v:0,d:0};
   const h2r=e.h2h[rival.id];
   const clAntes=clasificaRiv(h2r);
@@ -1039,7 +1044,11 @@ function finPartido(){
       seLesiona=true;lesionTxt=lesNombre(c.lesion);
       c.conf=clamp(c.conf-4,15,95);                              // lesionarse mina la cabeza
       c.compiMoral=clamp((c.compiMoral??65)-5,5,95);             // y preocupa al compañero
-      if(c.lesion.grav>=3) noticia("lesion",t("not_lesion_grave_t"),t("not_lesion_grave_s",{lesion:lesNombre(c.lesion),sem:c.lesion.sem}),miParejaProt());
+      if(c.lesion.grav>=3){
+        noticia("lesion",t("not_lesion_grave_t"),t("not_lesion_grave_s",{lesion:lesNombre(c.lesion),sem:c.lesion.sem}),miParejaProt());
+        // la lesión grave para la música: el silencio también es sonido (P6)
+        if(typeof momentoCabecera==="function") momentoCabecera({tipo:"duelo",ico:"🚑",titulo:t("cab_les_t"),sub:t("cab_les_s",{les:lesNombre(c.lesion),sem:c.lesion.sem})});
+      }
     }
     if((gane||misW>=4)&&rnd()<.45){
       const favor={defensivo:["globo","pared","chiquita","fondo"],agresivo:["remate","vibora","volea","bandeja"],bandejero:["bandeja","vibora","volea"],rematador:["remate","bandeja","volea"],constructor:["chiquita","dejada","fondo","globo"]}[c.estilo];
@@ -1122,9 +1131,13 @@ function finPartido(){
          Ganar es la respuesta natural: un título dice que sí vais a algún
          sitio, y uno grande lo dice más alto. */
       if(typeof relMueve==="function") relMueve(c9,"ambicion",torneo.premierT?5:3);
-      if(e.palmares.length===1) momAnota(c9,"primer_titulo",{torneo:torneo.nombre});
-      if(torneo.cat===6&&(e.recMajors||0)===1) momAnota(c9,"primera_corona",{torneo:torneo.nombre});
-      if(torneo.cat===7&&(e.recFinals||0)===1) momAnota(c9,"maestros",{});
+      /* Las primeras veces, además de guardarse, se CELEBRAN: cabecera a
+         pantalla completa con su tono y su sonido (P6). momAnota devuelve
+         false si ya se vivió, así que cada cabecera sale una sola vez. */
+      const _cab=(ico,id,d)=>{ if(typeof momentoCabecera==="function") momentoCabecera({tipo:"gloria",ico,titulo:t("mom_"+id),sub:t("mom_"+id+"_d",{t:temporada(),sem:semanaTemp(),torneo:torneo.nombre,rival:""}),dato:d||`${c9.nombre} / ${c9.compi.n}`}); };
+      if(e.palmares.length===1&&momAnota(c9,"primer_titulo",{torneo:torneo.nombre})) _cab("🏆","primer_titulo");
+      if(torneo.cat===6&&(e.recMajors||0)===1&&momAnota(c9,"primera_corona",{torneo:torneo.nombre})) _cab("👑","primera_corona");
+      if(torneo.cat===7&&(e.recFinals||0)===1&&momAnota(c9,"maestros",{})) _cab("🎓","maestros");
       if(c9.nemesis&&rival&&rival.id===c9.nemesis.id) momAnota(c9,"nemesis_final",{rival:rival.nombre,torneo:torneo.nombre});
       if(c9.merma) momAnota(c9,"titulo_tocado",{torneo:torneo.nombre});
       if(typeof evFlag==="function"&&evFlag("suplente")) momAnota(c9,"titulo_suplente",{torneo:torneo.nombre});

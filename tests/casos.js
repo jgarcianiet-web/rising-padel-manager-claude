@@ -4637,6 +4637,31 @@ comprueba("Lectura: el circuito recuerda tu patrón y el siguiente rival no empi
   return "3 de 4 a globo → el siguiente rival sale esperándolo · variar lo borra";
 });
 
+comprueba("Momentos: la cabecera da al momento el tamaño que tiene, una sola vez", () => {
+  /* La P6: las finales ya tenían su tratamiento; la cabecera extiende ese
+     lenguaje a los momentos que no son una final —primer cuadro, nº1, lesión
+     grave, alta, debut del canterano, destitución— con tres tonos (gloria,
+     duelo, vuelta) y su sonido. momAnota garantiza que cada una salga UNA vez. */
+  const c = nuevaCarrera("agresivo");
+  const d = momentoCabecera({ tipo: "gloria", ico: "🏆", titulo: "Título de prueba", sub: "Sub", dato: "Dato" });
+  exige(d && String(d.className).includes("cab-gloria"), "la cabecera no lleva su tono");
+  exige(d.innerHTML.includes("Título de prueba") && d.innerHTML.includes(t("cab_k_gloria")) && d.innerHTML.includes(t("cab_seguir")), "la cabecera no pinta sus piezas");
+  let seguido = false;
+  const d2 = momentoCabecera({ tipo: "duelo", titulo: "X", al: () => seguido = true });
+  exige(String(d2.className).includes("cab-duelo"), "el duelo no lleva su tono");
+  d2.onclick();
+  exige(seguido, "el callback de la cabecera no corre al tocar");
+  // el primer cuadro final es un momento nuevo: una vez, con icono y claves
+  exige(momAnota(c, "primer_cuadro", { torneo: "X" }), "primer_cuadro no se anota");
+  exige(!momAnota(c, "primer_cuadro", {}), "primer_cuadro se anota dos veces");
+  ["mom_primer_cuadro", "mom_primer_cuadro_d", "cab_k_gloria", "cab_k_duelo", "cab_k_vuelta",
+   "cab_seguir", "cab_les_t", "cab_les_s", "cab_alta_t", "cab_alta_s", "cab_can_t", "cab_can_s", "cab_fin_t"]
+    .forEach(k => exige(t(k) !== k, "falta la clave " + k));
+  const d3 = momentoCabecera({ tipo: "vuelta", titulo: "limpieza" });
+  quitarEl(d3);
+  return "gloria, duelo y vuelta con su tono · primer_cuadro una sola vez · 13 claves";
+});
+
 comprueba("Retirada: la némesis tiene epílogo y habla según cómo acabó el duelo", () => {
   /* La rivalidad también se retira: el vuelco, la herida que no se cerró o el
      pulso que nadie ganó. El texto sale de la fase, y la fase de los hechos. */

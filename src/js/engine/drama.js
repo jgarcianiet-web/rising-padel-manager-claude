@@ -95,6 +95,38 @@ function pesoPartido(e,cat,fase,rival){
 /* Intensidad de grada 0,2..1 a partir del peso. Es lo que se le pasa a sfxGrada. */
 function dramaGrada(peso){ return clamp(.25+(peso/100)*.75,.2,1); }
 
+/* ---------------- cabeceras de momento (P6) ----------------
+   Las finales ya tenían su tratamiento; esto extiende ese lenguaje a los
+   momentos excepcionales que NO son una final: el primer cuadro, el nº1, la
+   lesión grave, el alta, el debut del canterano, la destitución. Tres tonos
+   —gloria, duelo y vuelta— con su tipografía, su color y su sonido. Se cierra
+   al tocar; no decide nada, solo le da al momento el tamaño que tiene. */
+function momentoCabecera(spec){
+  if(typeof document==="undefined"||!document.body) return null;
+  // quitarEl y no .remove(): el DOM recortado de la suite no trae remove()
+  const prev=document.getElementById("cabMomento"); if(prev) quitarEl(prev);
+  const tipo=spec.tipo||"gloria";
+  const d=document.createElement("div");
+  d.id="cabMomento";
+  d.className="cabMom cab-"+tipo;
+  d.innerHTML=`<div class="cabIn">
+    <div class="cabIco">${spec.ico||"✦"}</div>
+    <div class="cabKick">${t("cab_k_"+tipo)}</div>
+    <div class="cabTit">${spec.titulo||""}</div>
+    ${spec.sub?`<div class="cabSub">${spec.sub}</div>`:""}
+    ${spec.dato?`<div class="cabDato">${spec.dato}</div>`:""}
+    <div class="cabPie">${t("cab_seguir")}</div>
+  </div>`;
+  let vivo=true;
+  const cierra=()=>{ if(!vivo) return; vivo=false; quitarEl(d); if(typeof spec.al==="function") spec.al(); };
+  d.onclick=cierra;
+  document.body.appendChild(d);
+  // el momento no secuestra la partida: si nadie toca, se retira solo
+  if(typeof setTimeout==="function") setTimeout(cierra,8000);
+  if(typeof sfxMomento==="function") sfxMomento(tipo);
+  return d;
+}
+
 /* ---------------- el cartel ---------------- */
 /* «Lo que te juegas», en frases concretas. Sin lista no se pinta nada: un
    partido sin nada en juego no merece cartel. */

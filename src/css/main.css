@@ -364,3 +364,25 @@ body.con-guia #toasts{bottom:calc(28px + var(--guiaAlto,72px))}
   text-transform:uppercase;margin-bottom:5px}
 .dramaLn{font-size:calc(12px * var(--esc));line-height:1.5;padding:1px 0}
 .dramaLn+.dramaLn{border-top:1px dotted var(--borde2);margin-top:3px}
+
+/* Cabeceras de momento (P6): pantalla completa, tres tonos. El contenido lo
+   pone momentoCabecera (engine/drama.js); aquí, la forma y el color. */
+.cabMom{position:fixed;inset:0;z-index:92;display:flex;align-items:center;justify-content:center;
+  padding:18px;text-align:center;cursor:pointer;animation:cabIn .45s ease-out}
+@keyframes cabIn{from{opacity:0}to{opacity:1}}
+.cab-gloria{background:radial-gradient(ellipse at 50% 38%,#2A2410,#07090D 78%)}
+.cab-duelo{background:radial-gradient(ellipse at 50% 38%,#1A0D10,#06070B 78%)}
+.cab-vuelta{background:radial-gradient(ellipse at 50% 38%,#0E1F1A,#06090D 78%)}
+.cabIn{max-width:560px}
+.cabIco{font-size:calc(52px * var(--esc));line-height:1;margin-bottom:10px}
+.cabKick{font-family:'IBM Plex Mono',monospace;font-size:calc(10px * var(--esc));letter-spacing:4px;
+  text-transform:uppercase;margin-bottom:12px}
+.cab-gloria .cabKick{color:var(--oro)}
+.cab-duelo .cabKick{color:#E05656}
+.cab-vuelta .cabKick{color:var(--lima)}
+.cabTit{font-size:calc(30px * var(--esc));font-weight:800;line-height:1.15;letter-spacing:.5px}
+.cabSub{font-size:calc(13.5px * var(--esc));color:var(--gris);margin-top:10px;line-height:1.5}
+.cabDato{font-family:'IBM Plex Mono',monospace;font-size:calc(11px * var(--esc));color:var(--gris2);
+  margin-top:12px;border-top:1px solid var(--borde2);padding-top:9px;display:inline-block}
+.cabPie{font-size:calc(10px * var(--esc));color:var(--gris2);margin-top:22px;letter-spacing:1px;
+  text-transform:uppercase;opacity:.75}

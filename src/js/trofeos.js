@@ -104,7 +104,7 @@ function pintarTrofeos(){
     O.push(`<div class="anaHd">${t("trf_hd_momentos")}</div>`);
     O.push(`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:7px;margin-bottom:14px">${
       moms.map(m=>{
-        const ICO={primer_titulo:"🏆",primera_corona:"👑",maestros:"🎓",n1:"⭐",top10:"⚔",nemesis_final:"😤",titulo_tocado:"🩹",titulo_suplente:"🤝"};
+        const ICO={primer_titulo:"🏆",primera_corona:"👑",maestros:"🎓",n1:"⭐",top10:"⚔",nemesis_final:"😤",titulo_tocado:"🩹",titulo_suplente:"🤝",primer_cuadro:"🎫"};
         return `<div class="opcion" style="margin:0">
           <b>${ICO[m.id]||"✦"} ${t("mom_"+m.id)}</b>
           <div class="d">${t("mom_"+m.id+"_d",{t:m.t,sem:m.sem,torneo:(m.d||{}).torneo||"",rival:(m.d||{}).rival||""})}</div>

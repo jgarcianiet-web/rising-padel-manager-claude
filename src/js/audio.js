@@ -42,6 +42,15 @@ function sfxError(){ tone(150,.22,"sawtooth",.06,0,110); sfxGrada(.28); }
 function sfxSet(){ tone(660,.1,"sine",.09); tone(880,.2,"sine",.09,.11); sfxGrada(1); }
 function sfxTitulo(){ [523,659,784,1047].forEach((f,i)=>tone(f,.17,"square",.08,i*.13)); ruido(1.3,.06,.25); }
 function sfxClick(){ tone(720,.03,"square",.04); }
+/* El sonido de las cabeceras de momento: la gloria sube, el duelo baja y
+   apaga la música (el silencio tras una lesión también es sonido), y la
+   vuelta es una nota corta de alivio. */
+function sfxMomento(tipo){
+  if(tipo==="duelo"){ musicaOff(); tone(196,.7,"sine",.05); tone(147,1.1,"sine",.045,.45); return; }
+  if(tipo==="vuelta"){ tone(440,.12,"sine",.06); tone(554,.22,"sine",.06,.14); return; }
+  [392,523,659,784].forEach((f,i)=>tone(f,.2,"square",.07,i*.14));
+  ruido(1.1,.05,.28);
+}
 // Blip de notificación para los avisos emergentes, con matiz según el tipo:
 // alegre y ascendente para lo bueno, grave y descendente para lo malo. Sutil
 // (volumen bajo) para no competir con los efectos del partido.
