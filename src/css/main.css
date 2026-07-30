@@ -405,3 +405,8 @@ button.pri:active{transform:translateY(0);box-shadow:none}
 @keyframes paneIn{from{opacity:.4;transform:translateY(3px)}to{opacity:1;transform:none}}
 #mfBolaG{animation:mfFlota 4.5s ease-in-out infinite alternate}
 @keyframes mfFlota{from{transform:translateY(0)}to{transform:translateY(-16px)}}
+/* El marcador del partido, con presencia de videomarcador */
+.score .pts{font-size:calc(22px * var(--esc));padding:6px 14px;border-radius:6px;
+  background:linear-gradient(180deg,#131A26,#0C1119);border:1px solid var(--borde2);
+  box-shadow:0 0 0 1px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.05);
+  text-shadow:0 0 12px rgba(198,245,60,.35)}
