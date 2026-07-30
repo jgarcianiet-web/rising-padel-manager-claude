@@ -56,6 +56,62 @@
     </div>
   </div>
   <div id="scr-menu">
+    <!-- Escena de pista nocturna, dibujada por código como todo lo demás -->
+    <svg id="menuFondo" viewBox="0 0 1280 800" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <linearGradient id="mfCielo" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#0A1320"/><stop offset=".55" stop-color="#0C1626"/><stop offset="1" stop-color="#080B12"/>
+        </linearGradient>
+        <linearGradient id="mfPista" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#175073"/><stop offset="1" stop-color="#0D2C44"/>
+        </linearGradient>
+        <radialGradient id="mfFoco" cx=".5" cy=".5" r=".5">
+          <stop offset="0" stop-color="#DDEEFF" stop-opacity=".16"/><stop offset="1" stop-color="#DDEEFF" stop-opacity="0"/>
+        </radialGradient>
+        <linearGradient id="mfHaz" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#CFE6FF" stop-opacity=".07"/><stop offset="1" stop-color="#CFE6FF" stop-opacity="0"/>
+        </linearGradient>
+        <radialGradient id="mfBola" cx=".5" cy=".5" r=".5">
+          <stop offset="0" stop-color="#C6F53C" stop-opacity=".5"/><stop offset="1" stop-color="#C6F53C" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="mfVin" cx=".5" cy=".42" r=".75">
+          <stop offset=".45" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#04060A" stop-opacity=".82"/>
+        </radialGradient>
+      </defs>
+      <rect width="1280" height="800" fill="url(#mfCielo)"/>
+      <!-- focos -->
+      <ellipse cx="330" cy="95" rx="250" ry="95" fill="url(#mfFoco)"/>
+      <ellipse cx="950" cy="95" rx="250" ry="95" fill="url(#mfFoco)"/>
+      <rect x="318" y="80" width="24" height="8" rx="2" fill="#22303F"/><rect x="938" y="80" width="24" height="8" rx="2" fill="#22303F"/>
+      <rect x="328" y="88" width="4" height="120" fill="#161E29"/><rect x="948" y="88" width="4" height="120" fill="#161E29"/>
+      <polygon points="330,95 210,470 560,470" fill="url(#mfHaz)"/>
+      <polygon points="950,95 720,470 1070,470" fill="url(#mfHaz)"/>
+      <!-- cristal del fondo y su reflejo -->
+      <rect x="490" y="345" width="300" height="90" fill="#7AB6DE" opacity=".05"/>
+      <rect x="490" y="345" width="300" height="90" fill="none" stroke="#AFCFE8" stroke-opacity=".14"/>
+      <line x1="565" y1="345" x2="565" y2="435" stroke="#AFCFE8" stroke-opacity=".1"/>
+      <line x1="640" y1="345" x2="640" y2="435" stroke="#AFCFE8" stroke-opacity=".1"/>
+      <line x1="715" y1="345" x2="715" y2="435" stroke="#AFCFE8" stroke-opacity=".1"/>
+      <!-- la pista, en perspectiva -->
+      <polygon points="490,435 790,435 1040,745 240,745" fill="url(#mfPista)"/>
+      <polygon points="490,435 790,435 1040,745 240,745" fill="none" stroke="#EAF4FF" stroke-opacity=".3" stroke-width="2"/>
+      <!-- valla lateral -->
+      <polygon points="490,435 240,745 240,655 490,395" fill="#7AB6DE" opacity=".04"/>
+      <polygon points="790,435 1040,745 1040,655 790,395" fill="#7AB6DE" opacity=".04"/>
+      <!-- líneas: servicio, centro y red -->
+      <line x1="452" y1="493" x2="836" y2="493" stroke="#EAF4FF" stroke-opacity=".2" stroke-width="1.5"/>
+      <line x1="341" y1="632" x2="948" y2="632" stroke="#EAF4FF" stroke-opacity=".22" stroke-width="2"/>
+      <line x1="640" y1="493" x2="640" y2="632" stroke="#EAF4FF" stroke-opacity=".16" stroke-width="1.5"/>
+      <rect x="394" y="546" width="497" height="14" fill="#0A121C" opacity=".85"/>
+      <line x1="394" y1="546" x2="891" y2="546" stroke="#EAF4FF" stroke-opacity=".5" stroke-width="2.5"/>
+      <rect x="388" y="512" width="6" height="48" rx="2" fill="#1A2430"/>
+      <rect x="889" y="512" width="6" height="48" rx="2" fill="#1A2430"/>
+      <!-- la bola, suspendida (flota con CSS) -->
+      <g id="mfBolaG"><circle cx="792" cy="292" r="22" fill="url(#mfBola)"/>
+      <circle cx="792" cy="292" r="6.5" fill="#C6F53C"/></g>
+      <path d="M 700 340 Q 750 296 792 292" stroke="#C6F53C" stroke-opacity=".22" stroke-width="2" fill="none" stroke-dasharray="2 7"/>
+      <rect width="1280" height="800" fill="url(#mfVin)"/>
+    </svg>
     <div class="menu">
       <img id="menuImgJuego" alt="Pádel Manager" style="width:100%;max-width:340px;display:block;margin:2px auto 6px;-webkit-mask-image:radial-gradient(ellipse at center,#000 60%,rgba(0,0,0,0) 90%);mask-image:radial-gradient(ellipse at center,#000 60%,rgba(0,0,0,0) 90%)">
       
