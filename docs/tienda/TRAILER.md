@@ -46,11 +46,11 @@ que luego no esté.
 
 ```sh
 NODE_PATH=$PWD/node_modules node tools/trailer.js
-# preparando la partida (sin cámara)… T11 · #1 · 30 títulos
+# preparando la partida (sin cámara)… T13 · #17 · 21 títulos
 # partida cargada de la ranura 1
 # grabando…
-# el tráiler dura 30.5 s desde que se levanta el telón
-# → docs/tienda/trailer/trailer-bruto.webm · 2744 KB
+# el tráiler dura 34.5 s desde que se levanta el telón
+# → docs/tienda/trailer/trailer-bruto.webm · 2964 KB
 ```
 
 Tarda unos cinco minutos: la carrera que se enseña se juega de verdad, once

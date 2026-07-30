@@ -260,7 +260,7 @@ En itch.io conviene marcar también: *Made with no engine*, *Singleplayer*,
 
 - **Capturas:** `NODE_PATH=$PWD/node_modules node tools/capturas.js <idioma>`.
   Juega una carrera de verdad con semilla fija (`TIENDA-1`) —trece temporadas,
-  del puesto 91 al top 10, 44 títulos y casi 200.000 seguidores— y fotografía
+  del puesto 91 al top 15, 32 títulos y unos 209.000 seguidores— y fotografía
   las once pantallas a 1920×1080. Tarda unos cinco minutos.
 
   **Ojo: estas cifras cambian cuando cambia el equilibrio del juego.** Las de
