@@ -295,6 +295,14 @@ información que cambia cómo planificas, no una sorpresa):
    para poder probarla con parejas sintéticas, y respeta el invariante de
    atributos del mundo (25..96 — la suite lo caza si te pasas).
 
+**Medido con cuatro carreras honestas de 15 temporadas** (una por semilla):
+el nº1 llegó en T11 (26 años, constante/dominadora), T13 (28, constante/
+abierta), T15 (30, tardío/dominadora) y NUNCA en la cuarta (mejor puesto 2
+con Corona y Maestros: la carrera del eterno segundo, que también es una
+carrera). Todas acaban top 5, con 2-3% de semanas lesionado y la caja
+acotada: ningún perfil ni era queda muerto ni dominante. Si tocas los
+números de `DESARROLLOS` o de `_aplicaEra`, vuelve a sacar esa tabla.
+
 ## Momentos, cifras de carrera y arquetipos
 
 Tres piezas de la misma idea: **el contador de títulos comunica volumen; la

@@ -186,10 +186,12 @@ De las prioridades 2-8 del último plan:
 
 ## Tras la revisión de 9,0: varianza, amplitud y producción
 
-- **Varianza entre carreras — implementada, midiéndose.** Perfil de
-  desarrollo (constante/precoz/tardío: curva de entreno por edad y declive
-  ±2 años) y era del mundo (abierta/dominadora/relevo), ambos con la semilla
-  y visibles desde el debut. Ver «Cada carrera nace distinta» en CLAUDE.md.
+- **Varianza entre carreras — HECHA y medida.** Perfil de desarrollo
+  (constante/precoz/tardío) y era del mundo (abierta/dominadora/relevo),
+  ambos con la semilla y visibles desde el debut. Cuatro carreras honestas:
+  el nº1 llegó en T11, T13, T15 y nunca (mejor #2 con Corona y Maestros) —
+  antes llegaba en T12 con 27 años en todas—. Ver «Cada carrera nace
+  distinta» en CLAUDE.md.
 - **Amplitud**: arquetipos «pareja histórica» (etapa ≥8 temporadas) y
   «viajero del circuito» (≥25 giras lejanas, contadas en `giraSemana`), y
   momentos «500 victorias» y «la final remontada», con cabecera y tarjeta.
